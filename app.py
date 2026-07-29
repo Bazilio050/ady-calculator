@@ -55,18 +55,10 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 3. Минимальное расстояние: Экспорт 101 км, Импорт 151 км.
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
             """
-           try:
-                # Рабочий вариант модели для библиотек 2026 года
+            try:
                 model = genai.GenerativeModel("gemini-1.5-flash", system_instruction=system_instruction)
                 response = model.generate_content(user_input)
                 st.markdown(response.text)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
-            except Exception as e1:
-                try:
-                    # Резервный вариант gemini-2.5-flash
-                    model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system_instruction)
-                    response = model.generate_content(user_input)
-                    st.markdown(response.text)
-                    st.session_state.messages.append({"role": "assistant", "content": response.text})
-                except Exception as e2:
-                    st.error(f"Ошибка вызова Gemini: {e2}")
+            except Exception as e:
+                st.error(f"Ошибка вызова Gemini: {e}")
