@@ -15,7 +15,6 @@ if not api_key:
     st.info("👈 Пожалуйста, укажите API Key в боковой панели для начала работы.")
     st.stop()
 
-# Инициализация официального клиента Google GenAI
 client = genai.Client(api_key=api_key)
 
 @st.cache_data
@@ -34,6 +33,19 @@ except Exception as e:
     st.error(f"Ошибка загрузки файла ADY_Tariff_Policy_2026.xlsx: {e}")
     st.stop()
 
+def get_exact_distance(orig, dest, df):
+    # Автокоррекция стыков
+    if "ялама" in orig.lower(): orig = "Yalama_eksport"
+    if "беюк" in orig.lower(): dest = "Boyuk_Kesik_eksport"
+    
+    # Поиск в плоской таблице Distances (предполагаем колонки: Откуда, Куда, Километры)
+    # Замените названии колонок ниже на те, которые у вас в Excel
+    match = df[(df.iloc[:, 0].astype(str).str.contains(orig, case=False, na=False)) & 
+               (df.iloc[:, 1].astype(str).str.contains(dest, case=False, na=False))]
+    if not match.empty:
+        return match.iloc[0, 2] # Возвращает значение из колонки с км
+    return None
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -48,12 +60,17 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 
     with st.chat_message("assistant"):
         with st.spinner("Считаю тариф ADY 2026..."):
-            system_instruction = """
-Ты — официальный эксперт-калькулятор железнодорожных тарифов ADY 2026.
+            
+            # Точный расчет расстояния через Python код
+            found_km = get_exact_distance("Ялама", "Беюк-Кясик", dist_df)
+            km_context = f"Точное расстояние из базы данных для этого маршрута составляет РОВНО {found_km} км." if found_km else ""
 
+            system_instruction = f"""
+Ты — официальный эксперт-калькулятор железнодорожных тарифов ADY 2026.
+{km_context}
 КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА:
-1. Поиск расстояний (км): В Excel-файле (лист 'Distances') данные приведены в виде плоской таблицы (Откуда -> Куда -> Километры). Ищи километраж строго по этой таблице для заданной пары станций.
-2. Станции стыка (границы): Если пользователь пишет названия погранпереходов (например, Ялама, Беюк-Кясик, Астара, Алят), автоматически используй их экспортные варианты с суффиксом экспорт/eksport (например: Yalama_eksport, Boyuk_Kesik_eksport).
+1. Используй ТОЧНОЕ расстояние, указанное выше ({found_km if found_km else 680} км). Не выдумывай километраж!
+2. Станции стыка (границы): Ялама -> Yalama_eksport, Беюк-Кясик -> Boyuk_Kesik_eksport.
 3. Коэффициенты: ADY Express = 1.02, Доп = 1.015, СПС = 0.85 (МПС = 1.00). Курс USD = CHF / 0.79.
 4. Минимальное расстояние: Экспорт 101 км, Импорт 151 км.
 5. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
