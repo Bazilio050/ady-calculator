@@ -15,7 +15,7 @@ if not api_key:
     st.info("👈 Пожалуйста, укажите API Key в боковой панели для начала работы.")
     st.stop()
 
-# Инициализация клиента Google GenAI
+# Инициализация официального клиента Google GenAI
 client = genai.Client(api_key=api_key)
 
 @st.cache_data
@@ -56,20 +56,19 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
         """
         try:
-            # Корректный вызов стриминга через interactions.stream
-            response_stream = client.interactions.stream(
-                model="gemini-3.6-flash",
-                input=f"{system_instruction}\n\nЗапрос пользователя: {user_input}"
+            # Корректный официальный метод потокового вывода генерации
+            response_stream = client.models.generate_content_stream(
+                model="gemini-2.5-flash",
+                contents=user_input,
+                config={"system_instruction": system_instruction}
             )
             
             def stream_generator():
                 for chunk in response_stream:
-                    if hasattr(chunk, 'text') and chunk.text:
+                    if chunk.text:
                         yield chunk.text
-                    elif hasattr(chunk, 'output_text') and chunk.output_text:
-                        yield chunk.output_text
 
-            # Выводим ответ на экран в режиме реального времени
+            # Мгновенная печать ответа по мере его генерации
             full_response = st.write_stream(stream_generator())
             st.session_state.messages.append({"role": "assistant", "content": full_response})
         except Exception as e:
