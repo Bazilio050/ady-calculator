@@ -15,7 +15,7 @@ if not api_key:
     st.info("👈 Пожалуйста, укажите API Key в боковой панели для начала работы.")
     st.stop()
 
-# Инициализация официального клиента Google GenAI
+# Инициализация клиента Google GenAI
 client = genai.Client(api_key=api_key)
 
 @st.cache_data
@@ -56,9 +56,9 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
         """
         try:
-            # Корректный официальный метод потокового вывода генерации
+            # Используем базовую проверенную модель gemini-1.5-flash
             response_stream = client.models.generate_content_stream(
-                model="gemini-2.5-flash",
+                model="gemini-1.5-flash",
                 contents=user_input,
                 config={"system_instruction": system_instruction}
             )
@@ -68,7 +68,7 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
                     if chunk.text:
                         yield chunk.text
 
-            # Мгновенная печать ответа по мере его генерации
+            # Вывод текста на экран в режиме реального времени
             full_response = st.write_stream(stream_generator())
             st.session_state.messages.append({"role": "assistant", "content": full_response})
         except Exception as e:
