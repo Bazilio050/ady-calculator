@@ -33,6 +33,17 @@ except Exception as e:
     st.error(f"Ошибка загрузки файла ADY_Tariff_Policy_2026.xlsx: {e}")
     st.stop()
 
+# Функция поиска рабочей модели для вашего ключа
+@st.cache_resource
+def get_working_model_name():
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                return m.name
+    except Exception:
+        pass
+    return "models/gemini-1.5-flash"
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -56,8 +67,9 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
             """
             try:
+                active_model = get_working_model_name()
                 model = genai.GenerativeModel(
-                    model_name="gemini-1.5-flash",
+                    model_name=active_model,
                     system_instruction=system_instruction
                 )
                 response = model.generate_content(user_input)
