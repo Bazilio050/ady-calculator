@@ -57,13 +57,12 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
             """
             try:
-                # Стандартный надежный запрос через Interactions API
+                # Актуальный стандарт вызова через Interactions API с gemini-3-flash
                 interaction = client.interactions.create(
-                    model="gemini-2.5-flash",
+                    model="gemini-3-flash",
                     input=f"{system_instruction}\n\nЗапрос пользователя: {user_input}"
                 )
                 
-                # Извлекаем готовый текст ответа
                 output_text = interaction.output_text
                 
                 st.markdown(output_text)
