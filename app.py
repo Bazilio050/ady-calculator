@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
+from google import genai
 
 st.set_page_config(page_title="ADY Tariff Calculator 2026", page_icon="🚂", layout="centered")
 
@@ -15,7 +15,8 @@ if not api_key:
     st.info("👈 Пожалуйста, укажите API Key в боковой панели для начала работы.")
     st.stop()
 
-genai.configure(api_key=api_key)
+# Инициализация нового официального клиента
+client = genai.Client(api_key=api_key)
 
 @st.cache_data
 def load_data():
@@ -56,11 +57,11 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
             """
             try:
-                model = genai.GenerativeModel(
-                    model_name="gemini-1.5-pro",
-                    system_instruction=system_instruction
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=user_input,
+                    config={"system_instruction": system_instruction}
                 )
-                response = model.generate_content(user_input)
                 st.markdown(response.text)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
             except Exception as e:
