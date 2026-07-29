@@ -47,7 +47,7 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 
     with st.chat_message("assistant"):
         with st.spinner("Рассчитываю тариф по правилам ADY 2026..."):
-            system_instruction = f"""
+            system_instruction = """
 Ты — официальный эксперт-калькулятор железнодорожных тарифов ADY 2026.
 Строго используй правила:
 1. Погранстанции ВСЕГДА брать экспортные стыки: Yalama (eksport) [код 547508], Böyük Kəsik (eksport) [код 558701], Astara (eks.aşır) [код 554503], Alat (Ələt eksport) [код 548803].
@@ -55,7 +55,18 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 3. Минимальное расстояние: Экспорт 101 км, Импорт 151 км.
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
             """
-            model = genai.GenerativeModel("gemini-1.5-flash-latest", system_instruction=system_instruction)
-            response = model.generate_content(user_input)
-            st.markdown(response.text)
-            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            try:
+                # Пробуем стандартное имя модели
+                model = genai.GenerativeModel("models/gemini-1.5-flash", system_instruction=system_instruction)
+                response = model.generate_content(user_input)
+                st.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            except Exception as e1:
+                try:
+                    # Резервный вариант модели
+                    model = genai.GenerativeModel("models/gemini-pro", system_instruction=system_instruction)
+                    response = model.generate_content(user_input)
+                    st.markdown(response.text)
+                    st.session_state.messages.append({"role": "assistant", "content": response.text})
+                except Exception as e2:
+                    st.error(f"Ошибка запроса к ИИ: {e2}")
