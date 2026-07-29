@@ -15,7 +15,7 @@ if not api_key:
     st.info("👈 Пожалуйста, укажите API Key в боковой панели для начала работы.")
     st.stop()
 
-# Инициализация клиента Google GenAI
+# Инициализация клиента
 client = genai.Client(api_key=api_key)
 
 @st.cache_data
@@ -56,13 +56,34 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 3. Минимальное расстояние: Экспорт 101 км, Импорт 151 км.
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
             """
-            try:
-                response = client.models.generate_content(
-                    model="gemini-1.5-flash",
-                    contents=user_input,
-                    config={"system_instruction": system_instruction}
-                )
+            
+            # Список вариантов названий моделей для проверки
+            candidates = [
+                "gemini-1.5-flash",
+                "gemini-1.5-pro",
+                "gemini-2.0-flash",
+                "models/gemini-1.5-flash",
+                "models/gemini-1.5-pro"
+            ]
+            
+            response = None
+            err_msg = ""
+            
+            for m in candidates:
+                try:
+                    response = client.models.generate_content(
+                        model=m,
+                        contents=user_input,
+                        config={"system_instruction": system_instruction}
+                    )
+                    if response and response.text:
+                        break
+                except Exception as ex:
+                    err_msg = str(ex)
+                    continue
+
+            if response and response.text:
                 st.markdown(response.text)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
-            except Exception as e:
-                st.error(f"Ошибка вызова Gemini API: {e}")
+            else:
+                st.error(f"Не удалось подключиться к модели. Ошибка API: {err_msg}")
