@@ -15,7 +15,7 @@ if not api_key:
     st.info("👈 Пожалуйста, укажите API Key в боковой панели для начала работы.")
     st.stop()
 
-# Инициализация клиента
+# Инициализация клиента Google GenAI
 client = genai.Client(api_key=api_key)
 
 @st.cache_data
@@ -57,33 +57,35 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
             """
             
-            # Список вариантов названий моделей для проверки
-            candidates = [
-                "gemini-1.5-flash",
-                "gemini-1.5-pro",
-                "gemini-2.0-flash",
-                "models/gemini-1.5-flash",
-                "models/gemini-1.5-pro"
-            ]
-            
             response = None
-            err_msg = ""
+            working_model = None
+            last_err = ""
             
-            for m in candidates:
+            # Получаем список поддерживаемых моделей прямо от API
+            try:
+                available_models = [m.name for m in client.models.list() if "generateContent" in getattr(m, 'supported_generation_methods', []) or True]
+            except Exception as e:
+                available_models = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest", "gemini-2.0-flash-exp", "gemini-1.5-flash", "gemini-1.5-pro"]
+
+            # Перебираем реально доступные названия
+            for m_name in available_models:
+                # Очищаем имя от лишних префиксов при необходимости
+                clean_name = m_name.replace("models/", "")
                 try:
                     response = client.models.generate_content(
-                        model=m,
+                        model=clean_name,
                         contents=user_input,
                         config={"system_instruction": system_instruction}
                     )
-                    if response and response.text:
+                    if response and getattr(response, 'text', None):
+                        working_model = clean_name
                         break
                 except Exception as ex:
-                    err_msg = str(ex)
+                    last_err = str(ex)
                     continue
 
-            if response and response.text:
+            if response and getattr(response, 'text', None):
                 st.markdown(response.text)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
             else:
-                st.error(f"Не удалось подключиться к модели. Ошибка API: {err_msg}")
+                st.error(f"Не удалось подобрать доступную модель для вашего API-ключа. Последняя ошибка: {last_err}")
