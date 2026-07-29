@@ -123,9 +123,9 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
     else:
         with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
             try:
-                # Настройка модели gemini-2.5-flash
+                # Актуальная флагманская модель 3.6-flash
                 model = genai.GenerativeModel(
-                    model_name="gemini-2.5-flash",
+                    model_name="gemini-3.6-flash",
                     system_instruction=SYSTEM_INSTRUCTION
                 )
                 
