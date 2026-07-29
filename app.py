@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
+from google import genai
 
 st.set_page_config(page_title="ADY Tariff Calculator 2026", page_icon="🚂", layout="centered")
 
@@ -15,7 +15,8 @@ if not api_key:
     st.info("👈 Пожалуйста, укажите API Key в боковой панели для начала работы.")
     st.stop()
 
-genai.configure(api_key=api_key)
+# Инициализация нового клиента Google GenAI
+client = genai.Client(api_key=api_key)
 
 @st.cache_data
 def load_data():
@@ -55,23 +56,13 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 3. Минимальное расстояние: Экспорт 101 км, Импорт 151 км.
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
             """
-            
-            # Автоматический выбор доступной модели
-            candidate_models = ["gemini-1.5-pro", "gemini-2.0-flash", "gemini-1.5-flash-8b", "gemini-pro"]
-            response = None
-            last_error = None
-            
-            for model_name in candidate_models:
-                try:
-                    model = genai.GenerativeModel(model_name, system_instruction=system_instruction)
-                    response = model.generate_content(user_input)
-                    break
-                except Exception as err:
-                    last_error = err
-                    continue
-
-            if response and hasattr(response, 'text'):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=user_input,
+                    config={"system_instruction": system_instruction}
+                )
                 st.markdown(response.text)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
-            else:
-                st.error(f"Ошибка вызова Gemini API: {last_error}")
+            except Exception as e:
+                st.error(f"Ошибка вызова Gemini API: {e}")
