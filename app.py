@@ -47,31 +47,26 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
         st.markdown(user_input)
 
     with st.chat_message("assistant"):
-        system_instruction = """
+        with st.spinner("Считаю тариф ADY 2026..."):
+            system_instruction = """
 Ты — официальный эксперт-калькулятор железнодорожных тарифов ADY 2026.
 Строго используй правила:
 1. Погранстанции ВСЕГДА брать экспортные стыки: Yalama (eksport) [код 547508], Böyük Kəsik (eksport) [код 558701], Astara (eks.aşır) [код 554503], Alat (Ələt eksport) [код 548803].
 2. Коэффициенты: ADY Express = 1.02, Доп = 1.015, СПС = 0.85 (МПС = 1.00). Курс USD = CHF / 0.79.
 3. Минимальное расстояние: Экспорт 101 км, Импорт 151 км.
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
-        """
-        try:
-            # Вызов Interactions API с параметром stream=True
-            response_stream = client.interactions.create(
-                model="gemini-2.5-flash",
-                input=f"{system_instruction}\n\nЗапрос пользователя: {user_input}",
-                stream=True
-            )
-            
-            def stream_generator():
-                for chunk in response_stream:
-                    if hasattr(chunk, 'delta') and hasattr(chunk.delta, 'text') and chunk.delta.text:
-                        yield chunk.delta.text
-                    elif hasattr(chunk, 'output_text') and chunk.output_text:
-                        yield chunk.output_text
-
-            # Мгновенная печать ответа
-            full_response = st.write_stream(stream_generator())
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-        except Exception as e:
-            st.error(f"Ошибка вызова Gemini: {e}")
+            """
+            try:
+                # Стандартный надежный запрос через Interactions API
+                interaction = client.interactions.create(
+                    model="gemini-2.5-flash",
+                    input=f"{system_instruction}\n\nЗапрос пользователя: {user_input}"
+                )
+                
+                # Извлекаем готовый текст ответа
+                output_text = interaction.output_text
+                
+                st.markdown(output_text)
+                st.session_state.messages.append({"role": "assistant", "content": output_text})
+            except Exception as e:
+                st.error(f"Ошибка вызова Gemini: {e}")
