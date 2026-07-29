@@ -56,18 +56,20 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
         """
         try:
-            # Создаем поток ответов (Streaming) для мгновенного отклика
-            response_stream = client.interactions.create_stream(
+            # Корректный вызов стриминга через interactions.stream
+            response_stream = client.interactions.stream(
                 model="gemini-3.6-flash",
                 input=f"{system_instruction}\n\nЗапрос пользователя: {user_input}"
             )
             
             def stream_generator():
                 for chunk in response_stream:
-                    if chunk.output_text:
+                    if hasattr(chunk, 'text') and chunk.text:
+                        yield chunk.text
+                    elif hasattr(chunk, 'output_text') and chunk.output_text:
                         yield chunk.output_text
 
-            # Мгновенная печать ответа по мере поступления символов
+            # Выводим ответ на экран в режиме реального времени
             full_response = st.write_stream(stream_generator())
             st.session_state.messages.append({"role": "assistant", "content": full_response})
         except Exception as e:
