@@ -15,7 +15,7 @@ if not api_key:
     st.info("👈 Пожалуйста, укажите API Key в боковой панели для начала работы.")
     st.stop()
 
-# Инициализация официального клиента
+# Инициализация клиента Google GenAI
 client = genai.Client(api_key=api_key)
 
 @st.cache_data
@@ -57,12 +57,13 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
             """
             try:
-                response = client.models.generate_content(
-                    model="gemini-2.0-flash",
-                    contents=user_input,
-                    config={"system_instruction": system_instruction}
+                # Переход на Interactions API для полной совместимости
+                interaction = client.interactions.create(
+                    model="gemini-3.6-flash",
+                    input=f"{system_instruction}\n\nЗапрос пользователя: {user_input}"
                 )
-                st.markdown(response.text)
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
+                output_text = interaction.output_text
+                st.markdown(output_text)
+                st.session_state.messages.append({"role": "assistant", "content": output_text})
             except Exception as e:
                 st.error(f"Ошибка вызова Gemini: {e}")
