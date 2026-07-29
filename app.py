@@ -47,23 +47,28 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
         st.markdown(user_input)
 
     with st.chat_message("assistant"):
-        with st.spinner("Рассчитываю тариф по правилам ADY 2026..."):
-            system_instruction = """
+        system_instruction = """
 Ты — официальный эксперт-калькулятор железнодорожных тарифов ADY 2026.
 Строго используй правила:
 1. Погранстанции ВСЕГДА брать экспортные стыки: Yalama (eksport) [код 547508], Böyük Kəsik (eksport) [код 558701], Astara (eks.aşır) [код 554503], Alat (Ələt eksport) [код 548803].
 2. Коэффициенты: ADY Express = 1.02, Доп = 1.015, СПС = 0.85 (МПС = 1.00). Курс USD = CHF / 0.79.
 3. Минимальное расстояние: Экспорт 101 км, Импорт 151 км.
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
-            """
-            try:
-                # Переход на Interactions API для полной совместимости
-                interaction = client.interactions.create(
-                    model="gemini-3.6-flash",
-                    input=f"{system_instruction}\n\nЗапрос пользователя: {user_input}"
-                )
-                output_text = interaction.output_text
-                st.markdown(output_text)
-                st.session_state.messages.append({"role": "assistant", "content": output_text})
-            except Exception as e:
-                st.error(f"Ошибка вызова Gemini: {e}")
+        """
+        try:
+            # Создаем поток ответов (Streaming) для мгновенного отклика
+            response_stream = client.interactions.create_stream(
+                model="gemini-3.6-flash",
+                input=f"{system_instruction}\n\nЗапрос пользователя: {user_input}"
+            )
+            
+            def stream_generator():
+                for chunk in response_stream:
+                    if chunk.output_text:
+                        yield chunk.output_text
+
+            # Мгновенная печать ответа по мере поступления символов
+            full_response = st.write_stream(stream_generator())
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+        except Exception as e:
+            st.error(f"Ошибка вызова Gemini: {e}")
