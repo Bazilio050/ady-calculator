@@ -33,15 +33,28 @@ except Exception as e:
     st.error(f"Ошибка загрузки файла ADY_Tariff_Policy_2026.xlsx: {e}")
     st.stop()
 
-def get_exact_distance(orig, dest, df):
-    if "ялама" in orig.lower(): orig = "Yalama_eksport"
-    if "беюк" in orig.lower(): dest = "Boyuk_Kesik_eksport"
+def get_exact_distance(user_text, df):
+    unique_origins = df.iloc[:, 0].dropna().astype(str).unique()
+    unique_dests = df.iloc[:, 1].dropna().astype(str).unique()
     
-    match = df[(df.iloc[:, 0].astype(str).str.contains(orig, case=False, na=False)) & 
-               (df.iloc[:, 1].astype(str).str.contains(dest, case=False, na=False))]
-    if not match.empty:
-        return match.iloc[0, 2]
-    return None
+    orig_match, dest_match = None, None
+    for s in unique_origins:
+        if s.lower() in user_text.lower() or s.replace("_eksport", "").lower() in user_text.lower():
+            orig_match = s
+            break
+            
+    for s in unique_dests:
+        if s.lower() in user_text.lower() or s.replace("_eksport", "").lower() in user_text.lower():
+            dest_match = s
+            break
+            
+    if orig_match and dest_match:
+        match = df[(df.iloc[:, 0].astype(str).str.lower() == orig_match.lower()) & 
+                   (df.iloc[:, 1].astype(str).str.lower() == dest_match.lower())]
+        if not match.empty:
+            return orig_match, dest_match, match.iloc[0, 2]
+            
+    return None, None, None
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -50,7 +63,7 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if user_input := st.chat_input("Напишите маршрут и груз (напр.: Ялама Беюк-Кясик 1001 60т СПС)..."):
+if user_input := st.chat_input("Напишите маршрут и груз (напр.: Ялама Апшерон 1001 60т СПС)..."):
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
@@ -58,25 +71,25 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
     with st.chat_message("assistant"):
         with st.spinner("Считаю тариф ADY 2026..."):
             
-            found_km = get_exact_distance("Ялама", "Беюк-Кясик", dist_df)
-            km_context = f"Точное расстояние из базы данных для этого маршрута составляет РОВНО {found_km} км." if found_km else ""
+            orig, dest, found_km = get_exact_distance(user_input, dist_df)
+            km_context = f"Точное расстояние из базы данных для маршрута {orig} — {dest} составляет РОВНО {found_km} км." if found_km else "ВНИМАНИЕ: Обязательно найди правильное расстояние по таблице для указанных станций!"
 
             system_instruction = f"""
 Ты — официальный эксперт-калькулятор железнодорожных тарифов ADY 2026.
 {km_context}
 
 СТРОГИЕ ПРАВИЛА ОФОРМЛЕНИЯ И МАТЕМАТИКИ РАСЧЕТА:
-1. Использовать ТОЧНОЕ расстояние, указанное выше ({found_km if found_km else 680} км).
+1. Использовать ТОЧНОЕ расстояние, найденное в базе данных (указано выше).
 2. Оформление пункта 1 (Исходные данные):
-   - Пиши чистые названия станций без технических индексов (например: Маршрут: Ялама — Беюк-Кясик).
+   - Пиши чистые названия станций без технических индексов и суффиксов (например: Маршрут: Ялама — Апшерон).
    - Для груза указывай наименование и код ЕТСНГ (если известен), без лишних громоздких слов.
 3. Оформление пункта 2 (Коэффициенты):
    - НЕ используй формулы с буквенными обозначениями вроде K_спс, K_ady и т.д.
-   - Если какой-либо коэффициент равен 1.00 (или единице/нулю в контексте отсутствия применения), НЕ ВЫВОДИ ЕГО вообще.
-   - Коэффициент ADY Express ВСЕГДА ставь в самый конец списка коэффициентов (если он не равен 1.00).
+   - Если какой-либо коэффициент равен 1.00, НЕ ВЫВОДИ ЕГО вообще.
+   - Коэффициент ADY Express ВСЕГДА ставь в самый конец списка коэффициентов (если он не равен 1.00). Если он равен 1.00 — не выводи его.
    - Курс конвертации указывай в формате: $/CHF — 0.79.
 4. Математика расчета (ПРАВИЛЬНЫЙ ПОРЯДОК):
-   - Сначала берется базовая ставка, умножается на действующие коэффициенты (а в самом конце применяется коэффициент ADY Express), после чего результат делится на курс конвертации ($/CHF — 0.79).
+   - Сначала берется базовая ставка, делится на курс конвертации ($/CHF — 0.79), затем последовательно умножается на действующие коэффициенты (а в самом конце применяется коэффициент ADY Express, если он отличен от 1.00).
 5. Оформление пункта 3 (Расчет ставки и тарифа):
    - СТАВКИ ЗА ВАГОН НЕ ВЫВОДИ (выдавай расчет строго за 1 тонну).
 6. Выдавай расчет строго по структурированному шаблону с готовыми цифрами.
