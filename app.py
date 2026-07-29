@@ -57,9 +57,9 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
 4. Выдавай расчет строго по структурированному шаблону с формулами и готовыми цифрами.
             """
             try:
-                # Актуальный стандарт вызова через Interactions API с gemini-3-flash
+                # Используем подсказанное сервером имя gemini-3.6-flash
                 interaction = client.interactions.create(
-                    model="gemini-3-flash",
+                    model="gemini-3.6-flash",
                     input=f"{system_instruction}\n\nЗапрос пользователя: {user_input}"
                 )
                 
