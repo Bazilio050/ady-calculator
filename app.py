@@ -15,7 +15,7 @@ if not api_key:
     st.info("👈 Пожалуйста, укажите API Key в боковой панели для начала работы.")
     st.stop()
 
-# Инициализация нового клиента Google GenAI
+# Инициализация клиента Google GenAI
 client = genai.Client(api_key=api_key)
 
 @st.cache_data
@@ -58,7 +58,7 @@ if user_input := st.chat_input("Напишите маршрут и груз (н�
             """
             try:
                 response = client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-1.5-flash",
                     contents=user_input,
                     config={"system_instruction": system_instruction}
                 )
