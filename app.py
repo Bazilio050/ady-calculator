@@ -1,8 +1,7 @@
 import os
-import re
 import pandas as pd
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 
 # 1. Page config — СТРОГО ПЕРВОЙ КОМАНДОЙ STREAMLIT
 st.set_page_config(
@@ -14,7 +13,7 @@ st.set_page_config(
 st.title("🚂 Калькулятор Ж/Д Тарифов ADY 2026")
 st.markdown("Расчет ж/д тарифов по Азербайджану (ADY Express, СПС/МПС, рефсекции, спец. вагоны)")
 
-# 2. Setup Gemini API Key
+# 2. Setup Gemini API Key & Client
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.sidebar.text_input("Введите Gemini API Key:", type="password")
@@ -23,7 +22,8 @@ if not api_key:
     st.warning("⚠️ Пожалуйста, добавьте GEMINI_API_KEY в Secrets на Streamlit или введите его в боковой панели.")
     st.stop()
 
-genai.configure(api_key=api_key)
+# Инициализация нового клиента Google GenAI SDK
+client = genai.Client(api_key=api_key)
 
 # 3. Load Excel File Context
 EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
@@ -151,14 +151,11 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
     else:
         with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
             try:
-                # Используем стандартную поддерживаемую имя модели gemini-1.5-flash
-                model = genai.GenerativeModel(
-                    model_name="gemini-1.5-flash",
-                    system_instruction=SYSTEM_INSTRUCTION
-                )
-                
-                response = model.generate_content(
-                    f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}"
+                # Новый синтаксис обращения к актуальным моделям Gemini 2.5 / 2.0
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}",
+                    config={"system_instruction": SYSTEM_INSTRUCTION}
                 )
                 
                 st.success("Расчет успешно выполнен!")
