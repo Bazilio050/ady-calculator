@@ -87,19 +87,6 @@ user_input = st.text_area(
 
 # 5. Функция чистки текста (Автозамена запрещенных терминов и списков)
 def sanitize_text(text):
-    # Замена запрещенных фраз
-    replacements = {
-        r"ставка за вагон": "провозная плата",
-        r"за вагон": "",
-        r"на вагон": "",
-        r"за 1 вагон": "",
-        r"на 1 вагон": "",
-        r"Итоговая ставка за вагон": "Итоговая провозная плата",
-        r"Ставка за вагон": "Провозная плата"
-    }
-    for pattern, repl in replacements.items():
-        text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
-        
     # Удаление лишних списков вида "• Базовая ставка:", "• Провозная плата:" под формулой
     text = re.sub(r"^\s*[\bullet\*\-]\s*Базовая ставка:.*$", "", text, flags=re.MULTILINE | re.IGNORECASE)
     text = re.sub(r"^\s*[\bullet\*\-]\s*Провозная плата:.*$", "", text, flags=re.MULTILINE | re.IGNORECASE)
@@ -111,24 +98,18 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 6. Функция автоматического выбора доступных моделей Gemini
+# 6. Функция автоматического выбора доступных моделей Gemini (с приоритетом на экономичный Flash)
 def call_gemini_with_fallback(client, prompt, instruction):
-    available_models = []
+    # Фиксируем самые дешевые и точные модели Flash для минимизации расходов API
+    candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
+    
     try:
         models_list = client.models.list()
-        for m in models_list:
-            m_name = m.name.replace("models/", "") if hasattr(m, "name") else str(m)
-            if "gemini" in m_name.lower():
-                available_models.append(m_name)
+        available = [m.name.replace("models/", "") for m in models_list if hasattr(m, "name") and "flash" in m.name.lower()]
+        if available:
+            candidate_models = available + candidate_models
     except Exception:
         pass
-
-    if available_models:
-        flash_models = [m for m in available_models if "flash" in m.lower()]
-        other_models = [m for m in available_models if "flash" not in m.lower()]
-        candidate_models = flash_models + other_models
-    else:
-        candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
 
     errors = []
     for model_name in candidate_models:
@@ -155,13 +136,12 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
                 prompt_text = (
                     f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}\n\n"
                     "⚠️ СТРОЖАЙШИЕ ПРАВИЛА РАСЧЕТА И ВЫВОДА:\n"
-                    "1. РЕФСЕКЦИИ / ARV (п. 3.1.2.1): Понимай любой формат записи (6+1, 1+6, 5+1)! 1 — это дизель-вагон, второе число — рефвагоны. Учитывай порог 25 тонн, количество вагонов (коэф 1.7, 1.4, 1.1, а для 5+1/6+1 коэф 0.85), скидку 0.60 на овощи/фрукты и дизель-вагон (0.12 CHF/ось-км для СПС)!\n"
-                    "2. КОЭФФИЦИЕНТ 1.20 (ОДНОКРАТНО): Если транзит Алят - Беюк Кясик ИЛИ транзит рефсекции/ARV ИЛИ нефть — примени × 1.20 СТРОГО ОДИН РАЗ (bir dəfə)!\n"
-                    "3. ВЫБОР ТАБЛИЦЫ: Для универсальных вагонов при Импорте/Экспорте берется Таблица №3, при Транзите — Таблица №4!\n"
-                    "4. КОЭФФИЦИЕНТ 1.50: При расчете по Таблице №3, 1.50 НЕ ПРИМЕНЯЕТСЯ НИКОГДА!\n"
-                    "5. ФОРМАТ РАЗДЕЛА 3: Выведи формулу СТРОГО В РАСЧЕТЕ НА 1 ТОННУ (без умножения на общий вес!) и под ней итоговую строчку со ставкой за 1 тонну.\n"
-                    "6. ЗАПРЕТ СЛОВА ВАГОН: СТРОГО ЗАПРЕЩЕНО писать слова 'за вагон', 'на вагон', 'ставка за вагон'.\n"
-                    "7. БЕЗ СПИСКОВ И СНОСОК: Никаких маркированных списков под формулой!"
+                    "1. ЕДИНИЦЫ ИЗМЕРЕНИЯ (РЕФСЕКЦИИ): Если вес рефвагона < 25 тонн (Таблица №5, столбец 2) — считай и выводи 'USD за вагон'! Если вес >= 25 тонн (столбец 3) — выводи 'USD за 1 тонну'!\n"
+                    "2. РЕФСЕКЦИИ / ARV (п. 3.1.2.1): Понимай форматы (6+1, 1+6, 5+1)! Учитывай количество вагонов (коэф 1.7, 1.4, 1.1, а для 5+1/6+1 коэф 0.85), скидку 0.60 на овощи/фрукты и дизель-вагон (0.12 CHF/ось-км для СПС)!\n"
+                    "3. КОЭФФИЦИЕНТ 1.20 (ОДНОКРАТНО): Если транзит Алят - Беюк Кясик ИЛИ транзит рефсекции/ARV ИЛИ нефть — примени × 1.20 СТРОГО ОДИН РАЗ (bir dəfə)!\n"
+                    "4. ВЫБОР ТАБЛИЦЫ: Для универсальных вагонов при Импорте/Экспорте берется Таблица №3, при Транзите — Таблица №4!\n"
+                    "5. КОЭФФИЦИЕНТ 1.50: При расчете по Таблице №3, 1.50 НЕ ПРИМЕНЯЕТСЯ НИКОГДА!\n"
+                    "6. БЕЗ СПИСКОВ И СНОСОК: Никаких маркированных списков под формулой!"
                 )
                 
                 raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
