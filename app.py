@@ -1,7 +1,9 @@
 import os
+import time
 import pandas as pd
 import streamlit as st
 from google import genai
+from google.genai import types
 
 # 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
 st.set_page_config(
@@ -21,36 +23,6 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-def generate_with_fallback(client, contents, system_instruction):
-    candidate_models = []
-    try:
-        available_models = [m.name.replace("models/", "") for m in client.models.list()]
-        flash_models = [m for m in available_models if "flash" in m.lower()]
-        candidate_models.extend(flash_models)
-        candidate_models.extend(available_models)
-    except Exception:
-        pass
-
-    default_fallbacks = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-pro"]
-    for model in default_fallbacks:
-        if model not in candidate_models:
-            candidate_models.append(model)
-
-    last_exception = None
-    for model_name in candidate_models:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config={"system_instruction": system_instruction}
-            )
-            return response.text, model_name
-        except Exception as e:
-            last_exception = e
-            continue
-            
-    raise last_exception
-
 # 3. Fast Data & Prompt Loading
 EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
 
@@ -68,7 +40,6 @@ def load_app_context(file_path):
             summary_text.append("\n")
         excel_context = "\n".join(summary_text)
         
-        # Системный промпт эксперта
         system_instruction = (
             "Ты — официальный эксперт-калькулятор железнодорожных тарифов ADY (Азербайджанские Железные Дороги) на 2026 год.\n"
             "Твоя база знаний находится в следующих данных из файла ADY_Tariff_Policy_2026.xlsx:\n\n"
@@ -150,7 +121,49 @@ if err:
     st.error(err)
     st.stop()
 
-# 4. UI Layout
+# 4. Context Caching — ЭКОНОМИЯ 80-90% РАСХОДОВ
+@st.cache_resource(ttl=3600)  # Кэш сохраняется на 1 час
+def get_or_create_context_cache(api_key, system_instruction):
+    c_client = genai.Client(api_key=api_key)
+    model_name = "gemini-2.5-flash"
+    try:
+        cache = c_client.caches.create(
+            model=model_name,
+            config=types.CreateCachedContentConfig(
+                contents=[system_instruction],
+                ttl="3600s", # 1 час
+            )
+        )
+        return cache.name, model_name
+    except Exception:
+        # Резервный вариант, если кэш временно недоступен
+        return None, model_name
+
+cache_name, active_model = get_or_create_context_cache(api_key, SYSTEM_INSTRUCTION)
+
+def generate_cached_response(client, prompt, cache_name, system_instruction):
+    if cache_name:
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    cached_content=cache_name
+                )
+            )
+            return response.text, "gemini-2.5-flash (Cached ⚡)"
+        except Exception:
+            pass
+
+    # Стандартный вызов с перестраховкой
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config={"system_instruction": system_instruction}
+    )
+    return response.text, "gemini-2.5-flash"
+
+# 5. UI Layout
 logo_file = None
 for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
     if os.path.exists(filename):
@@ -177,12 +190,12 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
         with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
             try:
                 prompt_text = f"Сделай точный расчет провозной платы за 1 тонну для следующих условий:\n{user_input}"
-                result_text, used_model = generate_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
-                st.success(f"Расчет успешно выполнен! (Использована модель: {used_model})")
+                result_text, used_model = generate_cached_response(client, prompt_text, cache_name, SYSTEM_INSTRUCTION)
+                st.success(f"Расчет успешно выполнен! (Режим: {used_model})")
                 st.markdown("### 📋 Результат расчета:")
                 st.markdown(result_text)
             except Exception as e:
                 st.error(f"Произошла ошибка при обращении к Gemini: {str(e)}")
 
 st.markdown("---")
-st.caption("ADY Tariff Calculator v2026 | AGT CARGO | Автоматический расчет тарифов и сборов")
+st.caption("ADY Tariff Calculator v2026 | AGT CARGO | Экономичный расчет тарифов с кэшированием")
