@@ -1,166 +1,136 @@
-import os
-import re
-import pandas as pd
-import streamlit as st
-import google.generativeai as genai
+import math
 
-# Page config
-st.set_page_config(
-    page_title="ADY Tariff Calculator 2026",
-    page_icon="🚂",
-    layout="wide"
-)
+# Коды цветных металлов и хим. веществ (п. 3.1.1 - коэффициент 1.20)
+SPECIAL_METALS_GNG = {
+    "28045090", "28049", "28054", "32121", "7115", 
+    "8302", "83079", "8309", "8311", "85481"
+}
 
-st.title("🚂 Калькулятор Ж/Д Тарифов ADY 2026")
-st.markdown("Расчет ж/д тарифов по Азербайджану (ADY Express, СПС/МПС, доп. сборы)")
+# Коды свежих фруктов и овощей (п. 3.1.2.1 - коэффициент 0.60)
+FRUITS_VEG_GNG = {
+    "04100", "04200", "04300", "04400", "05100", "05200", "05300",
+    "12129100"
+}
+FRUITS_VEG_PREFIXES = ("0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710",
+                       "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810")
 
-# 1. Setup Gemini API Key
-api_key = os.environ.get("GEMINI_API_KEY")
-if not api_key:
-    api_key = st.sidebar.text_input("Введите Gemini API Key:", type="password")
-
-if not api_key:
-    st.warning("⚠️ Пожалуйста, добавьте GEMINI_API_KEY в Secrets на Streamlit или введите его в боковой панели.")
-    st.stop()
-
-genai.configure(api_key=api_key)
-
-# 2. Load Excel File Context
-EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
-
-@st.cache_data
-def load_excel_summary(file_path):
-    if not os.path.exists(file_path):
-        return None, f"Ошибка: Файл '{file_path}' не найден в репозитории!"
+def is_special_metal(gng_code: str) -> bool:
+    """Проверка кода ГНГ (YHN) на попадание под повышающий коэффициент 1.20."""
+    gng = str(gng_code).strip()
+    if gng in SPECIAL_METALS_GNG:
+        return True
     
-    try:
-        xls = pd.ExcelFile(file_path)
-        summary_text = []
+    # Диапазоны 7106-7112
+    if len(gng) >= 4 and gng[:4] in [str(x) for x in range(7106, 7113)]:
+        return True
         
-        for sheet in xls.sheet_names:
-            df = pd.read_excel(xls, sheet_name=sheet)
-            summary_text.append(f"--- ШИТ: {sheet} ---")
-            summary_text.append(df.to_string(index=False))
-            summary_text.append("\n")
+    # Группа 74 (кроме 7401, 7418)
+    if gng.startswith("74") and not (gng.startswith("7401") or gng.startswith("7418")):
+        return True
+        
+    # Группа 75 (кроме 7501)
+    if gng.startswith("75") and not gng.startswith("7501"):
+        return True
+        
+    # Группа 76 (кроме 7615)
+    if gng.startswith("76") and not gng.startswith("7615"):
+        return True
+        
+    # Группы 78, 79, 80, 81 (в 81 кроме 81052)
+    if any(gng.startswith(p) for p in ["78", "79", "80"]) or (gng.startswith("81") and not gng.startswith("81052")):
+        return True
+        
+    return False
+
+def is_fruit_or_veg(gng_code: str) -> bool:
+    """Проверка кода ГНГ (YHN) на фрукты/овощи для льготы 0.60 в рефвагонах."""
+    gng = str(gng_code).strip()
+    if gng in FRUITS_VEG_GNG:
+        return True
+    return any(gng.startswith(pref) for pref in FRUITS_VEG_PREFIXES)
+
+
+def calculate_freight_tariff(
+    shipment_type: str,     # 'import', 'export', 'transit'
+    wagon_type: str,        # 'universal', 'ref_section', 'arv', 'thermos', 'autovoz', 'autovoz_2deck'
+    weight_tons: float,     # Масса груза в тоннах
+    distance_km: int,       # Расстояние транспортировки
+    gng_code: str = "",     # Код ГНГ груза
+    ref_composition: str = "1+4", # Состав рефсекции: "1+1", "1+2", "1+3", "1+4", "1+5", "1+6" и т.д.
+    is_empty_return: bool = False, # Возврат порожнего инвентарного вагона
+    mark: str = ""          # Отметки в накладной: 'IZVK', 'IZVT', 'VTVK'
+) -> dict:
+    
+    # 1. Инвентарный порожний вагон (МПС), возвращаемый в страну принадлежности (п. 3.1.1)
+    if is_empty_return and wagon_type == 'universal':
+        return {"base_rate": 0.0, "total_chf": 0.0, "note": "Порожний возврат инвентарного вагона — без оплаты"}
+
+    coeffs = []
+    
+    # 2. Обработка особых заменок (отметок в накладной)
+    if mark == "IZVK":
+        # Рефвагон вместо крытого универсального (расчетная масса не менее 40 тн)
+        wagon_type = "universal"
+        weight_tons = max(weight_tons, 40.0)
+    elif mark == "VTVK":
+        # Вагон-термос вместо крытого универсального (расчетная масса не менее 60 тн)
+        wagon_type = "universal"
+        weight_tons = max(weight_tons, 60.0)
+
+    # 3. Выбор базовой таблицы и логика расчета
+    if wagon_type == "universal":
+        # Таблица 3 (Импорт/Экспорт) или Таблица 4 (Транзит)
+        table_name = "Cadval_4" if shipment_type.lower() == "transit" else "Cadval_3"
+        
+        # Проверка коэффициента на цветные металлы и химикаты (1.20)
+        if is_special_metal(gng_code):
+            coeffs.append(("Спец. металлы/химия (п. 3.1.1)", 1.20))
             
-        return "\n".join(summary_text), None
-    except Exception as e:
-        return None, f"Ошибка при чтении Excel: {str(e)}"
-
-excel_context, err = load_excel_summary(EXCEL_FILE)
-
-if err:
-    st.error(err)
-    st.stop()
-
-# 3. System Prompt Definition
-SYSTEM_INSTRUCTION = f"""
-Ты — официальный эксперт-калькулятор железнодорожных тарифов ADY (Азербайджанские Железные Дороги) на 2026 год.
-Твоя база знаний находится в следующих данных из файла ADY_Tariff_Policy_2026.xlsx:
-
-{excel_context}
-
-⛔ СТРОЖАЙШИЕ ЗАПРЕТЫ:
-1. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО использовать слова "вагон", "за вагон", "на вагон", "ставка за вагон".
-2. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО писать Step 1, Step 2, Step 3, Step 4 и выводить промежуточные результаты расчетов.
-3. СТРОГО ЗАПРЕЩЕНО выводить технические имена столбцов Excel. Только формат: "Ялама - эксп.".
-
-ПРАВИЛО ИСКЛЮЧЕНИЯ КОЭФФИЦИЕНТОВ 1.00 И 0:
-1. Если какой-либо коэффициент равен 1.00 или 0 (например, коэффициент собственника МПС равен 1.00, или спец. коэф. равен 1.00), ЕГО НЕ НУЖНО УКАЗЫВАТЬ в списке коэффициентов и НЕ НУЖНО ВКЛЮЧАТЬ в математическую формулу расчетов!
-2. В формулу перемножаются ТОЛЬКО коэффициенты, отличные от 1.00 и 0.
-
-ПРАВИЛО ВЫБОРА СТАНЦИИ ПОГРАНПЕРЕХОДА (ПОГРАНИЧНЫЕ И СТЫКОВЫЕ МАРШРУТЫ):
-1. В таблице расстояний для некоторых станций есть несколько строк (например, 1-я строка: `Yalama` 676 км, 2-я строка: `Yalama (eksport)` / `Yalama_eksp` 680 км).
-2. ПРИ ЛЮБЫХ ПЕРЕВОЗКАХ ЧЕРЕЗ ПОГРАНПЕРЕХОДЫ (Транзит, Экспорт, Импорт со стыковых станций: Ялама, Бёюк-Кясик, Алят, Джульфа, Астара и т.д.) ОБЯЗАТЕЛЬНО ВЫБИРАТЬ ВТОРУЮ СТРОКУ — `Yalama (eksport)` / пограничный пункт.
-3. Пример: Для маршрута между погранпереходами Ялама и Бёюк-Кясик расстояние берется СТРОГО 680 км (из 2-й строки погранперехода `Yalama (eksport)`), а НЕ 676 км!
-
-ПРАВИЛО МИНИМАЛЬНЫХ ТАРИФНЫХ РАССТОЯНИЙ (MINIMAL TARİF MƏSAFƏLƏRİ):
-1. ДЛЯ ИМПОРТА (İdxal):
-   - Минимальное расстояние 151 км. Если расстояние < 151 км, то расчетное = 151 км (интервал 151–160 км).
-2. ДЛЯ ЭКСПОРТА (İxrac):
-   - Минимальное расстояние 101 км. Если расстояние < 101 км, то расчетное = 101 км (интервал 101–110 км).
-3. ОФОРМЛЕНИЕ СТРОКИ РАССТОЯНИЯ:
-   - Если расстояние меньше минимального порога, пиши: `Расстояние: [Фактическое] км (расчетное расстояние: [151/101] км, тарифный интервал: [Х–Х] км)`
-   - Если расстояние РАВНО ИЛИ БОЛЬШЕ порога (например, 680 км), пиши строго без дублирования: `Расстояние: 680 км (тарифный интервал: 671–680 км)`
-
-ПРАВИЛА ОПРЕДЕЛЕНИЯ МАССЫ И ВЕСОВОЙ КАТЕГОРИИ:
-1. ДЛЯ ВСЕХ ГРУЗОВ/ГНГ: Определи минимальную норму загрузки.
-   - Расчетная масса = max(Заявленный вес, Минимальная норма ГНГ).
-   - Если заявленный вес ниже нормы, Расчетная масса ПРИНУДИТЕЛЬНО принимается равной нормативу ГНГ.
-2. CƏDVƏL 1 (ВЕСОВЫЕ КАТЕГОРИИ):
-   - Определи весовую категорию в Excel по Cədvəl 1 для подбора базовой ставки (10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60 тн).
-
-ПРАВИЛА ПРИМЕНЕНИЯ КОЭФФИЦИЕНТА НАПРАВЛЕНИЯ И ИСКЛЮЧЕНИЙ:
-1. ЖЕСТКОЕ ПРАВИЛО ДЛЯ КОЭФФИЦИЕНТА 1.20:
-   - Коэффициент × 1.20 применяется СТРОГО И ТОЛЬКО для транзитного маршрута **Бёюк-Кясик — Алят** (или **Алят — Бёюк-Кясик**).
-   - Для всех остальных транзитных маршрутов (например, Ялама — Бёюк-Кясик) коэффициент 1.20 НЕ ПРИМЕНЯЕТСЯ!
-2. ИСКЛЮЧЕНИЕ ТАБЛИЦЫ 3 И ЧЕРНЫХ МЕТАЛЛОВ:
-   - Лесоматериалы и пиломатериалы (ГНГ 4403, 4404, 4407–4413, Таблица 3) -> коэффициент × 1.04.
-   - Черные металлы и изделия (ГНГ 72, 7301–7307) -> коэффициент × 1.04.
-3. ДЛЯ ОСТАЛЬНЫХ ИМПОРТНЫХ И ЭКСПОРТНЫХ ГРУЗОВ:
-   - Применяется базовый коэффициент × 1.50 (если нет иных спец. условий в Excel).
-
-ОБЯЗАТЕЛЬНЫЙ ЭТАЛОННЫЙ ШАБЛОН ВЫВОДА (СТРОГО СОХРАНЯТЬ ПУСТЫЕ СТРОКИ И СТРУКТУРУ):
-
-1. МАРШРУТ И УСЛУГИ ПЕРЕВОЗКИ:
-
-Станции: [Станция 1 - эксп.] — [Станция 2]
-
-Вид сообщения: [Импорт / Экспорт / Транзит]
-
-Расстояние: [Фактическое расстояние] км (тарифный интервал: [Х–Х] км)
-
-Груз: [Название груза] (код ГНГ [Код])
-
-Расчетная масса: [Масса] тонн (заявленный вес — [Заявленный] тонн, применена минимальная норма загрузки — [Норма] тонн)
-
-Базовая ставка на [Категория]тн: [Ставка из Excel]
-
-2. ПРИМЕНЕННЫЕ КОЭФФИЦИЕНТЫ:
-
-Коэффициент груженого рейса: × 1.015
-[Показывать только те коэффициенты, которые НЕ равны 1.00 и НЕ равны 0. Если коэф. собственника МПС = 1.00, его тут НЕ ПИСАТЬ!]
-
-Коэффициент ADY Express: × 1.02
-
-Курс пересчета: 1 USD = 0.79 CHF
-
-3. РАСЧЕТ:
-
-Формула: [Базовая ставка] × 1.015 [× другие примененные коэф.] / 0.79 = [Результат] USD за 1 тонну
-
-## 💰 **[Результат] USD за 1 тонну**
-"""
-
-# 4. User Interface
-st.sidebar.header("Параметры расчета")
-user_input = st.text_area(
-    "Введите данные по перевозке:",
-    height=150,
-    placeholder="Пример:\nМаршрут: Ялама - Бёюк-Кясик\nВид сообщения: Транзит\nГруз: 2306\nВес: 63 тонн\nВагон: СПС"
-)
-
-if st.button("🚀 Рассчитать тариф", type="primary"):
-    if not user_input.strip():
-        st.warning("Пожалуйста, введите условия расчета.")
-    else:
-        with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
+    elif wagon_type in ["ref_section", "arv"]:
+        table_name = "Cadval_5"
+        
+        # Коэффициенты от количества вагонов в секции (п. 3.1.2.1)
+        if "+" in ref_composition:
             try:
-                model = genai.GenerativeModel(
-                    model_name="gemini-3.6-flash",
-                    system_instruction=SYSTEM_INSTRUCTION
-                )
-                
-                response = model.generate_content(
-                    f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}"
-                )
-                
-                st.success("Расчет успешно выполнен!")
-                st.markdown("### 📋 Результат расчета:")
-                st.markdown(response.text)
-                
-            except Exception as e:
-                st.error(f"Произошла ошибка при обращении к Gemini: {str(e)}")
+                # Извлечение количества грузовых вагонов из "1+6" или "6+1"
+                parts = [int(p) for p in ref_composition.split("+")]
+                cargo_wagons = max(parts) if min(parts) == 1 else parts[0]
+            except ValueError:
+                cargo_wagons = 4
+        else:
+            cargo_wagons = 4
 
-st.markdown("---")
-st.caption("ADY Tariff Calculator v2026 | Автоматический расчет тарифов и сборов")
+        if cargo_wagons == 1:
+            coeffs.append(("Рефсекция 1+1", 1.70))
+        elif cargo_wagons == 2:
+            coeffs.append(("Рефсекция 1+2", 1.40))
+        elif cargo_wagons == 3:
+            coeffs.append(("Рефсекция 1+3", 1.10))
+        elif cargo_wagons >= 5:
+            coeffs.append((f"Рефсекция 1+{cargo_wagons} (>=5 вагонов)", 0.85))
+
+        # Льгота 0.60 на фрукты и овощи
+        if is_fruit_or_veg(gng_code):
+            coeffs.append(("Фрукты/овощи Тарифного соглашения", 0.60))
+
+    elif wagon_type == "thermos":
+        table_name = "Cadval_5"
+        
+    elif wagon_type in ["autovoz", "autovoz_2deck"]:
+        table_name = "Cadval_5"
+        weight_tons = max(weight_tons, 10.0) # Мин. вес 10 тонн
+        if wagon_type == "autovoz_2deck":
+            coeffs.append(("Двухъярусная платформа-автовоз (п. 3.1.2.3)", 0.80))
+
+    # Расчет итоговой суммы
+    total_coeff = 1.0
+    for name, val in coeffs:
+        total_coeff *= val
+
+    return {
+        "table_used": table_name,
+        "wagon_type": wagon_type,
+        "calc_weight_tons": weight_tons,
+        "applied_coefficients": coeffs,
+        "total_multiplier": round(total_coeff, 4)
+    }
