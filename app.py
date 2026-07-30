@@ -29,7 +29,7 @@ def load_app_context(excel_path):
     if not os.path.exists(excel_path):
         return None, f"Ошибка: Файл '{excel_path}' не найден в корневом каталоге проекта!"
     
-    # Считываем ВСЕ текстовые файлы с правилами (.txt), включая system_instruction.txt и Weight_Categories.txt
+    # Считываем текстовые файлы с правилами и инструкциями
     additional_rules = []
     txt_files = ["system_instruction.txt", "Weight_Categories.txt"]
     
@@ -90,9 +90,9 @@ def call_gemini_with_fallback(client, prompt, instruction):
     candidate_models = [
         "gemini-2.5-flash",
         "gemini-2.0-flash",
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-flash-002",
-        "gemini-1.5-flash-001"
+        "gemini-1.5-flash",
+        "gemini-2.5-pro",
+        "gemini-1.5-pro"
     ]
     
     last_exception = None
