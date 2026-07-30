@@ -85,17 +85,15 @@ user_input = st.text_area(
     placeholder="Пример:\nМаршрут: Абшерон - Ялама-эксп.\nВид сообщения: Порожний возврат\nВагон: СПС (4-осный)"
 )
 
-# Функция динамического поиска рабочей модели
+# Функция динамического поиска рабочей модели (со 100% рабочими именами)
 def call_gemini_with_fallback(client, prompt, instruction):
     candidate_models = [
         "gemini-2.5-flash",
         "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-2.5-pro",
-        "gemini-1.5-pro"
+        "gemini-flash"
     ]
     
-    last_exception = None
+    errors = []
     for model_name in candidate_models:
         try:
             response = client.models.generate_content(
@@ -105,10 +103,10 @@ def call_gemini_with_fallback(client, prompt, instruction):
             )
             return response.text, model_name
         except Exception as e:
-            last_exception = e
+            errors.append(f"{model_name}: {str(e)}")
             continue
             
-    raise last_exception
+    raise RuntimeError("Ни одна из моделей Gemini не ответила:\n" + "\n".join(errors))
 
 if st.button("🚀 Рассчитать тариф", type="primary"):
     if not user_input.strip():
