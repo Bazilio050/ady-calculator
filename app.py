@@ -1,9 +1,7 @@
 import os
-import time
 import pandas as pd
 import streamlit as st
 from google import genai
-from google.genai import types
 
 # 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
 st.set_page_config(
@@ -23,7 +21,7 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# 3. Fast Data & Prompt Loading
+# 3. Fast Data Loading (Файл считывается строго 1 раз при запуске сервера)
 EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
 
 @st.cache_data(show_spinner="Загрузка базы данных ADY 2026...")
@@ -121,49 +119,7 @@ if err:
     st.error(err)
     st.stop()
 
-# 4. Context Caching — ЭКОНОМИЯ 80-90% РАСХОДОВ
-@st.cache_resource(ttl=3600)  # Кэш сохраняется на 1 час
-def get_or_create_context_cache(api_key, system_instruction):
-    c_client = genai.Client(api_key=api_key)
-    model_name = "gemini-2.5-flash"
-    try:
-        cache = c_client.caches.create(
-            model=model_name,
-            config=types.CreateCachedContentConfig(
-                contents=[system_instruction],
-                ttl="3600s", # 1 час
-            )
-        )
-        return cache.name, model_name
-    except Exception:
-        # Резервный вариант, если кэш временно недоступен
-        return None, model_name
-
-cache_name, active_model = get_or_create_context_cache(api_key, SYSTEM_INSTRUCTION)
-
-def generate_cached_response(client, prompt, cache_name, system_instruction):
-    if cache_name:
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    cached_content=cache_name
-                )
-            )
-            return response.text, "gemini-2.5-flash (Cached ⚡)"
-        except Exception:
-            pass
-
-    # Стандартный вызов с перестраховкой
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config={"system_instruction": system_instruction}
-    )
-    return response.text, "gemini-2.5-flash"
-
-# 5. UI Layout
+# 4. UI Layout
 logo_file = None
 for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
     if os.path.exists(filename):
@@ -190,12 +146,19 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
         with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
             try:
                 prompt_text = f"Сделай точный расчет провозной платы за 1 тонну для следующих условий:\n{user_input}"
-                result_text, used_model = generate_cached_response(client, prompt_text, cache_name, SYSTEM_INSTRUCTION)
-                st.success(f"Расчет успешно выполнен! (Режим: {used_model})")
+                
+                # Запрос к самой быстрой и дешёвой модели Gemini 2.5 Flash
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt_text,
+                    config={"system_instruction": SYSTEM_INSTRUCTION}
+                )
+                
+                st.success("Расчет успешно выполнен!")
                 st.markdown("### 📋 Результат расчета:")
-                st.markdown(result_text)
+                st.markdown(response.text)
             except Exception as e:
                 st.error(f"Произошла ошибка при обращении к Gemini: {str(e)}")
 
 st.markdown("---")
-st.caption("ADY Tariff Calculator v2026 | AGT CARGO | Экономичный расчет тарифов с кэшированием")
+st.caption("ADY Tariff Calculator v2026 | AGT CARGO | Автоматический расчет тарифов и сборов")
