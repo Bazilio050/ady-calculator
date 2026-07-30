@@ -21,7 +21,7 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# 3. Fast Data Loading (Файл считывается строго 1 раз при запуске сервера)
+# 3. Fast Data Loading (Файл считывается 1 раз при запуске/обновлении приложения)
 EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
 
 @st.cache_data(show_spinner="Загрузка базы данных ADY 2026...")
@@ -147,9 +147,9 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
             try:
                 prompt_text = f"Сделай точный расчет провозной платы за 1 тонну для следующих условий:\n{user_input}"
                 
-                # Запрос к самой быстрой и дешёвой модели Gemini 2.5 Flash
+                # Используем актуальную модель gemini-2.0-flash
                 response = client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-2.0-flash",
                     contents=prompt_text,
                     config={"system_instruction": SYSTEM_INSTRUCTION}
                 )
