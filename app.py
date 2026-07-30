@@ -85,11 +85,12 @@ user_input = st.text_area(
     placeholder="Пример:\nМаршрут: Абшерон - Ялама-эксп.\nВид сообщения: Порожний возврат\nВагон: СПС (4-осный)"
 )
 
-# Функция динамического поиска рабочей модели (со 100% рабочими именами)
+# Функция динамического поиска рабочей модели с актуальным списком 2026 года
 def call_gemini_with_fallback(client, prompt, instruction):
     candidate_models = [
+        "gemini-3.0-flash",
         "gemini-2.5-flash",
-        "gemini-2.0-flash",
+        "gemini-2.5-pro",
         "gemini-flash"
     ]
     
