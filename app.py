@@ -22,8 +22,30 @@ if not api_key:
     st.warning("⚠️ Пожалуйста, добавьте GEMINI_API_KEY в Secrets на Streamlit или введите его в боковой панели.")
     st.stop()
 
-# Инициализация нового клиента Google GenAI SDK (2026 Interactions API)
+# Инициализация клиента Google GenAI SDK
 client = genai.Client(api_key=api_key)
+
+# Динамическая функция для получения рабочей модели Flash
+@st.cache_resource
+def get_working_model_name(_client):
+    try:
+        models = [m.name for m in _client.models.list()]
+        # Фильтруем модели, ищем поддерживающие generateContent/flash
+        flash_models = [m for m in models if "flash" in m.lower()]
+        
+        # Заменяем префикс "models/", если он есть в имени
+        for m in flash_models:
+            clean_name = m.replace("models/", "")
+            return clean_name
+            
+        # Запасной вариант из списка всех доступных
+        if models:
+            return models[0].replace("models/", "")
+    except Exception:
+        pass
+    
+    # Резервный дефолт
+    return "gemini-1.5-flash"
 
 # 3. Load Excel File Context
 EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
@@ -151,16 +173,19 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
     else:
         with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
             try:
-                # Используем вызов через новый Interactions API
-                response = client.interactions.create(
-                    model="gemini-2.5-flash",
-                    input=f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}",
-                    system_instruction=SYSTEM_INSTRUCTION
+                # Динамически выбираем доступное имя модели
+                active_model = get_working_model_name(client)
+                
+                # Запрос к API
+                response = client.models.generate_content(
+                    model=active_model,
+                    contents=f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}",
+                    config={"system_instruction": SYSTEM_INSTRUCTION}
                 )
                 
-                st.success("Расчет успешно выполнен!")
+                st.success(f"Расчет успешно выполнен (модель: {active_model})!")
                 st.markdown("### 📋 Результат расчета:")
-                st.markdown(response.outputs[0].text)
+                st.markdown(response.text)
                 
             except Exception as e:
                 st.error(f"Произошла ошибка при обращении к Gemini: {str(e)}")
