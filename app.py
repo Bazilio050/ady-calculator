@@ -51,7 +51,7 @@ def generate_with_fallback(client, contents, system_instruction):
             
     raise last_exception
 
-# 3. Load Excel Data (СНАЧАЛА ЗАГРУЖАЕМ EXCEL!)
+# 3. Load Excel Data
 EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
 
 @st.cache_data
@@ -76,12 +76,12 @@ if err:
     st.error(err)
     st.stop()
 
-# 4. System Instruction
-SYSTEM_INSTRUCTION = f"""
+# 4. System Instruction (используем безопасную подстановку без f-строк)
+SYSTEM_INSTRUCTION_TEMPLATE = """
 Ты — официальный эксперт-калькулятор железнодорожных тарифов ADY (Азербайджанские Железные Дороги) на 2026 год.
 Твоя база знаний находится в следующих данных из файла ADY_Tariff_Policy_2026.xlsx:
 
-{excel_context}
+__EXCEL_DATA__
 
 ⛔ СТРОЖАЙШИЕ ЗАПРЕТЫ:
 1. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО использовать слова "вагон", "за вагон", "на вагон", "ставка за вагон".
@@ -146,7 +146,7 @@ SYSTEM_INSTRUCTION = f"""
 | :--- | :--- |
 | **Курс валют (CHF/USD)** | 1 USD = [Курс] CHF *(период: [Период])* |
 | **Коэффициент ADY Express** | × 1.02 |
-[Указать другие применённые коэффициенты, если есть, например: **Коэффициент СПС** | × 0.85]
+[Указать другие применённые коэффициенты, если есть]
 
 ---
 
