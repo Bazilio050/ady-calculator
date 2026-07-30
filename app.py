@@ -147,9 +147,9 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
             try:
                 prompt_text = f"Сделай точный расчет провозной платы за 1 тонну для следующих условий:\n{user_input}"
                 
-                # Использование стабильного алиаса gemini-flash
+                # Используем стандартное и гарантированно поддерживаемое имя модели
                 response = client.models.generate_content(
-                    model="gemini-flash",
+                    model="gemini-1.5-flash",
                     contents=prompt_text,
                     config={"system_instruction": SYSTEM_INSTRUCTION}
                 )
