@@ -25,27 +25,44 @@ if not api_key:
 # Инициализация клиента Google GenAI SDK
 client = genai.Client(api_key=api_key)
 
-# Динамическая функция для получения 100% рабочей модели
-@st.cache_resource
-def get_working_model_name(_client):
+def generate_with_fallback(client, contents, system_instruction):
+    """
+    Пытается получить список доступных моделей от API.
+    Если список недоступен, пробует выполнить запрос через список резервных имен.
+    """
+    candidate_models = []
+    
+    # 1. Пробуем получить список поддерживаемых моделей через API
     try:
-        models = [m.name for m in _client.models.list()]
-        # Отбираем модели Flash, поддерживающие генерацию текста
-        flash_models = [m for m in models if "flash" in m.lower()]
-        
-        for m in flash_models:
-            # Очищаем имя от префикса 'models/' при необходимости
-            clean_name = m.replace("models/", "")
-            return clean_name
-            
-        # Если Flash не найден, берем первую доступную
-        if models:
-            return models[0].replace("models/", "")
+        available_models = [m.name.replace("models/", "") for m in client.models.list()]
+        # Фильтруем модели, отдавая приоритет flash-версиям
+        flash_models = [m for m in available_models if "flash" in m.lower()]
+        candidate_models.extend(flash_models)
+        candidate_models.extend(available_models)
     except Exception:
         pass
-    
-    # Резервный фолбэк
-    return "gemini-1.5-flash"
+
+    # 2. Добавляем дефолтный список на случай, если list() не вернул результат
+    default_fallbacks = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-pro"]
+    for model in default_fallbacks:
+        if model not in candidate_models:
+            candidate_models.append(model)
+
+    last_exception = None
+    # 3. Перебираем модели по очереди, пока одна из них не сработает
+    for model_name in candidate_models:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config={"system_instruction": system_instruction}
+            )
+            return response.text, model_name
+        except Exception as e:
+            last_exception = e
+            continue
+            
+    raise last_exception
 
 # 3. Load Excel File Context
 EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
@@ -173,18 +190,12 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
     else:
         with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
             try:
-                # Опрашиваем API и выбираем реально доступную модель
-                active_model = get_working_model_name(client)
+                prompt_text = f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}"
+                result_text, used_model = generate_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
                 
-                response = client.models.generate_content(
-                    model=active_model,
-                    contents=f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}",
-                    config={"system_instruction": SYSTEM_INSTRUCTION}
-                )
-                
-                st.success(f"Расчет успешно выполнен (модель: {active_model})!")
+                st.success(f"Расчет успешно выполнен! (Использована модель: {used_model})")
                 st.markdown("### 📋 Результат расчета:")
-                st.markdown(response.text)
+                st.markdown(result_text)
                 
             except Exception as e:
                 st.error(f"Произошла ошибка при обращении к Gemini: {str(e)}")
