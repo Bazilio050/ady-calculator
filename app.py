@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 
 # 1. Page config — СТРОГО ПЕРВОЙ КОМАНДОЙ STREAMLIT
 st.set_page_config(
@@ -13,7 +13,7 @@ st.set_page_config(
 st.title("🚂 Калькулятор Ж/Д Тарифов ADY 2026")
 st.markdown("Расчет ж/д тарифов по Азербайджану (ADY Express, СПС/МПС, рефсекции, спец. вагоны)")
 
-# 2. Setup Gemini API Key
+# 2. Setup Gemini API Key & Client
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.sidebar.text_input("Введите Gemini API Key:", type="password")
@@ -22,7 +22,8 @@ if not api_key:
     st.warning("⚠️ Пожалуйста, добавьте GEMINI_API_KEY в Secrets на Streamlit или введите его в боковой панели.")
     st.stop()
 
-genai.configure(api_key=api_key)
+# Инициализация нового клиента Google GenAI SDK (2026 Interactions API)
+client = genai.Client(api_key=api_key)
 
 # 3. Load Excel File Context
 EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
@@ -65,7 +66,7 @@ SYSTEM_INSTRUCTION = f"""
 3. СТРОГО ЗАПРЕЩЕНО выводить технические имена столбцов Excel. Только формат: "Ялама - эксп.".
 
 ПРАВИЛО ИСКЛЮЧЕНИЯ КОЭФФИЦИЕНТОВ 1.00 И 0:
-1. Если какой-либо коэффициент равен 1.00 или 0 (например, коэффициент собственника МПС равен 1.00, спец. коэф. равен 1.00, состав рефсекции 1+4 равен 1.00), ЕГО НЕ НУЖНО УКАЗЫВАТЬ в списке коэффициентов и НЕ НУЖНО ВКЛЮЧАТЬ в математическую формулу расчетов!
+1. Если какой-либо коэффициент равен 1.00 или 0 (например, коэффициент собственника МПС равен 1.00, спец. коэф. равен 1.00, состав рефсекции 1+4 равен 1.00), ЕГО НЕ НУЖНО УКАЗАТЬ в списке коэффициентов и НЕ НУЖНО ВКЛЮЧАТЬ в математическую формулу расчетов!
 2. В формулу перемножаются ТОЛЬКО коэффициенты, отличные от 1.00 и 0.
 
 ПРАВИЛА ОПРЕДЕЛЕНИЯ РАССТОЯНИЙ (Приоритетно использовать матричный лист 'Distances'):
@@ -150,19 +151,16 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
     else:
         with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
             try:
-                # Используем официально поддерживаемую модель gemini-2.0-flash
-                model = genai.GenerativeModel(
-                    model_name="gemini-2.0-flash",
+                # Используем вызов через новый Interactions API
+                response = client.interactions.create(
+                    model="gemini-2.5-flash",
+                    input=f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}",
                     system_instruction=SYSTEM_INSTRUCTION
-                )
-                
-                response = model.generate_content(
-                    f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}"
                 )
                 
                 st.success("Расчет успешно выполнен!")
                 st.markdown("### 📋 Результат расчета:")
-                st.markdown(response.text)
+                st.markdown(response.outputs[0].text)
                 
             except Exception as e:
                 st.error(f"Произошла ошибка при обращении к Gemini: {str(e)}")
