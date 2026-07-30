@@ -24,24 +24,14 @@ client = genai.Client(api_key=api_key)
 # 3. Fast Data Loading (Файл считывается 1 раз при запуске/обновлении приложения)
 EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
 
-@st.cache_data(show_spinner="Загрузка базы данных ADY 2026...")
-def load_app_context(file_path):
-    if not os.path.exists(file_path):
-        return None, f"Ошибка: Файл '{file_path}' не найден в корневом каталоге проекта!"
-    try:
-        xls = pd.ExcelFile(file_path)
-        summary_text = []
-        for sheet in xls.sheet_names:
-            df = pd.read_excel(xls, sheet_name=sheet)
-            summary_text.append(f"--- ТАБЛИЦА / ЛИСТ: {sheet} ---")
-            summary_text.append(df.to_string(index=False))
-            summary_text.append("\n")
-        excel_context = "\n".join(summary_text)
-        
-        system_instruction = f"""Ты — официальный эксперт-калькулятор железнодорожных тарифов ADY (Азербайджанские Железные Дороги) на 2026 год.
+BASE_PROMPT = """Ты — официальный эксперт-калькулятор железнодорожных тарифов ADY (Азербайджанские Железные Дороги) на 2026 год.
 Твоя база знаний находится в следующих данных из файла ADY_Tariff_Policy_2026.xlsx:
 
-{excel_context}
+====================================
+"""
+
+RULES_PROMPT = """
+====================================
 
 ⛔ СТРОЖАЙШИЕ ЗАПРЕТЫ:
 1. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО использовать слова 'вагон', 'за вагон', 'на вагон', 'ставка за вагон'.
