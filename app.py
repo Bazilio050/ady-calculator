@@ -151,8 +151,9 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
     else:
         with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
             try:
+                # В качестве названий моделей указываем корректное стандартное имя
                 model = genai.GenerativeModel(
-                    model_name="gemini-1.5-pro",
+                    model_name="gemini-1.5-pro-latest",
                     system_instruction=SYSTEM_INSTRUCTION
                 )
                 
