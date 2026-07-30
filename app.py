@@ -21,7 +21,7 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# 3. Fast Data Loading
+# 3. Fast Data Loading & Context Assembly
 EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
 
 @st.cache_data(show_spinner="Загрузка базы данных и правил ADY 2026...")
@@ -65,7 +65,7 @@ if err:
     st.error(err)
     st.stop()
 
-# 4. UI Layout
+# 4. UI Layout & Logo
 logo_file = None
 for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
     if os.path.exists(filename):
@@ -82,10 +82,10 @@ st.sidebar.header("Параметры расчета")
 user_input = st.text_area(
     "Введите данные по перевозке:",
     height=180,
-    placeholder="Пример:\nМаршрут: Абшерон - Ялама-эксп.\nВид сообщения: Порожний возврат\nВагон: СПС (4-осный)"
+    placeholder="Пример:\nМаршрут: Абшерон - Ялама-эксп.\nВид сообщения: Экспорт (Порожний возврат)\nВагон: СПС (4 оси)"
 )
 
-# Динамическое получение активных моделей из вашего ключа
+# 5. Функция автоматического выбора моделей из вашего API-ключа
 def call_gemini_with_fallback(client, prompt, instruction):
     available_models = []
     try:
@@ -94,8 +94,8 @@ def call_gemini_with_fallback(client, prompt, instruction):
             m_name = m.name.replace("models/", "") if hasattr(m, "name") else str(m)
             if "gemini" in m_name.lower():
                 available_models.append(m_name)
-    except Exception as e:
-        st.warning(f"Не удалось получить список моделей через API: {e}")
+    except Exception:
+        pass
 
     if available_models:
         flash_models = [m for m in available_models if "flash" in m.lower()]
@@ -119,13 +119,14 @@ def call_gemini_with_fallback(client, prompt, instruction):
 
     raise RuntimeError("Ни одна из доступных моделей Gemini не ответила:\n" + "\n".join(errors))
 
+# 6. Кнопка расчета
 if st.button("🚀 Рассчитать тариф", type="primary"):
     if not user_input.strip():
         st.warning("Пожалуйста, введите условия расчета.")
     else:
         with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
             try:
-                prompt_text = f"Сделай точный расчет провозной платы за 1 тонну для следующих условий:\n{user_input}"
+                prompt_text = f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}"
                 
                 result_text, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
                 
