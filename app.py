@@ -85,29 +85,24 @@ user_input = st.text_area(
     placeholder="Пример:\nМаршрут: Абшерон - Ялама-эксп.\nВид сообщения: Порожний возврат\nВагон: СПС (4-осный)"
 )
 
-# Функция динамо-определения доступных моделей через API
+# Динамическое получение активных моделей из вашего ключа
 def call_gemini_with_fallback(client, prompt, instruction):
-    candidate_models = []
-    
-    # 1. Пробуем автоматически запросить список моделей, доступных для текущего API-ключа
+    available_models = []
     try:
-        available = client.models.list()
-        for m in available:
-            # Берём только модели с генерацией текста
+        models_list = client.models.list()
+        for m in models_list:
             m_name = m.name.replace("models/", "") if hasattr(m, "name") else str(m)
             if "gemini" in m_name.lower():
-                candidate_models.append(m_name)
-    except Exception:
-        pass
+                available_models.append(m_name)
+    except Exception as e:
+        st.warning(f"Не удалось получить список моделей через API: {e}")
 
-    # 2. Если список получить не удалось, используем резервный список имён
-    if not candidate_models:
-        candidate_models = [
-            "gemini-2.5-flash",
-            "gemini-2.5-pro",
-            "gemini-1.5-flash",
-            "gemini-1.5-pro"
-        ]
+    if available_models:
+        flash_models = [m for m in available_models if "flash" in m.lower()]
+        other_models = [m for m in available_models if "flash" not in m.lower()]
+        candidate_models = flash_models + other_models
+    else:
+        candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
 
     errors = []
     for model_name in candidate_models:
@@ -121,7 +116,7 @@ def call_gemini_with_fallback(client, prompt, instruction):
         except Exception as e:
             errors.append(f"{model_name}: {str(e)}")
             continue
-            
+
     raise RuntimeError("Ни одна из доступных моделей Gemini не ответила:\n" + "\n".join(errors))
 
 if st.button("🚀 Рассчитать тариф", type="primary"):
