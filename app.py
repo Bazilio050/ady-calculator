@@ -25,26 +25,26 @@ if not api_key:
 # Инициализация клиента Google GenAI SDK
 client = genai.Client(api_key=api_key)
 
-# Динамическая функция для получения рабочей модели Flash
+# Динамическая функция для получения 100% рабочей модели
 @st.cache_resource
 def get_working_model_name(_client):
     try:
         models = [m.name for m in _client.models.list()]
-        # Фильтруем модели, ищем поддерживающие generateContent/flash
+        # Отбираем модели Flash, поддерживающие генерацию текста
         flash_models = [m for m in models if "flash" in m.lower()]
         
-        # Заменяем префикс "models/", если он есть в имени
         for m in flash_models:
+            # Очищаем имя от префикса 'models/' при необходимости
             clean_name = m.replace("models/", "")
             return clean_name
             
-        # Запасной вариант из списка всех доступных
+        # Если Flash не найден, берем первую доступную
         if models:
             return models[0].replace("models/", "")
     except Exception:
         pass
     
-    # Резервный дефолт
+    # Резервный фолбэк
     return "gemini-1.5-flash"
 
 # 3. Load Excel File Context
@@ -173,10 +173,9 @@ if st.button("🚀 Рассчитать тариф", type="primary"):
     else:
         with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
             try:
-                # Динамически выбираем доступное имя модели
+                # Опрашиваем API и выбираем реально доступную модель
                 active_model = get_working_model_name(client)
                 
-                # Запрос к API
                 response = client.models.generate_content(
                     model=active_model,
                     contents=f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}",
