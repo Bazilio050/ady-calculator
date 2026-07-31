@@ -31,7 +31,7 @@ UI_TEXT = {
         "spinner": "ADY Policy {} tarifləri üzrə hesablanır...",
         "success": "Hesablama uğurla tamamlandı! (Model: {})",
         "result_title": "📋 Hesablama nəticəsi:",
-        "not_found_msg": "⏳ **ADY-nin {} fraxt ili üzrə Tarif Siyasəti hələ rəsmi dərc olunmayıb.**\n\nCari hesablamalar üçün sol menyudan **{} fraxt ilini** seçməyiniz xahiş olunur.",
+        "not_found_msg": "⏳ **ADY-nin {} fraxt ili üzrə Tarif Siyasəti hələ rəsmi dərc olunmayib.**\n\nCari hesablamalar üçün sol menyudan **{} fraxt ilini** seçməyiniz xahiş olunur.",
         "api_warning": "⚠️ API Key Streamlit Secrets bölməsində tapılmadı."
     },
     "RU": {
@@ -150,11 +150,13 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Надежный вызов моделей через google-generativeai
+# 8. Надежный вызов моделей с именами моделей формата latest/002
 def call_gemini_light(prompt, instruction):
     candidate_models = [
-        "gemini-1.5-flash",
-        "gemini-1.5-pro"
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash-002",
+        "gemini-1.5-pro-latest",
+        "gemini-1.5-flash"
     ]
     
     errors = []
