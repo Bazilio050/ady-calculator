@@ -1,8 +1,9 @@
 import os
 import re
+import json
+import requests
 import pandas as pd
 import streamlit as st
-import google.generativeai as genai
 
 # 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
 st.set_page_config(
@@ -31,7 +32,6 @@ UI_TEXT = {
         "spinner": "ADY Policy {} tarifləri üzrə hesablanır...",
         "success": "Hesablama uğurla tamamlandı! (Model: {})",
         "result_title": "📋 Hesablama nəticəsi:",
-        "not_found_msg": "⏳ **ADY-nin {} fraxt ili üzrə Tarif Siyasəti hələ rəsmi dərc olunmayıb.**\n\nCari hesablamalar üçün sol menyudan **{} fraxt ilini** seçməyiniz xahiş olunur.",
         "api_warning": "⚠️ API Key Streamlit Secrets bölməsində tapılmadı."
     },
     "RU": {
@@ -46,7 +46,6 @@ UI_TEXT = {
         "spinner": "Считаем тариф согласно ADY Policy {}...",
         "success": "Расчет успешно выполнен по базе {} года! (Модель: {})",
         "result_title": "📋 Результат расчета:",
-        "not_found_msg": "⏳ **Тарифная политика ADY на {} фрахтовый год пока официально не опубликована.**\n\nПожалуйста, выберите **{} фрахтовый год** в меню слева.",
         "api_warning": "⚠️ API Key не найден в Streamlit Secrets."
     },
     "EN": {
@@ -61,7 +60,6 @@ UI_TEXT = {
         "spinner": "Calculating rates according to ADY Policy {}...",
         "success": "Calculation completed successfully for {} policy! (Model: {})",
         "result_title": "📋 Calculation Results:",
-        "not_found_msg": "⏳ **ADY Tariff Policy for {} freight year has not been officially published yet.**\n\nPlease select **{} freight year** from the left menu.",
         "api_warning": "⚠️ API Key not found in Streamlit Secrets."
     }
 }
@@ -77,14 +75,12 @@ selected_lang = st.sidebar.selectbox(
 
 t = UI_TEXT[selected_lang]
 
-# Берутся данные строго из Secrets / Environment
+# Ключ берётся строго из Secrets / Environment
 api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
     st.error(t["api_warning"])
     st.stop()
-
-genai.configure(api_key=api_key)
 
 # 4. Выбор фрахтового года в Sidebar
 st.sidebar.header(t["settings_header"])
@@ -150,27 +146,37 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Прямой и быстрый вызов модели
-def call_gemini_light(prompt, instruction):
-    model_name = "gemini-1.5-flash"
+# 8. Прямой REST-вызов API без библиотек-посредников
+def call_gemini_direct(prompt, instruction, key):
+    candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash"]
     
-    try:
-        model = genai.GenerativeModel(
-            model_name=model_name,
-            system_instruction=instruction
-        )
-        response = model.generate_content(prompt)
-        return response.text, model_name
-    except Exception as e:
+    errors = []
+    for model_name in candidate_models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "system_instruction": {
+                "parts": [{"text": instruction}]
+            },
+            "contents": [
+                {
+                    "parts": [{"text": prompt}]
+                }
+            ]
+        }
+        
         try:
-            model = genai.GenerativeModel(
-                model_name="gemini-1.5-flash-latest",
-                system_instruction=instruction
-            )
-            response = model.generate_content(prompt)
-            return response.text, "gemini-1.5-flash-latest"
-        except Exception as e2:
-            raise RuntimeError(f"Ошибка API: {str(e)} | {str(e2)}")
+            res = requests.post(url, headers=headers, json=payload, timeout=30)
+            if res.status_code == 200:
+                data = res.json()
+                text_out = data['candidates'][0]['content']['parts'][0]['text']
+                return text_out, model_name
+            else:
+                errors.append(f"{model_name} (Status {res.status_code}): {res.text}")
+        except Exception as e:
+            errors.append(f"{model_name}: {str(e)}")
+
+    raise RuntimeError("Ошибка при вызове Google API:\n\n" + "\n\n".join(errors))
 
 # 9. Кнопка расчета
 if st.button(t["calc_btn"], type="primary"):
@@ -196,7 +202,7 @@ if st.button(t["calc_btn"], type="primary"):
                     "8. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
                 )
                 
-                raw_result, used_model = call_gemini_light(prompt_text, SYSTEM_INSTRUCTION)
+                raw_result, used_model = call_gemini_direct(prompt_text, SYSTEM_INSTRUCTION, api_key)
                 
                 st.session_state.calc_result = sanitize_text(raw_result)
                 st.session_state.used_model = used_model
