@@ -37,7 +37,11 @@ EXCEL_FILE = f"ADY_Tariff_Policy_{selected_year}.xlsx"
 @st.cache_data(show_spinner=f"Загрузка базы данных ADY ({selected_year} год)...")
 def load_app_context(excel_path, year_label):
     if not os.path.exists(excel_path):
-        return None, f"⚠️ Файл базы данных '{excel_path}' на {year_label} год пока не найден в проекте. Загрузите файл {excel_path} на GitHub!"
+        return None, (
+            f"⏳ **Тарифная политика ADY на {year_label} фрахтовый год пока официально не опубликована.**\n\n"
+            f"Пожалуйста, выберите **{int(year_label)-1} фрахтовый год** в меню слева для выполнения актуальных расчетов. "
+            f"База данных на {year_label} год будет загружена сразу после утверждения новых ставок ADY."
+        )
     
     additional_rules = []
     txt_files = ["system_instruction.txt", "Weight_Categories.txt"]
@@ -85,7 +89,7 @@ st.title("🚂 Калькулятор Ж/Д Тарифов ADY")
 st.markdown(f"Расчет ж/д тарифов по Азербайджану на **{selected_year} фрахтовый год**")
 
 if err:
-    st.error(err)
+    st.info(err)
     st.stop()
 
 st.sidebar.header("Параметры расчета")
