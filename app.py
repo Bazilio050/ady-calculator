@@ -6,42 +6,105 @@ from google import genai
 
 # 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
 st.set_page_config(
-    page_title="Калькулятор Ж/Д Тарифов ADY",
+    page_title="ADY Tariff Calculator",
     page_icon="🚂",
     layout="wide"
 )
 
-# 2. Setup Gemini API Key & Client
+# 2. Переводы интерфейса (AZ, RU, EN)
+UI_TEXT = {
+    "AZ": {
+        "title": "🚂 ADY Dəmir Yolu Tarif Kalkulyatoru",
+        "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — **{} fraxt ili**",
+        "settings_header": "⚙️ Tarif tənzimləmələri",
+        "year_select": "Fraxt ilini seçin:",
+        "lang_select": "Dil / Language:",
+        "input_header": "Daşıma parametrlərini daxil edin:",
+        "input_placeholder": "Nümunə:\nMarşrut: Yalama - Ələt\nYük: Neft (YHN 2709), 60 ton\nVəziyyət: XPS çən vaqonu",
+        "calc_btn": "🚀 Tarifi hesabla",
+        "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
+        "spinner": "ADY Policy {} tarifləri üzrə hesablanır...",
+        "success": "Hesablama uğurla tamamlandı! (Model: {})",
+        "result_title": "📋 Hesablama nəticəsi:",
+        "not_found_msg": "⏳ **ADY-nin {} fraxt ili üzrə Tarif Siyasəti hələ rəsmi dərc olunmayıb.**\n\nCari hesablamalar üçün sol menyudan **{} fraxt ilini** seçməyiniz xahiş olunur. {} ili üzrə baza yeni tariflər təsdiqləndikdən dərhal sonra yüklənəcəkdir.",
+        "api_warning": "⚠️ Xahiş olunur, Streamlit Secrets hissəsinə GEMINI_API_KEY əlavə edin və ya sol paneldən daxil edin.",
+        "api_label": "Gemini API Key daxil edin:"
+    },
+    "RU": {
+        "title": "🚂 Калькулятор Ж/Д Тарифов ADY",
+        "subtitle": "Расчет ж/д тарифов по Азербайджану на **{} фрахтовый год**",
+        "settings_header": "⚙️ Настройки тарифов",
+        "year_select": "Выберите фрахтовый год:",
+        "lang_select": "Язык / Language:",
+        "input_header": "Введите данные по перевозке:",
+        "input_placeholder": "Пример:\nМаршрут: Ялама - Алят\nГруз: Нефть (ГНГ 2709), 60 тонн\nСостояние: СПС цистерна",
+        "calc_btn": "🚀 Рассчитать тариф",
+        "warning_empty": "Пожалуйста, введите условия расчета.",
+        "spinner": "Считаем тариф согласно ADY Policy {}...",
+        "success": "Расчет успешно выполнен по базе {} года! (Модель: {})",
+        "result_title": "📋 Результат расчета:",
+        "not_found_msg": "⏳ **Тарифная политика ADY на {} фрахтовый год пока официально не опубликована.**\n\nПожалуйста, выберите **{} фрахтовый год** в меню слева для выполнения актуальных расчетов. База данных на {} год будет загружена сразу после утверждения новых ставок ADY.",
+        "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY в Secrets на Streamlit или введите его в боковой панели.",
+        "api_label": "Введите Gemini API Key:"
+    },
+    "EN": {
+        "title": "🚂 ADY Rail Tariff Calculator",
+        "subtitle": "Railway freight tariff calculator for Azerbaijan — **{} freight year**",
+        "settings_header": "⚙️ Tariff Settings",
+        "year_select": "Select Freight Year:",
+        "lang_select": "Language / Dil:",
+        "input_header": "Enter shipment details:",
+        "input_placeholder": "Example:\nRoute: Yalama - Alat\nCargo: Crude Oil (NHM 2709), 60 tons\nCondition: Private tank wagon (PRW)",
+        "calc_btn": "🚀 Calculate Freight Rate",
+        "warning_empty": "Please enter shipment requirements.",
+        "spinner": "Calculating rates according to ADY Policy {}...",
+        "success": "Calculation completed successfully for {} policy! (Model: {})",
+        "result_title": "📋 Calculation Results:",
+        "not_found_msg": "⏳ **ADY Tariff Policy for {} freight year has not been officially published yet.**\n\nPlease select **{} freight year** from the left menu to perform current calculations. The {} database will be uploaded immediately after approval of new rates.",
+        "api_warning": "⚠️ Please add GEMINI_API_KEY to Streamlit Secrets or enter it in the sidebar.",
+        "api_label": "Enter Gemini API Key:"
+    }
+}
+
+# 3. Sidebar Language Selector (AZ по умолчанию)
+st.sidebar.header("🌐 Language / Dil")
+selected_lang = st.sidebar.selectbox(
+    "Select language:",
+    options=["AZ", "RU", "EN"],
+    index=0,  # AZ по умолчанию
+    format_func=lambda x: {"AZ": "🇦🇿 Azərbaycan", "RU": "🇷🇺 Русский", "EN": "🇬🇧 English"}[x]
+)
+
+t = UI_TEXT[selected_lang]
+
+# 4. Setup Gemini API Key & Client
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
-    api_key = st.sidebar.text_input("Введите Gemini API Key:", type="password")
+    api_key = st.sidebar.text_input(t["api_label"], type="password")
 
 if not api_key:
-    st.warning("⚠️ Пожалуйста, добавьте GEMINI_API_KEY в Secrets на Streamlit или введите его в боковой панели.")
+    st.warning(t["api_warning"])
     st.stop()
 
 client = genai.Client(api_key=api_key)
 
-# 3. Выбор фрахтового года в Sidebar (По умолчанию текущий 2026 год)
-st.sidebar.header("⚙️ Настройки тарифов")
+# 5. Выбор фрахтового года в Sidebar (По умолчанию текущий 2026 год)
+st.sidebar.header(t["settings_header"])
 selected_year = st.sidebar.selectbox(
-    "Выберите фрахтовый год:",
+    t["year_select"],
     options=["2026", "2027"],
-    index=0,  # 2026 по умолчанию
-    help="Выберите год тарифного руководства ADY"
+    index=0
 )
 
 EXCEL_FILE = f"ADY_Tariff_Policy_{selected_year}.xlsx"
 
-# 4. Fast Data Loading & Context Assembly
-@st.cache_data(show_spinner=f"Загрузка базы данных ADY ({selected_year} год)...")
-def load_app_context(excel_path, year_label):
+# 6. Fast Data Loading & Context Assembly
+@st.cache_data(show_spinner=False)
+def load_app_context(excel_path, year_label, lang):
     if not os.path.exists(excel_path):
-        return None, (
-            f"⏳ **Тарифная политика ADY на {year_label} фрахтовый год пока официально не опубликована.**\n\n"
-            f"Пожалуйста, выберите **{int(year_label)-1} фрахтовый год** в меню слева для выполнения актуальных расчетов. "
-            f"База данных на {year_label} год будет загружена сразу после утверждения новых ставок ADY."
-        )
+        prev_year = str(int(year_label) - 1)
+        msg = UI_TEXT[lang]["not_found_msg"].format(year_label, prev_year, year_label)
+        return None, msg
     
     additional_rules = []
     txt_files = ["system_instruction.txt", "Weight_Categories.txt"]
@@ -65,17 +128,18 @@ def load_app_context(excel_path, year_label):
         
         system_instruction = (
             f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
-            f"Твоя база знаний находится в следующих данных из файла {excel_path}:\n\n"
+            f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
+            f"Все заголовки, имена столбцов и примечания переводи на выбранный язык ({lang})!\n\n"
             + excel_context + "\n\n"
             + rules_text
         )
         return system_instruction, None
     except Exception as e:
-        return None, f"Ошибка при обработке файлов: {str(e)}"
+        return None, f"Error processing files: {str(e)}"
 
-SYSTEM_INSTRUCTION, err = load_app_context(EXCEL_FILE, selected_year)
+SYSTEM_INSTRUCTION, err = load_app_context(EXCEL_FILE, selected_year, selected_lang)
 
-# 5. UI Layout & Logo
+# 7. UI Layout & Logo
 logo_file = None
 for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
     if os.path.exists(filename):
@@ -85,21 +149,22 @@ for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
 if logo_file:
     st.image(logo_file, width=250)
 
-st.title("🚂 Калькулятор Ж/Д Тарифов ADY")
-st.markdown(f"Расчет ж/д тарифов по Азербайджану на **{selected_year} фрахтовый год**")
+st.title(t["title"])
+st.markdown(t["subtitle"].format(selected_year))
 
 if err:
     st.info(err)
     st.stop()
 
-st.sidebar.header("Параметры расчета")
+st.sidebar.header(t["input_header"])
 user_input = st.text_area(
-    "Введите данные по перевозке:",
+    t["input_header"],
     height=180,
-    placeholder="Пример:\nМаршрут: Ялама - Алят\nГруз: Нефть (ГНГ 2709), 60 тонн\nСостояние: СПС цистерна"
+    placeholder=t["input_placeholder"],
+    label_visibility="collapsed"
 )
 
-# 6. Функция чистки текста
+# 8. Функция чистки текста
 def sanitize_text(text):
     text = re.sub(r"^\s*[\bullet\*\-]\s*Базовая ставка:.*$", "", text, flags=re.MULTILINE | re.IGNORECASE)
     text = re.sub(r"^\s*[\bullet\*\-]\s*Провозная плата:.*$", "", text, flags=re.MULTILINE | re.IGNORECASE)
@@ -108,7 +173,7 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 7. Функция автоматического выбора доступных моделей Gemini
+# 9. Функция автоматического выбора доступных моделей Gemini
 def call_gemini_with_fallback(client, prompt, instruction):
     candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
     
@@ -139,44 +204,34 @@ def call_gemini_with_fallback(client, prompt, instruction):
 
     raise RuntimeError("Ни одна из доступных моделей Gemini не ответила:\n" + "\n".join(errors))
 
-# 8. Кнопка расчета
-if st.button("🚀 Рассчитать тариф", type="primary"):
+# 10. Кнопка расчета
+if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
-        st.warning("Пожалуйста, введите условия расчета.")
+        st.warning(t["warning_empty"])
     else:
-        with st.spinner(f"Считаем тариф согласно ADY Policy {selected_year}..."):
+        with st.spinner(t["spinner"].format(selected_year)):
             try:
                 prompt_text = (
-                    f"Сделай точный расчет провозной платы для следующих условий (Фрахтовый год: {selected_year}):\n{user_input}\n\n"
-                    "⚠️ СТРОЖАЙШИЕ ПРАВИЛА РАСЧЕТА И ВЫВОДА:\n"
-                    "1. МИНИМАЛЬНЫЕ РАССТОЯНИЯ: Экспорт = минимум 101 км (пояс 101-110км), Импорт = минимум 151 км (пояс 151-160км)!\n"
-                    "2. КУРС ВАЛЮТ И ADY EXPRESS: Брать курс CHF/USD и % ADY Express строго по сетке периодов из system_instruction.txt в зависимости от даты в запросе!\n"
-                    "3. МИНИМАЛЬНАЯ ЗАГРУЗКА И СПЕЦ-ТРАНСПОРТ:\n"
-                    "   - Зерно (ГНГ 1001 и др.): В крытых вагонах/полувагонах СТРОГО НЕ МЕНЕЕ 60 ТОНН!\n"
-                    "   - Пассажирские вагоны/почта (п. 3.1.2.5, ГНГ 99910000): Вес СТРОГО 66 т, расчет: базовая 25т × Таб.7 ст.6!\n"
-                    "   - Транспортёры (п. 3.1.2.6): 4 оси = мин 20т, 6 осей = мин 30т, 8 осей = мин 40т!\n"
-                    "   - Спецплатформы > 19 м (п. 3.1.2.7): по Таблицам 3/4 с коэф. × 1.20 (порожние СПС коэф. × 0.60, мин 0.06 CHF/ось-км).\n"
-                    "4. НАЛИВНЫЕ ГРУЗЫ / ЦИСТЕРНЫ (Таблица №6):\n"
-                    "   - Если код ГНГ НЕ ВХОДИТ в явные списки Столбцов 2, 3, 4, 5, 6, 8 — ОН АВТОМАТИЧЕСКИ ОТНОСИТСЯ К СТОЛБЦУ 7 (Digər yüklər)! Базовая цена на 101-110км СТРОГО 8.36 CHF/т.\n"
-                    "5. СТРОГИЙ ЗАПРЕТ ВЫВОДА КОЭФФИЦИЕНТОВ 1.00: Не выводить в Таблицу №2 коэффициенты со значением 1.00 или 'не применяется'! Показывать ТОЛЬКО реальные активные коэффициенты!\n"
-                    "6. ОФОРМЛЕНИЕ ИТОГОВЫХ СТАВОК (СТРОГО В ВИДЕ ТАБЛИЦЫ):\n"
-                    "   - Раздел 3 должен содержать формулу расчёта в блоке кода, а за ним СТРОГО таблицу '📊 Итоговые ставки' с двумя строчками (Чистый ж/д тариф ADY и Итоговая ставка с ADY Express).\n"
-                    f"7. ОБЯЗАТЕЛЬНЫЕ ПРИМЕЧАНИЯ В КОНЦЕ:\n"
-                    f"   - Указывай срок действия ставки: 'Ставка действительна до [Дата окончания периода курса CHF]' включительно.\n"
-                    f"   - Указывай источник: 'Расчёт выполнен согласно Тарифной политике ADY на {selected_year} фрахтовый год ({selected_year}-cı fraxt ili üçün beynəlxalq yük daşımaları üzrə tariflər)'.\n"
-                    f"   - Указывай исключения: 'Ставка рассчитана без учёта станционных расходов, сборов за подачу/уборку вагонов, маневровых работ, а также прочих возможных терминальных и документационных сборов' (ОХРАНУ НЕ УКАЗЫВАТЬ!).\n"
-                    "8. ЕДИНИЦЫ ИЗМЕРЕНИЯ: Выводить 'USD за вагон' только для Таблицы №5 столбцов 2 и 4 (< 25т). Во всех остальных случаях — 'USD за 1 тонну'!\n"
-                    "9. СТРОГИЙ ЗАПРЕТ СКОБОК В КОНЦЕ: Никаких скобок с перерасчетом на общий вес после итоговой провозной платы!"
+                    f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n{user_input}\n\n"
+                    f"⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRIKTLY: {selected_lang}):\n"
+                    "1. MINIMUM DISTANCES: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
+                    "2. CURRENCY & ADY EXPRESS: Get CHF/USD rate and % ADY Express from system_instruction.txt!\n"
+                    "3. GRAIN (NHM 1001 etc.): Min weight strictly 60 TONS in boxcars/gondolas!\n"
+                    "4. OUTPUT TABLES & SUMMARY MUST BE GENERATED IN THE SELECTED LANGUAGE ({selected_lang})!\n"
+                    "   - If selected_lang == 'AZ': Use Azerbaijani terms (Marşrut, Şərait, Xalis dəmir yolu tarifi, ADY Express daxil yekun tarif, etc.)\n"
+                    "   - If selected_lang == 'RU': Use Russian terms (Маршрут, Состояние, Чистый ж/д тариф ADY, Итоговая ставка, etc.)\n"
+                    "   - If selected_lang == 'EN': Use English terms (Route, Conditions, Net ADY Rail Tariff, Final rate with ADY Express, etc.)\n"
+                    "5. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
                 )
                 
                 raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
                 clean_result = sanitize_text(raw_result)
                 
-                st.success(f"Расчет успешно выполнен по базе {selected_year} года! (Модель: {used_model})")
-                st.markdown("### 📋 Результат расчета:")
+                st.success(t["success"].format(selected_year, used_model))
+                st.markdown(f"### {t['result_title']}")
                 st.markdown(clean_result)
             except Exception as e:
-                st.error(f"Произошла ошибка при обращении к Gemini: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
 st.markdown("---")
-st.caption(f"ADY Tariff Calculator | AGT CARGO | Автоматический расчет тарифов ({selected_year})")
+st.caption(f"ADY Tariff Calculator | AGT CARGO | ({selected_year}) [{selected_lang}]")
