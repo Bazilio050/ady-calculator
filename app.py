@@ -2,7 +2,7 @@ import os
 import re
 import pandas as pd
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 
 # 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
 st.set_page_config(
@@ -84,7 +84,7 @@ if not api_key:
     st.error(t["api_warning"])
     st.stop()
 
-client = genai.Client(api_key=api_key)
+genai.configure(api_key=api_key)
 
 # 4. Выбор фрахтового года в Sidebar
 st.sidebar.header(t["settings_header"])
@@ -150,21 +150,21 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Быстрый вызов актуальных моделей
-def call_gemini_light(client, prompt, instruction):
+# 8. Надежный вызов моделей через google-generativeai
+def call_gemini_light(prompt, instruction):
     candidate_models = [
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite"
+        "gemini-1.5-flash",
+        "gemini-1.5-pro"
     ]
     
     errors = []
     for model_name in candidate_models:
         try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config={"system_instruction": instruction}
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction=instruction
             )
+            response = model.generate_content(prompt)
             return response.text, model_name
         except Exception as e:
             errors.append(f"{model_name}: {str(e)}")
@@ -195,7 +195,7 @@ if st.button(t["calc_btn"], type="primary"):
                     "8. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
                 )
                 
-                raw_result, used_model = call_gemini_light(client, prompt_text, SYSTEM_INSTRUCTION)
+                raw_result, used_model = call_gemini_light(prompt_text, SYSTEM_INSTRUCTION)
                 
                 st.session_state.calc_result = sanitize_text(raw_result)
                 st.session_state.used_model = used_model
