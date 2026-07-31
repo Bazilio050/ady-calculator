@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Инициализация сессии
+# Инициализация хранилища результатов в сессии
 if "calc_result" not in st.session_state:
     st.session_state.calc_result = None
 if "used_model" not in st.session_state:
@@ -146,9 +146,13 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Стабильный REST-вызов без сторонних SDK
+# 8. Быстрый и прямой REST-вызов по точным именам моделей
 def call_gemini_direct(prompt, instruction, key):
-    candidate_models = ["gemini-flash", "gemini-pro"]
+    candidate_models = [
+        "gemini-1.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-pro"
+    ]
     
     errors = []
     for model_name in candidate_models:
@@ -166,7 +170,7 @@ def call_gemini_direct(prompt, instruction, key):
         }
         
         try:
-            res = requests.post(url, headers=headers, json=payload, timeout=20)
+            res = requests.post(url, headers=headers, json=payload, timeout=10)
             if res.status_code == 200:
                 data = res.json()
                 text_out = data['candidates'][0]['content']['parts'][0]['text']
