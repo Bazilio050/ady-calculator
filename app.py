@@ -163,9 +163,9 @@ def sanitize_text(text):
 # 8. Актуальные модели Google Gemini API
 def call_gemini_light(client, prompt, instruction):
     candidate_models = [
-        "gemini-2.5-flash",
-        "gemini-2.5-pro",
-        "gemini-1.5-flash"
+        "gemini-2.0-flash-exp",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash-latest"
     ]
     
     errors = []
