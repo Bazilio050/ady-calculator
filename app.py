@@ -154,7 +154,8 @@ def sanitize_text(text):
 def call_gemini_light(client, prompt, instruction):
     candidate_models = [
         "gemini-2.5-flash",
-        "gemini-2.0-flash"
+        "gemini-2.5-pro",
+        "gemini-1.5-flash"
     ]
     
     errors = []
