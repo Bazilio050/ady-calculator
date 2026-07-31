@@ -160,9 +160,9 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Вызов строго легких бесплатных моделей
+# 8. Вызов актуальных бесплатных моделей
 def call_gemini_light(client, prompt, instruction):
-    candidate_models = ["gemini-2.5-flash-lite", "gemini-2.5-flash"]
+    candidate_models = ["gemini-2.0-flash", "gemini-1.5-flash"]
     
     errors = []
     for model_name in candidate_models:
@@ -177,7 +177,7 @@ def call_gemini_light(client, prompt, instruction):
             errors.append(f"{model_name}: {str(e)}")
             continue
 
-    raise RuntimeError("Бесплатный лимит исчерпан. Пожалуйста, подождите 1 минуту или замените API Key:\n" + "\n".join(errors))
+    raise RuntimeError("Не удалось выполнить запрос ни через одну модель:\n" + "\n".join(errors))
 
 # 9. Кнопка расчета
 if st.button(t["calc_btn"], type="primary"):
