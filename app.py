@@ -150,18 +150,15 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Динамический и безошибочный вызов доступной модели Google Gemini API
+# 8. Быстрый вызов актуальных моделей
 def call_gemini_light(client, prompt, instruction):
-    preferred_models = [
+    candidate_models = [
         "gemini-2.0-flash",
-        "gemini-2.0-flash-001",
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-002",
-        "gemini-1.5-pro"
+        "gemini-2.0-flash-lite"
     ]
     
     errors = []
-    for model_name in preferred_models:
+    for model_name in candidate_models:
         try:
             response = client.models.generate_content(
                 model=model_name,
@@ -173,23 +170,7 @@ def call_gemini_light(client, prompt, instruction):
             errors.append(f"{model_name}: {str(e)}")
             continue
 
-    try:
-        available_models = [m.name for m in client.models.list() if "generateContent" in getattr(m, 'supported_generation_methods', []) or True]
-        for model_obj in available_models:
-            clean_name = model_obj.replace("models/", "")
-            try:
-                response = client.models.generate_content(
-                    model=clean_name,
-                    contents=prompt,
-                    config={"system_instruction": instruction}
-                )
-                return response.text, clean_name
-            except Exception:
-                continue
-    except Exception as list_err:
-        errors.append(f"ListModels error: {str(list_err)}")
-
-    raise RuntimeError("Ошибка обращения к API:\n\n" + "\n\n".join(errors))
+    raise RuntimeError("Не удалось получить ответ от API:\n\n" + "\n\n".join(errors))
 
 # 9. Кнопка расчета
 if st.button(t["calc_btn"], type="primary"):
