@@ -229,14 +229,15 @@ if st.button(t["calc_btn"], type="primary"):
                     "2. MINIMUM DISTANCES: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
                     "3. CURRENCY & ADY EXPRESS: Get CHF/USD rate and % ADY Express from system_instruction.txt!\n"
                     "4. MINIMUM WEIGHT NORMS (Page 11 Table): ALWAYS check minimum wagon load norms! E.g. Grain (1001) = min 60T, Timber/Wood (4403, 4404, 4407) = min 45T, Scrap (7204) = min 50T, Coal (2701) = min 60T. If actual weight < min norm, strictly use the MIN NORM weight column for rate selection!\n"
-                    "5. INDEXATION COEFFICIENT (1.015):\n"
+                    "5. COEFFICIENT 1.50 EXCEPTIONS: Apply 1.50 for Export/Import EXCEPTIONS (DO NOT apply 1.50 for: Table 3 calculations, Timber 4403/4404/4407-4413, Ferrous metals 72/7301-7307, Methanol, and Import of Oil/Petroleum in Col 2 Table 6)!\n"
+                    "6. INDEXATION COEFFICIENT (1.015):\n"
                     "   - ALWAYS apply the 1.015 coefficient to ALL loaded wagon shipments (multiply base rate / tariff by 1.015)!\n"
                     "   - EXCEPTION: DO NOT apply the 1.015 coefficient IF AND ONLY IF the shipment is an empty wagon return / repositioning!\n"
-                    "6. OUTPUT TABLES & SUMMARY MUST BE GENERATED IN THE SELECTED LANGUAGE ({selected_lang})!\n"
+                    "7. OUTPUT TABLES & SUMMARY MUST BE GENERATED IN THE SELECTED LANGUAGE ({selected_lang})!\n"
                     "   - If selected_lang == 'AZ': Use Azerbaijani terms (Marşrut, Şərait: SPS/MPS, Xalis dəmir yolu tarifi, ADY Express daxil yekun tarif, etc.)\n"
                     "   - If selected_lang == 'RU': Use Russian terms (Маршрут, Состояние: СПС/МПС, Чистый ж/д тариф ADY, Итоговая ставка, etc.)\n"
                     "   - If selected_lang == 'EN': Use English terms (Route, Conditions: SPS/MPS, Net ADY Rail Tariff, Final rate with ADY Express, etc.)\n"
-                    "7. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
+                    "8. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
                 )
                 
                 raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
