@@ -150,41 +150,27 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Динамический вызов рабочей модели
+# 8. Прямой и быстрый вызов модели
 def call_gemini_light(prompt, instruction):
-    candidate_models = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash"
-    ]
-    
-    errors = []
+    model_name = "gemini-1.5-flash"
     
     try:
-        api_models = [
-            m.name.replace("models/", "") 
-            for m in genai.list_models() 
-            if "generateContent" in m.supported_generation_methods
-        ]
-        for active_m in api_models:
-            if active_m not in candidate_models:
-                candidate_models.append(active_m)
-    except Exception as list_err:
-        errors.append(f"ListModels info: {str(list_err)}")
-
-    for model_name in candidate_models:
+        model = genai.GenerativeModel(
+            model_name=model_name,
+            system_instruction=instruction
+        )
+        response = model.generate_content(prompt)
+        return response.text, model_name
+    except Exception as e:
         try:
             model = genai.GenerativeModel(
-                model_name=model_name,
+                model_name="gemini-1.5-flash-latest",
                 system_instruction=instruction
             )
             response = model.generate_content(prompt)
-            return response.text, model_name
-        except Exception as e:
-            errors.append(f"{model_name}: {str(e)}")
-            continue
-
-    raise RuntimeError("Не удалось получить ответ от API:\n\n" + "\n\n".join(errors))
+            return response.text, "gemini-1.5-flash-latest"
+        except Exception as e2:
+            raise RuntimeError(f"Ошибка API: {str(e)} | {str(e2)}")
 
 # 9. Кнопка расчета
 if st.button(t["calc_btn"], type="primary"):
@@ -199,6 +185,7 @@ if st.button(t["calc_btn"], type="primary"):
                 prompt_text = (
                     f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n{user_input}\n\n"
                     f"⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
+                    "0. DO NOT OUTPUT YOUR INTERNAL REASONING, THINKING PROCESS OR DRAFTS. Start immediately with Section 1 markdown tables!\n"
                     "1. ABBREVIATIONS & OWNERSHIP: SPS = СПС = XPS (private wagons), MPS = МПС = DDP (railway fleet). For SPS wagons ALWAYS apply x 0.85!\n"
                     "2. STRICT MINIMUM WEIGHT NORMS: Always check Page 11 norms (Grain 60T, Coal 60T, Ore 60T, Sugar 60T, Flour 60T, Fertilisers 60T, Scrap 50T, Cotton 50T, Timber 45T). If actual weight < min norm, strictly use MIN NORM column!\n"
                     "3. REFRIGERATED WAGONS: Weight < 25T -> Col 2/4 (per wagon), Weight >= 25T -> Col 3/5 (per ton). Fruits/Veg discount = x 0.60.\n"
