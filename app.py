@@ -211,17 +211,20 @@ if st.button(t["calc_btn"], type="primary"):
             try:
                 prompt_text = (
                     f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n{user_input}\n\n"
-                    f"⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRIKTLY: {selected_lang}):\n"
+                    f"⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
                     "1. ABBREVIATIONS: Treat SPS = СПС = XPS (private wagons) and MPS = МПС = DDP (railway fleet) as identical terms!\n"
                     "   - For AZ language output, ALWAYS display wagon ownership as 'SPS' or 'MPS' (DO NOT use XPS or DDP in final output)!\n"
                     "2. MINIMUM DISTANCES: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
                     "3. CURRENCY & ADY EXPRESS: Get CHF/USD rate and % ADY Express from system_instruction.txt!\n"
                     "4. GRAIN (NHM 1001 etc.): Min weight strictly 60 TONS in boxcars/gondolas!\n"
-                    "5. OUTPUT TABLES & SUMMARY MUST BE GENERATED IN THE SELECTED LANGUAGE ({selected_lang})!\n"
+                    "5. INDEXATION COEFFICIENT (1.015):\n"
+                    "   - ALWAYS apply the 1.015 coefficient to ALL loaded wagon shipments (multiply base rate / tariff by 1.015)!\n"
+                    "   - EXCEPTION: DO NOT apply the 1.015 coefficient IF AND ONLY IF the shipment is an empty wagon return / repositioning!\n"
+                    "6. OUTPUT TABLES & SUMMARY MUST BE GENERATED IN THE SELECTED LANGUAGE ({selected_lang})!\n"
                     "   - If selected_lang == 'AZ': Use Azerbaijani terms (Marşrut, Şərait: SPS/MPS, Xalis dəmir yolu tarifi, ADY Express daxil yekun tarif, etc.)\n"
                     "   - If selected_lang == 'RU': Use Russian terms (Маршрут, Состояние: СПС/МПС, Чистый ж/д тариф ADY, Итоговая ставка, etc.)\n"
                     "   - If selected_lang == 'EN': Use English terms (Route, Conditions: SPS/MPS, Net ADY Rail Tariff, Final rate with ADY Express, etc.)\n"
-                    "6. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
+                    "7. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
                 )
                 
                 raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
