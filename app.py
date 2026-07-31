@@ -32,8 +32,7 @@ UI_TEXT = {
         "success": "Hesablama uğurla tamamlandı! (Model: {})",
         "result_title": "📋 Hesablama nəticəsi:",
         "not_found_msg": "⏳ **ADY-nin {} fraxt ili üzrə Tarif Siyasəti hələ rəsmi dərc olunmayıb.**\n\nCari hesablamalar üçün sol menyudan **{} fraxt ilini** seçməyiniz xahiş olunur.",
-        "api_warning": "⚠️ Xahiş olunur, Gemini API Key daxil edin.",
-        "api_label": "Gemini API Key daxil edin:"
+        "api_warning": "⚠️ API Key Streamlit Secrets bölməsində tapılmadı."
     },
     "RU": {
         "title": "🚂 Калькулятор тарифов ADY",
@@ -48,8 +47,7 @@ UI_TEXT = {
         "success": "Расчет успешно выполнен по базе {} года! (Модель: {})",
         "result_title": "📋 Результат расчета:",
         "not_found_msg": "⏳ **Тарифная политика ADY на {} фрахтовый год пока официально не опубликована.**\n\nПожалуйста, выберите **{} фрахтовый год** в меню слева.",
-        "api_warning": "⚠️ Пожалуйста, введите Gemini API Key в боковой панели.",
-        "api_label": "Введите Gemini API Key:"
+        "api_warning": "⚠️ API Key не найден в Streamlit Secrets."
     },
     "EN": {
         "title": "🚂 ADY Tariff Calculator",
@@ -64,12 +62,11 @@ UI_TEXT = {
         "success": "Calculation completed successfully for {} policy! (Model: {})",
         "result_title": "📋 Calculation Results:",
         "not_found_msg": "⏳ **ADY Tariff Policy for {} freight year has not been officially published yet.**\n\nPlease select **{} freight year** from the left menu.",
-        "api_warning": "⚠️ Please enter Gemini API Key in the sidebar.",
-        "api_label": "Enter Gemini API Key:"
+        "api_warning": "⚠️ API Key not found in Streamlit Secrets."
     }
 }
 
-# 3. Sidebar Language Selector & API Key Input
+# 3. Sidebar Language Selector
 st.sidebar.header("🌐 Dil / Language")
 selected_lang = st.sidebar.selectbox(
     "Dil seçin / Выберите язык / Select language:",
@@ -80,18 +77,11 @@ selected_lang = st.sidebar.selectbox(
 
 t = UI_TEXT[selected_lang]
 
-st.sidebar.header("🔑 API Key")
-user_api_key = st.sidebar.text_input(
-    t["api_label"], 
-    type="password", 
-    help="Введите новый API Key из Google AI Studio"
-)
-
-# Выбор ключа: сначала из ввода пользователя, затем из Secrets / Environment
-api_key = user_api_key.strip() if user_api_key.strip() else os.environ.get("GEMINI_API_KEY")
+# Берутся данные строго из Secrets / Environment
+api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
-    st.warning(t["api_warning"])
+    st.error(t["api_warning"])
     st.stop()
 
 client = genai.Client(api_key=api_key)
@@ -163,9 +153,8 @@ def sanitize_text(text):
 # 8. Актуальные модели Google Gemini API
 def call_gemini_light(client, prompt, instruction):
     candidate_models = [
-        "gemini-2.0-flash-exp",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash-latest"
+        "gemini-2.5-flash",
+        "gemini-2.0-flash"
     ]
     
     errors = []
@@ -181,7 +170,7 @@ def call_gemini_light(client, prompt, instruction):
             errors.append(f"{model_name}: {str(e)}")
             continue
 
-    raise RuntimeError("Ошибка обращения к API. Проверьте баланс и API Key:\n\n" + "\n\n".join(errors))
+    raise RuntimeError("Ошибка обращения к API:\n\n" + "\n\n".join(errors))
 
 # 9. Кнопка расчета
 if st.button(t["calc_btn"], type="primary"):
