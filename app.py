@@ -160,9 +160,13 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Актуальные модели под платный баланс
+# 8. Актуальные модели Google Gemini API
 def call_gemini_light(client, prompt, instruction):
-    candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    candidate_models = [
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-1.5-flash"
+    ]
     
     errors = []
     for model_name in candidate_models:
