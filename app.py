@@ -63,13 +63,13 @@ UI_TEXT = {
     }
 }
 
-# 3. Sidebar Language Selector (AZ по умолчанию)
+# 3. Sidebar Language Selector (AZ по умолчанию, чистые названия без флагов и префиксов)
 st.sidebar.header("🌐 Dil / Language")
 selected_lang = st.sidebar.selectbox(
     "Dil seçin / Выберите язык / Select language:",
     options=["AZ", "RU", "EN"],
     index=0,  # AZ по умолчанию
-    format_func=lambda x: {"AZ": "AZ — Azərbaycan", "RU": "RU — Русский", "EN": "EN — English"}[x]
+    format_func=lambda x: {"AZ": "Azərbaycan", "RU": "Русский", "EN": "English"}[x]
 )
 
 t = UI_TEXT[selected_lang]
