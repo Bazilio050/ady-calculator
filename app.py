@@ -18,7 +18,6 @@ UI_TEXT = {
         "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — **{} fraxt ili**",
         "settings_header": "⚙️ Tarif tənzimləmələri",
         "year_select": "Fraxt ilini seçin:",
-        "lang_select": "Dil / Language:",
         "input_header": "Daşıma parametrlərini daxil edin:",
         "input_placeholder": "Nümunə:\nMarşrut: Yalama - Ələt\nYük: Neft (YHN 2709), 60 ton\nVəziyyət: XPS çən vaqonu",
         "calc_btn": "🚀 Tarifi hesabla",
@@ -35,7 +34,6 @@ UI_TEXT = {
         "subtitle": "Расчет ж/д тарифов по Азербайджану на **{} фрахтовый год**",
         "settings_header": "⚙️ Настройки тарифов",
         "year_select": "Выберите фрахтовый год:",
-        "lang_select": "Язык / Language:",
         "input_header": "Введите данные по перевозке:",
         "input_placeholder": "Пример:\nМаршрут: Ялама - Алят\nГруз: Нефть (ГНГ 2709), 60 тонн\nСостояние: СПС цистерна",
         "calc_btn": "🚀 Рассчитать тариф",
@@ -52,7 +50,6 @@ UI_TEXT = {
         "subtitle": "Railway freight tariff calculator for Azerbaijan — **{} freight year**",
         "settings_header": "⚙️ Tariff Settings",
         "year_select": "Select Freight Year:",
-        "lang_select": "Language / Dil:",
         "input_header": "Enter shipment details:",
         "input_placeholder": "Example:\nRoute: Yalama - Alat\nCargo: Crude Oil (NHM 2709), 60 tons\nCondition: Private tank wagon (PRW)",
         "calc_btn": "🚀 Calculate Freight Rate",
@@ -67,12 +64,12 @@ UI_TEXT = {
 }
 
 # 3. Sidebar Language Selector (AZ по умолчанию)
-st.sidebar.header("🌐 Language / Dil")
+st.sidebar.header("🌐 Dil / Language")
 selected_lang = st.sidebar.selectbox(
-    "Select language:",
+    "Dil seçin / Выберите язык / Select language:",
     options=["AZ", "RU", "EN"],
     index=0,  # AZ по умолчанию
-    format_func=lambda x: {"AZ": "🇦🇿 Azərbaycan", "RU": "🇷🇺 Русский", "EN": "🇬🇧 English"}[x]
+    format_func=lambda x: {"AZ": "AZ — Azərbaycan", "RU": "RU — Русский", "EN": "EN — English"}[x]
 )
 
 t = UI_TEXT[selected_lang]
