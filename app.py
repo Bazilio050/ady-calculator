@@ -146,30 +146,29 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Надежный и быстрый REST-вызов с автоматическим перебором эндпоинтов v1 и v1beta
+# 8. Точный и быстрый REST-вызов
 def call_gemini_direct(prompt, instruction, key):
-    attempts = [
-        ("v1", "gemini-1.5-flash"),
-        ("v1", "gemini-1.5-pro"),
-        ("v1beta", "gemini-2.0-flash"),
-        ("v1beta", "gemini-2.5-flash")
+    candidate_models = [
+        "gemini-1.5-flash-002",
+        "gemini-1.5-flash-001",
+        "gemini-1.5-pro-002"
     ]
     
     errors = []
-    headers = {"Content-Type": "application/json"}
-    payload = {
-        "system_instruction": {
-            "parts": [{"text": instruction}]
-        },
-        "contents": [
-            {
-                "parts": [{"text": prompt}]
-            }
-        ]
-    }
-    
-    for api_ver, model_name in attempts:
-        url = f"https://generativelanguage.googleapis.com/{api_ver}/models/{model_name}:generateContent?key={key}"
+    for model_name in candidate_models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "system_instruction": {
+                "parts": [{"text": instruction}]
+            },
+            "contents": [
+                {
+                    "parts": [{"text": prompt}]
+                }
+            ]
+        }
+        
         try:
             res = requests.post(url, headers=headers, json=payload, timeout=20)
             if res.status_code == 200:
@@ -177,9 +176,9 @@ def call_gemini_direct(prompt, instruction, key):
                 text_out = data['candidates'][0]['content']['parts'][0]['text']
                 return text_out, model_name
             else:
-                errors.append(f"[{api_ver}] {model_name} (Status {res.status_code}): {res.text}")
+                errors.append(f"{model_name} (Status {res.status_code}): {res.text}")
         except Exception as e:
-            errors.append(f"[{api_ver}] {model_name}: {str(e)}")
+            errors.append(f"{model_name}: {str(e)}")
 
     raise RuntimeError("Ошибка при вызове Google API:\n\n" + "\n\n".join(errors))
 
