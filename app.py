@@ -63,7 +63,7 @@ UI_TEXT = {
     }
 }
 
-# 3. Sidebar Language Selector (AZ по умолчанию, чистые названия без флагов и префиксов)
+# 3. Sidebar Language Selector (СТРОГО КАК НА СКРИНШОТЕ: Azərbaycan, Русский, English)
 st.sidebar.header("🌐 Dil / Language")
 selected_lang = st.sidebar.selectbox(
     "Dil seçin / Выберите язык / Select language:",
