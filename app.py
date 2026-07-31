@@ -160,9 +160,9 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Вызов актуальных бесплатных моделей
+# 8. Актуальные модели под платный баланс
 def call_gemini_light(client, prompt, instruction):
-    candidate_models = ["gemini-2.0-flash", "gemini-1.5-flash"]
+    candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash"]
     
     errors = []
     for model_name in candidate_models:
@@ -177,7 +177,7 @@ def call_gemini_light(client, prompt, instruction):
             errors.append(f"{model_name}: {str(e)}")
             continue
 
-    raise RuntimeError("Не удалось выполнить запрос ни через одну модель:\n" + "\n".join(errors))
+    raise RuntimeError("Ошибка обращения к API. Проверьте баланс и API Key:\n\n" + "\n\n".join(errors))
 
 # 9. Кнопка расчета
 if st.button(t["calc_btn"], type="primary"):
