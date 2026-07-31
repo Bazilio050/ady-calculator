@@ -146,19 +146,16 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Точечный REST-вызов: сперва v1 (актуальные релизы), затем v1beta
+# 8. Прямой REST-вызов для актуальных моделей 3-го поколения
 def call_gemini_direct(prompt, instruction, key):
-    # Корректные полные эндпоинты
-    requests_targets = [
-        ("v1", "gemini-1.5-flash"),
-        ("v1", "gemini-1.5-pro"),
-        ("v1beta", "gemini-2.5-flash"),
-        ("v1beta", "gemini-2.0-flash")
+    candidate_models = [
+        "gemini-3.6-flash",
+        "gemini-3.1-pro"
     ]
     
     errors = []
-    for api_ver, model_name in requests_targets:
-        url = f"https://generativelanguage.googleapis.com/{api_ver}/models/{model_name}:generateContent?key={key}"
+    for model_name in candidate_models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
         headers = {"Content-Type": "application/json"}
         payload = {
             "system_instruction": {
@@ -176,11 +173,11 @@ def call_gemini_direct(prompt, instruction, key):
             if res.status_code == 200:
                 data = res.json()
                 text_out = data['candidates'][0]['content']['parts'][0]['text']
-                return text_out, f"{model_name} ({api_ver})"
+                return text_out, model_name
             else:
-                errors.append(f"[{api_ver}] {model_name} (Status {res.status_code}): {res.text}")
+                errors.append(f"[{model_name}] (Status {res.status_code}): {res.text}")
         except Exception as e:
-            errors.append(f"[{api_ver}] {model_name}: {str(e)}")
+            errors.append(f"[{model_name}]: {str(e)}")
 
     raise RuntimeError("Ошибка при вызове Google API:\n\n" + "\n\n".join(errors))
 
