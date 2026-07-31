@@ -146,13 +146,13 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Прямой REST-вызов API без библиотек-посредников
+# 8. Прямой REST-вызов API через стабильный эндпоинт v1
 def call_gemini_direct(prompt, instruction, key):
-    candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    candidate_models = ["gemini-1.5-flash", "gemini-1.5-pro"]
     
     errors = []
     for model_name in candidate_models:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+        url = f"https://generativelanguage.googleapis.com/v1/models/{model_name}:generateContent?key={key}"
         headers = {"Content-Type": "application/json"}
         payload = {
             "system_instruction": {
