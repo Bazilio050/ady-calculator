@@ -1,9 +1,8 @@
 import os
 import re
-import json
-import requests
 import pandas as pd
 import streamlit as st
+import google.generativeai as genai
 
 # 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
 st.set_page_config(
@@ -75,12 +74,14 @@ selected_lang = st.sidebar.selectbox(
 
 t = UI_TEXT[selected_lang]
 
-# Ключ берётся строго из Secrets / Environment
+# Берутся данные строго из Secrets / Environment
 api_key = st.secrets.get("GEMINI_API_KEY") if "GEMINI_API_KEY" in st.secrets else os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
     st.error(t["api_warning"])
     st.stop()
+
+genai.configure(api_key=api_key)
 
 # 4. Выбор фрахтового года в Sidebar
 st.sidebar.header(t["settings_header"])
@@ -146,41 +147,24 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Быстрый и прямой REST-вызов по точным именам моделей
-def call_gemini_direct(prompt, instruction, key):
-    candidate_models = [
-        "gemini-1.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-pro"
-    ]
+# 8. Быстрый и проверенный вызов моделей через google-generativeai
+def call_gemini_light(prompt, instruction):
+    candidate_models = ["gemini-1.5-flash", "gemini-1.5-pro"]
     
     errors = []
     for model_name in candidate_models:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
-        headers = {"Content-Type": "application/json"}
-        payload = {
-            "system_instruction": {
-                "parts": [{"text": instruction}]
-            },
-            "contents": [
-                {
-                    "parts": [{"text": prompt}]
-                }
-            ]
-        }
-        
         try:
-            res = requests.post(url, headers=headers, json=payload, timeout=10)
-            if res.status_code == 200:
-                data = res.json()
-                text_out = data['candidates'][0]['content']['parts'][0]['text']
-                return text_out, model_name
-            else:
-                errors.append(f"{model_name} (Status {res.status_code}): {res.text}")
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction=instruction
+            )
+            response = model.generate_content(prompt)
+            return response.text, model_name
         except Exception as e:
             errors.append(f"{model_name}: {str(e)}")
+            continue
 
-    raise RuntimeError("Ошибка при вызове Google API:\n\n" + "\n\n".join(errors))
+    raise RuntimeError("Не удалось получить ответ от API:\n\n" + "\n\n".join(errors))
 
 # 9. Кнопка расчета
 if st.button(t["calc_btn"], type="primary"):
@@ -206,7 +190,7 @@ if st.button(t["calc_btn"], type="primary"):
                     "8. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
                 )
                 
-                raw_result, used_model = call_gemini_direct(prompt_text, SYSTEM_INSTRUCTION, api_key)
+                raw_result, used_model = call_gemini_light(prompt_text, SYSTEM_INSTRUCTION)
                 
                 st.session_state.calc_result = sanitize_text(raw_result)
                 st.session_state.used_model = used_model
