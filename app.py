@@ -19,7 +19,7 @@ UI_TEXT = {
         "settings_header": "⚙️ Tarif tənzimləmələri",
         "year_select": "Fraxt ilini seçin:",
         "input_header": "Daşıma parametrlərini daxil edin:",
-        "input_placeholder": "Nümunə:\nMarşrut: Yalama - Ələt\nYük: Neft (YHN 2709), 60 ton\nVəziyyət: XPS çən vaqonu",
+        "input_placeholder": "Nümunə:\nMarşrut: Yalama - Ələt\nYük: Neft (YHN 2709), 60 ton\nVəziyyət: SPS çən vaqonu",
         "calc_btn": "🚀 Tarifi hesabla",
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
         "spinner": "ADY Policy {} tarifləri üzrə hesablanır...",
@@ -51,7 +51,7 @@ UI_TEXT = {
         "settings_header": "⚙️ Tariff Settings",
         "year_select": "Select Freight Year:",
         "input_header": "Enter shipment details:",
-        "input_placeholder": "Example:\nRoute: Yalama - Alat\nCargo: Crude Oil (NHM 2709), 60 tons\nCondition: Private tank wagon (PRW)",
+        "input_placeholder": "Example:\nRoute: Yalama - Alat\nCargo: Crude Oil (NHM 2709), 60 tons\nCondition: SPS tank wagon",
         "calc_btn": "🚀 Calculate Freight Rate",
         "warning_empty": "Please enter shipment requirements.",
         "spinner": "Calculating rates according to ADY Policy {}...",
@@ -63,7 +63,7 @@ UI_TEXT = {
     }
 }
 
-# 3. Sidebar Language Selector (СТРОГО КАК НА СКРИНШОТЕ: Azərbaycan, Русский, English)
+# 3. Sidebar Language Selector (Azərbaycan, Русский, English)
 st.sidebar.header("🌐 Dil / Language")
 selected_lang = st.sidebar.selectbox(
     "Dil seçin / Выберите язык / Select language:",
@@ -126,7 +126,8 @@ def load_app_context(excel_path, year_label, lang):
         system_instruction = (
             f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
             f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-            f"Все заголовки, имена столбцов и примечания переводи на выбранный язык ({lang})!\n\n"
+            f"Все заголовки, имена столбцов и примечания переводи на выбранный язык ({lang})!\n"
+            f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n\n"
             + excel_context + "\n\n"
             + rules_text
         )
@@ -211,14 +212,16 @@ if st.button(t["calc_btn"], type="primary"):
                 prompt_text = (
                     f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n{user_input}\n\n"
                     f"⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRIKTLY: {selected_lang}):\n"
-                    "1. MINIMUM DISTANCES: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
-                    "2. CURRENCY & ADY EXPRESS: Get CHF/USD rate and % ADY Express from system_instruction.txt!\n"
-                    "3. GRAIN (NHM 1001 etc.): Min weight strictly 60 TONS in boxcars/gondolas!\n"
-                    "4. OUTPUT TABLES & SUMMARY MUST BE GENERATED IN THE SELECTED LANGUAGE ({selected_lang})!\n"
-                    "   - If selected_lang == 'AZ': Use Azerbaijani terms (Marşrut, Şərait, Xalis dəmir yolu tarifi, ADY Express daxil yekun tarif, etc.)\n"
-                    "   - If selected_lang == 'RU': Use Russian terms (Маршрут, Состояние, Чистый ж/д тариф ADY, Итоговая ставка, etc.)\n"
-                    "   - If selected_lang == 'EN': Use English terms (Route, Conditions, Net ADY Rail Tariff, Final rate with ADY Express, etc.)\n"
-                    "5. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
+                    "1. ABBREVIATIONS: Treat SPS = СПС = XPS (private wagons) and MPS = МПС = DDP (railway fleet) as identical terms!\n"
+                    "   - For AZ language output, ALWAYS display wagon ownership as 'SPS' or 'MPS' (DO NOT use XPS or DDP in final output)!\n"
+                    "2. MINIMUM DISTANCES: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
+                    "3. CURRENCY & ADY EXPRESS: Get CHF/USD rate and % ADY Express from system_instruction.txt!\n"
+                    "4. GRAIN (NHM 1001 etc.): Min weight strictly 60 TONS in boxcars/gondolas!\n"
+                    "5. OUTPUT TABLES & SUMMARY MUST BE GENERATED IN THE SELECTED LANGUAGE ({selected_lang})!\n"
+                    "   - If selected_lang == 'AZ': Use Azerbaijani terms (Marşrut, Şərait: SPS/MPS, Xalis dəmir yolu tarifi, ADY Express daxil yekun tarif, etc.)\n"
+                    "   - If selected_lang == 'RU': Use Russian terms (Маршрут, Состояние: СПС/МПС, Чистый ж/д тариф ADY, Итоговая ставка, etc.)\n"
+                    "   - If selected_lang == 'EN': Use English terms (Route, Conditions: SPS/MPS, Net ADY Rail Tariff, Final rate with ADY Express, etc.)\n"
+                    "6. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
                 )
                 
                 raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
