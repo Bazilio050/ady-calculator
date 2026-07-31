@@ -146,9 +146,9 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Прямой REST-вызов API через v1beta
+# 8. Прямой REST-вызов API для актуальных моделей Gemini
 def call_gemini_direct(prompt, instruction, key):
-    candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    candidate_models = ["gemini-2.5-flash", "gemini-2.5-pro"]
     
     errors = []
     for model_name in candidate_models:
