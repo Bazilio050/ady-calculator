@@ -20,7 +20,7 @@ if "used_model" not in st.session_state:
 # 2. Переводы интерфейса (AZ, RU, EN)
 UI_TEXT = {
     "AZ": {
-        "title": "🚂 ADY Dəmir Yolu Tarif Kalkulyatoru",
+        "title": "🚂 ADY Tarif Kalkulyatoru",
         "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — **{} fraxt ili**",
         "settings_header": "⚙️ Tarif tənzimləmələri",
         "year_select": "Fraxt ilini seçin:",
@@ -36,7 +36,7 @@ UI_TEXT = {
         "api_label": "Gemini API Key daxil edin:"
     },
     "RU": {
-        "title": "🚂 Калькулятор Ж/Д Тарифов ADY",
+        "title": "🚂 Калькулятор тарифов ADY",
         "subtitle": "Расчет ж/д тарифов по Азербайджану на **{} фрахтовый год**",
         "settings_header": "⚙️ Настройки тарифов",
         "year_select": "Выберите фрахтовый год:",
@@ -52,7 +52,7 @@ UI_TEXT = {
         "api_label": "Введите Gemini API Key:"
     },
     "EN": {
-        "title": "🚂 ADY Rail Tariff Calculator",
+        "title": "🚂 ADY Tariff Calculator",
         "subtitle": "Railway freight tariff calculator for Azerbaijan — **{} freight year**",
         "settings_header": "⚙️ Tariff Settings",
         "year_select": "Select Freight Year:",
