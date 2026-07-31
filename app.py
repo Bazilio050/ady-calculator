@@ -146,27 +146,10 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Динамический REST-вызов: сам запрашивает у Google список доступных моделей
+# 8. Прямой и молниеносный REST-вызов
 def call_gemini_direct(prompt, instruction, key):
-    list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
-    candidate_models = []
+    candidate_models = ["gemini-1.5-flash", "gemini-1.5-pro"]
     
-    try:
-        res_list = requests.get(list_url, timeout=10)
-        if res_list.status_code == 200:
-            models_data = res_list.json().get("models", [])
-            for m in models_data:
-                methods = m.get("supportedGenerationMethods", [])
-                if "generateContent" in methods:
-                    name = m.get("name", "").replace("models/", "")
-                    if name:
-                        candidate_models.append(name)
-    except Exception:
-        pass
-
-    if not candidate_models:
-        candidate_models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash"]
-
     errors = []
     for model_name in candidate_models:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
@@ -183,7 +166,7 @@ def call_gemini_direct(prompt, instruction, key):
         }
         
         try:
-            res = requests.post(url, headers=headers, json=payload, timeout=30)
+            res = requests.post(url, headers=headers, json=payload, timeout=20)
             if res.status_code == 200:
                 data = res.json()
                 text_out = data['candidates'][0]['content']['parts'][0]['text']
@@ -193,7 +176,7 @@ def call_gemini_direct(prompt, instruction, key):
         except Exception as e:
             errors.append(f"{model_name}: {str(e)}")
 
-    raise RuntimeError("Ошибка при вызове Google API. Проверьте валидность API Key и доступность сервисов Google:\n\n" + "\n\n".join(errors))
+    raise RuntimeError("Ошибка при вызове Google API:\n\n" + "\n\n".join(errors))
 
 # 9. Кнопка расчета
 if st.button(t["calc_btn"], type="primary"):
