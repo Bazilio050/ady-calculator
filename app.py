@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Инициализация хранилища результатов в сессии
+# Инициализация хранилища результатов в сессии (для предотвращения глюков при повторных запросах)
 if "calc_result" not in st.session_state:
     st.session_state.calc_result = None
 if "used_model" not in st.session_state:
@@ -162,7 +162,6 @@ if err:
 
 st.sidebar.header(t["input_header"])
 
-# Уникальный ключ для текстового поля
 user_input = st.text_area(
     t["input_header"],
     height=180,
@@ -229,7 +228,7 @@ if st.button(t["calc_btn"], type="primary"):
                     "   - For AZ language output, ALWAYS display wagon ownership as 'SPS' or 'MPS' (DO NOT use XPS or DDP in final output)!\n"
                     "2. MINIMUM DISTANCES: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
                     "3. CURRENCY & ADY EXPRESS: Get CHF/USD rate and % ADY Express from system_instruction.txt!\n"
-                    "4. GRAIN (NHM 1001 etc.): Min weight strictly 60 TONS in boxcars/gondolas!\n"
+                    "4. MINIMUM WEIGHT NORMS (Page 11 Table): ALWAYS check minimum wagon load norms! E.g. Grain (1001) = min 60T, Timber/Wood (4403, 4404, 4407) = min 45T, Scrap (7204) = min 50T, Coal (2701) = min 60T. If actual weight < min norm, strictly use the MIN NORM weight column for rate selection!\n"
                     "5. INDEXATION COEFFICIENT (1.015):\n"
                     "   - ALWAYS apply the 1.015 coefficient to ALL loaded wagon shipments (multiply base rate / tariff by 1.015)!\n"
                     "   - EXCEPTION: DO NOT apply the 1.015 coefficient IF AND ONLY IF the shipment is an empty wagon return / repositioning!\n"
@@ -242,7 +241,6 @@ if st.button(t["calc_btn"], type="primary"):
                 
                 raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
                 
-                # Сохраняем результат в session_state
                 st.session_state.calc_result = sanitize_text(raw_result)
                 st.session_state.used_model = used_model
                 
