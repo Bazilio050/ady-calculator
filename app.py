@@ -6,7 +6,7 @@ from google import genai
 
 # 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
 st.set_page_config(
-    page_title="ADY Tariff Calculator 2026",
+    page_title="ADY Tariff Calculator",
     page_icon="🚂",
     layout="wide"
 )
@@ -22,13 +22,22 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# 3. Fast Data Loading & Context Assembly
-EXCEL_FILE = "ADY_Tariff_Policy_2026.xlsx"
+# 3. Выбор фрахтового года в Sidebar (По умолчанию текущий 2026 год)
+st.sidebar.header("⚙️ Настройки тарифов")
+selected_year = st.sidebar.selectbox(
+    "Выберите фрахтовый год:",
+    options=["2026", "2027"],
+    index=0,  # 2026 по умолчанию
+    help="Выберите год тарифного руководства ADY"
+)
 
-@st.cache_data(show_spinner="Загрузка базы данных и правил ADY 2026...")
-def load_app_context(excel_path):
+EXCEL_FILE = f"ADY_Tariff_Policy_{selected_year}.xlsx"
+
+# 4. Fast Data Loading & Context Assembly
+@st.cache_data(show_spinner=f"Загрузка базы данных ADY ({selected_year} год)...")
+def load_app_context(excel_path, year_label):
     if not os.path.exists(excel_path):
-        return None, f"Ошибка: Файл '{excel_path}' не найден в корневом каталоге проекта!"
+        return None, f"⚠️ Файл базы данных '{excel_path}' на {year_label} год пока не найден в проекте. Загрузите файл {excel_path} на GitHub!"
     
     additional_rules = []
     txt_files = ["system_instruction.txt", "Weight_Categories.txt"]
@@ -51,7 +60,8 @@ def load_app_context(excel_path):
         excel_context = "\n".join(summary_text)
         
         system_instruction = (
-            "Твоя база знаний находится в следующих данных из файла ADY_Tariff_Policy_2026.xlsx:\n\n"
+            f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
+            f"Твоя база знаний находится в следующих данных из файла {excel_path}:\n\n"
             + excel_context + "\n\n"
             + rules_text
         )
@@ -59,13 +69,9 @@ def load_app_context(excel_path):
     except Exception as e:
         return None, f"Ошибка при обработке файлов: {str(e)}"
 
-SYSTEM_INSTRUCTION, err = load_app_context(EXCEL_FILE)
+SYSTEM_INSTRUCTION, err = load_app_context(EXCEL_FILE, selected_year)
 
-if err:
-    st.error(err)
-    st.stop()
-
-# 4. UI Layout & Logo
+# 5. UI Layout & Logo
 logo_file = None
 for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
     if os.path.exists(filename):
@@ -75,8 +81,12 @@ for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
 if logo_file:
     st.image(logo_file, width=250)
 
-st.title("🚂 Калькулятор Ж/Д Тарифов ADY 2026")
-st.markdown("Расчет ж/д тарифов по Азербайджану (ADY Express, СПС/МПС, рефсекции, автовозы, термосы, наливные грузы в цистернах, транспортёры, спецплатформы)")
+st.title(f"🚂 Калькулятор Ж/Д Тарифов ADY ({selected_year})")
+st.markdown(f"Расчет ж/д тарифов по Азербайджану на **{selected_year} фрахтовый год** (*{selected_year}-ci fraxt ili üçün beynəlxalq yük daşımaları üzrə tariflər*)")
+
+if err:
+    st.error(err)
+    st.stop()
 
 st.sidebar.header("Параметры расчета")
 user_input = st.text_area(
@@ -85,7 +95,7 @@ user_input = st.text_area(
     placeholder="Пример:\nМаршрут: Ялама - Алят\nГруз: Нефть (ГНГ 2709), 60 тонн\nСостояние: СПС цистерна"
 )
 
-# 5. Функция чистки текста
+# 6. Функция чистки текста
 def sanitize_text(text):
     text = re.sub(r"^\s*[\bullet\*\-]\s*Базовая ставка:.*$", "", text, flags=re.MULTILINE | re.IGNORECASE)
     text = re.sub(r"^\s*[\bullet\*\-]\s*Провозная плата:.*$", "", text, flags=re.MULTILINE | re.IGNORECASE)
@@ -94,7 +104,7 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 6. Функция автоматического выбора доступных моделей Gemini
+# 7. Функция автоматического выбора доступных моделей Gemini
 def call_gemini_with_fallback(client, prompt, instruction):
     candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
     
@@ -125,44 +135,46 @@ def call_gemini_with_fallback(client, prompt, instruction):
 
     raise RuntimeError("Ни одна из доступных моделей Gemini не ответила:\n" + "\n".join(errors))
 
-# 7. Кнопка расчета
+# 8. Кнопка расчета
 if st.button("🚀 Рассчитать тариф", type="primary"):
     if not user_input.strip():
         st.warning("Пожалуйста, введите условия расчета.")
     else:
-        with st.spinner("Считаем тариф согласно ADY Policy 2026..."):
+        with st.spinner(f"Считаем тариф согласно ADY Policy {selected_year}..."):
             try:
                 prompt_text = (
-                    f"Сделай точный расчет провозной платы для следующих условий:\n{user_input}\n\n"
+                    f"Сделай точный расчет провозной платы для следующих условий (Фрахтовый год: {selected_year}):\n{user_input}\n\n"
                     "⚠️ СТРОЖАЙШИЕ ПРАВИЛА РАСЧЕТА И ВЫВОДА:\n"
                     "1. МИНИМАЛЬНЫЕ РАССТОЯНИЯ: Экспорт = минимум 101 км (пояс 101-110км), Импорт = минимум 151 км (пояс 151-160км)!\n"
-                    "2. МИНИМАЛЬНАЯ ЗАГРУЗКА И СПЕЦ-ТРАНСПОРТ:\n"
+                    "2. КУРС ВАЛЮТ И ADY EXPRESS: Брать курс CHF/USD и % ADY Express строго по сетке периодов из system_instruction.txt в зависимости от даты в запросе!\n"
+                    "3. МИНИМАЛЬНАЯ ЗАГРУЗКА И СПЕЦ-ТРАНСПОРТ:\n"
                     "   - Зерно (ГНГ 1001 и др.): В крытых вагонах/полувагонах СТРОГО НЕ МЕНЕЕ 60 ТОНН!\n"
                     "   - Пассажирские вагоны/почта (п. 3.1.2.5, ГНГ 99910000): Вес СТРОГО 66 т, расчет: базовая 25т × Таб.7 ст.6!\n"
                     "   - Транспортёры (п. 3.1.2.6): 4 оси = мин 20т, 6 осей = мин 30т, 8 осей = мин 40т!\n"
                     "   - Спецплатформы > 19 м (п. 3.1.2.7): по Таблицам 3/4 с коэф. × 1.20 (порожние СПС коэф. × 0.60, мин 0.06 CHF/ось-км).\n"
-                    "3. НАЛИВНЫЕ ГРУЗЫ / ЦИСТЕРНЫ (Таблица №6):\n"
+                    "4. НАЛИВНЫЕ ГРУЗЫ / ЦИСТЕРНЫ (Таблица №6):\n"
                     "   - Если код ГНГ НЕ ВХОДИТ в явные списки Столбцов 2, 3, 4, 5, 6, 8 — ОН АВТОМАТИЧЕСКИ ОТНОСИТСЯ К СТОЛБЦУ 7 (Digər yüklər)! Базовая цена на 101-110км СТРОГО 8.36 CHF/т.\n"
-                    "4. СТРОГИЙ ЗАПРЕТ ВЫВОДА КОЭФФИЦИЕНТОВ 1.00: Не выводить в Таблицу №2 коэффициенты со значением 1.00 или 'не применяется'! Показывать ТОЛЬКО реальные активные коэффициенты!\n"
-                    "5. РАЗДЕЛЕНИЕ ADY И ADY EXPRESS:\n"
-                    "   - Сначала рассчитывай ЧИСТЫЙ ж/д тариф ADY (без коэф. 1.02).\n"
-                    "   - Затем умножай чистый тариф на 1.02 для получения ИТОГОВОЙ ставки с учетом услуг ADY Express (+2%).\n"
+                    "5. СТРОГИЙ ЗАПРЕТ ВЫВОДА КОЭФФИЦИЕНТОВ 1.00: Не выводить в Таблицу №2 коэффициенты со значением 1.00 или 'не применяется'! Показывать ТОЛЬКО реальные активные коэффициенты!\n"
+                    "6. РАЗДЕЛЕНИЕ ADY И ADY EXPRESS:\n"
+                    "   - Сначала рассчитывай ЧИСТЫЙ ж/д тариф ADY (без ADY Express).\n"
+                    "   - Затем умножай чистый тариф на процент ADY Express для получения ИТОГОВОЙ ставки.\n"
                     "   - Выводи ОБА значения в блоке итогов!\n"
-                    "6. ОБЯЗАТЕЛЬНЫЕ ПРИМЕЧАНИЯ В КОНЦЕ:\n"
-                    "   - Срок действия: 'Ставка действительна до [Дата окончания периода курса CHF]' включительно.\n"
-                    "   - Исключения: 'Ставка рассчитана без учёта станционных расходов, сборов за подачу/уборку вагонов, маневровых работ, а также прочих возможных терминальных и документационных сборов' (ОХРАНУ НЕ УКАЗЫВАТЬ!).\n"
-                    "7. ЕДИНИЦЫ ИЗМЕРЕНИЯ: Выводить 'USD за вагон' только для Таблицы №5 столбцов 2 и 4 (< 25т). Во всех остальных случаях — 'USD за 1 тонну'!\n"
-                    "8. СТРОГИЙ ЗАПРЕТ СКОБОК В КОНЦЕ: Никаких скобок с перерасчетом на общий вес после итоговой провозной платы!"
+                    f"7. ОБЯЗАТЕЛЬНЫЕ ПРИМЕЧАНИЯ В КОНЦЕ:\n"
+                    f"   - Указывай срок действия ставки: 'Ставка действительна до [Дата окончания периода курса CHF]' включительно.\n"
+                    f"   - Указывай источник: 'Расчёт выполнен согласно Тарифной политике ADY на {selected_year} фрахтовый год ({selected_year}-cı fraxt ili üçün beynəlxalq yük daşımaları üzrə tariflər)'.\n"
+                    f"   - Указывай исключения: 'Ставка рассчитана без учёта станционных расходов, сборов за подачу/уборку вагонов, маневровых работ, а также прочих возможных терминальных и документационных сборов' (ОХРАНУ НЕ УКАЗЫВАТЬ!).\n"
+                    "8. ЕДИНИЦЫ ИЗМЕРЕНИЯ: Выводить 'USD за вагон' только для Таблицы №5 столбцов 2 и 4 (< 25т). Во всех остальных случаях — 'USD за 1 тонну'!\n"
+                    "9. СТРОГИЙ ЗАПРЕТ СКОБОК В КОНЦЕ: Никаких скобок с перерасчетом на общий вес после итоговой провозной платы!"
                 )
                 
                 raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
                 clean_result = sanitize_text(raw_result)
                 
-                st.success(f"Расчет успешно выполнен! (Использована модель: {used_model})")
+                st.success(f"Расчет успешно выполнен по базе {selected_year} года! (Модель: {used_model})")
                 st.markdown("### 📋 Результат расчета:")
                 st.markdown(clean_result)
             except Exception as e:
                 st.error(f"Произошла ошибка при обращении к Gemini: {str(e)}")
 
 st.markdown("---")
-st.caption("ADY Tariff Calculator v2026 | AGT CARGO | Автоматический расчет тарифов и сборов")
+st.caption(f"ADY Tariff Calculator | AGT CARGO | Автоматический расчет тарифов ({selected_year})")
