@@ -30,7 +30,7 @@ UI_TEXT = {
         "calc_btn": "🚀 Tarifi hesabla",
         "warning_empty": "Xahiş olunur, hesablaşma şəraitini daxil edin.",
         "spinner": "ADY Policy {} tarifləri üzrə hesablanır...",
-        "success": "Hesablama uğurla tamamlandı! (Model: {})",
+        "success": "Hesablama uğurla tamamlandı! {} fraxt ili (Model: {})",
         "result_title": "📋 Hesablama nəticəsi:",
         "api_warning": "⚠️ API Key Streamlit Secrets bölməsində tapılmadı."
     },
@@ -146,75 +146,89 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 8. Прямой REST-вызов для актуальных моделей 3-го поколения
-def call_gemini_direct(prompt, instruction, key):
-    candidate_models = [
-        "gemini-3.6-flash",
-        "gemini-3.1-pro"
-    ]
+# 8. Прямой REST-генератор с потоковым выводом (Streaming) и temperature=0
+def stream_gemini_response(prompt, instruction, key):
+    model_name = "gemini-3.6-flash"
     
-    errors = []
-    for model_name in candidate_models:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
-        headers = {"Content-Type": "application/json"}
-        payload = {
-            "system_instruction": {
-                "parts": [{"text": instruction}]
-            },
-            "contents": [
-                {
-                    "parts": [{"text": prompt}]
-                }
-            ]
+    # Эндпоинт streamGenerateContent для работы с потоком
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:streamGenerateContent?key={key}&alt=sse"
+    headers = {"Content-Type": "application/json"}
+    
+    payload = {
+        "system_instruction": {
+            "parts": [{"text": instruction}]
+        },
+        "contents": [
+            {
+                "parts": [{"text": prompt}]
+            }
+        ],
+        # Фиксируем температуру 0.0 для точных математических расчетов
+        "generationConfig": {
+            "temperature": 0.0
         }
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload, stream=True, timeout=60)
         
-        try:
-            res = requests.post(url, headers=headers, json=payload, timeout=15)
-            if res.status_code == 200:
-                data = res.json()
-                text_out = data['candidates'][0]['content']['parts'][0]['text']
-                return text_out, model_name
-            else:
-                errors.append(f"[{model_name}] (Status {res.status_code}): {res.text}")
-        except Exception as e:
-            errors.append(f"[{model_name}]: {str(e)}")
+        if response.status_code != 200:
+            raise RuntimeError(f"API Error (Status {response.status_code}): {response.text}")
+            
+        # Читаем серверный поток (Server-Sent Events) и отдаем порции текста
+        for line in response.iter_lines():
+            if line:
+                line_str = line.decode('utf-8')
+                if line_str.startswith("data: "):
+                    data_json = line_str[6:]
+                    try:
+                        chunk = json.loads(data_json)
+                        text = chunk['candidates'][0]['content']['parts'][0]['text']
+                        yield text
+                    except (KeyError, json.JSONDecodeError):
+                        continue
 
-    raise RuntimeError("Ошибка при вызове Google API:\n\n" + "\n\n".join(errors))
+    except Exception as e:
+        raise RuntimeError(f"Ошибка при вызове Google API: {str(e)}")
 
-# 9. Кнопка расчета
+# 9. Кнопка расчета с мгновенным потоковым выводом
 if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
     else:
         st.session_state.calc_result = None
-        st.session_state.used_model = None
+        st.session_state.used_model = "gemini-3.6-flash"
         
-        with st.spinner(t["spinner"].format(selected_year)):
-            try:
-                prompt_text = (
-                    f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n{user_input}\n\n"
-                    f"⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
-                    "0. DO NOT OUTPUT YOUR INTERNAL REASONING, THINKING PROCESS OR DRAFTS. Start immediately with Section 1 markdown tables!\n"
-                    "1. ABBREVIATIONS & OWNERSHIP: SPS = СПС = XPS (private wagons), MPS = МПС = DDP (railway fleet). For SPS wagons ALWAYS apply x 0.85!\n"
-                    "2. STRICT MINIMUM WEIGHT NORMS: Always check Page 11 norms (Grain 60T, Coal 60T, Ore 60T, Sugar 60T, Flour 60T, Fertilisers 60T, Scrap 50T, Cotton 50T, Timber 45T). If actual weight < min norm, strictly use MIN NORM column!\n"
-                    "3. REFRIGERATED WAGONS: Weight < 25T -> Col 2/4 (per wagon), Weight >= 25T -> Col 3/5 (per ton). Fruits/Veg discount = x 0.60.\n"
-                    "4. MINIMUM DISTANCES: Export = min 101 km, Import = min 151 km!\n"
-                    "5. SPECIAL IMPORT COEFFICIENT (1.04): For IMPORT of Timber (4403, 4404, 4407) and Ferrous Metals (72), apply x 1.04!\n"
-                    "6. COEFFICIENT 1.50 EXCEPTIONS: Do NOT apply 1.50 for Table 3, Timber, Ferrous metals, Methanol, Import Oil Col 2 Table 6.\n"
-                    "7. INDEXATION (1.015): Apply x 1.015 to ALL loaded wagons.\n"
-                    "8. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
-                )
-                
-                raw_result, used_model = call_gemini_direct(prompt_text, SYSTEM_INSTRUCTION, api_key)
-                
-                st.session_state.calc_result = sanitize_text(raw_result)
-                st.session_state.used_model = used_model
-                
-            except Exception as e:
-                st.error(f"{str(e)}")
+        prompt_text = (
+            f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n{user_input}\n\n"
+            f"⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
+            "0. DO NOT OUTPUT YOUR INTERNAL REASONING, THINKING PROCESS OR DRAFTS. Start immediately with Section 1 markdown tables!\n"
+            "1. ABBREVIATIONS & OWNERSHIP: SPS = СПС = XPS (private wagons), MPS = МПС = DDP (railway fleet). For SPS wagons ALWAYS apply x 0.85!\n"
+            "2. STRICT MINIMUM WEIGHT NORMS: Always check Page 11 norms (Grain 60T, Coal 60T, Ore 60T, Sugar 60T, Flour 60T, Fertilisers 60T, Scrap 50T, Cotton 50T, Timber 45T). If actual weight < min norm, strictly use MIN NORM column!\n"
+            "3. REFRIGERATED WAGONS: Weight < 25T -> Col 2/4 (per wagon), Weight >= 25T -> Col 3/5 (per ton). Fruits/Veg discount = x 0.60.\n"
+            "4. MINIMUM DISTANCES: Export = min 101 km, Import = min 151 km!\n"
+            "5. SPECIAL IMPORT COEFFICIENT (1.04): For IMPORT of Timber (4403, 4404, 4407) and Ferrous Metals (72), apply x 1.04!\n"
+            "6. COEFFICIENT 1.50 EXCEPTIONS: Do NOT apply 1.50 for Table 3, Timber, Ferrous metals, Methanol, Import Oil Col 2 Table 6.\n"
+            "7. INDEXATION (1.015): Apply x 1.015 to ALL loaded wagons.\n"
+            "8. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
+        )
+        
+        try:
+            st.markdown(f"### {t['result_title']}")
+            
+            # Отрисовка текста прямо "на лету" при помощи st.write_stream
+            full_response = st.write_stream(
+                stream_gemini_response(prompt_text, SYSTEM_INSTRUCTION, api_key)
+            )
+            
+            # Сохранение очищенного ответа в сессии
+            st.session_state.calc_result = sanitize_text(full_response)
+            
+        except Exception as e:
+            st.error(f"{str(e)}")
 
-# Отрисовка результата
-if st.session_state.calc_result:
+# Отрисовка сохраненного результата (при переключении языка или настроек)
+elif st.session_state.calc_result:
     st.success(t["success"].format(selected_year, st.session_state.used_model))
     st.markdown(f"### {t['result_title']}")
     st.markdown(st.session_state.calc_result)
