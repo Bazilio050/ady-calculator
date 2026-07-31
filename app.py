@@ -11,6 +11,12 @@ st.set_page_config(
     layout="wide"
 )
 
+# Инициализация хранилища результатов в сессии
+if "calc_result" not in st.session_state:
+    st.session_state.calc_result = None
+if "used_model" not in st.session_state:
+    st.session_state.used_model = None
+
 # 2. Переводы интерфейса (AZ, RU, EN)
 UI_TEXT = {
     "AZ": {
@@ -63,12 +69,12 @@ UI_TEXT = {
     }
 }
 
-# 3. Sidebar Language Selector (Azərbaycan, Русский, English)
+# 3. Sidebar Language Selector
 st.sidebar.header("🌐 Dil / Language")
 selected_lang = st.sidebar.selectbox(
     "Dil seçin / Выберите язык / Select language:",
     options=["AZ", "RU", "EN"],
-    index=0,  # AZ по умолчанию
+    index=0,
     format_func=lambda x: {"AZ": "Azərbaycan", "RU": "Русский", "EN": "English"}[x]
 )
 
@@ -85,7 +91,7 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# 5. Выбор фрахтового года в Sidebar (По умолчанию текущий 2026 год)
+# 5. Выбор фрахтового года в Sidebar
 st.sidebar.header(t["settings_header"])
 selected_year = st.sidebar.selectbox(
     t["year_select"],
@@ -155,11 +161,14 @@ if err:
     st.stop()
 
 st.sidebar.header(t["input_header"])
+
+# Уникальный ключ для текстового поля
 user_input = st.text_area(
     t["input_header"],
     height=180,
     placeholder=t["input_placeholder"],
-    label_visibility="collapsed"
+    label_visibility="collapsed",
+    key="user_query_input"
 )
 
 # 8. Функция чистки текста
@@ -202,11 +211,15 @@ def call_gemini_with_fallback(client, prompt, instruction):
 
     raise RuntimeError("Ни одна из доступных моделей Gemini не ответила:\n" + "\n".join(errors))
 
-# 10. Кнопка расчета
+# 10. Кнопка расчета с сохранением состояния в session_state
 if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
     else:
+        # Очищаем прошлый результат перед новым расчетом
+        st.session_state.calc_result = None
+        st.session_state.used_model = None
+        
         with st.spinner(t["spinner"].format(selected_year)):
             try:
                 prompt_text = (
@@ -228,13 +241,19 @@ if st.button(t["calc_btn"], type="primary"):
                 )
                 
                 raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
-                clean_result = sanitize_text(raw_result)
                 
-                st.success(t["success"].format(selected_year, used_model))
-                st.markdown(f"### {t['result_title']}")
-                st.markdown(clean_result)
+                # Сохраняем результат в session_state
+                st.session_state.calc_result = sanitize_text(raw_result)
+                st.session_state.used_model = used_model
+                
             except Exception as e:
                 st.error(f"Error: {str(e)}")
+
+# Отрисовка сохраненного результата
+if st.session_state.calc_result:
+    st.success(t["success"].format(selected_year, st.session_state.used_model))
+    st.markdown(f"### {t['result_title']}")
+    st.markdown(st.session_state.calc_result)
 
 st.markdown("---")
 st.caption(f"ADY Tariff Calculator | AGT CARGO | ({selected_year}) [{selected_lang}]")
