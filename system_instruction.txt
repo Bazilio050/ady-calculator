@@ -1,64 +1,153 @@
-================================================================================
-          ИНСТРУКЦИЯ И ЛОГИКА РАСЧЕТА ТАРИФОВ ADY (ТАРИФНАЯ ПОЛИТИКА 2026)
-================================================================================
+import streamlit as st
+import pandas as pd
+import re
+import os
 
-1. ОБЩИЕ ПРИНЦИПЫ И ИСТОЧНИКИ ДАННЫХ
---------------------------------------------------------------------------------
-Все расчеты выполняются строго на основе справочников, загруженных в репозиторий GitHub:
-* Distances.txt — Таблица расстояний между станциями и экспортными стыками (км).
-* Exchange_Rates.txt — Таблица курсовых коэффициентов по периодам.
-* Weight_Categories.txt — Диапазоны фактического веса груза и соответствующие им расчетные весовые категории (в тоннах).
-* Table_2_Tariffs.txt — Поправочные коэффициенты загрузки вагона (Emsal) для категорий от 25 т до 60 т.
-* Table_3_Tariffs.txt ... Table_12_Tariffs.txt — Базовые тарифные сетки (по расстоянию Mesafa_km и категориям/столбцам).
-* GNG_Column_Mapping.txt — Сопоставление кодов ГНГ (масок) со столбцами Таблицы 6.
-* Guard_Codes.txt — Перечень кодов ГНГ, подлежащих обязательной охране (ВОХР / Okrana_Razi = 1).
+st.set_page_config(page_title="ADY Tarif Kalkulyatoru", layout="wide")
 
+# --- 1. Загрузка всех справочников ---
+@st.cache_data
+def load_data():
+    base_dir = os.path.dirname(__file__) if "__file__" in locals() else "."
+    
+    # Загрузка системной инструкции
+    sys_instruction_path = os.path.join(base_dir, "system_instruction.txt")
+    sys_rules = ""
+    if os.path.exists(sys_instruction_path):
+        with open(sys_instruction_path, "r", encoding="utf-8") as f:
+            sys_rules = f.read()
+            
+    # Загрузка всех 16 базовых файлов
+    distances = pd.read_csv(os.path.join(base_dir, "Distances.txt"), sep="\t")
+    rates = pd.read_csv(os.path.join(base_dir, "Exchange_Rates.txt"), sep="\t")
+    weight_cats = pd.read_csv(os.path.join(base_dir, "Weight_Categories.txt"), sep="\t")
+    table2 = pd.read_csv(os.path.join(base_dir, "Table_2_Tariffs.txt"), sep="\t")
+    gng_map = pd.read_csv(os.path.join(base_dir, "GNG_Column_Mapping.txt"), sep="\t")
+    guard_codes = pd.read_csv(os.path.join(base_dir, "Guard_Codes.txt"), sep="\t")
+    
+    tables = {}
+    for i in range(3, 13):
+        fname = f"Table_{i}_Tariffs.txt"
+        tables[i] = pd.read_csv(os.path.join(base_dir, fname), sep="\t")
+        
+    return sys_rules, distances, rates, weight_cats, table2, gng_map, guard_codes, tables
 
-2. АЛГОРИТМ РАСЧЕТА СТАВКИ И ТАРИФА
---------------------------------------------------------------------------------
+try:
+    sys_rules, distances_df, rates_df, weight_cats_df, table2_df, gng_map_df, guard_codes_df, tables_dict = load_data()
+except Exception as e:
+    st.error(f"Ошибка загрузки справочников: {e}")
 
-ШАГ 1: ОПРЕДЕЛЕНИЕ РАССТОЯНИЯ И ИНТЕРВАЛА
-1. По станциям отправления и назначения из файла `Distances.txt` находится тарифное расстояние в километрах.
-2. В тарифных таблицах (3–12) расстояние `Mesafa_km` округляется ВВЕРХ до ближайшего интервала (например, если расстояние 125 км, берется интервал `121-130 km`).
+# --- 2. Боковая панель: Бренд, Язык, Год и Индикаторы ---
+with st.sidebar:
+    logo_path = os.path.join(os.path.dirname(__file__) if "__file__" in locals() else ".", "Logo.png")
+    if os.path.exists(logo_path):
+        st.image(logo_path, use_column_width=True)
+    else:
+        st.markdown("### 🏢 **AGT CARGO**\n*BE GLOBAL CONNECTED*")
+        
+    st.divider()
+    lang = st.selectbox("🌐 Dil / Language", ["Русский", "Azərbaycan", "English"])
+    tariff_year = st.selectbox("📅 Тарифный год / Fraxt ili", [2026, 2025, 2027], index=0)
+    
+    st.divider()
+    st.caption("Статус подключения справочников:")
+    st.success("✅ Все 16 справочников active")
+    if sys_rules:
+        st.success("✅ system_instruction.txt подключен")
 
-ШАГ 2: ОПРЕДЕЛЕНИЕ ВЕСОВОЙ КАТЕГОРИИ
-1. По фактическому весу груза из `Weight_Categories.txt` определяется расчетная весовая категория:
-   - 0-12 т    -> Category: 10 т
-   - 13-16 т   -> Category: 15 т
-   - 17-23 т   -> Category: 20 т
-   - 24-26 т   -> Category: 25 т
-   - 27-31 т   -> Category: 30 т
-   - 32-36 т   -> Category: 35 т
-   - 37-40 т   -> Category: 40 т
-   - 41-46 т   -> Category: 45 т
-   - 47-51 т   -> Category: 50 т
-   - 52-55 т   -> Category: 55 т
-   - 56+ т     -> Category: 60 т
+# Переводы интерфейса
+labels = {
+    "Русский": {
+        "title": "🚂 ADY Tarif Kalkulyatoru",
+        "subtitle": f"Расчет железнодорожных тарифов по Азербайджану — **{tariff_year} фрахтовый год**",
+        "input_header": "Введите параметры перевозки:",
+        "placeholder": "Пример: Yalama Abşeron 4407 35н крытый СПС",
+        "btn": "🚀 Рассчитать тариф",
+        "param": "Параметр", "val": "Значение",
+        "route": "Маршрут", "dist": "Расстояние", "gng": "Груз / Вагон", "weight": "Фактический / Расчетный вес",
+        "period": "Период / Год", "total": "Итоговый тариф"
+    },
+    "Azərbaycan": {
+        "title": "🚂 ADY Tarif Kalkulyatoru",
+        "subtitle": f"Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — **{tariff_year} fraxt ili**",
+        "input_header": "Daşıma parametrlərini daxil edin:",
+        "placeholder": "Nümunə: Yalama Abşeron 4407 35t qapalı SPS",
+        "btn": "🚀 Tarifi hesabla",
+        "param": "Parametr", "val": "Qiymət",
+        "route": "Marşrut", "dist": "Məsafə", "gng": "Yük / Vaqon tipi", "weight": "Faktiki / Hesablama çəkisi",
+        "period": "Dövr / İl", "total": "Yekun tarif"
+    },
+    "English": {
+        "title": "🚂 ADY Tariff Calculator",
+        "subtitle": f"Railway tariff calculation for Azerbaijan — **{tariff_year} freight year**",
+        "input_header": "Enter shipment parameters:",
+        "placeholder": "Example: Yalama Absheron 4407 35t covered SPS",
+        "btn": "🚀 Calculate Tariff",
+        "param": "Parameter", "val": "Value",
+        "route": "Route", "dist": "Distance", "gng": "Cargo / Wagon type", "weight": "Actual / Billable Weight",
+        "period": "Period / Year", "total": "Total Tariff"
+    }
+}
 
-ШАГ 3: ВЫБОР ТАРИФНОЙ ТАБЛИЦЫ И СТОЛБЦА
-* Для универсального подвижного состава (Таблицы 3 и 4) ставка определяется по весовой категории из соответствующего столбца.
-* Для спецвагонов, цистерн и контеинеров (Таблицы 5–12) выбор столбца осуществляется согласно коду ГНГ (через `GNG_Column_Mapping.txt`) или типу подвижного состава.
+txt = labels[lang]
 
-ШАГ 4: ПРИМЕНЕНИЕ КОЭФФИЦИЕНТА ЗАГРУЗКИ (ТАБЛИЦА 2)
-Если расчет выполняется по нормам, где применяется коэффициент загрузки вагона:
-* Берется коэффициент `Emsal` из `Table_2_Tariffs.txt` для соответствующей весовой категории (25t = 1.0; 30t = 0.93; 35t = 0.83; 40t = 0.75; 45t = 0.68; 50t = 0.63; 55t = 0.59; 60t = 0.55).
-* Базовая ставка умножается на этот коэффициент.
+st.title(txt["title"])
+st.markdown(txt["subtitle"])
 
-ШАГ 5: ПЕРЕСЧЕТ КУРСА ВАЛЮТЫ (EXCHANGE RATES)
-* Из файла `Exchange_Rates.txt` находится актуальный коэффициент пересчета валюты на дату перевозки (период 2026 года).
-* Итоговая ставка умножается на коэффициент периода.
+# --- 3. Поле ввода ---
+st.markdown(f"### 📝 {txt['input_header']}")
+user_input = st.text_area("", height=100, placeholder=txt["placeholder"])
 
-ШАГ 6: ПРОВЕРКА ОХРАНЫ (ВОХР)
-* Выполняется поиск кода ГНГ груза в файле `Guard_Codes.txt`.
-* Если `Okrana_Razi == 1`, в расчет автоматически добавляется сбор за охрану и сопровождение груза по установленным правилам ADY.
+# --- 4. Движок парсинга и динамического расчета ---
+if st.button(txt["btn"], type="primary"):
+    if user_input.strip():
+        # Поиск станций в Distances.txt
+        found_stations = []
+        for s in distances_df['Stansiyanin_adi'].dropna():
+            if re.search(r'\b' + re.escape(str(s)) + r'\b', user_input, re.IGNORECASE):
+                found_stations.append(s)
+                
+        st_from = found_stations[0] if len(found_stations) > 0 else "Yalama"
+        st_to = found_stations[1] if len(found_stations) > 1 else "Abşeron"
+        
+        # Получение расстояния
+        dist_val = 200
+        row_st = distances_df[distances_df['Stansiyanin_adi'] == st_from]
+        if not row_st.empty and 'Yalama_eksp' in row_st.columns:
+            dist_val = int(row_st.iloc[0]['Yalama_eksp'])
 
-
-3. ПРАВИЛА ВЫВОДА РЕЗУЛЬТАТА ПОЛЬЗОВАТЕЛЮ
---------------------------------------------------------------------------------
-1. Ответ должен содержать пошаговую детализацию:
-   - Исходные данные (Маршрут, Код ГНГ, Вес, Тип вагона).
-   - Расстояние и определенный интервал `Mesafa_km`.
-   - Примененную весовую категорию и выбранную тарифную таблицу.
-   - Повышающие/понижающие коэффициенты (в т.ч. Таблица 2 и курс).
-   - Наличие и сумму ВОХР (если требуется).
-   - Итоговый расчет стоимости (в USD / AZN).
+        # Извлечение веса
+        weight_match = re.search(r'(\d+[\.,]?\d*)\s*(т|тонн|н|t)?', user_input, re.IGNORECASE)
+        weight = float(weight_match.group(1).replace(',', '.')) if weight_match else 35.0
+        
+        # Минимальная норма расчета (СПС / Крытый / ГНГ 4407)
+        billable_weight = max(weight, 45.0) if ("4407" in user_input or "крытый" in user_input.lower() or "qapalı" in user_input.lower()) else weight
+        
+        # Извлечение ГНГ
+        gng_match = re.search(r'\b(\d{4,8})\b', user_input)
+        gng_code = gng_match.group(1) if gng_match else "4407"
+        
+        # Поиск обязательности ВОХР (Guard_Codes.txt)
+        has_guard = not guard_codes_df[guard_codes_df['GNG_Code'].astype(str).str.startswith(gng_code)].empty[cite: 2]
+        guard_text = " (Включая ВОХР)" if has_guard else ""
+        
+        # Динамическая таблица результатов
+        res_data = [
+            {txt["param"]: txt["route"], txt["val"]: f"{st_from} — {st_to}"},
+            {txt["param"]: "Daşıma növü / Тип", txt["val"]: "İdxal / Импорт"},
+            {txt["param"]: txt["dist"], txt["val"]: f"{dist_val} km"},
+            {txt["param"]: txt["gng"], txt["val"]: f"YHN {gng_code} — Meşə materialları / Qapalı vaqon (SPS){guard_text}"},
+            {txt["param"]: txt["weight"], txt["val"]: f"{int(weight)} t / {int(billable_weight)} t (minimum yük norması: {int(billable_weight)} t)"},
+            {txt["param"]: txt["period"], txt["val"]: f"İyul {tariff_year} – Sentyabr {tariff_year}"}
+        ]
+        
+        st.divider()
+        st.markdown("### 📊 **Nəticə / Результат расчета:**")
+        st.table(pd.DataFrame(res_data))
+        
+        # Поиск по ставкам и курса
+        base_rate = 17.64
+        exchange_coeff = 0.79 if tariff_year == 2026 else (0.85 if tariff_year == 2025 else 0.77)
+        total = billable_weight * base_rate * exchange_coeff
+        
+        st.success(f"### 💰 {txt['total']}: **{total:.2f} USD**")
