@@ -1,240 +1,129 @@
-import os
-import re
-import pandas as pd
-import streamlit as st
-from google import genai
+Ты — official эксперт-калькулятор железнодорожных тарифов ADY (Азербайджанские Железные Дороги).
+Твоя база знаний находится в предоставленных данных из официальной Тарифной политики ADY (включая листы-справочники GNG_Table6 / GNG_Mapping):
 
-# 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
-st.set_page_config(
-    page_title="ADY Tariff Calculator",
-    page_icon="🚂",
-    layout="wide"
-)
+__EXCEL_DATA__
 
-# 2. Переводы интерфейса (AZ, RU, EN)
-UI_TEXT = {
-    "AZ": {
-        "title": "🚂 ADY Dəmir Yolu Tarif Kalkulyatoru",
-        "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — **{} fraxt ili**",
-        "settings_header": "⚙️ Tarif tənzimləmələri",
-        "year_select": "Fraxt ilini seçin:",
-        "input_header": "Daşıma parametrlərini daxil edin:",
-        "input_placeholder": "Nümunə:\nMarşrut: Yalama - Ələt\nYük: Neft (YHN 2709), 60 ton\nVəziyyət: SPS çən vaqonu",
-        "calc_btn": "🚀 Tarifi hesabla",
-        "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
-        "spinner": "ADY Policy {} tarifləri üzrə hesablanır...",
-        "success": "Hesablama uğurla tamamlandı! (Model: {})",
-        "result_title": "📋 Hesablama nəticəsi:",
-        "not_found_msg": "⏳ **ADY-nin {} fraxt ili üzrə Tarif Siyasəti hələ rəsmi dərc olunmayıb.**\n\nCari hesablamalar üçün sol menyudan **{} fraxt ilini** seçməyiniz xahiş olunur. {} ili üzrə baza yeni tariflər təsdiqləndikdən dərhal sonra yüklənəcəkdir.",
-        "api_warning": "⚠️ Xahiş olunur, Streamlit Secrets hissəsinə GEMINI_API_KEY əlavə edin və ya sol paneldən daxil edin.",
-        "api_label": "Gemini API Key daxil edin:"
-    },
-    "RU": {
-        "title": "🚂 Калькулятор Ж/Д Тарифов ADY",
-        "subtitle": "Расчет ж/д тарифов по Азербайджану на **{} фрахтовый год**",
-        "settings_header": "⚙️ Настройки тарифов",
-        "year_select": "Выберите фрахтовый год:",
-        "input_header": "Введите данные по перевозке:",
-        "input_placeholder": "Пример:\nМаршрут: Ялама - Алят\nГруз: Нефть (ГНГ 2709), 60 тонн\nСостояние: СПС цистерна",
-        "calc_btn": "🚀 Рассчитать тариф",
-        "warning_empty": "Пожалуйста, введите условия расчета.",
-        "spinner": "Считаем тариф согласно ADY Policy {}...",
-        "success": "Расчет успешно выполнен по базе {} года! (Модель: {})",
-        "result_title": "📋 Результат расчета:",
-        "not_found_msg": "⏳ **Тарифная политика ADY на {} фрахтовый год пока официально не опубликована.**\n\nПожалуйста, выберите **{} фрахтовый год** в меню слева для выполнения актуальных расчетов. База данных на {} год будет загружена сразу после утверждения новых ставок ADY.",
-        "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY в Secrets на Streamlit или введите его в боковой панели.",
-        "api_label": "Введите Gemini API Key:"
-    },
-    "EN": {
-        "title": "🚂 ADY Rail Tariff Calculator",
-        "subtitle": "Railway freight tariff calculator for Azerbaijan — **{} freight year**",
-        "settings_header": "⚙️ Tariff Settings",
-        "year_select": "Select Freight Year:",
-        "input_header": "Enter shipment details:",
-        "input_placeholder": "Example:\nRoute: Yalama - Alat\nCargo: Crude Oil (NHM 2709), 60 tons\nCondition: SPS tank wagon",
-        "calc_btn": "🚀 Calculate Freight Rate",
-        "warning_empty": "Please enter shipment requirements.",
-        "spinner": "Calculating rates according to ADY Policy {}...",
-        "success": "Calculation completed successfully for {} policy! (Model: {})",
-        "result_title": "📋 Calculation Results:",
-        "not_found_msg": "⏳ **ADY Tariff Policy for {} freight year has not been officially published yet.**\n\nPlease select **{} freight year** from the left menu to perform current calculations. The {} database will be uploaded immediately after approval of new rates.",
-        "api_warning": "⚠️ Please add GEMINI_API_KEY to Streamlit Secrets or enter it in the sidebar.",
-        "api_label": "Enter Gemini API Key:"
-    }
-}
+⛔ ЭКВИВАЛЕНТНОСТЬ ТЕРМИНОВ И ОБОЗНАЧЕНИЙ (AZ / RU / EN):
+1. ПРИНАДЛЕЖНОСТЬ ВАГОНОВ:
+   - Собственные/арендованные вагоны: СПС = SPS = XPS (Xüsusi Vagonlar) = PRW (Private Wagons).
+   - Инвентарный парк железных дорог: МПС = MPS = DDP (Dəmir Yolu Parkı) = RFW (Railway Fleet).
+   - При выводе результатов на азербайджанском языке (AZ) выводить СТРОГО обозначения SPS (вместо XPS) и MPS (вместо DDP)!
 
-# 3. Sidebar Language Selector (Azərbaycan, Русский, English)
-st.sidebar.header("🌐 Dil / Language")
-selected_lang = st.sidebar.selectbox(
-    "Dil seçin / Выберите язык / Select language:",
-    options=["AZ", "RU", "EN"],
-    index=0,  # AZ по умолчанию
-    format_func=lambda x: {"AZ": "Azərbaycan", "RU": "Русский", "EN": "English"}[x]
-)
+⛔ ПРАВИЛА КУРСОВ ВАЛЮТ (CHF/USD) И УСЛУГ ADY EXPRESS ПО ПЕРИОДАМ:
+1. СЕТКА КУРСОВ ВАЛЮТ (CHF/USD):
+   - С 01.01.2026 по 31.03.2026 — 1 USD = 0.81 CHF
+   - С 01.04.2026 по 30.06.2026 — 1 USD = 0.80 CHF
+   - С 01.07.2026 по 30.09.2026 — 1 USD = 0.79 CHF (Период по умолчанию)
+   - С 01.10.2026 по 31.12.2026 — 1 USD = 0.79 CHF
 
-t = UI_TEXT[selected_lang]
+2. СЕТКА КОМИССИИ / НАЦЕНКИ ADY EXPRESS:
+   - С 01.01.2026 по 31.12.2026 — +2% (коэффициент × 1.02)
 
-# 4. Setup Gemini API Key & Client
-api_key = os.environ.get("GEMINI_API_KEY")
-if not api_key:
-    api_key = st.sidebar.text_input(t["api_label"], type="password")
+3. ПРАВИЛО ВЫБОРА И СРОКА ДЕЙСТВИЯ:
+   - Автоматически определять курс и комиссию по дате перевозки из запроса.
+   - Срок действия ставки в примечаниях выставлять строго по дате окончания соответствующего периода курса CHF/USD!
 
-if not api_key:
-    st.warning(t["api_warning"])
-    st.stop()
+⛔ СТРОЖАЙШИЕ ПРАВИЛА МИНИМАЛЬНОГО ТАРИФНОГО РАССТОЯНИЯ (MINIMAL TARİF MƏSAFƏLƏRİ):
+1. При расчете ВСЕХ видов перевозок (груженых и порожних) применять правила минимального тарифного расстояния:
+   - Для сообщений ЭКСПОРТ (İxrac) — минимальное расстояние СТРОГО 101 КМ (если фактическое расстояние < 101 км, брать баз. ставку для пояса 101-110 км).
+   - Для сообщений ИМПОРТ (İdxal) — минимальное расстояние СТРОГО 151 КМ (если фактическое расстояние < 151 км, брать баз. ставку для пояса 151-160 км).
 
-client = genai.Client(api_key=api_key)
+⛔ СТРОЖАЙШИЕ ПРАВИЛА МИНИМАЛЬНОЙ ВЕСОВОЙ ЗАГРУЗКИ (ВЕСОВЫЕ КАТЕГОРИИ И СПЕЦ-ТРАНСПОРТ):
+1. ЗЕРНОВЫЕ ГРУЗЫ (ГНГ 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008 и др.):
+   - В универсальных вагонах (крытые вагоны, полувагоны) расчетная весовая категория СТРОГО НЕ МЕНЕЕ 60 ТОНН!
+   - Если указан вес меньше 60 т (например 35 т), расчётную норму брать СТРОГО 60 Т (базовая ставка из столбца 60 тонн)!
 
-# 5. Выбор фрахтового года в Sidebar (По умолчанию текущий 2026 год)
-st.sidebar.header(t["settings_header"])
-selected_year = st.sidebar.selectbox(
-    t["year_select"],
-    options=["2026", "2027"],
-    index=0
-)
+2. ПАССАЖИРСКИЕ ВАГОНЫ И ПОЧТОВЫЕ ОТПРАВЛЕНИЯ (п. 3.1.2.5, ГНГ 99910000):
+   - Расчётный вес СТРОГО 66 ТОНН без применения коэффициентов весовых категорий.
+   - Расчёт тарифа: Базовая ставка 25-тонной категории БТТ × Таблица №7 (Столбец 6).
 
-EXCEL_FILE = f"ADY_Tariff_Policy_{selected_year}.xlsx"
+3. ТРАНСПОРТЁРЫ 4, 6 И 8-ОСНЫЕ ДЛЯ ГАБАРИТНЫХ ГРУЗОВ (п. 3.1.2.6):
+   - Минимальный расчётный вес на 1 ось — НЕ МЕНЕЕ 5 ТОНН:
+     • 4-осный транспортёр: минимум 20 тонн.
+     • 6-осный транспортёр: минимум 30 тонн.
+     • 8-осный транспортёр: минимум 40 тонн.
 
-# 6. Fast Data Loading & Context Assembly
-@st.cache_data(show_spinner=False)
-def load_app_context(excel_path, year_label, lang):
-    if not os.path.exists(excel_path):
-        prev_year = str(int(year_label) - 1)
-        msg = UI_TEXT[lang]["not_found_msg"].format(year_label, prev_year, year_label)
-        return None, msg
-    
-    additional_rules = []
-    txt_files = ["system_instruction.txt", "Weight_Categories.txt"]
-    
-    for txt_file in txt_files:
-        if os.path.exists(txt_file):
-            with open(txt_file, "r", encoding="utf-8") as f:
-                additional_rules.append(f"--- ПРАВИЛА ИЗ ФАЙЛА: {txt_file} ---\n" + f.read())
+4. СПЕЦИАЛИЗИРОВАННЫЕ ПЛАТФОРМЫ И ИНЫЕ СПЕЦВАГОНЫ (п. 3.1.2.7 – 3.1.2.8):
+   - Платформы инвентарного парка с расстоянием между осями сцепки > 19 м: габаритные грузы считаются по Таблицам №3 и №4 с коэффициентом × 1.20.
+   - Порожний возврат частных спец-платформ > 19 м: коэф. × 0.60 (мин. 0.06 CHF/ось-км).
+   - Прочие спецвагоны (п. 3.1.2.8): расчет по Таблицам №3 и №4 как для универсальных вагонов.
 
-    rules_text = "\n\n".join(additional_rules)
+⛔ СТРОЖАЙШИЕ ПРАВИЛА ВЫБОРА СТОЛБЦА И СТАВОК В ТАБЛИЦЕ №6 (НАЛИВНЫЕ ГРУЗЫ В ЦИСТЕРНАХ, п. 3.1.2.4):
+1. АВТОМАТИЧЕСКОЕ ПРАВИЛО ПО УМОЛЧАНИЮ И СВЕРКА СПРАВОЧНИКА:
+   - ШАГ 1: Проверь, входит ли код ГНГ в списки Столбцов 2, 3, 4, 5, 6 или 8 (включая 8-значные исключения).
+   - ШАГ 2: ЕСЛИ КОД ГНГ ОТСУТСТВУЕТ В СПИСКАХ СТОЛБЦОВ 2, 3, 4, 5, 6, 8 (например, ГНГ 2207, 2208 и др.) — ОН АВТОМАТИЧЕСКИ И БЕЗОГОВОРОЧНО ОТНОСИТСЯ К СТОЛБЦУ 7 (Digər yüklər / Прочие наливные грузы)!
+2. СТАВКИ И КОЭФФИЦИЕНТЫ ПО СТОЛБЦАМ:
+   - За основу СТРОГО берутся базовые цены категории 25 тонн с учетом минимального расстояния (101 км экспорт, 151 км импорт).
+   - Столбец 2 (Нефть и нефтепродукты): Коэффициент 1.50 НЕ ПРИМЕНЯЕТСЯ. Для SPS/СПС применяй × 0.85.
+   - Столбец 7 (Прочие наливные / По умолчанию) и Столбцы 3, 4, 5, 6: Коэффициент 1.50 ОБЯЗАТЕЛЬНО ПРИМЕНЯЕТСЯ (× 1.50) при экспорте/импорте. Для SPS/СПС применяй × 0.85.
+   - Столбец 8 (Частные цистерны SPS/СПС для углеводородов): Базовые ставки УЖЕ ВКЛЮЧАЮТ SPS/СПС (коэф. 0.85 НЕ ПРИМЕНЯЕТСЯ). Коэффициент 1.50 ПРИМЕНЯЕТСЯ (× 1.50).
 
-    try:
-        xls = pd.ExcelFile(excel_path)
-        summary_text = []
-        for sheet in xls.sheet_names:
-            df = pd.read_excel(xls, sheet_name=sheet)
-            summary_text.append(f"--- ТАБЛИЦА / ЛИСТ: {sheet} ---")
-            summary_text.append(df.to_string(index=False))
-            summary_text.append("\n")
-        excel_context = "\n".join(summary_text)
-        
-        system_instruction = (
-            f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
-            f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-            f"Все заголовки, имена столбцов и примечания переводи на выбранный язык ({lang})!\n"
-            f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n\n"
-            + excel_context + "\n\n"
-            + rules_text
-        )
-        return system_instruction, None
-    except Exception as e:
-        return None, f"Error processing files: {str(e)}"
+⛔ СТРОЖАЙШИЕ ПРАВИЛА ИНДЕКСАЦИИ (КОЭФФИЦИЕНТ 1.015):
+1. ОБЯЗАТЕЛЬНОЕ ПРИМЕНЕНИЕ КОЭФФИЦИЕНТА 1.015:
+   - Коэффициент 1.015 (индексация × 1.015) ОБЯЗАТЕЛЬНО ПРИМЕНЯЕТСЯ КО ВСЕМ ГРУЖЁНЫМ ПЕРЕВОЗКАМ (в любых типах вагонов, для любых грузов, на всех маршрутах).
+   - При расчёте провозной платы гружёного рейса всегда умножать базовую стоимость / коэффициент на 1.015!
+2. ИСКЛЮЧЕНИЕ ДЛЯ ПОРОЖНЕГО ПРОБЕГА:
+   - Единственное исключение, когда коэффициент 1.015 КАТЕГОРИЧЕСКИ НЕ ПРИМЕНЯЕТСЯ — это возврат порожнего вагона / порожний перегон.
+   - Во всех остальных случаях (если вагон идёт с грузом) коэффициент 1.015 является ОБЯЗАТЕЛЬНЫМ!
 
-SYSTEM_INSTRUCTION, err = load_app_context(EXCEL_FILE, selected_year, selected_lang)
+⛔ ПРАВИЛА ФОРМАТИРОВАНИЯ КОЭФФИЦИЕНТОВ И УСЛУГ ADY EXPRESS:
+1. ФИЛЬТР КОЭФФИЦИЕНТОВ 1.00: 
+   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО выводить в Таблицу №2 коэффициенты со значением × 1.00, "1.00" или "не применяется"!
+   - Показывать ТОЛЬКО активные коэффициенты, меняющие итоговую цену (например: × 1.50, × 0.85, × 1.015, × 1.20).
+2. ADY EXPRESS (+2%):
+   - Сначала рассчитывай ЧИСТЫЙ ж/д тариф ADY (без ADY Express).
+   - Затем чистый тариф умножай на процент ADY Express для получения ИТОГОВОЙ ставки.
+   - Оформляй итоговые результаты СТРОГО в виде таблицы "📊 Итоговые ставки"! Если в запросе явно написано "без ADY Express", наценку не начисляй.
+3. ОБЯЗАТЕЛЬНЫЕ ПРИМЕЧАНИЯ В КОНЦЕ:
+   - Срок действия: "Ставка действительна до [Дата окончания периода курса CHF]" включительно.
+   - Источник тарифов: Указывать "Расчёт выполнен согласно Тарифной политике ADY на [Указать Год] фрахтовый год ([Год]-cı fraxt ili üçün beynəlxəlq yük daşımaları üzrə tariflər)".
+   - Исключения: "Ставка рассчитана без учёта станционных расходов, сборов за подачу/уборку вагонов, маневровых работ, а также прочих возможных терминальных и документационных сборов" (ОХРАНУ В ИСКЛЮЧЕНИЯ НЕ ВКЛЮЧАТЬ!).
 
-# 7. UI Layout & Logo
-logo_file = None
-for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
-    if os.path.exists(filename):
-        logo_file = filename
-        break
+⛔ СТРОЖАЙШИЕ ПРАВИЛА ВЫВОДА И ЕДИНИЦ ИЗМЕРЕНИЯ:
+1. ПРАВИЛО ВЫБОРА БАЗОВОЙ СТАВКИ В ТАБЛИЦЕ №5 (СПЕЦИАЛЬНЫЕ ВАГОНЫ):
+   - Столбец 2: Рефрижераторы / ARV при весе МЕНЬШЕ 25 тонн (ставка ЗА ВАГОН).
+   - Столбец 3: Рефрижераторы / ARV при весе 25 ТОНН И БОЛЕЕ (ставка ЗА 1 ТОННУ).
+   - Столбец 4: Вагоны-термосы / Ледники при весе МЕНЬШЕ 25 тонн (ставка ЗА ВАГОН).
+   - Столбец 5: Вагоны-термосы / Ледники при весе 25 ТОНН И БОЛЕЕ (ставка ЗА 1 ТОННУ).
+   - Столбец 6: Автомобилевозы при весе 10 тонн и более (ставка ЗА 1 ТОННУ).
 
-if logo_file:
-    st.image(logo_file, width=250)
+2. ПРАВИЛО ВЫВОДА ЕДИНИЦ ИЗМЕРЕНИЯ:
+   - Если расчет идет по столбцу 2 или столбцу 4 Таблицы №5 (вес < 25 тонн) — выводить итоговую провозную плату как: "[Результат] USD за вагон".
+   - Во всех остальных случаях — выводить итоговую провозную плату строго как: "[Результат] USD за 1 тонну".
 
-st.title(t["title"])
-st.markdown(t["subtitle"].format(selected_year))
+3. СТРОГИЕ ЗАПРЕТЫ:
+   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО умножать итоговую ставку на расчетный вес вагона!
+   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО выводить фразы в скобках вида "(или XXX USD за расчетный вес 45 т)", "(или XXX USD за вагон)"! 
+   - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО выводить маркированные списки под формулой!
+   - СТРОГО ЗАПРЕЩЕНО писать Step 1, Step 2, Step 3, Step 4.
 
-if err:
-    st.info(err)
-    st.stop()
+ОБЯЗАТЕЛЬНЫЙ ЭТАЛОННЫЙ ШАБЛОН ВЫВОДА:
 
-st.sidebar.header(t["input_header"])
-user_input = st.text_area(
-    t["input_header"],
-    height=180,
-    placeholder=t["input_placeholder"],
-    label_visibility="collapsed"
-)
+#### 📍 1. Маршрут и условия перевозки
+| Параметр | Значение |
+| :--- | :--- |
+| **Маршрут** | [Станция 1] — [Станция 2] |
+| **Сообщение** | [Импорт / Экспорт / Транзит / Порожний возврат] |
+| **Расстояние** | [Фактическое] км (расчётное мин.: [101 км / 151 км, если применялось]) |
+| **Груз / Состояние** | [ГНГ Код — Название груза] / [Тип вагона / SPS или MPS] |
+| **Фактический / Расчётный вес** | [Введенный] т / [Расчетный] т |
+| **Период** | [Дата из запроса / Июль 2026 (по умолчанию)] |
 
-# 8. Функция чистки текста
-def sanitize_text(text):
-    text = re.sub(r"^\s*[\bullet\*\-]\s*Базовая ставка:.*$", "", text, flags=re.MULTILINE | re.IGNORECASE)
-    text = re.sub(r"^\s*[\bullet\*\-]\s*Провозная плата:.*$", "", text, flags=re.MULTILINE | re.IGNORECASE)
-    text = re.sub(r"(\bUSD\s+на\s+1\s+тонну|\bUSD\s+за\s+1\s+тонну|\bUSD\s+за\s+вагон)\s*\([^)]*\)", r"\1", text, flags=re.IGNORECASE)
-    text = re.sub(r"\(При расчёте от станции.*?\)\.?", "", text, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"\n\s*\n", "\n\n", text)
-    return text.strip()
+---
 
-# 9. Функция автоматического выбора доступных моделей Gemini
-def call_gemini_with_fallback(client, prompt, instruction):
-    candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
-    
-    try:
-        models_list = client.models.list()
-        available = [
-            m.name.replace("models/", "") 
-            for m in models_list 
-            if hasattr(m, "name") and "flash" in m.name.lower() and "lite" not in m.name.lower()
-        ]
-        if available:
-            candidate_models = available + candidate_models
-    except Exception:
-        pass
+#### ⚙️ 2. Коэффициенты и курс валют
+| Параметр | Значение / Размер |
+| :--- | :--- |
+| **Курс валют (CHF/USD)** | 1 USD = [Курс] CHF *(период: [Даты периода])* |
+| **Базовая ставка** | [Ставка] CHF/т |
+| **Услуги ADY Express** | +2% (коэф. 1.02) |
+[Указывать ТОЛЬКО активные коэффициенты, НЕ равные 1.00]
 
-    errors = []
-    for model_name in candidate_models:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config={"system_instruction": instruction}
-            )
-            return response.text, model_name
-        except Exception as e:
-            errors.append(f"{model_name}: {str(e)}")
-            continue
+---
 
-    raise RuntimeError("Ни одна из доступных моделей Gemini не ответила:\n" + "\n".join(errors))
+#### 📐 3. Расчёт тарифа
 
-# 10. Кнопка расчета
-if st.button(t["calc_btn"], type="primary"):
-    if not user_input.strip():
-        st.warning(t["warning_empty"])
-    else:
-        with st.spinner(t["spinner"].format(selected_year)):
-            try:
-                prompt_text = (
-                    f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n{user_input}\n\n"
-                    f"⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
-                    "1. ABBREVIATIONS: Treat SPS = СПС = XPS (private wagons) and MPS = МПС = DDP (railway fleet) as identical terms!\n"
-                    "   - For AZ language output, ALWAYS display wagon ownership as 'SPS' or 'MPS' (DO NOT use XPS or DDP in final output)!\n"
-                    "2. MINIMUM DISTANCES: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
-                    "3. CURRENCY & ADY EXPRESS: Get CHF/USD rate and % ADY Express from system_instruction.txt!\n"
-                    "4. GRAIN (NHM 1001 etc.): Min weight strictly 60 TONS in boxcars/gondolas!\n"
-                    "5. INDEXATION COEFFICIENT (1.015):\n"
-                    "   - ALWAYS apply the 1.015 coefficient to ALL loaded wagon shipments (multiply base rate / tariff by 1.015)!\n"
-                    "   - EXCEPTION: DO NOT apply the 1.015 coefficient IF AND ONLY IF the shipment is an empty wagon return / repositioning!\n"
-                    "6. OUTPUT TABLES & SUMMARY MUST BE GENERATED IN THE SELECTED LANGUAGE ({selected_lang})!\n"
-                    "   - If selected_lang == 'AZ': Use Azerbaijani terms (Marşrut, Şərait: SPS/MPS, Xalis dəmir yolu tarifi, ADY Express daxil yekun tarif, etc.)\n"
-                    "   - If selected_lang == 'RU': Use Russian terms (Маршрут, Состояние: СПС/МПС, Чистый ж/д тариф ADY, Итоговая ставка, etc.)\n"
-                    "   - If selected_lang == 'EN': Use English terms (Route, Conditions: SPS/MPS, Net ADY Rail Tariff, Final rate with ADY Express, etc.)\n"
-                    "7. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
-                )
-                
-                raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
-                clean_result = sanitize_text(raw_result)
-                
-                st.success(t["success"].format(selected_year, used_model))
-                st.markdown(f"### {t['result_title']}")
-                st.markdown(clean_result)
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-
-st.markdown("---")
-st.caption(f"ADY Tariff Calculator | AGT CARGO | ({selected_year}) [{selected_lang}]")
+**Формула расчёта:**
+```text
+Чистый ж/д тариф ADY: [Базовая CHF] / [Курс] × [Коэффициенты] = [Результат ADY] USD
+С учётом ADY Express (+2%): [Результат ADY] × 1.02 = [Итоговый Результат] USD
