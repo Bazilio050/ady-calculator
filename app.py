@@ -25,7 +25,7 @@ UI_TEXT = {
         "spinner": "ADY Policy {} tarifləri üzrə hesablanır...",
         "success": "Hesablama uğurla tamamlandı! (Model: {})",
         "result_title": "📋 Hesablama nəticəsi:",
-        "not_found_msg": "⏳ **ADY-nin {} fraxt ili üzrə Tarif Siyasəti hələ rəsmi dərc olunmayıb.**\n\nCari hesablamalar üçün sol menyudan **{} fraxt ilini** seçməyiniz xahiş olunur. {} ili üzrə baza yeni tariflər təsdiqləndikdən dərhal sonra yüklənəcəkdir.",
+        "not_found_msg": "⏳ **ADY-nin {} fraxt ili üzrə Tarif Siyasəti hələ rəsmi dərc olunmayıb.**\n\nCari hesablamalar üçün sol menyudan **{} fraxt ilini** seçməyiniz xahiş olunur.",
         "api_warning": "⚠️ Xahiş olunur, Streamlit Secrets hissəsinə GEMINI_API_KEY əlavə edin və ya sol paneldən daxil edin.",
         "api_label": "Gemini API Key daxil edin:"
     },
@@ -41,7 +41,7 @@ UI_TEXT = {
         "spinner": "Считаем тариф согласно ADY Policy {}...",
         "success": "Расчет успешно выполнен по базе {} года! (Модель: {})",
         "result_title": "📋 Результат расчета:",
-        "not_found_msg": "⏳ **Тарифная политика ADY на {} фрахтовый год пока официально не опубликована.**\n\nПожалуйста, выберите **{} фрахтовый год** в меню слева для выполнения актуальных расчетов. База данных на {} год будет загружена сразу после утверждения новых ставок ADY.",
+        "not_found_msg": "⏳ **Тарифная политика ADY на {} фрахтовый год пока официально не опубликована.**\n\nПожалуйста, выберите **{} фрахтовый год** в меню слева.",
         "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY в Secrets на Streamlit или введите его в боковой панели.",
         "api_label": "Введите Gemini API Key:"
     },
@@ -57,7 +57,7 @@ UI_TEXT = {
         "spinner": "Calculating rates according to ADY Policy {}...",
         "success": "Calculation completed successfully for {} policy! (Model: {})",
         "result_title": "📋 Calculation Results:",
-        "not_found_msg": "⏳ **ADY Tariff Policy for {} freight year has not been officially published yet.**\n\nPlease select **{} freight year** from the left menu to perform current calculations. The {} database will be uploaded immediately after approval of new rates.",
+        "not_found_msg": "⏳ **ADY Tariff Policy for {} freight year has not been officially published yet.**\n\nPlease select **{} freight year** from the left menu.",
         "api_warning": "⚠️ Please add GEMINI_API_KEY to Streamlit Secrets or enter it in the sidebar.",
         "api_label": "Enter Gemini API Key:"
     }
@@ -93,49 +93,64 @@ selected_year = st.sidebar.selectbox(
     index=0
 )
 
-EXCEL_FILE = f"ADY_Tariff_Policy_{selected_year}.xlsx"
-
-# 6. Fast Data Loading & Context Assembly
+# 6. УМНАЯ СЕЛЕКТИВНАЯ ЗАГРУЗКА ИЗ ТЕКСТОВЫХ ФАЙЛОВ (Ускорение х10)
 @st.cache_data(show_spinner=False)
-def load_app_context(excel_path, year_label, lang):
-    if not os.path.exists(excel_path):
-        prev_year = str(int(year_label) - 1)
-        msg = UI_TEXT[lang]["not_found_msg"].format(year_label, prev_year, year_label)
-        return None, msg
-    
-    additional_rules = []
-    txt_files = ["system_instruction.txt", "Weight_Categories.txt", "GNG_Column_Mapping.txt"]
-    
-    for txt_file in txt_files:
+def load_selective_context(user_query, year_label, lang):
+    query_lower = user_query.lower()
+    files_to_load = ["system_instruction.txt", "Weight_Categories.txt", "GNG_Column_Mapping.txt"]
+
+    # Автоопределение нужных файлов по ключевым словам
+    # Если в репозитории лежат отдельные .txt файлы таблиц:
+    if any(k in query_lower for k in ["цистерн", "çən", "tank", "нефть", "neft", "газ", "qaz", "масло", "спирт", "2709", "2710"]):
+        for f_name in ["Table_6_Tanks.txt", "Table6.txt", "Cədvəl6.txt", "Cadval_6.txt"]:
+            if os.path.exists(f_name):
+                files_to_load.append(f_name)
+                break
+    elif any(k in query_lower for k in ["реф", "ref", "термос", "termos", "автовоз", "автопоезд", "контейнер"]):
+        for f_name in ["Table_5_Reef.txt", "Table5.txt", "Cədvəl5.txt", "Cadval_5.txt"]:
+            if os.path.exists(f_name):
+                files_to_load.append(f_name)
+                break
+    else:
+        for f_name in ["Table_3_4_Universal.txt", "Table3.txt", "Table4.txt", "Cədvəl3.txt", "Cədvəl4.txt"]:
+            if os.path.exists(f_name):
+                files_to_load.append(f_name)
+
+    # Файл расстояний
+    for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
+        if os.path.exists(dist_file):
+            files_to_load.append(dist_file)
+            break
+
+    # Чтение файлов
+    loaded_rules = []
+    for txt_file in set(files_to_load):
         if os.path.exists(txt_file):
             with open(txt_file, "r", encoding="utf-8") as f:
-                additional_rules.append(f"--- ПРАВИЛА ИЗ ФАЙЛА: {txt_file} ---\n" + f.read())
+                loaded_rules.append(f"--- РАЗДЕЛ БАЗЫ: {txt_file} ---\n" + f.read())
 
-    rules_text = "\n\n".join(additional_rules)
-
-    try:
+    # Резервный поиск Excel, если специальных .txt нет
+    excel_path = f"ADY_Tariff_Policy_{year_label}.xlsx"
+    excel_context = ""
+    if not loaded_rules and os.path.exists(excel_path):
         xls = pd.ExcelFile(excel_path)
         summary_text = []
         for sheet in xls.sheet_names:
             df = pd.read_excel(xls, sheet_name=sheet)
-            summary_text.append(f"--- ТАБЛИЦА / ЛИСТ: {sheet} ---")
+            summary_text.append(f"--- ТАБЛИЦА: {sheet} ---")
             summary_text.append(df.to_string(index=False))
-            summary_text.append("\n")
         excel_context = "\n".join(summary_text)
-        
-        system_instruction = (
-            f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
-            f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-            f"Все заголовки, имена столбцов и примечания переводи на выбранный язык ({lang})!\n"
-            f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n\n"
-            + excel_context + "\n\n"
-            + rules_text
-        )
-        return system_instruction, None
-    except Exception as e:
-        return None, f"Error processing files: {str(e)}"
 
-SYSTEM_INSTRUCTION, err = load_app_context(EXCEL_FILE, selected_year, selected_lang)
+    rules_text = "\n\n".join(loaded_rules)
+    
+    system_instruction = (
+        f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
+        f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
+        f"Все заголовки, имена столбцов и примечания переводи на выбранный язык ({lang})!\n"
+        f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n\n"
+        + rules_text + "\n\n" + excel_context
+    )
+    return system_instruction
 
 # 7. UI Layout & Logo
 logo_file = None
@@ -149,10 +164,6 @@ if logo_file:
 
 st.title(t["title"])
 st.markdown(t["subtitle"].format(selected_year))
-
-if err:
-    st.info(err)
-    st.stop()
 
 st.sidebar.header(t["input_header"])
 user_input = st.text_area(
@@ -171,7 +182,7 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 9. Функция автовыбора доступных моделей Gemini
+# 9. Функция вызова Gemini с несколькими попытками
 def call_gemini_with_fallback(client, prompt, instruction):
     candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
     
@@ -209,6 +220,9 @@ if st.button(t["calc_btn"], type="primary"):
     else:
         with st.spinner(t["spinner"].format(selected_year)):
             try:
+                # Динамическая сборка инструкции под конкретный запрос (Smart Context)
+                dyn_instruction = load_selective_context(user_input, selected_year, selected_lang)
+                
                 prompt_text = (
                     f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n{user_input}\n\n"
                     f"⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
@@ -216,7 +230,7 @@ if st.button(t["calc_btn"], type="primary"):
                     "   - For AZ language output, ALWAYS display wagon ownership as 'SPS' or 'MPS' (DO NOT use XPS or DDP in final output)!\n"
                     "2. STRICT ROUTE DISTANCES:\n"
                     "   - Bakı yük / Bakı tovar / Baku tovar / Absheron to Yalama = EXACTLY 204 KM! (NEVER USE 212 KM)!\n"
-                    "   - ALWAYS USE EXACT DISTANCES FROM EXCEL 'Məsafə' / 'Distance' TABLES! DO NOT ESTIMATE DISTANCES!\n"
+                    "   - ALWAYS USE EXACT DISTANCES FROM EXCEL/TXT 'Məsafə' / 'Distance' TABLES! DO NOT ESTIMATE DISTANCES!\n"
                     "   - Minimum distances: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
                     "3. SPECIAL WAGONS & PASSENGER WAGONS (Clauses 3.1.2.5 - 3.1.2.8):\n"
                     "   - Passenger/Mail wagons (GNG 99910000): Billable weight strictly = 66 TONS (no Table 2 multipliers). Take base rate from 25 tons BTT category (Table 7 col 6)!\n"
@@ -224,7 +238,7 @@ if st.button(t["calc_btn"], type="primary"):
                     "   - Empty SPS container platform return (axle distance > 19m): Apply 0.60 multiplier to axle-km rate (0.06 CHF / axle-km)!\n"
                     "   - Other special wagons (3.1.2.8): Calculate using universal wagon Tables 3 & 4!\n"
                     "4. GNG CODE MAPPING (GNG_Column_Mapping.txt & Clause 3.1.2.4):\n"
-                    "   - STRICTLY use the loaded file 'GNG_Column_Mapping.txt' to determine the exact Table 6 column for tank shipments and specific cargo coefficients!\n"
+                    "   - STRICTLY use 'GNG_Column_Mapping.txt' to determine the exact Table 6 column for tank shipments and specific cargo coefficients!\n"
                     "   - Base rate for liquid cargo in tanks MUST be taken from the 25 TONS weight category column (Rule 2 / Qayda 2)!\n"
                     "5. PRIVATE WAGONS (SPS / Özəl vaqonlar, Section 3.2):\n"
                     "   - Loaded SPS wagons: Apply x0.85 coefficient (Except Col 8 special tanks where x0.70 applies).\n"
@@ -244,7 +258,7 @@ if st.button(t["calc_btn"], type="primary"):
                     "10. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
                 )
                 
-                raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
+                raw_result, used_model = call_gemini_with_fallback(client, prompt_text, dyn_instruction)
                 clean_result = sanitize_text(raw_result)
                 
                 st.success(t["success"].format(selected_year, used_model))
