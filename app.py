@@ -173,7 +173,6 @@ def sanitize_text(text):
 
 # 9. Функция автоматического выбора доступных моделей Gemini
 def call_gemini_with_fallback(client, prompt, instruction):
-    # Приоритет отдан линейке Flash (gemini-2.5-flash / gemini-1.5-flash)
     candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
     
     try:
@@ -220,7 +219,7 @@ if st.button(t["calc_btn"], type="primary"):
                     "   - IMPORT OF WOOD (GNG 4403, 4404, 4407-4413) AND BLACK METALS (GNG Ch.72, 7301-7307): MUST APPLY EXTRA COEFFICIENT × 1.04!\n"
                     "   - TRANSIT ALAT - BOYUK KASIK: Apply coefficient × 1.20!\n"
                     "   - TRANSIT/IMPORT OIL IN TANKS & ARV/REF TRANSIT: Apply ONLY coefficient × 1.20!\n"
-                    "   - PERISHABLES IN REF WAGONS / THERMOSES: Apply coefficient × 0.60!\n"
+                    "   - FRUITS/VEGETABLES IN REF WAGONS (0.60 COEFFICIENT): DO NOT APPLY BY DEFAULT! Apply × 0.60 ONLY IF the user explicitly mentions 'produced in Tariff Agreement countries' / 'Tarif Razılaşması istehsalı' / 'apply 0.60 discount' in the prompt!\n"
                     "   - DOUBLE-DECK AUTO PLATFORMS: Apply coefficient × 0.80 on Table 5 (col 6) rates!\n"
                     "   - COEFFICIENT 1.50: DO NOT APPLY to universal wagons, wood (4403-4413), black metals (72, 7301-7307), methanol, and import oil!\n"
                     "4. STRICT MINIMUM WEIGHT NORMS:\n"
