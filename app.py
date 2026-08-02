@@ -13,10 +13,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit (GitHub, Fork, footer) через CSS + Настройка шрифтов
+# 2. Скрытие системных элементов Streamlit (GitHub, Fork, footer) + Стили и анимации
 st.markdown("""
     <style>
-    /* Скрываем верхнее меню, кнопки GitHub / Fork */
+    /* Скрываем верхнюю панель, меню и кнопки GitHub / Fork */
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     .stAppHeader {display: none;}
@@ -38,7 +38,7 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* Анимация бегущего паровозика */
+    /* Анимация паровозика (развернут кабиной вперед слева направо) */
     @keyframes train-move {
         0% { transform: translateX(-100%); }
         100% { transform: translateX(100%); }
@@ -172,7 +172,7 @@ UI_TEXT = {
     }
 }
 
-# 4. Отображение логотипа и компактного заголовка
+# 4. Отображение логотипа
 logo_file = None
 for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
     if os.path.exists(filename):
@@ -182,25 +182,26 @@ for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
 if logo_file:
     st.image(logo_file, width=200)
 
-# 5. Центральный блок настроек (Язык и Год) — идеально для мобильных
-col_lang, col_year = st.columns(2)
+# 5. Компактный центральный блок настроек (Язык и Год)
+col_left, col_center, col_right = st.columns([1, 2, 1])
 
-with col_lang:
-    selected_lang = st.selectbox(
-        "🌐 Dil / Language",
-        options=["AZ", "RU", "EN"],
-        index=0,
-        format_func=lambda x: {"AZ": "Azərbaycan", "RU": "Русский", "EN": "English"}[x]
-    )
+with col_center:
+    col_lang, col_year = st.columns(2)
+    with col_lang:
+        selected_lang = st.selectbox(
+            "🌐 Dil / Language",
+            options=["AZ", "RU", "EN"],
+            index=0,
+            format_func=lambda x: {"AZ": "Azərbaycan", "RU": "Русский", "EN": "English"}[x]
+        )
+    t = UI_TEXT[selected_lang]
 
-t = UI_TEXT[selected_lang]
-
-with col_year:
-    selected_year = st.selectbox(
-        f"⚙️ {t['year_select']}",
-        options=["2026", "2027"],
-        index=0
-    )
+    with col_year:
+        selected_year = st.selectbox(
+            f"⚙️ {t['year_select']}",
+            options=["2026", "2027"],
+            index=0
+        )
 
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
@@ -216,7 +217,7 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# 7. Загрузка тарифных справочников
+# 7. Динамическая загрузка файлов тарифной базы
 @st.cache_data(show_spinner=False)
 def load_selective_context(user_query, year_label, lang):
     query_lower = user_query.lower()
@@ -374,12 +375,12 @@ if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
     else:
-        # Индикатор загрузки с анимацией поезда
+        # Индикатор загрузки с развернутым паровозиком (едет кабиной вперед)
         train_holder = st.empty()
         train_holder.markdown(
             f'''
             <div class="train-track">
-                <div class="train-animation">🚂 🚃 🚃 🚃 🚃 🚃 ═══</div>
+                <div class="train-animation">═══ 🚃 🚃 🚃 🚂</div>
             </div>
             <center><b>{t["spinner_text"].format(selected_year)}</b></center>
             ''', 
@@ -434,7 +435,7 @@ if st.button(t["calc_btn"], type="primary"):
             
             data, used_model = call_gemini_json(client, prompt_text, dyn_instruction)
             
-            # Убираем анимацию после получения ответа
+            # Убираем индикатор после расчета
             train_holder.empty()
             
             st.success(t["success"].format(used_model))
@@ -463,7 +464,7 @@ if st.button(t["calc_btn"], type="primary"):
                 f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
             ]
             
-            # Добавляем ТОЛЬКО примененные коэффициенты
+            # Выводим только фактически примененные коэффициенты
             for coeff in p2.get("coefficients", []):
                 table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
 
@@ -489,13 +490,13 @@ if st.button(t["calc_btn"], type="primary"):
             table3_md = f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n" + "\n".join(table3_rows)
             st.markdown(table3_md)
 
-            # 3.3 Примечания и обязательный дисклеймер
+            # 3.3 Примечания и дисклеймер
             st.markdown(f"**{t['notes_title']}**")
             notes_list = p3.get("notes", [])
             for idx, note in enumerate(notes_list, start=1):
                 st.markdown(f"{idx}. *{note}*")
             
-            # Дисклеймер об отсутствии станционных сборов
+            # Дисклеймер про станционные расходы
             st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
 
         except Exception as e:
