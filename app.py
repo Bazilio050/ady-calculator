@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit + Жесткое ограничение ширины полей
+# 2. Скрытие системных элементов Streamlit + Оптимальная ширина полей
 st.markdown("""
     <style>
     /* Скрываем верхнюю панель, меню и кнопки GitHub / Fork */
@@ -23,9 +23,9 @@ st.markdown("""
     /* Скрываем нижний футер Streamlit */
     footer {visibility: hidden;}
 
-    /* Жестко зажимаем блок с селекторами по ширине (максимум 200px) */
+    /* Комфортная ширина блока селекторов (380px — аккуратно под Dil / Language) */
     div[data-testid="stVerticalBlock"]:has(div[data-testid="stSelectbox"]) {
-        max-width: 200px !important;
+        max-width: 380px !important;
         margin-left: 0 !important;
         margin-right: auto !important;
     }
@@ -195,11 +195,11 @@ if logo_file:
     st.image(logo_file, width=200)
 
 # 5. СЕЛЕКТОРЫ ВЕРТИКАЛЬНО ДРУГ ПОД ДРУГОМ (СЛЕВА)
-col_controls, _ = st.columns([1, 4])
+col_controls, _ = st.columns([2, 3])
 
 with col_controls:
     selected_lang = st.selectbox(
-        "🌐 Dil / Language",
+        f"🌐 {UI_TEXT['AZ']['lang_select']}",
         options=["AZ", "RU", "EN"],
         index=0,
         format_func=lambda x: {"AZ": "Azərbaycan", "RU": "Русский", "EN": "English"}[x]
