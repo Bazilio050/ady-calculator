@@ -93,21 +93,41 @@ selected_year = st.sidebar.selectbox(
 @st.cache_data(show_spinner=False)
 def load_selective_context(user_query, year_label, lang):
     query_lower = user_query.lower()
-    files_to_load = ["system_instruction.txt", "Weight_Categories.txt", "GNG_Column_Mapping.txt"]
+    files_to_load = [
+        "system_instruction.txt", 
+        "Weight_Categories.txt", 
+        "GNG_Column_Mapping.txt",
+        "Security_Cargo_GNG.txt"
+    ]
+
+    # Обязательная подгрузка файла курсов валют для конвертации CHF -> USD
+    for curr_file in ["Currency_Exchange.txt", "Exchange_Rates.txt", "Valyuta.txt"]:
+        if os.path.exists(curr_file):
+            files_to_load.append(curr_file)
+            break
 
     # Автоподгрузка таблиц по типу груза и вагонов
     if any(k in query_lower for k in ["цистерн", "çən", "tank", "нефть", "neft", "газ", "qaz", "масло", "спирт", "2709", "2710"]):
-        for f_name in ["Table_6_Tanks.txt", "Table6.txt", "Cədvəl6.txt", "Cadval_6.txt"]:
+        for f_name in ["Table_6_Tariffs.txt", "Table_6_Tanks.txt", "Table6.txt", "Cədvəl6.txt", "Cadval_6.txt"]:
             if os.path.exists(f_name):
                 files_to_load.append(f_name)
                 break
-    elif any(k in query_lower for k in ["реф", "ref", "термос", "termos", "автовоз", "автопоезд", "контейнер"]):
-        for f_name in ["Table_5_Reef.txt", "Table5.txt", "Cədvəl5.txt", "Cadval_5.txt"]:
+    elif any(k in query_lower for k in ["реф", "ref", "термос", "termos", "автовоз", "автопоезд"]):
+        for f_name in ["Table_5_Tariffs.txt", "Table_5_Reef.txt", "Table5.txt", "Cədvəl5.txt", "Cadval_5.txt"]:
             if os.path.exists(f_name):
                 files_to_load.append(f_name)
                 break
+    elif any(k in query_lower for k in ["контейнер", "konteyner", "tank-container", "ref-container"]):
+        for f_name in ["Table_9_Tariffs.txt", "Table_10_Tariffs.txt", "Table9.txt", "Table10.txt"]:
+            if os.path.exists(f_name):
+                files_to_load.append(f_name)
+    elif any(k in query_lower for k in ["двухъярусн", "avtovoz", "ikiyaruslı", "двухярусн"]):
+        for f_name in ["Table_8_Tariffs.txt", "Table_11_Tariffs.txt", "Table8.txt", "Table11.txt"]:
+            if os.path.exists(f_name):
+                files_to_load.append(f_name)
     else:
-        for f_name in ["Table_3_4_Universal.txt", "Table3.txt", "Table4.txt", "Cədvəl3.txt", "Cədvəl4.txt"]:
+        # Универсальные вагоны и потоннажные тарифы (Таблицы 3, 4 и 12)
+        for f_name in ["Table_3_Tariffs.txt", "Table_4_Tariffs.txt", "Table_12_Tariffs.txt", "Table_3_4_Universal.txt", "Table3.txt", "Table4.txt"]:
             if os.path.exists(f_name):
                 files_to_load.append(f_name)
 
@@ -129,7 +149,8 @@ def load_selective_context(user_query, year_label, lang):
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
         f"Все заголовки, имена столбцов и примечания переводи на выбранный язык ({lang})!\n"
-        f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n\n"
+        f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n"
+        f"ИСПОЛЬЗУЙ КУРСЫ ВАЛЮТ ИЗ СПРАВОЧНИКА КУРСОВ (Currency_Exchange.txt) ДЛЯ ПЕРЕСЧЕТА СТАВОК ИЗ CHF В USD!\n\n"
         + rules_text
     )
     return system_instruction
