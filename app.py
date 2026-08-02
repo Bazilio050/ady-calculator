@@ -23,7 +23,7 @@ st.markdown("""
     /* Скрываем нижний футер Streamlit */
     footer {visibility: hidden;}
 
-    /* Комфортная ширина блока селекторов (380px — аккуратно под Dil / Language) */
+    /* Комфортная ширина блока селекторов */
     div[data-testid="stVerticalBlock"]:has(div[data-testid="stSelectbox"]) {
         max-width: 380px !important;
         margin-left: 0 !important;
@@ -68,6 +68,11 @@ st.markdown("""
     .train-text {
         font-size: 13px;
         color: #475569;
+    }
+
+    /* Поле ввода текста занимает 100% ширины */
+    .stTextArea textarea {
+        width: 100% !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -195,7 +200,7 @@ if logo_file:
     st.image(logo_file, width=200)
 
 # 5. СЕЛЕКТОРЫ ВЕРТИКАЛЬНО ДРУГ ПОД ДРУГОМ (СЛЕВА)
-col_controls, _ = st.columns([2, 3])
+col_controls, _ = st.columns([2.5, 7.5])
 
 with col_controls:
     selected_lang = st.selectbox(
@@ -344,19 +349,28 @@ json_response_schema = {
     "required": ["part1", "part2", "part3"]
 }
 
-# 10. Быстрый вызов Gemini без задержки на поиск моделей
+# 10. Быстрый вызов Gemini с автоматическим перебором доступных моделей
 def call_gemini_json(client, prompt, instruction):
-    target_model = "gemini-1.5-flash"
-    response = client.models.generate_content(
-        model=target_model,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=instruction,
-            response_mime_type="application/json",
-            response_schema=json_response_schema
-        )
-    )
-    return json.loads(response.text)
+    candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+    
+    last_error = None
+    for model_name in candidate_models:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=instruction,
+                    response_mime_type="application/json",
+                    response_schema=json_response_schema
+                )
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            last_error = e
+            continue
+            
+    raise RuntimeError(f"Не удалось выполнить запрос к ИИ: {str(last_error)}")
 
 # 11. Поле ввода текста и кнопка расчета
 user_input = st.text_area(
