@@ -173,6 +173,7 @@ def sanitize_text(text):
 
 # 9. Функция автоматического выбора доступных моделей Gemini
 def call_gemini_with_fallback(client, prompt, instruction):
+    # Приоритет отдан линейке Flash (gemini-2.5-flash / gemini-1.5-flash)
     candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
     
     try:
@@ -215,14 +216,16 @@ if st.button(t["calc_btn"], type="primary"):
                     "1. ABBREVIATIONS: Treat SPS = СПС = XPS (private wagons) and MPS = МПС = DDP (railway fleet) as identical terms!\n"
                     "   - For AZ language output, ALWAYS display wagon ownership as 'SPS' or 'MPS' (DO NOT use XPS or DDP in final output)!\n"
                     "2. MINIMUM DISTANCES: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
-                    "3. SPECIAL COEFFICIENTS (1.04 / 1.20 / 1.50):\n"
+                    "3. SPECIAL COEFFICIENTS (1.04 / 1.20 / 1.50 / 0.60 / 0.80):\n"
                     "   - IMPORT OF WOOD (GNG 4403, 4404, 4407-4413) AND BLACK METALS (GNG Ch.72, 7301-7307): MUST APPLY EXTRA COEFFICIENT × 1.04!\n"
                     "   - TRANSIT ALAT - BOYUK KASIK: Apply coefficient × 1.20!\n"
                     "   - TRANSIT/IMPORT OIL IN TANKS & ARV/REF TRANSIT: Apply ONLY coefficient × 1.20!\n"
+                    "   - PERISHABLES IN REF WAGONS / THERMOSES: Apply coefficient × 0.60!\n"
+                    "   - DOUBLE-DECK AUTO PLATFORMS: Apply coefficient × 0.80 on Table 5 (col 6) rates!\n"
                     "   - COEFFICIENT 1.50: DO NOT APPLY to universal wagons, wood (4403-4413), black metals (72, 7301-7307), methanol, and import oil!\n"
                     "4. STRICT MINIMUM WEIGHT NORMS:\n"
                     "   - WOOD/TIMBER (GNG 4403, 4404, 4407-4413): Billable weight = min 45 TONS! Always take base rate from the 45 TONS COLUMN!\n"
-                    "   - GRAIN (1001-1008), ORE, COAL, METALS: Billable weight = min 60 TONS (or 50t/40t/30t as per rules)!\n"
+                    "   - CAR TRANSPORTERS (Table 5, Col 6): Billable weight = min 10 TONS!\n"
                     "5. INDEXATION COEFFICIENT (1.015):\n"
                     "   - ALWAYS apply 1.015 to loaded shipments! DO NOT apply 1.015 to empty wagon return!\n"
                     "6. OUTPUT TABLES & SUMMARY MUST BE GENERATED IN THE SELECTED LANGUAGE ({selected_lang})!\n"
