@@ -19,7 +19,7 @@ UI_TEXT = {
         "settings_header": "⚙️ Tarif tənzimləmələri",
         "year_select": "Fraxt ilini seçin:",
         "input_header": "Daşıma parametrlərini daxil edin:",
-        "input_placeholder": "Nümunə:\nMarşrut: Yalama - Ələt\nYük: Neft (YHN 2709), 60 ton\nVəziyyət: SPS çən vaqonu",
+        "input_placeholder": "Nümunə:\nMarşrut: Bakı yük - Yalama\nYük: Neft (YHN 2709), 50 ton\nVəziyyət: SPS çən vaqonu",
         "calc_btn": "🚀 Tarifi hesabla",
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
         "spinner": "ADY Policy {} tarifləri üzrə hesablanır...",
@@ -35,7 +35,7 @@ UI_TEXT = {
         "settings_header": "⚙️ Настройки тарифов",
         "year_select": "Выберите фрахтовый год:",
         "input_header": "Введите данные по перевозке:",
-        "input_placeholder": "Пример:\nМаршрут: Ялама - Алят\nГруз: Нефть (ГНГ 2709), 60 тонн\nСостояние: СПС цистерна",
+        "input_placeholder": "Пример:\nМаршрут: Баку тов - Ялама\nГруз: Нефть (ГНГ 2709), 50 тонн\nСостояние: СПС цистерна",
         "calc_btn": "🚀 Рассчитать тариф",
         "warning_empty": "Пожалуйста, введите условия расчета.",
         "spinner": "Считаем тариф согласно ADY Policy {}...",
@@ -51,7 +51,7 @@ UI_TEXT = {
         "settings_header": "⚙️ Tariff Settings",
         "year_select": "Select Freight Year:",
         "input_header": "Enter shipment details:",
-        "input_placeholder": "Example:\nRoute: Yalama - Alat\nCargo: Crude Oil (NHM 2709), 60 tons\nCondition: SPS tank wagon",
+        "input_placeholder": "Example:\nRoute: Baku tovar - Yalama\nCargo: Crude Oil (NHM 2709), 50 tons\nCondition: SPS tank wagon",
         "calc_btn": "🚀 Calculate Freight Rate",
         "warning_empty": "Please enter shipment requirements.",
         "spinner": "Calculating rates according to ADY Policy {}...",
@@ -63,12 +63,12 @@ UI_TEXT = {
     }
 }
 
-# 3. Sidebar Language Selector (Azərbaycan, Русский, English)
+# 3. Sidebar Language Selector
 st.sidebar.header("🌐 Dil / Language")
 selected_lang = st.sidebar.selectbox(
     "Dil seçin / Выберите язык / Select language:",
     options=["AZ", "RU", "EN"],
-    index=0,  # AZ по умолчанию
+    index=0,
     format_func=lambda x: {"AZ": "Azərbaycan", "RU": "Русский", "EN": "English"}[x]
 )
 
@@ -85,7 +85,7 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# 5. Выбор фрахтового года в Sidebar (По умолчанию текущий 2026 год)
+# 5. Выбор фрахтового года в Sidebar
 st.sidebar.header(t["settings_header"])
 selected_year = st.sidebar.selectbox(
     t["year_select"],
@@ -171,7 +171,7 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 9. Функция автоматического выбора доступных моделей Gemini
+# 9. Функция автовыбора доступных моделей Gemini
 def call_gemini_with_fallback(client, prompt, instruction):
     candidate_models = ["gemini-2.5-flash", "gemini-1.5-flash"]
     
@@ -214,19 +214,20 @@ if st.button(t["calc_btn"], type="primary"):
                     f"⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
                     "1. ABBREVIATIONS: Treat SPS = СПС = XPS (private wagons) and MPS = МПС = DDP (railway fleet) as identical terms!\n"
                     "   - For AZ language output, ALWAYS display wagon ownership as 'SPS' or 'MPS' (DO NOT use XPS or DDP in final output)!\n"
-                    "2. UNIVERSAL WAGONS (Clause 3.1.1):\n"
+                    "2. STRICT ROUTE DISTANCES:\n"
+                    "   - Bakı yük / Bakı tovar / Baku tovar / Absheron to Yalama = EXACTLY 204 KM! (NEVER USE 212 KM)!\n"
+                    "   - ALWAYS USE EXACT DISTANCES FROM EXCEL 'Məsafə' / 'Distance' TABLES! DO NOT ESTIMATE DISTANCES!\n"
+                    "   - Minimum distances: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
+                    "3. UNIVERSAL WAGONS (Clause 3.1.1):\n"
                     "   - Import/Export: Table 3; Transit: Table 4.\n"
                     "   - Non-ferrous metals & special chemicals (GNG 28045090, 28049, 28054, 32121, 7106-7112, 7115, Ch.74, 75, 76, 78, 79, 80, 81, 8302, 83079, 8309, 8311, 85481): MUST APPLY COEFFICIENT × 1.20!\n"
-                    "3. TANKS & BUNKER WAGONS (Clause 3.1.2.4):\n"
+                    "4. TANKS & BUNKER WAGONS (Clause 3.1.2.4):\n"
                     "   - Liquid cargo in tank wagons & bunker semi-wagons: Calculate per Table 6 taking base rates from the 25 TONS weight category column (Rule 2 / Qayda 2)!\n"
-                    "4. PRIVATE WAGONS (SPS / Özəl vaqonlar, Section 3.2):\n"
+                    "5. PRIVATE WAGONS (SPS / Özəl vaqonlar, Section 3.2):\n"
                     "   - Loaded SPS wagons: Apply x0.85 coefficient.\n"
                     "   - Special chemical/gas SPS tanks (GNG 27071-27073, 290211-29029, Table 6 col 8): Apply x0.70 INSTEAD OF x0.85 (Clause 3.2.5)!\n"
                     "   - Empty SPS wagon return: Calculate per axle-km: 0.10 CHF / axle-km (4 axles * distance_km * 0.10 CHF) (Clause 3.2.2)! FOR EXPORT AND IMPORT SHIPMENTS, ALWAYS APPLY THE 1.50 COEFFICIENT TO THIS CALCULATION ((4 axles * distance * 0.10 CHF) * 1.50)!\n"
                     "   - Empty MPS containers on SPS platforms: Calculate at 0.10 CHF / axle-km!\n"
-                    "5. DISTANCES & MINIMUM DISTANCES:\n"
-                    "   - STRICTLY search and use the EXACT distance for the requested route (e.g., Yalama — Astara, Absheron — Yalama) from the provided Excel database tables! DO NOT estimate or invent distances!\n"
-                    "   - Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
                     "6. REFRIGERATED WAGONS & REF SECTIONS (TABLE 5):\n"
                     "   - Recognize terms: 'рефвагон', 'рефсекция', 'вагонреф', 'АРВ', 'ref', '1+1', '1+2', '1+3', '1+4', '1+5', '1+6', '2+1', '3+1', '4+1', '5+1', '6+1' etc.\n"
                     "   - SECTION COEFFICIENTS: [1+1] = x1.70, [1+2] / [2+1] = x1.40, [1+3] / [3+1] = x1.10, [1+4] / [4+1] = x1.00, [1+5] / [5+1] or more = x0.85 (ALWAYS APPLY x0.85 for 5+ wagon ref section)!\n"
