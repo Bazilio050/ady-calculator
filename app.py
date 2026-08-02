@@ -22,13 +22,13 @@ st.markdown("""
     
     /* Скрываем нижний футер Streamlit */
     footer {visibility: hidden;}
-    
+
     /* Заголовок */
     .custom-title {
         font-size: 22px !important;
         font-weight: 700;
         color: #1E293B;
-        margin-top: 5px;
+        margin-top: 10px;
         margin-bottom: 2px;
     }
     .custom-subtitle {
@@ -53,7 +53,7 @@ st.markdown("""
     }
     .train-animation {
         display: inline-block;
-        font-size: 14px; /* Уменьшенный мелкий размер элементов */
+        font-size: 14px;
         animation: train-move 3s linear infinite;
     }
     .train-text {
@@ -185,10 +185,11 @@ for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
 if logo_file:
     st.image(logo_file, width=200)
 
-# 5. СЕЛЕКТОРЫ СТРОГО НАД ЗАГОЛОВКОМ (узкий удобный блок)
+# 5. ЕДИНЫЙ ЦЕНТРАЛЬНЫЙ БЛОК (СЕЛЕКТОРЫ + ЗАГОЛОВОК СТРОГО ДРУГ ПОД ДРУГОМ)
 col_left, col_center, col_right = st.columns([1, 2, 1])
 
 with col_center:
+    # 5.1 Выбор языка и года
     col_lang, col_year = st.columns(2)
     with col_lang:
         selected_lang = st.selectbox(
@@ -206,11 +207,11 @@ with col_center:
             index=0
         )
 
-# 6. Заголовок и подзаголовок (ПОД селекторами)
-st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
+    # 5.2 Заголовок и подзаголовок в том же центральном контейнере
+    st.markdown(f'<div class="custom-title" style="text-align: center;">{t["title"]}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="custom-subtitle" style="text-align: center;">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-# 7. Проверка API ключа
+# 6. Проверка API ключа
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.text_input(t["api_label"], type="password")
@@ -221,7 +222,7 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# 8. Динамическая подгрузка текстовой базы (Distances.txt загружается ВСЕГДА)
+# 7. Динамическая подгрузка текстовой базы (Distances.txt загружается ВСЕГДА)
 @st.cache_data(show_spinner=False)
 def load_selective_context(user_query, year_label, lang):
     query_lower = user_query.lower()
@@ -286,7 +287,7 @@ def load_selective_context(user_query, year_label, lang):
     )
     return system_instruction
 
-# 9. Схема JSON ответа
+# 8. Схема JSON ответа
 json_response_schema = {
     "type": "OBJECT",
     "properties": {
@@ -338,7 +339,7 @@ json_response_schema = {
     "required": ["part1", "part2", "part3"]
 }
 
-# 10. Быстрый вызов Gemini без задержки на поиск моделей
+# 9. Быстрый вызов Gemini без задержки на поиск моделей
 def call_gemini_json(client, prompt, instruction):
     target_model = "gemini-1.5-flash"
     response = client.models.generate_content(
@@ -352,7 +353,7 @@ def call_gemini_json(client, prompt, instruction):
     )
     return json.loads(response.text)
 
-# 11. Поле ввода текста и кнопка расчета
+# 10. Поле ввода текста и кнопка расчета
 user_input = st.text_area(
     t["input_header"],
     height=150,
