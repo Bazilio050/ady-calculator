@@ -1,7 +1,9 @@
 import os
 import re
+import json
 import streamlit as st
 from google import genai
+from google.genai import types
 
 # 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
 st.set_page_config(
@@ -18,12 +20,33 @@ UI_TEXT = {
         "settings_header": "⚙️ Tarif tənzimləmələri",
         "year_select": "Fraxt ilini seçin:",
         "input_header": "Daşıma parametrlərini daxil edin:",
-        "input_placeholder": "Nümunə:\nMarşrut: Bakı yük - Yalama\nYük: Neft (YHN 2709), 50 ton\nVəziyyət: SPS çən vaqonu",
+        "input_placeholder": "Nümunə:\nMarşrut: Yalama - Abşeron\nYük: Meşə materialları (GNG 4407), 35 ton\nVəziyyət: SPS örtülü vaqon",
         "calc_btn": "🚀 Tarifi hesabla",
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
         "spinner": "ADY Policy {} tarifləri üzrə hesablanır...",
         "success": "Hesablama uğurla tamamlandı! (Model: {})",
         "result_title": "📋 Hesablama nəticəsi:",
+        "sec1_title": "1. Marşrut və daşıma şərtləri",
+        "sec2_title": "2. Əmsallar və valyuta məzənnəsi",
+        "sec3_title": "3. Tarifin hesablanması",
+        "formula_title": "Hesablama düsturu:",
+        "rates_title": "Yekun tariflər:",
+        "notes_title": "Qeydlər:",
+        "disclaimer": "Qeyd olunan tariflərə станция xərcləri (yükləmə-boşaltma, tərtibat, sənədləşmə, vaqonların verilməsi-yığılması və s.) və əlavə yığımlar daxil deyildir.",
+        "col_param": "Parametr",
+        "col_val": "Qiymət / Həcm",
+        "col_rate_type": "Tarif növü",
+        "col_amount": "Məblağ",
+        "lbl_route": "Marşrut",
+        "lbl_type": "Daşıma növü",
+        "lbl_dist": "Məsafə",
+        "lbl_cargo": "Yük / Vəziyyət",
+        "lbl_weight": "Faktiki / Hesablaşma çəkisi",
+        "lbl_period": "Dövr",
+        "lbl_exchange": "CHF/USD",
+        "lbl_base_rate": "Baza tarifi",
+        "lbl_net_rate": "Yekün ADY tarifi",
+        "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
         "api_warning": "⚠️ Xahiş olunur, Streamlit Secrets hissəsinə GEMINI_API_KEY əlavə edin və ya sol paneldən daxil edin.",
         "api_label": "Gemini API Key daxil edin:"
     },
@@ -33,12 +56,33 @@ UI_TEXT = {
         "settings_header": "⚙️ Настройки тарифов",
         "year_select": "Выберите фрахтовый год:",
         "input_header": "Введите данные по перевозке:",
-        "input_placeholder": "Пример:\nМаршрут: Баку тов - Ялама\nГруз: Нефть (ГНГ 2709), 50 тонн\nСостояние: СПС цистерна",
+        "input_placeholder": "Пример:\nМаршрут: Ялама - Апшерон\nГруз: Пиломатериалы (ГНГ 4407), 35 тонн\nСостояние: СПС крытый вагон",
         "calc_btn": "🚀 Рассчитать тариф",
         "warning_empty": "Пожалуйста, введите условия расчета.",
         "spinner": "Считаем тариф согласно ADY Policy {}...",
         "success": "Расчет успешно выполнен по базе {} года! (Модель: {})",
         "result_title": "📋 Результат расчета:",
+        "sec1_title": "1. Маршрут и условия перевозки",
+        "sec2_title": "2. Коэффициенты и курс валют",
+        "sec3_title": "3. Расчет тарифа",
+        "formula_title": "Формула расчета:",
+        "rates_title": "Итоговые тарифы:",
+        "notes_title": "Примечания:",
+        "disclaimer": "Ставки приведены без учета станционных расходов (погрузка-выгрузка, маневровые работы, оформление документов, подача-уборка вагонов и т.д.) и дополнительных сборов.",
+        "col_param": "Параметр",
+        "col_val": "Значение / Объем",
+        "col_rate_type": "Тип тарифа",
+        "col_amount": "Сумма",
+        "lbl_route": "Маршрут",
+        "lbl_type": "Вид перевозки",
+        "lbl_dist": "Расстояние",
+        "lbl_cargo": "Груз / Состояние",
+        "lbl_weight": "Фактический / Расчетный вес",
+        "lbl_period": "Период",
+        "lbl_exchange": "CHF/USD",
+        "lbl_base_rate": "Базовый тариф",
+        "lbl_net_rate": "Yekün ADY tarifi",
+        "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
         "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY в Secrets на Streamlit или введите его в боковой панели.",
         "api_label": "Введите Gemini API Key:"
     },
@@ -48,12 +92,33 @@ UI_TEXT = {
         "settings_header": "⚙️ Tariff Settings",
         "year_select": "Select Freight Year:",
         "input_header": "Enter shipment details:",
-        "input_placeholder": "Example:\nRoute: Baku tovar - Yalama\nCargo: Crude Oil (NHM 2709), 50 tons\nCondition: SPS tank wagon",
+        "input_placeholder": "Example:\nRoute: Yalama - Absheron\nCargo: Timber (NHM 4407), 35 tons\nCondition: SPS covered wagon",
         "calc_btn": "🚀 Calculate Freight Rate",
         "warning_empty": "Please enter shipment requirements.",
         "spinner": "Calculating rates according to ADY Policy {}...",
         "success": "Calculation completed successfully for {} policy! (Model: {})",
         "result_title": "📋 Calculation Results:",
+        "sec1_title": "1. Route and Shipment Conditions",
+        "sec2_title": "2. Coefficients and Exchange Rate",
+        "sec3_title": "3. Rate Calculation",
+        "formula_title": "Calculation Formula:",
+        "rates_title": "Final Rates:",
+        "notes_title": "Notes:",
+        "disclaimer": "Rates are quoted excluding station charges (loading/unloading, shunting, documentation, wagon positioning, etc.) and additional fees.",
+        "col_param": "Parameter",
+        "col_val": "Value / Volume",
+        "col_rate_type": "Rate Type",
+        "col_amount": "Amount",
+        "lbl_route": "Route",
+        "lbl_type": "Shipment Type",
+        "lbl_dist": "Distance",
+        "lbl_cargo": "Cargo / Condition",
+        "lbl_weight": "Actual / Billable Weight",
+        "lbl_period": "Period",
+        "lbl_exchange": "CHF/USD",
+        "lbl_base_rate": "Base Tariff",
+        "lbl_net_rate": "Yekün ADY tarifi",
+        "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
         "api_warning": "⚠️ Please add GEMINI_API_KEY to Streamlit Secrets or enter it in the sidebar.",
         "api_label": "Enter Gemini API Key:"
     }
@@ -100,13 +165,11 @@ def load_selective_context(user_query, year_label, lang):
         "Security_Cargo_GNG.txt"
     ]
 
-    # Обязательная подгрузка файла курсов валют для конвертации CHF -> USD
     for curr_file in ["Currency_Exchange.txt", "Exchange_Rates.txt", "Valyuta.txt"]:
         if os.path.exists(curr_file):
             files_to_load.append(curr_file)
             break
 
-    # Автоподгрузка таблиц по типу груза и вагонов
     if any(k in query_lower for k in ["цистерн", "çən", "tank", "нефть", "neft", "газ", "qaz", "масло", "спирт", "2709", "2710"]):
         for f_name in ["Table_6_Tariffs.txt", "Table_6_Tanks.txt", "Table6.txt", "Cədvəl6.txt", "Cadval_6.txt"]:
             if os.path.exists(f_name):
@@ -126,12 +189,10 @@ def load_selective_context(user_query, year_label, lang):
             if os.path.exists(f_name):
                 files_to_load.append(f_name)
     else:
-        # Универсальные вагоны и потоннажные тарифы (Таблицы 3, 4 и 12)
         for f_name in ["Table_3_Tariffs.txt", "Table_4_Tariffs.txt", "Table_12_Tariffs.txt", "Table_3_4_Universal.txt", "Table3.txt", "Table4.txt"]:
             if os.path.exists(f_name):
                 files_to_load.append(f_name)
 
-    # Файл расстояний
     for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
         if os.path.exists(dist_file):
             files_to_load.append(dist_file)
@@ -148,7 +209,6 @@ def load_selective_context(user_query, year_label, lang):
     system_instruction = (
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-        f"Все заголовки, имена столбцов и примечания переводи на выбранный язык ({lang})!\n"
         f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n"
         f"ИСПОЛЬЗУЙ КУРСЫ ВАЛЮТ ИЗ СПРАВОЧНИКА КУРСОВ (Currency_Exchange.txt) ДЛЯ ПЕРЕСЧЕТА СТАВОК ИЗ CHF В USD!\n\n"
         + rules_text
@@ -176,19 +236,64 @@ user_input = st.text_area(
     label_visibility="collapsed"
 )
 
-# 8. Функция чистки текста
-def sanitize_text(text):
-    text = re.sub(r"^\s*[\bullet\*\-]\s*Базовая ставка:.*$", "", text, flags=re.MULTILINE | re.IGNORECASE)
-    text = re.sub(r"^\s*[\bullet\*\-]\s*Провозная плата:.*$", "", text, flags=re.MULTILINE | re.IGNORECASE)
-    text = re.sub(r"(\bUSD\s+на\s+1\s+тонну|\bUSD\s+за\s+1\s+тонну|\bUSD\s+за\s+вагон)\s*\([^)]*\)", r"\1", text, flags=re.IGNORECASE)
-    text = re.sub(r"\(При расчёте от станции.*?\)\.?", "", text, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"\n\s*\n", "\n\n", text)
-    return text.strip()
+# 8. Определение строгого JSON-формата ответа для Gemini
+class CalculationResponse(types.Schema):
+    pass  # Определяем схему в виде pydantic/dict структуры через response_schema
 
-# 9. Функция автовыбора моделей Gemini
-def call_gemini_with_fallback(client, prompt, instruction):
+json_response_schema = {
+    "type": "OBJECT",
+    "properties": {
+        "part1": {
+            "type": "OBJECT",
+            "properties": {
+                "route": {"type": "STRING"},
+                "shipment_type": {"type": "STRING"},
+                "distance": {"type": "STRING"},
+                "cargo_and_wagon": {"type": "STRING"},
+                "weight_info": {"type": "STRING"},
+                "period": {"type": "STRING"}
+            },
+            "required": ["route", "shipment_type", "distance", "cargo_and_wagon", "weight_info", "period"]
+        },
+        "part2": {
+            "type": "OBJECT",
+            "properties": {
+                "exchange_rate": {"type": "STRING"},
+                "base_tariff": {"type": "STRING"},
+                "coefficients": {
+                    "type": "ARRAY",
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "name": {"type": "STRING"},
+                            "value": {"type": "STRING"}
+                        },
+                        "required": ["name", "value"]
+                    }
+                }
+            },
+            "required": ["exchange_rate", "base_tariff", "coefficients"]
+        },
+        "part3": {
+            "type": "OBJECT",
+            "properties": {
+                "formula": {"type": "STRING"},
+                "net_ady_rate": {"type": "STRING"},
+                "express_rate": {"type": "STRING", "nullable": True},
+                "notes": {
+                    "type": "ARRAY",
+                    "items": {"type": "STRING"}
+                }
+            },
+            "required": ["formula", "net_ady_rate", "notes"]
+        }
+    },
+    "required": ["part1", "part2", "part3"]
+}
+
+# 9. Функция вызова Gemini с гарантированным JSON
+def call_gemini_json(client, prompt, instruction):
     candidate_models = ["gemini-1.5-flash"]
-    
     try:
         models_list = client.models.list()
         available = [
@@ -207,16 +312,20 @@ def call_gemini_with_fallback(client, prompt, instruction):
             response = client.models.generate_content(
                 model=model_name,
                 contents=prompt,
-                config={"system_instruction": instruction}
+                config=types.GenerateContentConfig(
+                    system_instruction=instruction,
+                    response_mime_type="application/json",
+                    response_schema=json_response_schema
+                )
             )
-            return response.text, model_name
+            return json.loads(response.text), model_name
         except Exception as e:
             errors.append(f"{model_name}: {str(e)}")
             continue
 
     raise RuntimeError("Ни одна из доступных моделей Gemini не ответила:\n" + "\n".join(errors))
 
-# 10. Кнопка расчета
+# 10. Кнопка расчета и отрисовка зафиксированного интерфейса
 if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
@@ -262,16 +371,75 @@ if st.button(t["calc_btn"], type="primary"):
                     "8. STRICT MINIMUM WEIGHT NORMS FOR LOADED WAGONS:\n"
                     "   - WOOD/TIMBER (GNG 4403, 4404, 4407-4413): Billable weight = min 45 TONS! Always take base rate from 45 TONS COLUMN!\n"
                     "   - CAR TRANSPORTERS (Table 5, Col 6): Billable weight = min 10 TONS!\n"
-                    "9. OUTPUT TABLES & SUMMARY MUST BE GENERATED IN THE SELECTED LANGUAGE ({selected_lang})!\n"
-                    "10. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
+                    "9. JSON OUTPUT INSTRUCTIONS:\n"
+                    "   - DO NOT RETURN NON-APPLICABLE COEFFICIENTS IN part2.coefficients (Only return coefficients that actually apply with values like 'x 0.85', 'x 1.50', etc.)!\n"
+                    "   - If ADY Express is requested, provide express_rate in part3, otherwise set express_rate to null.\n"
+                    "   - ALL text within JSON fields MUST BE STRICTLY IN LANGUAGE: {selected_lang}."
                 )
                 
-                raw_result, used_model = call_gemini_with_fallback(client, prompt_text, dyn_instruction)
-                clean_result = sanitize_text(raw_result)
+                data, used_model = call_gemini_json(client, prompt_text, dyn_instruction)
                 
                 st.success(t["success"].format(selected_year, used_model))
                 st.markdown(f"### {t['result_title']}")
-                st.markdown(clean_result)
+
+                # --- РАЗДЕЛ 1. Маршрут и условия перевозки ---
+                st.markdown(f"#### 📍 {t['sec1_title']}")
+                p1 = data["part1"]
+                table1_md = f"""
+| {t['col_param']} | {t['col_val']} |
+| :--- | :--- |
+| **{t['lbl_route']}** | {p1['route']} |
+| **{t['lbl_type']}** | {p1['shipment_type']} |
+| **{t['lbl_dist']}** | {p1['distance']} |
+| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |
+| **{t['lbl_weight']}** | {p1['weight_info']} |
+| **{t['lbl_period']}** | {p1['period']} |
+"""
+                st.markdown(table1_md)
+
+                # --- РАЗДЕЛ 2. Коэффициенты и курс валют ---
+                st.markdown(f"#### ⚙️ {t['sec2_title']}")
+                p2 = data["part2"]
+                table2_rows = [
+                    f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |",
+                    f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
+                ]
+                
+                # Добавляем ТОЛЬКО примененные коэффициенты (неприменимые скрываются)
+                for coeff in p2.get("coefficients", []):
+                    table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
+
+                table2_md = f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(table2_rows)
+                st.markdown(table2_md)
+
+                # --- РАЗДЕЛ 3. Расчет тарифа ---
+                st.markdown(f"#### 📐 {t['sec3_title']}")
+                p3 = data["part3"]
+
+                # 3.1 Формула
+                st.markdown(f"**{t['formula_title']}**")
+                st.code(p3["formula"], language="text")
+
+                # 3.2 Таблица итоговых ставок
+                st.markdown(f"**{t['rates_title']}**")
+                table3_rows = [
+                    f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |"
+                ]
+                if p3.get("express_rate"):
+                    table3_rows.append(f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |")
+
+                table3_md = f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n" + "\n".join(table3_rows)
+                st.markdown(table3_md)
+
+                # 3.3 Примечания и дисклеймер
+                st.markdown(f"**{t['notes_title']}**")
+                notes_list = p3.get("notes", [])
+                for idx, note in enumerate(notes_list, start=1):
+                    st.markdown(f"{idx}. *{note}*")
+                
+                # Дисклеймер об отсутствии станционных сборов
+                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
+
             except Exception as e:
                 st.error(f"Error: {str(e)}")
 
