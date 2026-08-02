@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit + Настройки стилей
+# 2. Скрытие системных элементов Streamlit + Оптимальная ширина элементов
 st.markdown("""
     <style>
     /* Скрываем верхнюю панель, меню и кнопки GitHub / Fork */
@@ -23,7 +23,7 @@ st.markdown("""
     /* Скрываем нижний футер Streamlit */
     footer {visibility: hidden;}
 
-    /* Ширина блока селекторов */
+    /* Комфортная ширина блока селекторов */
     div[data-testid="stVerticalBlock"]:has(div[data-testid="stSelectbox"]) {
         max-width: 380px !important;
         margin-left: 0 !important;
@@ -46,7 +46,7 @@ st.markdown("""
         text-align: left;
     }
 
-    /* Анимация паровозика */
+    /* Мелкая анимация паровозика */
     @keyframes train-move {
         0% { transform: translateX(-100%); }
         100% { transform: translateX(100%); }
@@ -346,9 +346,9 @@ json_response_schema = {
     "required": ["part1", "part2", "part3"]
 }
 
-# 10. Исправленный вызов официальной модели Gemini
+# 10. Рабочий вызов актуальных моделей Gemini в пакете google-genai
 def call_gemini_json(client, prompt, instruction):
-    candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+    candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash"]
     
     last_error = None
     for model_name in candidate_models:
