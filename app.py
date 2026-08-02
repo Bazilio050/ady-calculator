@@ -1,8 +1,8 @@
 import os
 import re
-import pandas as pd
 import streamlit as st
 from google import genai
+from google.genai import types
 
 # 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
 st.set_page_config(
@@ -25,7 +25,6 @@ UI_TEXT = {
         "spinner": "ADY Policy {} tarifləri üzrə hesablanır...",
         "success": "Hesablama uğurla tamamlandı! (Model: {})",
         "result_title": "📋 Hesablama nəticəsi:",
-        "not_found_msg": "⏳ **ADY-nin {} fraxt ili üzrə Tarif Siyasəti hələ rəsmi dərc olunmayıb.**\n\nCari hesablamalar üçün sol menyudan **{} fraxt ilini** seçməyiniz xahiş olunur.",
         "api_warning": "⚠️ Xahiş olunur, Streamlit Secrets hissəsinə GEMINI_API_KEY əlavə edin və ya sol paneldən daxil edin.",
         "api_label": "Gemini API Key daxil edin:"
     },
@@ -41,7 +40,6 @@ UI_TEXT = {
         "spinner": "Считаем тариф согласно ADY Policy {}...",
         "success": "Расчет успешно выполнен по базе {} года! (Модель: {})",
         "result_title": "📋 Результат расчета:",
-        "not_found_msg": "⏳ **Тарифная политика ADY на {} фрахтовый год пока официально не опубликована.**\n\nПожалуйста, выберите **{} фрахтовый год** в меню слева.",
         "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY в Secrets на Streamlit или введите его в боковой панели.",
         "api_label": "Введите Gemini API Key:"
     },
@@ -57,7 +55,6 @@ UI_TEXT = {
         "spinner": "Calculating rates according to ADY Policy {}...",
         "success": "Calculation completed successfully for {} policy! (Model: {})",
         "result_title": "📋 Calculation Results:",
-        "not_found_msg": "⏳ **ADY Tariff Policy for {} freight year has not been officially published yet.**\n\nPlease select **{} freight year** from the left menu.",
         "api_warning": "⚠️ Please add GEMINI_API_KEY to Streamlit Secrets or enter it in the sidebar.",
         "api_label": "Enter Gemini API Key:"
     }
@@ -93,51 +90,25 @@ selected_year = st.sidebar.selectbox(
     index=0
 )
 
-# 6. УМНАЯ СЕЛЕКТИВНАЯ ЗАГРУЗКА ИЗ ТЕКСТОВЫХ ФАЙЛОВ И EXCEL
+# 6. БЫСТРАЯ СБОРКА КОНТЕКСТА ТОЛЬКО ИЗ .TXT ФАЙЛОВ (БЕЗ EXCEL)
 @st.cache_data(show_spinner=False)
-def load_selective_context(user_query, year_label, lang):
-    query_lower = user_query.lower()
-    files_to_load = ["system_instruction.txt", "Weight_Categories.txt", "GNG_Column_Mapping.txt"]
-
-    # Автоподгрузка нужной таблицы ставок по ключевым словам
-    if any(k in query_lower for k in ["цистерн", "çən", "tank", "нефть", "neft", "газ", "qaz", "масло", "спирт", "2709", "2710"]):
-        for f_name in ["Table_6_Tanks.txt", "Table6.txt", "Cədvəl6.txt", "Cadval_6.txt"]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-    elif any(k in query_lower for k in ["реф", "ref", "термос", "termos", "автовоз", "автопоезд", "контейнер"]):
-        for f_name in ["Table_5_Reef.txt", "Table5.txt", "Cədvəl5.txt", "Cadval_5.txt"]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-    else:
-        for f_name in ["Table_3_4_Universal.txt", "Table3.txt", "Table4.txt", "Cədvəl3.txt", "Cədvəl4.txt"]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-
-    # Загрузка файла расстояний
-    for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
-        if os.path.exists(dist_file):
-            files_to_load.append(dist_file)
-            break
+def load_txt_context(year_label, lang):
+    # Список всех ваших .txt файлов правил и таблиц из GitHub
+    possible_txt_files = [
+        "system_instruction.txt", 
+        "Weight_Categories.txt", 
+        "GNG_Column_Mapping.txt",
+        "Table_3_4_Universal.txt", "Table3.txt", "Table4.txt", "Cədvəl3.txt", "Cədvəl4.txt",
+        "Table_5_Reef.txt", "Table5.txt", "Cədvəl5.txt",
+        "Table_6_Tanks.txt", "Table6.txt", "Cədvəl6.txt",
+        "Distances.txt", "Məsafə.txt", "Distance.txt"
+    ]
 
     loaded_rules = []
-    for txt_file in set(files_to_load):
+    for txt_file in set(possible_txt_files):
         if os.path.exists(txt_file):
             with open(txt_file, "r", encoding="utf-8") as f:
                 loaded_rules.append(f"--- РАЗДЕЛ БАЗЫ: {txt_file} ---\n" + f.read())
-
-    # Резервная загрузка из Excel, если специальные txt-файлы таблиц отсутствуют
-    excel_path = f"ADY_Tariff_Policy_{year_label}.xlsx"
-    excel_context = ""
-    if not loaded_rules and os.path.exists(excel_path):
-        xls = pd.ExcelFile(excel_path)
-        summary_text = []
-        for sheet in xls.sheet_names:
-            df = pd.read_excel(xls, sheet_name=sheet)
-            summary_text.append(f"--- ТАБЛИЦА: {sheet} ---")
-            summary_text.append(df.to_string(index=False))
-        excel_context = "\n".join(summary_text)
 
     rules_text = "\n\n".join(loaded_rules)
     
@@ -146,9 +117,11 @@ def load_selective_context(user_query, year_label, lang):
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
         f"Все заголовки, имена столбцов и примечания переводи на выбранный язык ({lang})!\n"
         f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n\n"
-        + rules_text + "\n\n" + excel_context
+        + rules_text
     )
     return system_instruction
+
+SYSTEM_INSTRUCTION = load_txt_context(selected_year, selected_lang)
 
 # 7. UI Layout & Logo
 logo_file = None
@@ -180,7 +153,7 @@ def sanitize_text(text):
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
 
-# 9. Функция автовыбора доступных моделей Gemini (Проверенный рабочий вариант)
+# 9. Функция автовыбора моделей Gemini
 def call_gemini_with_fallback(client, prompt, instruction):
     candidate_models = ["gemini-1.5-flash"]
     
@@ -218,8 +191,6 @@ if st.button(t["calc_btn"], type="primary"):
     else:
         with st.spinner(t["spinner"].format(selected_year)):
             try:
-                dyn_instruction = load_selective_context(user_input, selected_year, selected_lang)
-                
                 prompt_text = (
                     f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n{user_input}\n\n"
                     f"⚠️ CRITICAL UNITS OF MEASUREMENT RULE:\n"
@@ -258,7 +229,7 @@ if st.button(t["calc_btn"], type="primary"):
                     "10. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
                 )
                 
-                raw_result, used_model = call_gemini_with_fallback(client, prompt_text, dyn_instruction)
+                raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
                 clean_result = sanitize_text(raw_result)
                 
                 st.success(t["success"].format(selected_year, used_model))
