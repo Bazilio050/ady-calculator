@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit + Компактные стили и мелкая анимация
+# 2. Скрытие системных элементов Streamlit + Жесткое ограничение ширины полей
 st.markdown("""
     <style>
     /* Скрываем верхнюю панель, меню и кнопки GitHub / Fork */
@@ -22,6 +22,13 @@ st.markdown("""
     
     /* Скрываем нижний футер Streamlit */
     footer {visibility: hidden;}
+
+    /* Жестко зажимаем блок с селекторами по ширине (максимум 200px) */
+    div[data-testid="stVerticalBlock"]:has(div[data-testid="stSelectbox"]) {
+        max-width: 200px !important;
+        margin-left: 0 !important;
+        margin-right: auto !important;
+    }
 
     /* Заголовок с выравниванием по левому краю */
     .custom-title {
@@ -187,19 +194,18 @@ for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
 if logo_file:
     st.image(logo_file, width=200)
 
-# 5. СЕЛЕКТОРЫ СЛЕВА ПРЯМО ПОД ЛОГОТИПОМ (Ограниченные по ширине)
-col_select1, col_select2, _ = st.columns([1, 1, 3])
+# 5. СЕЛЕКТОРЫ ВЕРТИКАЛЬНО ДРУГ ПОД ДРУГОМ (СЛЕВА)
+col_controls, _ = st.columns([1, 4])
 
-with col_select1:
+with col_controls:
     selected_lang = st.selectbox(
         "🌐 Dil / Language",
         options=["AZ", "RU", "EN"],
         index=0,
         format_func=lambda x: {"AZ": "Azərbaycan", "RU": "Русский", "EN": "English"}[x]
     )
-t = UI_TEXT[selected_lang]
+    t = UI_TEXT[selected_lang]
 
-with col_select2:
     selected_year = st.selectbox(
         f"⚙️ {t['year_select']}",
         options=["2026", "2027"],
