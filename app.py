@@ -1,7 +1,6 @@
 import os
 import re
 import json
-import time
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -13,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit (GitHub, Fork, footer) + Стили и анимации
+# 2. Скрытие системных элементов Streamlit + Компактные стили и мелкая анимация
 st.markdown("""
     <style>
     /* Скрываем верхнюю панель, меню и кнопки GitHub / Fork */
@@ -24,7 +23,7 @@ st.markdown("""
     /* Скрываем нижний футер Streamlit */
     footer {visibility: hidden;}
     
-    /* Уменьшенный заголовок, чтобы не перебивать логотип */
+    /* Заголовок */
     .custom-title {
         font-size: 22px !important;
         font-weight: 700;
@@ -38,7 +37,7 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* Анимация паровозика (развернут кабиной вперед слева направо) */
+    /* Компактный и мелкий трек для анимации паровозика */
     @keyframes train-move {
         0% { transform: translateX(-100%); }
         100% { transform: translateX(100%); }
@@ -47,15 +46,19 @@ st.markdown("""
         width: 100%;
         overflow: hidden;
         background: #F1F5F9;
-        border-radius: 8px;
-        padding: 10px 0;
-        margin: 10px 0;
+        border-radius: 6px;
+        padding: 4px 0;
+        margin: 6px 0;
         white-space: nowrap;
     }
     .train-animation {
         display: inline-block;
-        font-size: 24px;
+        font-size: 14px; /* Уменьшенный мелкий размер элементов */
         animation: train-move 3s linear infinite;
+    }
+    .train-text {
+        font-size: 13px;
+        color: #475569;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -72,7 +75,7 @@ UI_TEXT = {
         "calc_btn": "🚀 Tarifi hesabla",
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
         "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...",
-        "success": "Hesablama uğurla tamamlandı! (Model: {})",
+        "success": "Hesablama uğurla tamamlandı! (ADY Policy {})",
         "result_title": "📋 Hesablama nəticəsi:",
         "sec1_title": "1. Marşrut və daşıma şərtləri",
         "sec2_title": "2. Əmsallar və valyuta məzənnəsi",
@@ -108,7 +111,7 @@ UI_TEXT = {
         "calc_btn": "🚀 Рассчитать тариф",
         "warning_empty": "Пожалуйста, введите условия расчета.",
         "spinner_text": "Считаем тариф согласно ADY Policy {}...",
-        "success": "Расчет успешно выполнен! (Модель: {})",
+        "success": "Расчет успешно выполнен! (ADY Policy {})",
         "result_title": "📋 Результат расчета:",
         "sec1_title": "1. Маршрут и условия перевозки",
         "sec2_title": "2. Коэффициенты и курс валют",
@@ -144,7 +147,7 @@ UI_TEXT = {
         "calc_btn": "🚀 Calculate Freight Rate",
         "warning_empty": "Please enter shipment requirements.",
         "spinner_text": "Calculating rates according to ADY Policy {}...",
-        "success": "Calculation completed successfully! (Model: {})",
+        "success": "Calculation completed successfully! (ADY Policy {})",
         "result_title": "📋 Calculation Results:",
         "sec1_title": "1. Route and Shipment Conditions",
         "sec2_title": "2. Coefficients and Exchange Rate",
@@ -172,7 +175,7 @@ UI_TEXT = {
     }
 }
 
-# 4. Отображение логотипа
+# 4. Логотип компании
 logo_file = None
 for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
     if os.path.exists(filename):
@@ -182,7 +185,7 @@ for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
 if logo_file:
     st.image(logo_file, width=200)
 
-# 5. Компактный центральный блок настроек (Язык и Год)
+# 5. СЕЛЕКТОРЫ СТРОГО НАД ЗАГОЛОВКОМ (узкий удобный блок)
 col_left, col_center, col_right = st.columns([1, 2, 1])
 
 with col_center:
@@ -203,10 +206,11 @@ with col_center:
             index=0
         )
 
+# 6. Заголовок и подзаголовок (ПОД селекторами)
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-# 6. Проверка API ключа
+# 7. Проверка API ключа
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.text_input(t["api_label"], type="password")
@@ -217,7 +221,7 @@ if not api_key:
 
 client = genai.Client(api_key=api_key)
 
-# 7. Динамическая загрузка файлов тарифной базы
+# 8. Динамическая подгрузка текстовой базы (Distances.txt загружается ВСЕГДА)
 @st.cache_data(show_spinner=False)
 def load_selective_context(user_query, year_label, lang):
     query_lower = user_query.lower()
@@ -228,11 +232,19 @@ def load_selective_context(user_query, year_label, lang):
         "Security_Cargo_GNG.txt"
     ]
 
+    # Файл расстояний ЗАГРУЖАЕТСЯ ВСЕГДА ДЛЯ 100% ТОЧНОСТИ
+    for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
+        if os.path.exists(dist_file):
+            files_to_load.append(dist_file)
+            break
+
+    # Справочники курсов валют
     for curr_file in ["Currency_Exchange.txt", "Exchange_Rates.txt", "Valyuta.txt"]:
         if os.path.exists(curr_file):
             files_to_load.append(curr_file)
             break
 
+    # Выбор тарифной таблицы в зависимости от условий
     if any(k in query_lower for k in ["цистерн", "çən", "tank", "нефть", "neft", "газ", "qaz", "масло", "спирт", "2709", "2710"]):
         for f_name in ["Table_6_Tariffs.txt", "Table_6_Tanks.txt", "Table6.txt", "Cədvəl6.txt", "Cadval_6.txt"]:
             if os.path.exists(f_name):
@@ -256,11 +268,6 @@ def load_selective_context(user_query, year_label, lang):
             if os.path.exists(f_name):
                 files_to_load.append(f_name)
 
-    for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
-        if os.path.exists(dist_file):
-            files_to_load.append(dist_file)
-            break
-
     loaded_rules = []
     for txt_file in set(files_to_load):
         if os.path.exists(txt_file):
@@ -273,12 +280,13 @@ def load_selective_context(user_query, year_label, lang):
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
         f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n"
+        f"СТРОГО ИСПОЛЬЗУЙ ТОЧНЫЕ РАССТОЯНИЯ ИЗ ФАЙЛА Distances.txt! НАПРИМЕР: YALAMA - BÖYÜK KƏSİK = СТРОГО 616 KM (KƏMƏR: 611-620 KM). ЗАПРЕЩЕНО РАССЧИТЫВАТЬ ИЛИ УГАДЫВАТЬ РАССТОЯНИЯ САМОСТОЯТЕЛЬНО!\n"
         f"ИСПОЛЬЗУЙ КУРСЫ ВАЛЮТ ИЗ СПРАВОЧНИКА КУРСОВ (Currency_Exchange.txt) ДЛЯ ПЕРЕСЧЕТА СТАВОК ИЗ CHF В USD!\n\n"
         + rules_text
     )
     return system_instruction
 
-# 8. Схема JSON ответа
+# 9. Схема JSON ответа
 json_response_schema = {
     "type": "OBJECT",
     "properties": {
@@ -330,41 +338,21 @@ json_response_schema = {
     "required": ["part1", "part2", "part3"]
 }
 
-# 9. Функция вызова Gemini
+# 10. Быстрый вызов Gemini без задержки на поиск моделей
 def call_gemini_json(client, prompt, instruction):
-    candidate_models = ["gemini-1.5-flash"]
-    try:
-        models_list = client.models.list()
-        available = [
-            m.name.replace("models/", "") 
-            for m in models_list 
-            if hasattr(m, "name") and "flash" in m.name.lower() and "lite" not in m.name.lower()
-        ]
-        if available:
-            candidate_models = available + candidate_models
-    except Exception:
-        pass
+    target_model = "gemini-1.5-flash"
+    response = client.models.generate_content(
+        model=target_model,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=instruction,
+            response_mime_type="application/json",
+            response_schema=json_response_schema
+        )
+    )
+    return json.loads(response.text)
 
-    errors = []
-    for model_name in candidate_models:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=instruction,
-                    response_mime_type="application/json",
-                    response_schema=json_response_schema
-                )
-            )
-            return json.loads(response.text), model_name
-        except Exception as e:
-            errors.append(f"{model_name}: {str(e)}")
-            continue
-
-    raise RuntimeError("Не удалось выполнить запрос к ИИ:\n" + "\n".join(errors))
-
-# 10. Поле ввода текста и кнопка расчета
+# 11. Поле ввода текста и кнопка расчета
 user_input = st.text_area(
     t["input_header"],
     height=150,
@@ -375,14 +363,14 @@ if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
     else:
-        # Индикатор загрузки с развернутым паровозиком (едет кабиной вперед)
+        # Мелкая аккуратная анимация поезда
         train_holder = st.empty()
         train_holder.markdown(
             f'''
             <div class="train-track">
                 <div class="train-animation">═══ 🚃 🚃 🚃 🚂</div>
             </div>
-            <center><b>{t["spinner_text"].format(selected_year)}</b></center>
+            <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
             ''', 
             unsafe_allow_html=True
         )
@@ -403,6 +391,7 @@ if st.button(t["calc_btn"], type="primary"):
                 "   - For AZ language output, ALWAYS display wagon ownership as 'SPS' or 'MPS' (DO NOT use XPS or DDP in final output)!\n"
                 "2. STRICT ROUTE DISTANCES:\n"
                 "   - Bakı yük / Bakı tovar / Baku tovar / Absheron to Yalama = EXACTLY 204 KM! (NEVER USE 212 KM)!\n"
+                "   - Yalama to Böyük Kəsik = EXACTLY 616 KM (belt 611-620 km)!\n"
                 "   - ALWAYS USE EXACT DISTANCES FROM EXCEL/TXT 'Məsafə' / 'Distance' TABLES! DO NOT ESTIMATE DISTANCES!\n"
                 "   - Minimum distances: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
                 "3. SPECIAL WAGONS & PASSENGER WAGONS (Clauses 3.1.2.5 - 3.1.2.8):\n"
@@ -433,12 +422,13 @@ if st.button(t["calc_btn"], type="primary"):
                 "   - ALL text within JSON fields MUST BE STRICTLY IN LANGUAGE: {selected_lang}."
             )
             
-            data, used_model = call_gemini_json(client, prompt_text, dyn_instruction)
+            data = call_gemini_json(client, prompt_text, dyn_instruction)
             
             # Убираем индикатор после расчета
             train_holder.empty()
             
-            st.success(t["success"].format(used_model))
+            # Выводим выбранный фрахтовый год на зеленом фоне
+            st.success(t["success"].format(selected_year))
             st.markdown(f"### {t['result_title']}")
 
             # --- РАЗДЕЛ 1. Маршрут и условия перевозки ---
