@@ -104,7 +104,6 @@ def load_app_context(excel_path, year_label, lang):
         return None, msg
     
     additional_rules = []
-    # ВКЛЮЧАЕМ ВСЕ ВСПОМОГАТЕЛЬНЫЕ ФАЙЛЫ (включая GNG_Column_Mapping.txt)
     txt_files = ["system_instruction.txt", "Weight_Categories.txt", "GNG_Column_Mapping.txt"]
     
     for txt_file in txt_files:
@@ -219,12 +218,14 @@ if st.button(t["calc_btn"], type="primary"):
                     "   - Bakı yük / Bakı tovar / Baku tovar / Absheron to Yalama = EXACTLY 204 KM! (NEVER USE 212 KM)!\n"
                     "   - ALWAYS USE EXACT DISTANCES FROM EXCEL 'Məsafə' / 'Distance' TABLES! DO NOT ESTIMATE DISTANCES!\n"
                     "   - Minimum distances: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
-                    "3. GNG CODE MAPPING (GNG_Column_Mapping.txt & Clause 3.1.2.4):\n"
+                    "3. SPECIAL WAGONS & PASSENGER WAGONS (Clauses 3.1.2.5 - 3.1.2.8):\n"
+                    "   - Passenger/Mail wagons (GNG 99910000): Billable weight strictly = 66 TONS (no Table 2 multipliers). Take base rate from 25 tons BTT category (Table 7 col 6)!\n"
+                    "   - Transporters: min 5 tons/axle (4 axles = min 20t, 6 axles = min 30t, 8 axles = min 40t)!\n"
+                    "   - Empty SPS container platform return (axle distance > 19m): Apply 0.60 multiplier to axle-km rate (0.06 CHF / axle-km)!\n"
+                    "   - Other special wagons (3.1.2.8): Calculate using universal wagon Tables 3 & 4!\n"
+                    "4. GNG CODE MAPPING (GNG_Column_Mapping.txt & Clause 3.1.2.4):\n"
                     "   - STRICTLY use the loaded file 'GNG_Column_Mapping.txt' to determine the exact Table 6 column for tank shipments and specific cargo coefficients!\n"
                     "   - Base rate for liquid cargo in tanks MUST be taken from the 25 TONS weight category column (Rule 2 / Qayda 2)!\n"
-                    "4. UNIVERSAL WAGONS (Clause 3.1.1):\n"
-                    "   - Import/Export: Table 3; Transit: Table 4.\n"
-                    "   - Non-ferrous metals & special chemicals (GNG 28045090, 28049, 28054, 32121, 7106-7112, 7115, Ch.74, 75, 76, 78, 79, 80, 81, 8302, 83079, 8309, 8311, 85481): MUST APPLY COEFFICIENT × 1.20!\n"
                     "5. PRIVATE WAGONS (SPS / Özəl vaqonlar, Section 3.2):\n"
                     "   - Loaded SPS wagons: Apply x0.85 coefficient (Except Col 8 special tanks where x0.70 applies).\n"
                     "   - Empty SPS wagon return: Calculate per axle-km: 0.10 CHF / axle-km (4 axles * distance_km * 0.10 CHF) (Clause 3.2.2)! FOR EXPORT AND IMPORT SHIPMENTS, ALWAYS APPLY THE 1.50 COEFFICIENT TO THIS CALCULATION ((4 axles * distance * 0.10 CHF) * 1.50)!\n"
