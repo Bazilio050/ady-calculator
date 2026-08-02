@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit + Оптимальная ширина полей
+# 2. Скрытие системных элементов Streamlit + Настройки стилей
 st.markdown("""
     <style>
     /* Скрываем верхнюю панель, меню и кнопки GitHub / Fork */
@@ -23,7 +23,7 @@ st.markdown("""
     /* Скрываем нижний футер Streamlit */
     footer {visibility: hidden;}
 
-    /* Комфортная ширина блока селекторов */
+    /* Ширина блока селекторов */
     div[data-testid="stVerticalBlock"]:has(div[data-testid="stSelectbox"]) {
         max-width: 380px !important;
         margin-left: 0 !important;
@@ -46,7 +46,7 @@ st.markdown("""
         text-align: left;
     }
 
-    /* Компактный и мелкий трек для анимации паровозика */
+    /* Анимация паровозика */
     @keyframes train-move {
         0% { transform: translateX(-100%); }
         100% { transform: translateX(100%); }
@@ -243,19 +243,16 @@ def load_selective_context(user_query, year_label, lang):
         "Security_Cargo_GNG.txt"
     ]
 
-    # Файл расстояний ЗАГРУЖАЕТСЯ ВСЕГДА ДЛЯ 100% ТОЧНОСТИ
     for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
         if os.path.exists(dist_file):
             files_to_load.append(dist_file)
             break
 
-    # Справочники курсов валют
     for curr_file in ["Currency_Exchange.txt", "Exchange_Rates.txt", "Valyuta.txt"]:
         if os.path.exists(curr_file):
             files_to_load.append(curr_file)
             break
 
-    # Выбор тарифной таблицы в зависимости от условий
     if any(k in query_lower for k in ["цистерн", "çən", "tank", "нефть", "neft", "газ", "qaz", "масло", "спирт", "2709", "2710"]):
         for f_name in ["Table_6_Tariffs.txt", "Table_6_Tanks.txt", "Table6.txt", "Cədvəl6.txt", "Cadval_6.txt"]:
             if os.path.exists(f_name):
@@ -349,7 +346,7 @@ json_response_schema = {
     "required": ["part1", "part2", "part3"]
 }
 
-# 10. Быстрый вызов Gemini с автоматическим перебором доступных моделей
+# 10. Исправленный вызов официальной модели Gemini
 def call_gemini_json(client, prompt, instruction):
     candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
     
@@ -383,7 +380,6 @@ if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
     else:
-        # Мелкая аккуратная анимация поезда
         train_holder = st.empty()
         train_holder.markdown(
             f'''
@@ -444,10 +440,8 @@ if st.button(t["calc_btn"], type="primary"):
             
             data = call_gemini_json(client, prompt_text, dyn_instruction)
             
-            # Убираем индикатор после расчета
             train_holder.empty()
             
-            # Выводим выбранный фрахтовый год на зеленом фоне
             st.success(t["success"].format(selected_year))
             st.markdown(f"### {t['result_title']}")
 
@@ -474,7 +468,6 @@ if st.button(t["calc_btn"], type="primary"):
                 f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
             ]
             
-            # Выводим только фактически примененные коэффициенты
             for coeff in p2.get("coefficients", []):
                 table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
 
@@ -485,11 +478,9 @@ if st.button(t["calc_btn"], type="primary"):
             st.markdown(f"#### 📐 {t['sec3_title']}")
             p3 = data["part3"]
 
-            # 3.1 Формула
             st.markdown(f"**{t['formula_title']}**")
             st.code(p3["formula"], language="text")
 
-            # 3.2 Таблица итоговых ставок
             st.markdown(f"**{t['rates_title']}**")
             table3_rows = [
                 f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |"
@@ -500,13 +491,11 @@ if st.button(t["calc_btn"], type="primary"):
             table3_md = f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n" + "\n".join(table3_rows)
             st.markdown(table3_md)
 
-            # 3.3 Примечания и дисклеймер
             st.markdown(f"**{t['notes_title']}**")
             notes_list = p3.get("notes", [])
             for idx, note in enumerate(notes_list, start=1):
                 st.markdown(f"{idx}. *{note}*")
             
-            # Дисклеймер про станционные расходы
             st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
 
         except Exception as e:
