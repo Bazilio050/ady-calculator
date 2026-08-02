@@ -2,7 +2,6 @@ import os
 import re
 import streamlit as st
 from google import genai
-from google.genai import types
 
 # 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
 st.set_page_config(
@@ -90,22 +89,36 @@ selected_year = st.sidebar.selectbox(
     index=0
 )
 
-# 6. БЫСТРАЯ СБОРКА КОНТЕКСТА ТОЛЬКО ИЗ .TXT ФАЙЛОВ (БЕЗ EXCEL)
+# 6. УМНАЯ СЕЛЕКТИВНАЯ ЗАГРУЗКА ИЗ ТЕКСТОВЫХ ФАЙЛОВ
 @st.cache_data(show_spinner=False)
-def load_txt_context(year_label, lang):
-    # Список всех ваших .txt файлов правил и таблиц из GitHub
-    possible_txt_files = [
-        "system_instruction.txt", 
-        "Weight_Categories.txt", 
-        "GNG_Column_Mapping.txt",
-        "Table_3_4_Universal.txt", "Table3.txt", "Table4.txt", "Cədvəl3.txt", "Cədvəl4.txt",
-        "Table_5_Reef.txt", "Table5.txt", "Cədvəl5.txt",
-        "Table_6_Tanks.txt", "Table6.txt", "Cədvəl6.txt",
-        "Distances.txt", "Məsafə.txt", "Distance.txt"
-    ]
+def load_selective_context(user_query, year_label, lang):
+    query_lower = user_query.lower()
+    files_to_load = ["system_instruction.txt", "Weight_Categories.txt", "GNG_Column_Mapping.txt"]
+
+    # Автоподгрузка таблиц по типу груза и вагонов
+    if any(k in query_lower for k in ["цистерн", "çən", "tank", "нефть", "neft", "газ", "qaz", "масло", "спирт", "2709", "2710"]):
+        for f_name in ["Table_6_Tanks.txt", "Table6.txt", "Cədvəl6.txt", "Cadval_6.txt"]:
+            if os.path.exists(f_name):
+                files_to_load.append(f_name)
+                break
+    elif any(k in query_lower for k in ["реф", "ref", "термос", "termos", "автовоз", "автопоезд", "контейнер"]):
+        for f_name in ["Table_5_Reef.txt", "Table5.txt", "Cədvəl5.txt", "Cadval_5.txt"]:
+            if os.path.exists(f_name):
+                files_to_load.append(f_name)
+                break
+    else:
+        for f_name in ["Table_3_4_Universal.txt", "Table3.txt", "Table4.txt", "Cədvəl3.txt", "Cədvəl4.txt"]:
+            if os.path.exists(f_name):
+                files_to_load.append(f_name)
+
+    # Файл расстояний
+    for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
+        if os.path.exists(dist_file):
+            files_to_load.append(dist_file)
+            break
 
     loaded_rules = []
-    for txt_file in set(possible_txt_files):
+    for txt_file in set(files_to_load):
         if os.path.exists(txt_file):
             with open(txt_file, "r", encoding="utf-8") as f:
                 loaded_rules.append(f"--- РАЗДЕЛ БАЗЫ: {txt_file} ---\n" + f.read())
@@ -120,8 +133,6 @@ def load_txt_context(year_label, lang):
         + rules_text
     )
     return system_instruction
-
-SYSTEM_INSTRUCTION = load_txt_context(selected_year, selected_lang)
 
 # 7. UI Layout & Logo
 logo_file = None
@@ -191,8 +202,13 @@ if st.button(t["calc_btn"], type="primary"):
     else:
         with st.spinner(t["spinner"].format(selected_year)):
             try:
+                dyn_instruction = load_selective_context(user_input, selected_year, selected_lang)
+                
                 prompt_text = (
                     f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n{user_input}\n\n"
+                    f"⚠️ UNIVERSAL WAGONS TABLES SEPARATION (CƏDVAL 3 vs CƏDVAL 4):\n"
+                    "- CƏDVAL 3 (Table 3): STRICTLY AND ONLY FOR IMPORT (İdxal) AND EXPORT (İxrac) SHIPMENTS IN UNIVERSAL WAGONS! Do NOT apply 1.50 multiplier to Table 3 rates!\n"
+                    "- CƏDVAL 4 (Table 4): STRICTLY AND ONLY FOR TRANSIT (Tranzit) SHIPMENTS IN UNIVERSAL WAGONS!\n\n"
                     f"⚠️ CRITICAL UNITS OF MEASUREMENT RULE:\n"
                     "- FOR LOADED TONNAGE SHIPMENTS: Output rates strictly PER 1 TON (USD/t)! DO NOT display per wagon rates.\n"
                     "- FOR EMPTY WAGON RETURNS (SPS 0.10 CHF/axle-km), CAR TRANSPORTERS (Table 5 col 6), OR FIXED PER-WAGON RATES: Output rates strictly PER 1 WAGON (USD/wagon)!\n\n"
@@ -229,7 +245,7 @@ if st.button(t["calc_btn"], type="primary"):
                     "10. FORMATTING: Section 3 MUST contain code block calculation + '📊 Final Rates' table."
                 )
                 
-                raw_result, used_model = call_gemini_with_fallback(client, prompt_text, SYSTEM_INSTRUCTION)
+                raw_result, used_model = call_gemini_with_fallback(client, prompt_text, dyn_instruction)
                 clean_result = sanitize_text(raw_result)
                 
                 st.success(t["success"].format(selected_year, used_model))
