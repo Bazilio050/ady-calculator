@@ -294,82 +294,32 @@ def load_selective_context(user_query, year_label, lang):
     )
     return system_instruction
 
-# 9. Схема JSON ответа
-json_response_schema = {
-    "type": "OBJECT",
-    "properties": {
-        "part1": {
-            "type": "OBJECT",
-            "properties": {
-                "route": {"type": "STRING"},
-                "shipment_type": {"type": "STRING"},
-                "distance": {"type": "STRING"},
-                "cargo_and_wagon": {"type": "STRING"},
-                "weight_info": {"type": "STRING"},
-                "period": {"type": "STRING"}
-            },
-            "required": ["route", "shipment_type", "distance", "cargo_and_wagon", "weight_info", "period"]
-        },
-        "part2": {
-            "type": "OBJECT",
-            "properties": {
-                "exchange_rate": {"type": "STRING"},
-                "base_tariff": {"type": "STRING"},
-                "coefficients": {
-                    "type": "ARRAY",
-                    "items": {
-                        "type": "OBJECT",
-                        "properties": {
-                            "name": {"type": "STRING"},
-                            "value": {"type": "STRING"}
-                        },
-                        "required": ["name", "value"]
-                    }
-                }
-            },
-            "required": ["exchange_rate", "base_tariff", "coefficients"]
-        },
-        "part3": {
-            "type": "OBJECT",
-            "properties": {
-                "formula": {"type": "STRING"},
-                "net_ady_rate": {"type": "STRING"},
-                "express_rate": {"type": "STRING", "nullable": True},
-                "notes": {
-                    "type": "ARRAY",
-                    "items": {"type": "STRING"}
-                }
-            },
-            "required": ["formula", "net_ady_rate", "notes"]
-        }
-    },
-    "required": ["part1", "part2", "part3"]
-}
-
-# 10. Рабочий вызов актуальных моделей Gemini в пакете google-genai
+# 9. Безопасный вызов Gemini (без response_schema, чтобы избежать ошибки 404/Not Supported)
 def call_gemini_json(client, prompt, instruction):
-    candidate_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash"]
+    model_name = "gemini-1.5-flash"
     
-    last_error = None
-    for model_name in candidate_models:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=instruction,
-                    response_mime_type="application/json",
-                    response_schema=json_response_schema
-                )
-            )
-            return json.loads(response.text)
-        except Exception as e:
-            last_error = e
-            continue
-            
-    raise RuntimeError(f"Не удалось выполнить запрос к ИИ: {str(last_error)}")
+    response = client.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=instruction,
+            temperature=0.1,
+            response_mime_type="application/json"
+        )
+    )
+    
+    # Очистка текста от случайных маркдаун-тегов (```json ... ```)
+    raw_text = response.text.strip()
+    if raw_text.startswith("```json"):
+        raw_text = raw_text[7:]
+    elif raw_text.startswith("```"):
+        raw_text = raw_text[3:]
+    if raw_text.endswith("```"):
+        raw_text = raw_text[:-3]
+        
+    return json.loads(raw_text.strip())
 
-# 11. Поле ввода текста и кнопка расчета
+# 10. Поле ввода текста и кнопка расчета
 user_input = st.text_area(
     t["input_header"],
     height=150,
@@ -407,100 +357,4 @@ if st.button(t["calc_btn"], type="primary"):
                 "   - For AZ language output, ALWAYS display wagon ownership as 'SPS' or 'MPS' (DO NOT use XPS or DDP in final output)!\n"
                 "2. STRICT ROUTE DISTANCES:\n"
                 "   - Bakı yük / Bakı tovar / Baku tovar / Absheron to Yalama = EXACTLY 204 KM! (NEVER USE 212 KM)!\n"
-                "   - Yalama to Böyük Kəsik = EXACTLY 616 KM (belt 611-620 km)!\n"
-                "   - ALWAYS USE EXACT DISTANCES FROM EXCEL/TXT 'Məsafə' / 'Distance' TABLES! DO NOT ESTIMATE DISTANCES!\n"
-                "   - Minimum distances: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
-                "3. SPECIAL WAGONS & PASSENGER WAGONS (Clauses 3.1.2.5 - 3.1.2.8):\n"
-                "   - Passenger/Mail wagons (GNG 99910000): Billable weight strictly = 66 TONS (no Table 2 multipliers). Take base rate from 25 tons BTT category (Table 7 col 6)!\n"
-                "   - Transporters: min 5 tons/axle (4 axles = min 20t, 6 axles = min 30t, 8 axles = min 40t)!\n"
-                "   - Empty SPS container platform return (axle distance > 19m): Apply 0.60 multiplier to axle-km rate (0.06 CHF / axle-km)!\n"
-                "   - Other special wagons (3.1.2.8): Calculate using universal wagon Tables 3 & 4!\n"
-                "4. GNG CODE MAPPING (GNG_Column_Mapping.txt & Clause 3.1.2.4):\n"
-                "   - STRICTLY use 'GNG_Column_Mapping.txt' to determine the exact Table 6 column for tank shipments and specific cargo coefficients!\n"
-                "   - Base rate for liquid cargo in tanks MUST be taken from the 25 TONS weight category column (Rule 2 / Qayda 2)!\n"
-                "5. PRIVATE WAGONS (SPS / Özəl vaqonlar, Section 3.2):\n"
-                "   - Loaded SPS wagons: Apply x0.85 coefficient (Except Col 8 special tanks where x0.70 applies).\n"
-                "   - Empty SPS wagon return: Calculate per axle-km: 0.10 CHF / axle-km (4 axles * distance_km * 0.10 CHF) (Clause 3.2.2)! FOR EXPORT AND IMPORT SHIPMENTS, ALWAYS APPLY THE 1.50 COEFFICIENT TO THIS CALCULATION ((4 axles * distance * 0.10 CHF) * 1.50)!\n"
-                "6. REFRIGERATED WAGONS & REF SECTIONS (TABLE 5):\n"
-                "   - Recognize terms: 'рефвагон', 'рефсекция', 'вагонреф', 'АРВ', 'ref', '1+1', '1+2', '1+3', '1+4', '1+5', '1+6', '2+1', '3+1', '4+1', '5+1', '6+1' etc.\n"
-                "   - SECTION COEFFICIENTS: [1+1] = x1.70, [1+2] / [2+1] = x1.40, [1+3] / [3+1] = x1.10, [1+4] / [4+1] = x1.00, [1+5] / [5+1] or more = x0.85 (ALWAYS APPLY x0.85 for 5+ wagon ref section)!\n"
-                "7. SPECIAL COEFFICIENTS (1.04 / 1.20 / 1.50 / 0.80):\n"
-                "   - IMPORT OF WOOD (GNG 4403, 4404, 4407-4413) AND BLACK METALS (GNG Ch.72, 7301-7307): MUST APPLY EXTRA COEFFICIENT × 1.04!\n"
-                "   - TRANSIT ALAT - BOYUK KASIK: Apply coefficient × 1.20!\n"
-                "   - TRANSIT/IMPORT OIL IN TANKS & ARV/REF TRANSIT: Apply ONLY coefficient × 1.20!\n"
-                "   - COEFFICIENT 1.50: ALWAYS APPLY TO ALL EXPORT AND IMPORT SHIPMENTS (LOADED AND EMPTY WAGONS), EXCEPT Table 3 rates, wood in universal wagons (4403-4413), black metals (72, 7301-7307), methanol, and oil/petroleum in Table 6 Col 2 (import/export)!\n"
-                "8. STRICT MINIMUM WEIGHT NORMS FOR LOADED WAGONS:\n"
-                "   - WOOD/TIMBER (GNG 4403, 4404, 4407-4413): Billable weight = min 45 TONS! Always take base rate from 45 TONS COLUMN!\n"
-                "   - CAR TRANSPORTERS (Table 5, Col 6): Billable weight = min 10 TONS!\n"
-                "9. JSON OUTPUT INSTRUCTIONS:\n"
-                "   - DO NOT RETURN NON-APPLICABLE COEFFICIENTS IN part2.coefficients (Only return coefficients that actually apply with values like 'x 0.85', 'x 1.50', etc.)!\n"
-                "   - If ADY Express is requested, provide express_rate in part3, otherwise set express_rate to null.\n"
-                "   - ALL text within JSON fields MUST BE STRICTLY IN LANGUAGE: {selected_lang}."
-            )
-            
-            data = call_gemini_json(client, prompt_text, dyn_instruction)
-            
-            train_holder.empty()
-            
-            st.success(t["success"].format(selected_year))
-            st.markdown(f"### {t['result_title']}")
-
-            # --- РАЗДЕЛ 1. Маршрут и условия перевозки ---
-            st.markdown(f"#### 📍 {t['sec1_title']}")
-            p1 = data["part1"]
-            table1_md = f"""
-| {t['col_param']} | {t['col_val']} |
-| :--- | :--- |
-| **{t['lbl_route']}** | {p1['route']} |
-| **{t['lbl_type']}** | {p1['shipment_type']} |
-| **{t['lbl_dist']}** | {p1['distance']} |
-| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |
-| **{t['lbl_weight']}** | {p1['weight_info']} |
-| **{t['lbl_period']}** | {p1['period']} |
-"""
-            st.markdown(table1_md)
-
-            # --- РАЗДЕЛ 2. Коэффициенты и курс валют ---
-            st.markdown(f"#### ⚙️ {t['sec2_title']}")
-            p2 = data["part2"]
-            table2_rows = [
-                f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |",
-                f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
-            ]
-            
-            for coeff in p2.get("coefficients", []):
-                table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
-
-            table2_md = f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(table2_rows)
-            st.markdown(table2_md)
-
-            # --- РАЗДЕЛ 3. Расчет тарифа ---
-            st.markdown(f"#### 📐 {t['sec3_title']}")
-            p3 = data["part3"]
-
-            st.markdown(f"**{t['formula_title']}**")
-            st.code(p3["formula"], language="text")
-
-            st.markdown(f"**{t['rates_title']}**")
-            table3_rows = [
-                f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |"
-            ]
-            if p3.get("express_rate"):
-                table3_rows.append(f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |")
-
-            table3_md = f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n" + "\n".join(table3_rows)
-            st.markdown(table3_md)
-
-            st.markdown(f"**{t['notes_title']}**")
-            notes_list = p3.get("notes", [])
-            for idx, note in enumerate(notes_list, start=1):
-                st.markdown(f"{idx}. *{note}*")
-            
-            st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
-
-        except Exception as e:
-            train_holder.empty()
-            st.error(f"Error: {str(e)}")
-
-st.markdown("---")
-st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
+                "   - Yalama to Böyük Kəsik = EXACTLY 616 KM (belt 611-620 km)!\
