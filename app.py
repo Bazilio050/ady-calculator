@@ -65,7 +65,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Переводы интерфейса (AZ, RU, EN) — без звездочек в подзаголовках
+# 3. Переводы интерфейса (AZ, RU, EN)
 UI_TEXT = {
     "AZ": {
         "title": "ADY Tarif Kalkulyatoru",
@@ -187,8 +187,8 @@ for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
 if logo_file:
     st.image(logo_file, width=200)
 
-# 5. СЕЛЕКТОРЫ СЛЕВА ПРЯМО ПОД ЛОГОТИПОМ
-col_select1, col_select2, _ = st.columns([1.5, 1.5, 5])
+# 5. СЕЛЕКТОРЫ СЛЕВА ПРЯМО ПОД ЛОГОТИПОМ (Ограниченные по ширине)
+col_select1, col_select2, _ = st.columns([1, 1, 3])
 
 with col_select1:
     selected_lang = st.selectbox(
