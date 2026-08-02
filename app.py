@@ -288,7 +288,7 @@ def load_selective_context(user_query, year_label, lang):
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
         f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n"
-        f"СТРОГО ИСПОЛЬЗУЙ ТОЧНЫЕ РАССТОЯНИЯ ИЗ ФАЙЛА Distances.txt! НАПРИМЕР: YALAMA - BÖYÜK KƏSİK = СТРОГО 616 KM (KƏMƏR: 611-620 KM). ЗАПРЕЩЕНО РАССЧИТЫВАТЬ ИЛИ УГАДЫВАТЬ РАССТОЯНИЯ САМОСТОЯТЕЛЬНО!\n"
+        f"СТРОГО ИСПОЛЬЗУЙ ТОЧНЫЕ РАССТОЯНИЯ ИЗ ФАЙЛА Distances.txt! НАПРИМЕР: YALAMA - BÖYÜK KƏСİK = СТРОГО 616 KM (KƏMƏR: 611-620 KM). ЗАПРЕЩЕНО РАССЧИТЫВАТЬ ИЛИ УГАДЫВАТЬ РАССТОЯНИЯ САМОСТОЯТЕЛЬНО!\n"
         f"ИСПОЛЬЗУЙ КУРСЫ ВАЛЮТ ИЗ СПРАВОЧНИКА КУРСОВ (Currency_Exchange.txt) ДЛЯ ПЕРЕСЧЕТА СТАВОК ИЗ CHF В USD!\n\n"
         + rules_text
     )
@@ -343,10 +343,9 @@ if st.button(t["calc_btn"], type="primary"):
         try:
             dyn_instruction = load_selective_context(user_input, selected_year, selected_lang)
             
-            prompt_text = f"""Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):
-{user_input}
-
-⚠️ UNIVERSAL WAGONS TABLES SEPARATION (CƏDVAL 3 vs CƏDVAL 4):
+            prompt_text = (
+                f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n" + user_input + "\n\n" +
+                """⚠️ UNIVERSAL WAGONS TABLES SEPARATION (CƏDVAL 3 vs CƏDVAL 4):
 - CƏDVAL 3 (Table 3): STRICTLY AND ONLY FOR IMPORT (İdxal) AND EXPORT (İxrac) SHIPMENTS IN UNIVERSAL WAGONS! Do NOT apply 1.50 multiplier to Table 3 rates!
 - CƏDVAL 4 (Table 4): STRICTLY AND ONLY FOR TRANSIT (Tranzit) SHIPMENTS IN UNIVERSAL WAGONS!
 
@@ -354,22 +353,4 @@ if st.button(t["calc_btn"], type="primary"):
 - FOR LOADED TONNAGE SHIPMENTS: Output rates strictly PER 1 TON (USD/t)! DO NOT display per wagon rates.
 - FOR EMPTY WAGON RETURNS (SPS 0.10 CHF/axle-km), CAR TRANSPORTERS (Table 5 col 6), OR FIXED PER-WAGON RATES: Output rates strictly PER 1 WAGON (USD/wagon)!
 
-⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRICTLY: {selected_lang}):
-1. ABBREVIATIONS: Treat SPS = СПС = XPS (private wagons) and MPS = МПС = DDP (railway fleet) as identical terms!
-   - For AZ language output, ALWAYS display wagon ownership as 'SPS' or 'MPS' (DO NOT use XPS or DDP in final output)!
-2. STRICT ROUTE DISTANCES:
-   - Bakı yük / Bakı tovar / Baku tovar / Absheron to Yalama = EXACTLY 204 KM! (NEVER USE 212 KM)!
-   - Yalama to Böyük Kəsik = EXACTLY 616 KM (belt 611-620 km)!
-   - ALWAYS USE EXACT DISTANCES FROM EXCEL/TXT 'Məsafə' / 'Distance' TABLES! DO NOT ESTIMATE DISTANCES!
-   - Minimum distances: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!
-3. SPECIAL WAGONS & PASSENGER WAGONS (Clauses 3.1.2.5 - 3.1.2.8):
-   - Passenger/Mail wagons (GNG 99910000): Billable weight strictly = 66 TONS (no Table 2 multipliers). Take base rate from 25 tons BTT category (Table 7 col 6)!
-   - Transporters: min 5 tons/axle (4 axles = min 20t, 6 axles = min 30t, 8 axles = min 40t)!
-   - Empty SPS container platform return (axle distance > 19m): Apply 0.60 multiplier to axle-km rate (0.06 CHF / axle-km)!
-   - Other special wagons (3.1.2.8): Calculate using universal wagon Tables 3 & 4!
-4. GNG CODE MAPPING (GNG_Column_Mapping.txt & Clause 3.1.2.4):
-   - STRICTLY use 'GNG_Column_Mapping.txt' to determine the exact Table 6 column for tank shipments and specific cargo coefficients!
-   - Base rate for liquid cargo in tanks MUST be taken from the 25 TONS weight category column (Rule 2 / Qayda 2)!
-5. PRIVATE WAGONS (SPS / Özəl vaqonlar, Section 3.2):
-   - Loaded SPS wagons: Apply x0.85 coefficient (Except Col 8 special tanks where x0.70 applies).
-   - Empty SPS wagon return: Calculate per axle-km: 0.10 CHF / axle-km (4 axles * distance_km * 0.10 CHF) (Clause 3.2.2)! FOR EXPORT AND IMPORT SHIPMENTS, ALWAYS APPLY THE 1.50
+⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRICTLY: """ + selected_lang + ""
