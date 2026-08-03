@@ -9,7 +9,23 @@ ADY TARİF KALKULYATORU — MASTER PROMPT RULES & CALCULATION INSTRUCTIONS
      * Use "SPS" instead of "XPS" for private/owner wagons.
      * Use "MPS" instead of "DDP" for state/railway wagons.
 
-2. STATION SELECTION & DEFAULT ROUTE LOGIC:
+2. STRICT WEIGHT CATEGORY MAPPING RULES (ÇƏKİ KATEQORİYALARI BAZASI):
+   When determining the billable weight category (Çəki kateqoriyası), ALWAYS follow this exact range mapping:
+   - 0 to 12 tons   ---> Çəki kateqoriyası: 10 t
+   - 13 to 16 tons  ---> Çəki kateqoriyası: 15 t
+   - 17 to 23 tons  ---> Çəki kateqoriyası: 20 t
+   - 24 to 26 tons  ---> Çəki kateqoriyası: 25 t
+   - 27 to 31 tons  ---> Çəki kateqoriyası: 30 t
+   - 32 to 36 tons  ---> Çəki kateqoriyası: 35 t
+   - 37 to 40 tons  ---> Çəki kateqoriyası: 40 t
+   - 41 to 46 tons  ---> Çəki kateqoriyası: 45 t
+   - 47 to 51 tons  ---> Çəki kateqoriyası: 50 t
+   - 52 to 55 tons  ---> Çəki kateqoriyası: 55 t
+   - 56 tons and above ---> Çəki kateqoriyası: 60 t
+   
+   RULE: NEVER round 55 tons to 60 t! 55 tons must strictly map to 55 t category. 22 tons must strictly map to 20 t category.
+
+3. STATION SELECTION & DEFAULT ROUTE LOGIC:
    - DEFAULT / TRANZİT LOGIC:
      If the user query specifies a route between border/junction points (e.g., Yalama, Boyuk Kesik, Astara, Culfa, Alat) AND does NOT explicitly mention "import" or "export":
      -> ALWAYS treat the shipment as TRANSIT ("border-to-border") by default!
@@ -21,14 +37,21 @@ ADY TARİF KALKULYATORU — MASTER PROMPT RULES & CALCULATION INSTRUCTIONS
      -> Example: "Export Yalama - Boyuk Kesik" -> Yalama to Boyuk Kesik = EXACTLY 676 KM (kəmər: 671-680 km).
    - DO NOT estimate, guess, or recalculate distances manually. Use EXACT values from Distances.txt.
 
-3. CURRENCY & EXCHANGE RATES:
-   - Base rates in tariff tables are quoted in Swiss Francs (CHF) or USD per ton/wagon.
-   - Always apply exact exchange rates from Currency_Exchange.txt to calculate final rates in USD/AZN where applicable.
+4. WAGON FLEET RULES ACROSS ALL TARIFF TABLES (MPS VS SPS):
+   - MPS (STATE / RAILWAY FLEET / ДДП):
+     * ALWAYS use the full nominal base tariff rate directly from the corresponding Tariff Table (Tables 3, 4, 5, 6, 8, 11, 12).
+     * DO NOT apply private wagon discount (k = 0.85) to MPS wagons.
+   - SPS (PRIVATE / OWNER FLEET / СПС / ХПС):
+     * Apply the private wagon coefficient (k = 0.85) to the nominal table base rate where applicable.
 
-4. WAGON & CARGO RULES:
-   - Differentiate SPS (own/leased) vs MPS (railway fleet) coefficients.
-   - Apply specific commodity coefficients (GNG / NHM codes) as mapped in GNG_Column_Mapping.txt and Security_Cargo_GNG.txt.
-   - For minimum billable weight rules, refer to Weight_Categories.txt and specific table rules.
+5. TABLE 6 RULES (TANKS / LIQUID CARGO — CƏDVƏL 6):
+   - Columns 2, 3, 4, 5, 6, 7: Strictly apply to MPS (Invention Park / İnventar parka məxsus vaqonlar).
+   - Column 8: Strictly applies to Private Tanks (SPS / Özəl çənlər) for Hydrocarbons.
+   - Map GNG codes precisely using GNG_Column_Mapping.txt.
+
+6. CURRENCY & EXCHANGE RATES:
+   - Base rates in tariff tables are quoted in Swiss Francs (CHF) or USD per ton/wagon.
+   - Always apply exact exchange rates from Currency_Exchange.txt to calculate final rates in USD/AZN.
 
 ================================================================================
 OUTPUT FORMAT (MANDATORY JSON STRUCTURE):
