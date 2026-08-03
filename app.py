@@ -325,7 +325,29 @@ user_input = st.text_area(
     placeholder=t["input_placeholder"]
 )
 
-# Формируем правила через список строк для гарантии полного отсутствия синтаксических ошибок
+# Формируем структуру JSON через Python словарь, избегая ручного экранирования кавычек
+json_structure = {
+    "part1": {
+        "route": "string", 
+        "shipment_type": "string", 
+        "distance": "string", 
+        "cargo_and_wagon": "string", 
+        "weight_info": "string", 
+        "period": "string"
+    },
+    "part2": {
+        "exchange_rate": "string", 
+        "base_tariff": "string", 
+        "coefficients": [{"name": "string", "value": "string"}]
+    },
+    "part3": {
+        "formula": "string", 
+        "net_ady_rate": "string", 
+        "express_rate": "string or null", 
+        "notes": ["string"]
+    }
+}
+
 STATIC_RULES_LIST = [
     "UNIVERSAL WAGONS TABLES SEPARATION (Table 3 vs Table 4):",
     "- Table 3: STRICTLY AND ONLY FOR IMPORT AND EXPORT SHIPMENTS IN UNIVERSAL WAGONS! Do NOT apply 1.50 multiplier to Table 3 rates!",
@@ -362,8 +384,4 @@ STATIC_RULES_LIST = [
     "   - TRANSIT/IMPORT OIL IN TANKS & ARV/REF TRANSIT: Apply ONLY coefficient x1.20!",
     "   - COEFFICIENT 1.50: ALWAYS APPLY TO ALL EXPORT AND IMPORT SHIPMENTS (LOADED AND EMPTY WAGONS), EXCEPT Table 3 rates, wood in universal wagons (4403-4413), black metals (72, 7301-7307), methanol, and oil/petroleum in Table 6 Col 2 (import/export)!",
     "8. STRICT MINIMUM WEIGHT NORMS FOR LOADED WAGONS:",
-    "   - WOOD/TIMBER (GNG 4403, 4404, 4407-4413): Billable weight = min 45 TONS! Always take base rate from 45 TONS COLUMN!",
-    "   - CAR TRANSPORTERS (Table 5, Col 6): Billable weight = min 10 TONS!",
-    "",
-    "OUTPUT FORMAT (MANDATORY JSON):",
-    "Return ONLY a valid JSON object matching
+    "   - WOOD/TIMBER (GNG 4403, 4404, 4
