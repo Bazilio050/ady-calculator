@@ -116,6 +116,16 @@ UI_TEXT = {
         "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
         "api_warning": "⚠️ Xahiş olunur, GEMINI_API_KEY daxil edin.",
         "api_label": "Gemini API Key:",
+        "note_sps": (
+            "Özəl vaqonlar (SPS) üçün 0.85 güzəşt əmsalı tətbiq olunmuşdur."
+        ),
+        "note_import": (
+            "İdxal rejimində minimal tarif məsafəsi norması 151 km-dir."
+        ),
+        "note_export": (
+            "İxrac rejimində minimal tarif məsafəsi norması 101 km-dir."
+        ),
+        "note_express": "ADY Express servisi üçün +2% əlavə haqq hesablanmışdır.",
     },
     "RU": {
         "title": "ADY Tarif Kalkulyatoru",
@@ -159,6 +169,20 @@ UI_TEXT = {
         "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
         "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY.",
         "api_label": "Введите Gemini API Key:",
+        "note_sps": (
+            "Применен скидочный коэффициент 0.85 для собственных вагонов (SPS)."
+        ),
+        "note_import": (
+            "В режиме импорта минимальное тарифное расстояние составляет 151"
+            " км."
+        ),
+        "note_export": (
+            "В режиме экспорта минимальное тарифное расстояние составляет 101"
+            " км."
+        ),
+        "note_express": (
+            "Начислена надбавка +2% за сервис ADY Express."
+        ),
     },
     "EN": {
         "title": "ADY Tarif Kalkulyatoru",
@@ -204,6 +228,12 @@ UI_TEXT = {
         "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
         "api_warning": "⚠️ Please provide GEMINI_API_KEY.",
         "api_label": "Enter Gemini API Key:",
+        "note_sps": (
+            "Discount coefficient 0.85 applied for private wagons (SPS)."
+        ),
+        "note_import": "Minimum tariff distance for import is 151 km.",
+        "note_export": "Minimum tariff distance for export is 101 km.",
+        "note_express": "Surcharge +2% added for ADY Express service.",
     },
 }
 
@@ -411,7 +441,7 @@ def get_static_rules():
             "formula": "string",
             "net_ady_rate": "string",
             "express_rate": "string or null",
-            "notes": ["string"],
+            "notes": [],
         },
     }
 
@@ -526,10 +556,25 @@ if st.button(t["calc_btn"], type="primary"):
                     + "\n".join(table3_rows)
                 )
 
-                st.markdown(f"**{t['notes_title']}**")
-                notes_list = p3.get("notes", [])
-                if isinstance(notes_list, list):
-                    for idx, note in enumerate(notes_list, start=1):
+                # Автоматическое сбором примечательных правил силами Python (Экономия токенов Gemini)
+                auto_notes = []
+                input_check = user_input.lower()
+                
+                if "sps" in input_check or "özəl" in input_check or "спс" in input_check or "собствен" in input_check:
+                    auto_notes.append(t["note_sps"])
+                
+                ship_type = str(p1.get("shipment_type", "")).lower()
+                if "idxal" in ship_type or "импорт" in ship_type or "import" in ship_type:
+                    auto_notes.append(t["note_import"])
+                elif "ixrac" in ship_type or "экспорт" in ship_type or "export" in ship_type:
+                    auto_notes.append(t["note_export"])
+
+                if p3.get("express_rate"):
+                    auto_notes.append(t["note_express"])
+
+                if auto_notes:
+                    st.markdown(f"**{t['notes_title']}**")
+                    for idx, note in enumerate(auto_notes, start=1):
                         st.markdown(f"{idx}. *{note}*")
 
                 st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
