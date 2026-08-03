@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="ADY Tarif Kalkulyatoru", page_icon="🚂", layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit
+# 2. Скрытие системных элементов Streamlit и адаптивные стили (Dark Mode + Селекторы)
 st.markdown(
     """
     <style>
@@ -19,15 +19,15 @@ st.markdown(
     footer {visibility: hidden;}
 
     div[data-testid="stVerticalBlock"]:has(div[data-testid="stSelectbox"]) {
-        max-width: 380px !important;
+        max-width: 100% !important;
         margin-left: 0 !important;
         margin-right: auto !important;
     }
 
     .custom-title {
-        font-size: 22px !important;
+        font-size: 24px !important;
         font-weight: 700;
-        color: #1E293B;
+        color: var(--text-color, #1E293B);
         margin-top: 10px;
         margin-bottom: 2px;
         text-align: left;
@@ -125,7 +125,9 @@ UI_TEXT = {
         "note_export": (
             "İxrac rejimində minimal tarif məsafəsi norması 101 km-dir."
         ),
-        "note_express": "ADY Express servisi üçün +2% əlavə haqq hesablanmışdır.",
+        "note_express": (
+            "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur."
+        ),
     },
     "RU": {
         "title": "ADY Tarif Kalkulyatoru",
@@ -181,7 +183,7 @@ UI_TEXT = {
             " км."
         ),
         "note_express": (
-            "Начислена надбавка +2% за сервис ADY Express."
+            "Применен дополнительный коэффициент +2% за сервис ADY Express."
         ),
     },
     "EN": {
@@ -233,7 +235,9 @@ UI_TEXT = {
         ),
         "note_import": "Minimum tariff distance for import is 151 km.",
         "note_export": "Minimum tariff distance for export is 101 km.",
-        "note_express": "Surcharge +2% added for ADY Express service.",
+        "note_express": (
+            "Additional coefficient +2% applied for ADY Express service."
+        ),
     },
 }
 
@@ -248,7 +252,7 @@ if logo_file:
     st.image(logo_file, width=200)
 
 # 5. Селекторы
-col_controls, _ = st.columns([2.5, 7.5])
+col_controls, _ = st.columns([4.0, 6.0])
 
 with col_controls:
     selected_lang = st.selectbox(
@@ -379,7 +383,7 @@ def load_selective_context(user_query, year_label, lang):
         f"1. Для AZ языка строго выводить SPS (вместо XPS) и MPS (вместо DDP).\n"
         f"2. МИН. РАСЧЕТНАЯ НОРМА ЧЕКИ: Если фактический вес < минимальной нормы (например, GNG 4707 = 45 т, GNG 4407 = 45 т), РАСЧЕТНЫЙ ВЕС СТРОГО ПРИНИМАЕТСЯ РАВНЫМ МИН. НОРМЕ (45 т) и колонка выбирается по 45 т!\n"
         f"3. MPS vs SPS: Для MPS берется 100% базовая ставка из таблицы. Для SPS применяется коэффициент k = 0.85 к базовой ставке таблицы.\n"
-        f"4. СТАНЦИИ: Если стыковые станции указаны без 'импорт'/'экспорт', считать транзитом по умолчанию и брать пометку '(eksport)' (680 км).\n\n"
+        f"4. СТАНЦИИ: Если станция пограничная (Yalama, Boyuk Kesik, Astara, Culfa, Alat), писать с припиской '-eksp.' (например, 'Yalama-eksp. - Abşeron').\n\n"
         + rules_text
     )
     return system_instruction
@@ -556,7 +560,7 @@ if st.button(t["calc_btn"], type="primary"):
                     + "\n".join(table3_rows)
                 )
 
-                # Автоматическое сбором примечательных правил силами Python (Экономия токенов Gemini)
+                # Автоматическая подстановка примечаний на стороне Python
                 auto_notes = []
                 input_check = user_input.lower()
                 
