@@ -2,10 +2,13 @@
 ADY TARİF KALKULYATORU — JSON OUTPUT FORMAT INSTRUCTIONS
 ================================================================================
 
-1. GENERAL FORMATTING RULE:
-   - Return ONLY a valid JSON object matching exactly the required schema below.
-   - Do NOT wrap JSON in additional prose or markdown codeblocks.
-   - Ensure all section labels and calculated values strictly match the target language (AZ, RU, EN).
+1. GENERAL FORMATTING & TOKEN SAVING RULES:
+   - Return ONLY a valid JSON object.
+   - Keep string values as SHORT and CONCISE as possible to minimize token output.
+   - CARGO NAME RULE: Return only short cargo name and GNG code in "cargo_and_wagon" field (e.g., "GNG 4707 (Макулатура)").
+   - FORMULA RULE: In "formula" field, output ONLY PER-TON (or per-unit) rate calculation with active coefficients!
+     * CORRECT FORMULA EXAMPLE: "18.19 CHF/t × 0.85 × 1.015 = 15.69 CHF/t"
+     * STRICTLY FORBIDDEN: Do NOT multiply by total weight (e.g., do NOT add "× 35 t" or "× 45 t") inside the formula line!
 
 2. MANDATORY JSON SCHEMA STRUCTURE:
 {
