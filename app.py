@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="ADY Tarif Kalkulyatoru", page_icon="🚂", layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit и адаптивные стили (Dark Mode + Селекторы)
+# 2. Скрытие системных элементов Streamlit и адаптивные стили (Dark Mode + Селекторы + Анимация паровозика)
 st.markdown(
     """
     <style>
@@ -41,7 +41,7 @@ st.markdown(
 
     @keyframes train-move {
         0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
+        100% { transform: translateX(100vw); }
     }
     .train-track {
         width: 100%;
@@ -128,6 +128,11 @@ UI_TEXT = {
         "note_express": (
             "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur."
         ),
+        "note_timber_metal": (
+            "İdxal rejimində meşə materialları və qara metallar üçün 1.04"
+            " əmsalı tətbiq edilmişdir."
+        ),
+        "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
     },
     "RU": {
         "title": "ADY Tarif Kalkulyatoru",
@@ -185,6 +190,11 @@ UI_TEXT = {
         "note_express": (
             "Применен дополнительный коэффициент +2% за сервис ADY Express."
         ),
+        "note_timber_metal": (
+            "В режиме импорта применен коэффициент 1.04 для лесных грузов и"
+            " черных металлов."
+        ),
+        "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
     },
     "EN": {
         "title": "ADY Tarif Kalkulyatoru",
@@ -238,6 +248,10 @@ UI_TEXT = {
         "note_express": (
             "Additional coefficient +2% applied for ADY Express service."
         ),
+        "note_timber_metal": (
+            "Coefficient 1.04 applied for import of timber and ferrous metals."
+        ),
+        "note_coef_1015": "Additional coefficient applied: 1.015.",
     },
 }
 
@@ -560,7 +574,7 @@ if st.button(t["calc_btn"], type="primary"):
                     + "\n".join(table3_rows)
                 )
 
-                # Автоматическая подстановка примечаний на стороне Python
+                # Динамическая сборка примечаний силами Python (Максимальная экономия токенов)
                 auto_notes = []
                 input_check = user_input.lower()
                 
@@ -572,6 +586,16 @@ if st.button(t["calc_btn"], type="primary"):
                     auto_notes.append(t["note_import"])
                 elif "ixrac" in ship_type or "экспорт" in ship_type or "export" in ship_type:
                     auto_notes.append(t["note_export"])
+
+                # Проверка коэффициентов из ответа Gemini
+                coeffs = p2.get("coefficients", []) if isinstance(p2, dict) else []
+                coeff_values = [str(c.get("value", "")) for c in coeffs if isinstance(c, dict)]
+                coeff_str = " ".join(coeff_values)
+
+                if "1.04" in coeff_str:
+                    auto_notes.append(t["note_timber_metal"])
+                if "1.015" in coeff_str:
+                    auto_notes.append(t["note_coef_1015"])
 
                 if p3.get("express_rate"):
                     auto_notes.append(t["note_express"])
