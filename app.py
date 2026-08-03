@@ -288,7 +288,7 @@ def load_selective_context(user_query, year_label, lang):
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
         f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n"
-        f"СТРОГО ИСПОЛЬЗУЙ ТОЧНЫЕ РАССТОЯНИЯ ИЗ ФАЙЛА Distances.txt! НАПРИМЕР: YALAMA - BÖYÜK KƏSİK = СТРОГО 616 KM (KƏMƏR: 611-620 KM). ЗАПРЕЩЕНО РАССЧИТЫВАТЬ ИЛИ УГАДЫВАТЬ РАССТОЯНИЯ САМОСТОЯТЕЛЬНО!\n"
+        f"СТРОГО ИСПОЛЬЗУЙ ТОЧНЫЕ РАССТОЯНИЯ ИЗ ФАЙЛА Distances.txt! НАПРИМЕР: YALAMA - BÖYÜK KƏSİK = СТРОГО 616 KM (KƏMƏР: 611-620 KM). ЗАПРЕЩЕНО РАССЧИТЫВАТЬ ИЛИ УГАДЫВАТЬ РАССТОЯНИЯ САМОСТОЯТЕЛЬНО!\n"
         f"ИСПОЛЬЗУЙ КУРСЫ ВАЛЮТ ИЗ СПРАВОЧНИКА КУРСОВ (Currency_Exchange.txt) ДЛЯ ПЕРЕСЧЕТА СТАВОК ИЗ CHF В USD!\n\n"
         + rules_text
     )
@@ -343,7 +343,7 @@ if st.button(t["calc_btn"], type="primary"):
         try:
             dyn_instruction = load_selective_context(user_input, selected_year, selected_lang)
             
-            prompt_text = (
+            p1_rules = (
                 f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n"
                 f"{user_input}\n\n"
                 f"⚠️ CRITICAL RULES (OUTPUT LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
@@ -360,6 +360,9 @@ if st.button(t["calc_btn"], type="primary"):
                 "   - Yalama to Böyük Kəsik = EXACTLY 616 KM (belt 611-620 km)!\n"
                 "   - ALWAYS USE EXACT DISTANCES FROM EXCEL/TXT 'Məsafə' / 'Distance' TABLES! DO NOT ESTIMATE DISTANCES!\n"
                 "   - Minimum distances: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!\n"
+            )
+
+            p2_rules = (
                 "3. SPECIAL WAGONS & PASSENGER WAGONS (Clauses 3.1.2.5 - 3.1.2.8):\n"
                 "   - Passenger/Mail wagons (GNG 99910000): Billable weight strictly = 66 TONS (no Table 2 multipliers). Take base rate from 25 tons BTT category (Table 7 col 6)!\n"
                 "   - Transporters: min 5 tons/axle (4 axles = min 20t, 6 axles = min 30t, 8 axles = min 40t)!\n"
@@ -370,6 +373,95 @@ if st.button(t["calc_btn"], type="primary"):
                 "   - Base rate for liquid cargo in tanks MUST be taken from the 25 TONS weight category column (Rule 2 / Qayda 2)!\n"
                 "5. PRIVATE WAGONS (SPS / Özəl vaqonlar, Section 3.2):\n"
                 "   - Loaded SPS wagons: Apply x0.85 coefficient (Except Col 8 special tanks where x0.70 applies).\n"
-                "   - Empty SPS wagon return: Calculate per axle-km: 0.10 CHF / axle-km (4 axles * distance_km * 0.10 CHF) (Clause 3.2.2)! FOR EXPORT AND IMPORT SHIPMENTS, ALWAYS APPLY THE 1.50 COEFFICIENT TO THIS CALCULATION ((4 axles * distance * 0.10 CHF) * 1.50)!\n"
+                "   - Empty SPS wagon return: Calculate per axle-km: 0.10 CHF / axle-km (4 axles * distance_km * 0.10 CHF) (Clause 3.2.2)! FOR EXPORT AND IMPORT SHIPMENTS, APPLY 1.50 MULTIPLIER TO THIS CALCULATION!\n"
                 "6. REFRIGERATED WAGONS & REF SECTIONS (TABLE 5):\n"
-                "   - Recognize terms: 'рефвагон', 'рефсекция', 'ва
+                "   - Recognize terms: ref, ref-section, ARV, refrigerator.\n"
+                "   - SECTION COEFFICIENTS: [1+1] = x1.70, [1+2] / [2+1] = x1.40, [1+3] / [3+1] = x1.10, [1+4] / [4+1] = x1.00, [1+5] / [5+1] or more = x0.85!\n"
+            )
+
+            p3_rules = (
+                "7. SPECIAL COEFFICIENTS (1.04 / 1.20 / 1.50 / 0.80):\n"
+                "   - IMPORT OF WOOD (GNG 4403, 4404, 4407-4413) AND BLACK METALS (GNG Ch.72, 7301-7307): APPLY EXTRA COEFFICIENT × 1.04!\n"
+                "   - TRANSIT ALAT - BOYUK KASIK: Apply coefficient × 1.20!\n"
+                "   - TRANSIT/IMPORT OIL IN TANKS & ARV/REF TRANSIT: Apply ONLY coefficient × 1.20!\n"
+                "   - COEFFICIENT 1.50: ALWAYS APPLY TO ALL EXPORT AND IMPORT SHIPMENTS (LOADED AND EMPTY WAGONS), EXCEPT Table 3 rates, wood, black metals, methanol, and oil/petroleum in Table 6 Col 2!\n"
+                "8. STRICT MINIMUM WEIGHT NORMS FOR LOADED WAGONS:\n"
+                "   - WOOD/TIMBER (GNG 4403, 4404, 4407-4413): Billable weight = min 45 TONS! Always take base rate from 45 TONS COLUMN!\n"
+                "   - CAR TRANSPORTERS (Table 5, Col 6): Billable weight = min 10 TONS!\n\n"
+                "⚠️ OUTPUT FORMAT (MANDATORY JSON):\n"
+                "Return ONLY a valid JSON object matching exactly this structure (no markdown, no other text):\n"
+                "{\n"
+                '  "part1": {"route": "string", "shipment_type": "string", "distance": "string", "cargo_and_wagon": "string", "weight_info": "string", "period": "string"},\n'
+                '  "part2": {"exchange_rate": "string", "base_tariff": "string", "coefficients": [{"name": "string", "value": "string"}]},\n'
+                '  "part3": {"formula": "string", "net_ady_rate": "string", "express_rate": "string or null", "notes": ["string"]}\n'
+                "}\n"
+            )
+
+            prompt_text = p1_rules + p2_rules + p3_rules
+            
+            data = call_gemini_json(client, prompt_text, dyn_instruction)
+            
+            train_holder.empty()
+            
+            st.success(t["success"].format(selected_year))
+            st.markdown(f"### {t['result_title']}")
+
+            # --- РАЗДЕЛ 1. Маршрут и условия перевозки ---
+            st.markdown(f"#### 📍 {t['sec1_title']}")
+            p1 = data["part1"]
+            table1_md = f"""
+| {t['col_param']} | {t['col_val']} |
+| :--- | :--- |
+| **{t['lbl_route']}** | {p1['route']} |
+| **{t['lbl_type']}** | {p1['shipment_type']} |
+| **{t['lbl_dist']}** | {p1['distance']} |
+| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |
+| **{t['lbl_weight']}** | {p1['weight_info']} |
+| **{t['lbl_period']}** | {p1['period']} |
+"""
+            st.markdown(table1_md)
+
+            # --- РАЗДЕЛ 2. Коэффициенты и курс валют ---
+            st.markdown(f"#### ⚙️ {t['sec2_title']}")
+            p2 = data["part2"]
+            table2_rows = [
+                f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |",
+                f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
+            ]
+            
+            for coeff in p2.get("coefficients", []):
+                table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
+
+            table2_md = f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(table2_rows)
+            st.markdown(table2_md)
+
+            # --- РАЗДЕЛ 3. Расчет тарифа ---
+            st.markdown(f"#### 📐 {t['sec3_title']}")
+            p3 = data["part3"]
+
+            st.markdown(f"**{t['formula_title']}**")
+            st.code(p3["formula"], language="text")
+
+            st.markdown(f"**{t['rates_title']}**")
+            table3_rows = [
+                f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |"
+            ]
+            if p3.get("express_rate"):
+                table3_rows.append(f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |")
+
+            table3_md = f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n" + "\n".join(table3_rows)
+            st.markdown(table3_md)
+
+            st.markdown(f"**{t['notes_title']}**")
+            notes_list = p3.get("notes", [])
+            for idx, note in enumerate(notes_list, start=1):
+                st.markdown(f"{idx}. *{note}*")
+            
+            st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
+
+        except Exception as e:
+            train_holder.empty()
+            st.error(f"Error: {str(e)}")
+
+st.markdown("---")
+st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
