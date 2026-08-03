@@ -481,7 +481,7 @@ if st.button(t["calc_btn"], type="primary"):
         train_holder.markdown(
             f"""
             <div class="train-track">
-                <div class="train-animation">═══ 🚃 🚃 🚃 🚂</div>
+                <div class="train-animation">═══ 🚃 🚃 🚃 🚃 🚃 🚃 🚂</div>
             </div>
             <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
             """,
