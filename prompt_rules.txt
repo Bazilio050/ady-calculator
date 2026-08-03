@@ -5,6 +5,10 @@ ADY TARİF KALKULYATORU — JSON OUTPUT FORMAT INSTRUCTIONS
 1. GENERAL FORMATTING & TOKEN SAVING RULES:
    - Return ONLY a valid JSON object.
    - Keep string values as SHORT and CONCISE as possible to minimize output tokens.
+   - ROUTE TRANSLATION RULE:
+     * AZ: "Yalama-eksp. - Abşeron"
+     * RU: "Ялама-эксп. - Апшерон"
+     * EN: "Yalama-exp. - Absheron"
    - WAGON TYPE LANGUAGE RULE:
      * AZ: "SPS" / "MPS"
      * RU: "СПС" / "МПС"
