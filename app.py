@@ -1,6 +1,5 @@
 import json
 import os
-import re
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -10,26 +9,21 @@ st.set_page_config(
     page_title="ADY Tarif Kalkulyatoru", page_icon="🚂", layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit + Оптимальная ширина элементов
+# 2. Скрытие системных элементов Streamlit
 st.markdown(
     """
     <style>
-    /* Скрываем верхнюю панель, меню и кнопки GitHub / Fork */
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     .stAppHeader {display: none;}
-    
-    /* Скрываем нижний футер Streamlit */
     footer {visibility: hidden;}
 
-    /* Комфортная ширина блока селекторов */
     div[data-testid="stVerticalBlock"]:has(div[data-testid="stSelectbox"]) {
         max-width: 380px !important;
         margin-left: 0 !important;
         margin-right: auto !important;
     }
 
-    /* Заголовок с выравниванием по левому краю */
     .custom-title {
         font-size: 22px !important;
         font-weight: 700;
@@ -45,7 +39,6 @@ st.markdown(
         text-align: left;
     }
 
-    /* Мелкая анимация паровозика */
     @keyframes train-move {
         0% { transform: translateX(-100%); }
         100% { transform: translateX(100%); }
@@ -69,7 +62,6 @@ st.markdown(
         color: #475569;
     }
 
-    /* Поле ввода текста занимает 100% ширины */
     .stTextArea textarea {
         width: 100% !important;
     }
@@ -78,7 +70,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 3. Переводы интерфейса (AZ, RU, EN)
+# 3. Переводы интерфейса
 UI_TEXT = {
     "AZ": {
         "title": "ADY Tarif Kalkulyatoru",
@@ -89,8 +81,8 @@ UI_TEXT = {
         "lang_select": "Dil / Language:",
         "input_header": "Daşıma parametrlərini daxil edin:",
         "input_placeholder": (
-            "Nümunə:\nMarşrut: Yalama - Abşeron\nYük: Meşə materialları (GNG"
-            " 4407), 35 ton\nVəziyyət: SPS örtülü vaqon"
+            "Nümunə:\nMarşrut: Yalama - Abşeron\nYük: Kağız və ya karton"
+            " tullantıları (GNG 4707), 35 ton\nVəziyyət: SPS örtülü vaqon"
         ),
         "calc_btn": "🚀 Tarifi hesabla",
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
@@ -104,7 +96,7 @@ UI_TEXT = {
         "rates_title": "Yekun tariflər:",
         "notes_title": "Qeydlər:",
         "disclaimer": (
-            "Qeyd olunan tariflərə станция xərcləri (yükləmə-boşaltma, tərtibat,"
+            "Qeyd olunan tariflərə stansiya xərcləri (yükləmə-boşaltma, tərtibat,"
             " sənədləşmə, vaqonların verilməsi-yığılması və s.) və əlavə"
             " yığımlar daxil deyildir."
         ),
@@ -132,7 +124,7 @@ UI_TEXT = {
         "lang_select": "Язык / Language:",
         "input_header": "Введите данные по перевозке:",
         "input_placeholder": (
-            "Пример:\nМаршрут: Ялама - Апшерон\nГруз: Пиломатериалы (ГНГ 4407),"
+            "Пример:\nМаршрут: Ялама - Апшерон\nГруз: Отходы бумаги (ГНГ 4707),"
             " 35 тонн\nСостояние: СПС крытый вагон"
         ),
         "calc_btn": "🚀 Рассчитать тариф",
@@ -177,8 +169,8 @@ UI_TEXT = {
         "lang_select": "Language:",
         "input_header": "Enter shipment details:",
         "input_placeholder": (
-            "Example:\nRoute: Yalama - Absheron\nCargo: Timber (NHM 4407), 35"
-            " tons\nCondition: SPS covered wagon"
+            "Example:\nRoute: Yalama - Absheron\nCargo: Paper scrap (NHM 4707),"
+            " 35 tons\nCondition: SPS covered wagon"
         ),
         "calc_btn": "🚀 Calculate Freight Rate",
         "warning_empty": "Please enter shipment requirements.",
@@ -215,7 +207,7 @@ UI_TEXT = {
     },
 }
 
-# 4. Логотип компании (слева)
+# 4. Логотип
 logo_file = None
 for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
     if os.path.exists(filename):
@@ -225,7 +217,7 @@ for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
 if logo_file:
     st.image(logo_file, width=200)
 
-# 5. СЕЛЕКТОРЫ ВЕРТИКАЛЬНО ДРУГ ПОД ДРУГОМ (СЛЕВА)
+# 5. Селекторы
 col_controls, _ = st.columns([2.5, 7.5])
 
 with col_controls:
@@ -245,7 +237,6 @@ with col_controls:
         f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0
     )
 
-# 6. Заголовок и подзаголовок слева под селекторами
 st.markdown(
     f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True
 )
@@ -254,7 +245,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 7. Проверка API ключа
+# 6. API Key
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.text_input(t["api_label"], type="password")
@@ -266,25 +257,20 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 
-# 8. Динамическая подгрузка текстовой базы
+# 7. Загрузка динамического контекста
 @st.cache_data(show_spinner=False)
 def load_selective_context(user_query, year_label, lang):
     query_lower = user_query.lower()
     files_to_load = [
         "system_instruction.txt",
-        "Weight_Categories.txt",
         "GNG_Column_Mapping.txt",
         "Security_Cargo_GNG.txt",
+        "Currency_Exchange.txt",
     ]
 
     for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
         if os.path.exists(dist_file):
             files_to_load.append(dist_file)
-            break
-
-    for curr_file in ["Currency_Exchange.txt", "Exchange_Rates.txt", "Valyuta.txt"]:
-        if os.path.exists(curr_file):
-            files_to_load.append(curr_file)
             break
 
     if any(
@@ -308,7 +294,6 @@ def load_selective_context(user_query, year_label, lang):
             "Table_6_Tanks.txt",
             "Table6.txt",
             "Cədvəl6.txt",
-            "Cadval_6.txt",
         ]:
             if os.path.exists(f_name):
                 files_to_load.append(f_name)
@@ -322,7 +307,6 @@ def load_selective_context(user_query, year_label, lang):
             "Table_5_Reef.txt",
             "Table5.txt",
             "Cədvəl5.txt",
-            "Cadval_5.txt",
         ]:
             if os.path.exists(f_name):
                 files_to_load.append(f_name)
@@ -339,23 +323,11 @@ def load_selective_context(user_query, year_label, lang):
         ]:
             if os.path.exists(f_name):
                 files_to_load.append(f_name)
-    elif any(
-        k in query_lower for k in ["двухъярусн", "avtovoz", "ikiyaruslı", "двухярусн"]
-    ):
-        for f_name in [
-            "Table_8_Tariffs.txt",
-            "Table_11_Tariffs.txt",
-            "Table8.txt",
-            "Table11.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
     else:
         for f_name in [
             "Table_3_Tariffs.txt",
             "Table_4_Tariffs.txt",
             "Table_12_Tariffs.txt",
-            "Table_3_4_Universal.txt",
             "Table3.txt",
             "Table4.txt",
         ]:
@@ -366,29 +338,24 @@ def load_selective_context(user_query, year_label, lang):
     for txt_file in set(files_to_load):
         if os.path.exists(txt_file):
             with open(txt_file, "r", encoding="utf-8") as f:
-                loaded_rules.append(f"--- РАЗДЕЛ БАЗЫ: {txt_file} ---\n" + f.read())
+                loaded_rules.append(f"--- BAZA SƏNƏDİ: {txt_file} ---\n" + f.read())
 
     rules_text = "\n\n".join(loaded_rules)
 
     system_instruction = (
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-        f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n"
-        f"ПРАВИЛО ВЕСОВЫХ КАТЕГОРИЙ: Использовать ТОЧНУЮ сетку из Weight_Categories.txt (например, 17-23 т -> 20 т, 47-51 т -> 50 т, 52-55 т -> 55 т). ЗАПРЕЩЕНО округлять 55 т до 60 т!\n"
-        f"ПРАВИЛО ПАРКА ВАГОНОВ (MPS vs SPS): Для вагонов MPS (инвентарный парк ADY) ВСЕГДА берется 100% полная базовая "
-        f"ставка из таблиц без применения скидки 0.85! Для вагонов SPS (собственные/арендованные) применяется скидка k = 0.85 к базовой ставке.\n"
-        f"ПРАВИЛО СТАНЦИЙ: Если в запросе указан маршрут между граничными пунктами (Yalama, Boyuk Kesik, Astara, Culfa, Alat) "
-        f"и НЕ УКАЗАНО явно 'импорт' или 'экспорт', ПО УМОЛЧАНИЮ подтягивать расстояние для станций с пометкой '(eksport)' / '(eks.)' "
-        f"из файла Distances.txt (например, Yalama (eksport) - Boyuk Kesik (eksport) = 680 km).\n"
-        f"Если явно указано 'импорт' или 'экспорт', брать станцию БЕЗ пометки (eksport).\n"
-        f"СТРОГО ИСПОЛЬЗУЙ ТОЧНЫЕ РАССТОЯНИЯ И ТАРИФНЫЕ ПОЯСА ИЗ Distances.txt!\n"
-        f"ИСПОЛЬЗУЙ КУРСЫ ВАЛЮТ ИЗ Currency_Exchange.txt ДЛЯ ПЕРЕСЧЕТА СТАВОК ИЗ CHF В USD!\n\n"
+        f"СТРОГИЕ ПРАВИЛА:\n"
+        f"1. Для AZ языка строго выводить SPS (вместо XPS) и MPS (вместо DDP).\n"
+        f"2. МИН. РАСЧЕТНАЯ НОРМА ЧЕКИ: Если фактический вес < минимальной нормы (например, GNG 4707 = 45 т, GNG 4407 = 45 т), РАСЧЕТНЫЙ ВЕС СТРОГО ПРИНИМАЕТСЯ РАВНЫМ МИН. НОРМЕ (45 т) и колонка выбирается по 45 т!\n"
+        f"3. MPS vs SPS: Для MPS берется 100% базовая ставка из таблицы. Для SPS применяется коэффициент k = 0.85 к базовой ставке таблицы.\n"
+        f"4. СТАНЦИИ: Если стыковые станции указаны без 'импорт'/'экспорт', считать транзитом по умолчанию и брать пометку '(eksport)' (680 км).\n\n"
         + rules_text
     )
     return system_instruction
 
 
-# 9. Вызов Gemini с моделью gemini-3.6-flash
+# 8. Вызов Gemini — СТРОГО gemini-3.6-flash И temperature=0.0
 def call_gemini_json(client, prompt, instruction):
     model_name = "gemini-3.6-flash"
 
@@ -397,7 +364,7 @@ def call_gemini_json(client, prompt, instruction):
         contents=prompt,
         config=types.GenerateContentConfig(
             system_instruction=instruction,
-            temperature=0.1,
+            temperature=0.0,
             response_mime_type="application/json",
         ),
     )
@@ -413,13 +380,12 @@ def call_gemini_json(client, prompt, instruction):
     return json.loads(raw_text.strip())
 
 
-# 10. Поле ввода текста и кнопка расчета
+# 9. Интерфейс расчета
 user_input = st.text_area(
     t["input_header"], height=150, placeholder=t["input_placeholder"]
 )
 
 
-# Функция для считывания внешних правил
 def get_static_rules():
     rules_file = "prompt_rules.txt"
     rules_content = ""
@@ -491,66 +457,53 @@ if st.button(t["calc_btn"], type="primary"):
             st.success(t["success"].format(selected_year))
             st.markdown(f"### {t['result_title']}")
 
-            # --- РАЗДЕЛ 1. Маршрут и условия перевозки ---
+            # Раздел 1
             st.markdown(f"#### 📍 {t['sec1_title']}")
             p1 = data.get("part1", {})
             if isinstance(p1, list) and len(p1) > 0:
                 p1 = p1[0]
 
             if isinstance(p1, dict):
-                r_val = p1.get("route", "-")
-                st_val = p1.get("shipment_type", "-")
-                d_val = p1.get("distance", "-")
-                c_val = p1.get("cargo_and_wagon", "-")
-                w_val = p1.get("weight_info", "-")
-                p_val = p1.get("period", "-")
-
-                table1_md = (
+                st.markdown(
                     f"| {t['col_param']} | {t['col_val']} |\n"
                     f"| :--- | :--- |\n"
-                    f"| **{t['lbl_route']}** | {r_val} |\n"
-                    f"| **{t['lbl_type']}** | {st_val} |\n"
-                    f"| **{t['lbl_dist']}** | {d_val} |\n"
-                    f"| **{t['lbl_cargo']}** | {c_val} |\n"
-                    f"| **{t['lbl_weight']}** | {w_val} |\n"
-                    f"| **{t['lbl_period']}** | {p_val} |\n"
+                    f"| **{t['lbl_route']}** | {p1.get('route', '-')} |\n"
+                    f"| **{t['lbl_type']}** | {p1.get('shipment_type', '-')} |\n"
+                    f"| **{t['lbl_dist']}** | {p1.get('distance', '-')} |\n"
+                    f"| **{t['lbl_cargo']}** | {p1.get('cargo_and_wagon', '-')} |\n"
+                    f"| **{t['lbl_weight']}** | {p1.get('weight_info', '-')} |\n"
+                    f"| **{t['lbl_period']}** | {p1.get('period', '-')} |\n"
                 )
-                st.markdown(table1_md)
 
-            # --- РАЗДЕЛ 2. Коэффициенты и курс валют ---
+            # Раздел 2
             st.markdown(f"#### ⚙️ {t['sec2_title']}")
             p2 = data.get("part2", {})
-
             if isinstance(p2, list) and len(p2) > 0:
                 p2 = p2[0]
 
             if isinstance(p2, dict):
-                exch_rate = p2.get("exchange_rate", "-")
-                base_rate = p2.get("base_tariff", "-")
-
                 table2_rows = [
-                    f"| **{t['lbl_exchange']}** | {exch_rate} |",
-                    f"| **{t['lbl_base_rate']}** | {base_rate} |",
+                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate', '-')} |",
+                    f"| **{t['lbl_base_rate']}** | {p2.get('base_tariff', '-')} |",
                 ]
 
                 coeffs = p2.get("coefficients", [])
                 if isinstance(coeffs, list):
                     for coeff in coeffs:
                         if isinstance(coeff, dict):
-                            c_name = coeff.get("name", "")
-                            c_val = coeff.get("value", "")
-                            table2_rows.append(f"| **{c_name}** | {c_val} |")
+                            table2_rows.append(
+                                f"| **{coeff.get('name', '')}** |"
+                                f" {coeff.get('value', '')} |"
+                            )
 
-                table2_md = (
+                st.markdown(
                     f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
                     + "\n".join(table2_rows)
                 )
-                st.markdown(table2_md)
 
-            # --- РАЗДЕЛ 3. Расчет тарифа ---
+            # Раздел 3
             st.markdown(f"#### 📐 {t['sec3_title']}")
             p3 = data.get("part3", {})
-
             if isinstance(p3, list) and len(p3) > 0:
                 p3 = p3[0]
 
@@ -568,11 +521,10 @@ if st.button(t["calc_btn"], type="primary"):
                         f" **{p3.get('express_rate')}** |"
                     )
 
-                table3_md = (
+                st.markdown(
                     f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
                     + "\n".join(table3_rows)
                 )
-                st.markdown(table3_md)
 
                 st.markdown(f"**{t['notes_title']}**")
                 notes_list = p3.get("notes", [])
