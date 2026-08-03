@@ -83,8 +83,7 @@ UI_TEXT = {
     "AZ": {
         "title": "ADY Tarif Kalkulyatoru",
         "subtitle": (
-            "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt"
-            " ili"
+            "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili"
         ),
         "year_select": "Fraxt ili:",
         "lang_select": "Dil / Language:",
@@ -128,9 +127,7 @@ UI_TEXT = {
     },
     "RU": {
         "title": "ADY Tarif Kalkulyatoru",
-        "subtitle": (
-            "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год"
-        ),
+        "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
         "year_select": "Фрахтовый год:",
         "lang_select": "Язык / Language:",
         "input_header": "Введите данные по перевозке:",
@@ -484,8 +481,4 @@ if st.button(t["calc_btn"], type="primary"):
             )
             prompt_text = prompt_header + get_static_rules()
 
-            data = call_gemini_json(client, prompt_text, dyn_instruction)
-
-            train_holder.empty()
-
-            st
+            data =
