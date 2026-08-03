@@ -5,15 +5,18 @@ ADY TARİF KALKULYATORU — JSON OUTPUT FORMAT INSTRUCTIONS
 1. GENERAL FORMATTING & TOKEN SAVING RULES:
    - Return ONLY a valid JSON object.
    - Keep string values as SHORT and CONCISE as possible to minimize output tokens.
-   - CARGO NAME RULE: Return only short cargo name and GNG code in "cargo_and_wagon" field (e.g., "GNG 4704, Örtülü vaqon (SPS)").
-   - FORMULA RULE: In "formula" field, output ONLY PER-TON (or per-unit) rate calculation with active coefficients!
-     * CORRECT: "18.19 CHF/t × 0.85 × 1.015 = 15.69 CHF/t"
-     * STRICTLY FORBIDDEN: Do NOT multiply by total weight (e.g., do NOT add "× 35 t" or "× 45 t") inside the formula line!
-   - EXCHANGE RATE FORMAT RULE: Always append the exact date range in the exchange rate string!
+   - CARGO NAME RULE: Always include GNG code AND short text cargo name in "cargo_and_wagon" field!
+     * EXAMPLE (AZ): "GNG 4704 (Kağız tullantıları), Örtülü vaqon (SPS)"
+   - BASE TARIFF FORMAT RULE: Do NOT use the word "şkalası"!
+     * EXAMPLE (AZ): "18.19 CHF/t (Cədvəl 3, məsafə 201-210 km, 35 t)"
+   - FORMULA RULE: In "formula" field, output rate calculation divided by USD exchange rate!
+     * CORRECT: "18.19 CHF/t × 0.85 × 1.015 / 0.79 = 19.86 USD/t"
+     * STRICTLY FORBIDDEN: Do NOT multiply by total weight (e.g., do NOT add "× 35 t") inside formula line!
+   - EXCHANGE RATE FORMAT RULE: Append exact date range from Currency_Exchange.txt!
      * EXAMPLE (AZ): "1 USD = 0.79 CHF (01.07.2026 - 30.09.2026-cı il tarixləri üzrə)"
-   - PERIOD FORMAT RULE: Always output full policy title in "period" field!
+   - PERIOD FORMAT RULE: Output full tariff policy title!
      * EXAMPLE (AZ): "ADY Tarif Siyasəti 2026-cı il"
-   - FINAL RATES RULE: In "net_ady_rate" and "express_rate", output ONLY pure per-ton rate (e.g., "15.69 CHF/t"). Do NOT add overall wagon total inside parentheses!
+   - FINAL RATES RULE: In "net_ady_rate" and "express_rate", output ONLY pure per-ton rate (e.g., "19.86 USD/t" or "15.69 CHF/t"). Do NOT add overall wagon total inside parentheses!
    - NOTES RULE: Keep "notes" array strictly empty `[]` to save tokens. The application script handles static notes automatically.
 
 2. MANDATORY JSON SCHEMA STRUCTURE:
