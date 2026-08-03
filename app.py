@@ -294,7 +294,7 @@ def load_selective_context(user_query, year_label, lang):
     )
     return system_instruction
 
-# 9. Безопасный вызов Gemini с актуальной моделью gemini-3.6-flash
+# 9. Вызов Gemini с моделью gemini-3.6-flash
 def call_gemini_json(client, prompt, instruction):
     model_name = "gemini-3.6-flash"
     
@@ -325,13 +325,106 @@ user_input = st.text_area(
     placeholder=t["input_placeholder"]
 )
 
-# Безопасное конструирование инструкций без мультистрочных литералов
-json_schema = json.dumps({
-    "part1": {"route": "string", "shipment_type": "string", "distance": "string", "cargo_and_wagon": "string", "weight_info": "string", "period": "string"},
-    "part2": {"exchange_rate": "string", "base_tariff": "string", "coefficients": [{"name": "string", "value": "string"}]},
-    "part3": {"formula": "string", "net_ady_rate": "string", "express_rate": "string or null", "notes": ["string"]}
-}, indent=2)
+# Функция для считывания внешних правил
+def get_static_rules():
+    rules_file = "prompt_rules.txt"
+    rules_content = ""
+    if os.path.exists(rules_file):
+        with open(rules_file, "r", encoding="utf-8") as f:
+            rules_content = f.read()
 
-PROMPT_STATIC_RULES = (
-    "UNIVERSAL WAGONS TABLES SEPARATION (Table 3 vs Table 4):\n"
-    "- Table 3: STRICTLY AND ONLY FOR IMPORT AND EXPORT SHIPMENTS IN UNIVERSAL WAGONS! Do NOT apply 1.50 multiplier to Table
+    schema_dict = {
+        "part1": {"route": "string", "shipment_type": "string", "distance": "string", "cargo_and_wagon": "string", "weight_info": "string", "period": "string"},
+        "part2": {"exchange_rate": "string", "base_tariff": "string", "coefficients": [{"name": "string", "value": "string"}]},
+        "part3": {"formula": "string", "net_ady_rate": "string", "express_rate": "string or null", "notes": ["string"]}
+    }
+    
+    return rules_content + "\n\nOUTPUT FORMAT (MANDATORY JSON):\nReturn ONLY a valid JSON object matching exactly this structure:\n" + json.dumps(schema_dict, indent=2)
+
+if st.button(t["calc_btn"], type="primary"):
+    if not user_input.strip():
+        st.warning(t["warning_empty"])
+    else:
+        train_holder = st.empty()
+        train_holder.markdown(
+            f'''
+            <div class="train-track">
+                <div class="train-animation">═══ 🚃 🚃 🚃 🚂</div>
+            </div>
+            <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
+            ''', 
+            unsafe_allow_html=True
+        )
+
+        try:
+            dyn_instruction = load_selective_context(user_input, selected_year, selected_lang)
+            
+            prompt_header = f"Make exact calculation for (Freight Year: {selected_year}, Language: {selected_lang}):\n{user_input}\n\nCRITICAL RULES (OUTPUT LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
+            prompt_text = prompt_header + get_static_rules()
+            
+            data = call_gemini_json(client, prompt_text, dyn_instruction)
+            
+            train_holder.empty()
+            
+            st.success(t["success"].format(selected_year))
+            st.markdown(f"### {t['result_title']}")
+
+            # --- РАЗДЕЛ 1. Маршрут и условия перевозки ---
+            st.markdown(f"#### 📍 {t['sec1_title']}")
+            p1 = data["part1"]
+            table1_md = f"""
+| {t['col_param']} | {t['col_val']} |
+| :--- | :--- |
+| **{t['lbl_route']}** | {p1['route']} |
+| **{t['lbl_type']}** | {p1['shipment_type']} |
+| **{t['lbl_dist']}** | {p1['distance']} |
+| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |
+| **{t['lbl_weight']}** | {p1['weight_info']} |
+| **{t['lbl_period']}** | {p1['period']} |
+"""
+            st.markdown(table1_md)
+
+            # --- РАЗДЕЛ 2. Коэффициенты и курс валют ---
+            st.markdown(f"#### ⚙️ {t['sec2_title']}")
+            p2 = data["part2"]
+            table2_rows = [
+                f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |",
+                f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
+            ]
+            
+            for coeff in p2.get("coefficients", []):
+                table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
+
+            table2_md = f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(table2_rows)
+            st.markdown(table2_md)
+
+            # --- РАЗДЕЛ 3. Расчет тарифа ---
+            st.markdown(f"#### 📐 {t['sec3_title']}")
+            p3 = data["part3"]
+
+            st.markdown(f"**{t['formula_title']}**")
+            st.code(p3["formula"], language="text")
+
+            st.markdown(f"**{t['rates_title']}**")
+            table3_rows = [
+                f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |"
+            ]
+            if p3.get("express_rate"):
+                table3_rows.append(f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |")
+
+            table3_md = f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n" + "\n".join(table3_rows)
+            st.markdown(table3_md)
+
+            st.markdown(f"**{t['notes_title']}**")
+            notes_list = p3.get("notes", [])
+            for idx, note in enumerate(notes_list, start=1):
+                st.markdown(f"{idx}. *{note}*")
+            
+            st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
+
+        except Exception as e:
+            train_holder.empty()
+            st.error(f"Error: {str(e)}")
+
+st.markdown("---")
+st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
