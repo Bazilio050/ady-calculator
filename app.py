@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="ADY Tarif Kalkulyatoru", page_icon="🚂", layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit и адаптивные стили (Dark Mode + Селекторы + Анимация паровозика)
+# 2. Скрытие системных элементов Streamlit и адаптивные стили
 st.markdown(
     """
     <style>
@@ -135,8 +135,10 @@ UI_TEXT = {
         "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
     },
     "RU": {
-        "title": "ADY Tarif Kalkulyatoru",
-        "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
+        "title": "Тарифный калькулятор ADY",
+        "subtitle": (
+            "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год"
+        ),
         "year_select": "Фрахтовый год:",
         "lang_select": "Язык / Language:",
         "input_header": "Введите данные по перевозке:",
@@ -146,8 +148,8 @@ UI_TEXT = {
         ),
         "calc_btn": "🚀 Рассчитать тариф",
         "warning_empty": "Пожалуйста, введите условия расчета.",
-        "spinner_text": "Считаем тариф согласно ADY Policy {}...",
-        "success": "Расчет успешно выполнен! (ADY Policy {})",
+        "spinner_text": "Считаем тариф согласно Тарифной политике {}...",
+        "success": "Расчет успешно выполнен! (Тарифная политика {})",
         "result_title": "📋 Результат расчета:",
         "sec1_title": "1. Маршрут и условия перевозки",
         "sec2_title": "2. Коэффициенты и курс валют",
@@ -172,12 +174,12 @@ UI_TEXT = {
         "lbl_period": "Период",
         "lbl_exchange": "CHF/USD",
         "lbl_base_rate": "Базовый тариф",
-        "lbl_net_rate": "Yekün ADY tarifi",
-        "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
+        "lbl_net_rate": "Итоговый тариф",
+        "lbl_express_rate": "Итоговый тариф (включая ADY Express +2%)",
         "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY.",
         "api_label": "Введите Gemini API Key:",
         "note_sps": (
-            "Применен скидочный коэффициент 0.85 для собственных вагонов (SPS)."
+            "Применен скидочный коэффициент 0.85 для собственных вагонов (СПС)."
         ),
         "note_import": (
             "В режиме импорта минимальное тарифное расстояние составляет 151"
@@ -197,7 +199,7 @@ UI_TEXT = {
         "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
     },
     "EN": {
-        "title": "ADY Tarif Kalkulyatoru",
+        "title": "ADY Tariff Calculator",
         "subtitle": (
             "Railway freight tariff calculator for Azerbaijan — {} freight year"
         ),
@@ -210,8 +212,8 @@ UI_TEXT = {
         ),
         "calc_btn": "🚀 Calculate Freight Rate",
         "warning_empty": "Please enter shipment requirements.",
-        "spinner_text": "Calculating rates according to ADY Policy {}...",
-        "success": "Calculation completed successfully! (ADY Policy {})",
+        "spinner_text": "Calculating rates according to Tariff Policy {}...",
+        "success": "Calculation completed successfully! (Tariff Policy {})",
         "result_title": "📋 Calculation Results:",
         "sec1_title": "1. Route and Shipment Conditions",
         "sec2_title": "2. Coefficients and Exchange Rate",
@@ -236,8 +238,8 @@ UI_TEXT = {
         "lbl_period": "Period",
         "lbl_exchange": "CHF/USD",
         "lbl_base_rate": "Base Tariff",
-        "lbl_net_rate": "Yekün ADY tarifi",
-        "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
+        "lbl_net_rate": "Final Tariff",
+        "lbl_express_rate": "Final Tariff (incl. ADY Express +2%)",
         "api_warning": "⚠️ Please provide GEMINI_API_KEY.",
         "api_label": "Enter Gemini API Key:",
         "note_sps": (
@@ -394,9 +396,9 @@ def load_selective_context(user_query, year_label, lang):
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
         f"СТРОГИЕ ПРАВИЛА:\n"
-        f"1. Для AZ языка строго выводить SPS (вместо XPS) и MPS (вместо DDP).\n"
+        f"1. Для RU языка строго использовать 'СПС' (вместо SPS) и 'МПС' (вместо MPS).\n"
         f"2. МИН. РАСЧЕТНАЯ НОРМА ЧЕКИ: Если фактический вес < минимальной нормы (например, GNG 4707 = 45 т, GNG 4407 = 45 т), РАСЧЕТНЫЙ ВЕС СТРОГО ПРИНИМАЕТСЯ РАВНЫМ МИН. НОРМЕ (45 т) и колонка выбирается по 45 т!\n"
-        f"3. MPS vs SPS: Для MPS берется 100% базовая ставка из таблицы. Для SPS применяется коэффициент k = 0.85 к базовой ставке таблицы.\n"
+        f"3. МПС vs СПС: Для МПС берется 100% базовая ставка из таблицы. Для СПС применяется коэффициент k = 0.85 к базовой ставке таблицы.\n"
         f"4. СТАНЦИИ: Если станция пограничная (Yalama, Boyuk Kesik, Astara, Culfa, Alat), писать с припиской '-eksp.' (например, 'Yalama-eksp. - Abşeron').\n\n"
         + rules_text
     )
@@ -574,17 +576,17 @@ if st.button(t["calc_btn"], type="primary"):
                     + "\n".join(table3_rows)
                 )
 
-                # Динамическая сборка примечаний силами Python (Максимальная экономия токенов)
+                # Динамическая сборка примечаний силами Python
                 auto_notes = []
                 input_check = user_input.lower()
                 
-                if "sps" in input_check or "özəl" in input_check or "спс" in input_check or "собствен" in input_check:
+                if any(k in input_check for k in ["sps", "özəl", "спс", "собствен"]):
                     auto_notes.append(t["note_sps"])
                 
                 ship_type = str(p1.get("shipment_type", "")).lower()
-                if "idxal" in ship_type or "импорт" in ship_type or "import" in ship_type:
+                if any(k in ship_type for k in ["idxal", "импорт", "import"]):
                     auto_notes.append(t["note_import"])
-                elif "ixrac" in ship_type or "экспорт" in ship_type or "export" in ship_type:
+                elif any(k in ship_type for k in ["ixrac", "экспорт", "export"]):
                     auto_notes.append(t["note_export"])
 
                 # Проверка коэффициентов из ответа Gemini
