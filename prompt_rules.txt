@@ -5,19 +5,28 @@ ADY TARİF KALKULYATORU — JSON OUTPUT FORMAT INSTRUCTIONS
 1. GENERAL FORMATTING & TOKEN SAVING RULES:
    - Return ONLY a valid JSON object.
    - Keep string values as SHORT and CONCISE as possible to minimize output tokens.
-   - CARGO NAME RULE: Always include GNG code AND short text cargo name in "cargo_and_wagon" field!
+   - WAGON TYPE LANGUAGE RULE:
+     * AZ: "SPS" / "MPS"
+     * RU: "СПС" / "МПС"
+     * EN: "SPS" / "MPS"
+   - CARGO NAME RULE: Include GNG code AND short text cargo name in "cargo_and_wagon" field!
      * EXAMPLE (AZ): "GNG 4704 (Kağız tullantıları), Örtülü vaqon (SPS)"
+     * EXAMPLE (RU): "ГНГ 4704 (Отходы бумаги), Крытый вагон (СПС)"
    - BASE TARIFF FORMAT RULE: Do NOT use the word "şkalası"!
      * EXAMPLE (AZ): "18.19 CHF/t (Cədvəl 3, məsafə 201-210 km, 35 t)"
-   - FORMULA RULE: In "formula" field, output rate calculation divided by USD exchange rate!
-     * CORRECT: "18.19 CHF/t × 0.85 × 1.015 / 0.79 = 19.86 USD/t"
-     * STRICTLY FORBIDDEN: Do NOT multiply by total weight (e.g., do NOT add "× 35 t") inside formula line!
-   - EXCHANGE RATE FORMAT RULE: Append exact date range from Currency_Exchange.txt!
-     * EXAMPLE (AZ): "1 USD = 0.79 CHF (01.07.2026 - 30.09.2026-cı il tarixləri üzrə)"
-   - PERIOD FORMAT RULE: Output full tariff policy title!
-     * EXAMPLE (AZ): "ADY Tarif Siyasəti 2026-cı il"
-   - FINAL RATES RULE: In "net_ady_rate" and "express_rate", output ONLY pure per-ton rate (e.g., "19.86 USD/t" or "15.69 CHF/t"). Do NOT add overall wagon total inside parentheses!
-   - NOTES RULE: Keep "notes" array strictly empty `[]` to save tokens. The application script handles static notes automatically.
+     * EXAMPLE (RU): "18.19 CHF/т (Таблица 3, расстояние 201-210 км, 35 т)"
+   - FORMULA RULE: Output rate calculation divided by USD exchange rate!
+     * EXAMPLE: "18.19 CHF/t × 0.85 × 1.015 / 0.79 = 19.86 USD/t"
+   - EXCHANGE RATE DATE FORMAT RULE:
+     * AZ: "1 USD = 0.79 CHF (01.07.2026 - 30.09.2026-cı il tarixləri üzrə)"
+     * RU: "1 USD = 0.79 CHF (на период 01.07.2026г. - 30.09.2026г.)"
+     * EN: "1 USD = 0.79 CHF (period 01.07.2026 - 30.09.2026)"
+   - PERIOD FORMAT RULE:
+     * AZ: "ADY Tarif Siyasəti 2026-cı il"
+     * RU: "Тарифная политика на 2026 фрахтовый год"
+     * EN: "Tariff Policy for 2026 freight year"
+   - FINAL RATES RULE: In "net_ady_rate" and "express_rate", output ONLY pure per-ton rate (e.g., "19.86 USD/t").
+   - NOTES RULE: Keep "notes" array strictly empty `[]`.
 
 2. MANDATORY JSON SCHEMA STRUCTURE:
 {
