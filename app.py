@@ -342,75 +342,75 @@ def load_selective_context(user_query, year_label, lang):
         ]:
             if os.path.exists(f_name):
                 files_to_load.append(f_name)
-    elif any(
-        k in query_lower for k in ["двухъярусн", "avtovoz", "ikiyaruslı", "двухярусн"]
-    ):
-        for f_name in [
-            "Table_8_Tariffs.txt",
-            "Table_11_Tariffs.txt",
-            "Table8.txt",
-            "Table11.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-    else:
-        for f_name in [
-            "Table_3_Tariffs.txt",
-            "Table_4_Tariffs.txt",
-            "Table_12_Tariffs.txt",
-            "Table_3_4_Universal.txt",
-            "Table3.txt",
-            "Table4.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
+  elif any(
+      k in query_lower for k in ["двухъярусн", "avtovoz", "ikiyaruslı", "двухярусн"]
+  ):
+    for f_name in [
+        "Table_8_Tariffs.txt",
+        "Table_11_Tariffs.txt",
+        "Table8.txt",
+        "Table11.txt",
+    ]:
+      if os.path.exists(f_name):
+        files_to_load.append(f_name)
+  else:
+    for f_name in [
+        "Table_3_Tariffs.txt",
+        "Table_4_Tariffs.txt",
+        "Table_12_Tariffs.txt",
+        "Table_3_4_Universal.txt",
+        "Table3.txt",
+        "Table4.txt",
+    ]:
+      if os.path.exists(f_name):
+        files_to_load.append(f_name)
 
-    loaded_rules = []
-    for txt_file in set(files_to_load):
-        if os.path.exists(txt_file):
-            with open(txt_file, "r", encoding="utf-8") as f:
-                loaded_rules.append(f"--- РАЗДЕЛ БАЗЫ: {txt_file} ---\n" + f.read())
+  loaded_rules = []
+  for txt_file in set(files_to_load):
+    if os.path.exists(txt_file):
+      with open(txt_file, "r", encoding="utf-8") as f:
+        loaded_rules.append(f"--- РАЗДЕЛ БАЗЫ: {txt_file} ---\n" + f.read())
 
-    rules_text = "\n\n".join(loaded_rules)
+  rules_text = "\n\n".join(loaded_rules)
 
-    system_instruction = (
-        f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ"
-        " ГОД!\n"
-        f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU ="
-        " Russian, EN = English).\nДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ"
-        " ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\nСТРОГО ИСПОЛЬЗУЙ"
-        " ТОЧНЫЕ РАССТОЯНИЯ ИЗ ФАЙЛА Distances.txt! НАПРИМЕР: YALAMA - BÖYÜK KƏSİK"
-        " = СТРОГО 616 KM (KƏMƏР: 611-620 KM). ЗАПРЕЩЕНО РАССЧИТЫВАТЬ ИЛИ"
-        " УГАДЫВАТЬ РАССТОЯНИЯ САМОСТОЯТЕЛЬНО!\nИСПОЛЬЗУЙ КУРСЫ ВАЛЮТ ИЗ"
-        " СПРАВОЧНИКА КУРСОВ (Currency_Exchange.txt) ДЛЯ ПЕРЕСЧЕТА СТАВОК ИЗ CHF В"
-        " USD!\n\n" + rules_text
-    )
-    return system_instruction
+  system_instruction = (
+      f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ"
+      " ГОД!\n"
+      f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU ="
+      " Russian, EN = English).\nДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ"
+      " ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\nСТРОГО ИСПОЛЬЗУЙ"
+      " ТОЧНЫЕ РАССТОЯНИЯ ИЗ ФАЙЛА Distances.txt! НАПРИМЕР: YALAMA - BÖYÜK KƏSİK"
+      " = СТРОГО 616 KM (KƏMƏР: 611-620 KM). ЗАПРЕЩЕНО РАССЧИТЫВАТЬ ИЛИ"
+      " УГАДЫВАТЬ РАССТОЯНИЯ САМОСТОЯТЕЛЬНО!\nИСПОЛЬЗУЙ КУРСЫ ВАЛЮТ ИЗ"
+      " СПРАВОЧНИКА КУРСОВ (Currency_Exchange.txt) ДЛЯ ПЕРЕСЧЕТА СТАВОК ИЗ CHF В"
+      " USD!\n\n" + rules_text
+  )
+  return system_instruction
 
 
 # 9. Вызов Gemini с моделью gemini-3.6-flash
 def call_gemini_json(client, prompt, instruction):
-    model_name = "gemini-3.6-flash"
+  model_name = "gemini-3.6-flash"
 
-    response = client.models.generate_content(
-        model=model_name,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=instruction,
-            temperature=0.1,
-            response_mime_type="application/json",
-        ),
-    )
+  response = client.models.generate_content(
+      model=model_name,
+      contents=prompt,
+      config=types.GenerateContentConfig(
+          system_instruction=instruction,
+          temperature=0.1,
+          response_mime_type="application/json",
+      ),
+  )
 
-    raw_text = response.text.strip()
-    if raw_text.startswith("```json"):
-        raw_text = raw_text[7:]
-    elif raw_text.startswith("```"):
-        raw_text = raw_text[3:]
-    if raw_text.endswith("```"):
-        raw_text = raw_text[:-3]
+  raw_text = response.text.strip()
+  if raw_text.startswith("```json"):
+    raw_text = raw_text[7:]
+  elif raw_text.startswith("```"):
+    raw_text = raw_text[3:]
+  if raw_text.endswith("```"):
+    raw_text = raw_text[:-3]
 
-    return json.loads(raw_text.strip())
+  return json.loads(raw_text.strip())
 
 
 # 10. Поле ввода текста и кнопка расчета
@@ -421,130 +421,57 @@ user_input = st.text_area(
 
 # Функция для считывания внешних правил
 def get_static_rules():
-    rules_file = "prompt_rules.txt"
-    rules_content = ""
-    if os.path.exists(rules_file):
-        with open(rules_file, "r", encoding="utf-8") as f:
-            rules_content = f.read()
+  rules_file = "prompt_rules.txt"
+  rules_content = ""
+  if os.path.exists(rules_file):
+    with open(rules_file, "r", encoding="utf-8") as f:
+      rules_content = f.read()
 
-    schema_dict = {
-        "part1": {
-            "route": "string",
-            "shipment_type": "string",
-            "distance": "string",
-            "cargo_and_wagon": "string",
-            "weight_info": "string",
-            "period": "string",
-        },
-        "part2": {
-            "exchange_rate": "string",
-            "base_tariff": "string",
-            "coefficients": [{"name": "string", "value": "string"}],
-        },
-        "part3": {
-            "formula": "string",
-            "net_ady_rate": "string",
-            "express_rate": "string or null",
-            "notes": ["string"],
-        },
-    }
+  schema_dict = {
+      "part1": {
+          "route": "string",
+          "shipment_type": "string",
+          "distance": "string",
+          "cargo_and_wagon": "string",
+          "weight_info": "string",
+          "period": "string",
+      },
+      "part2": {
+          "exchange_rate": "string",
+          "base_tariff": "string",
+          "coefficients": [{"name": "string", "value": "string"}],
+      },
+      "part3": {
+          "formula": "string",
+          "net_ady_rate": "string",
+          "express_rate": "string or null",
+          "notes": ["string"],
+      },
+  }
 
-    return (
-        rules_content
-        + "\n\nOUTPUT FORMAT (MANDATORY JSON):\nReturn ONLY a valid JSON object"
-        " matching exactly this structure:\n"
-        + json.dumps(schema_dict, indent=2)
-    )
+  return (
+      rules_content
+      + "\n\nOUTPUT FORMAT (MANDATORY JSON):\nReturn ONLY a valid JSON object"
+      " matching exactly this structure:\n"
+      + json.dumps(schema_dict, indent=2)
+  )
 
 
 if st.button(t["calc_btn"], type="primary"):
-    if not user_input.strip():
-        st.warning(t["warning_empty"])
-    else:
-        train_holder = st.empty()
-        train_holder.markdown(
-            f"""
+  if not user_input.strip():
+    st.warning(t["warning_empty"])
+  else:
+    train_holder = st.empty()
+    train_holder.markdown(
+        f"""
             <div class="train-track">
                 <div class="train-animation">═══ 🚃 🚃 🚃 🚂</div>
             </div>
             <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
             """,
-            unsafe_allow_html=True,
-        )
+        unsafe_allow_html=True,
+    )
 
-        try:
-            dyn_instruction = load_selective_context(
-                user_input, selected_year, selected_lang
-            )
-
-            prompt_header = (
-                f"Make exact calculation for (Freight Year: {selected_year},"
-                f" Language: {selected_lang}):\n{user_input}\n\nCRITICAL RULES (OUTPUT"
-                f" LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
-            )
-            prompt_text = prompt_header + get_static_rules()
-
-            data = call_gemini_json(client, prompt_text, dyn_instruction)
-
-            train_holder.empty()
-
-            st.success(t["success"].format(selected_year))
-            st.markdown(f"### {t['result_title']}")
-
-            # --- РАЗДЕЛ 1. Маршрут и условия перевозки ---
-            st.markdown(f"#### 📍 {t['sec1_title']}")
-            p1 = data.get("part1", {})
-            if isinstance(p1, list) and len(p1) > 0:
-                p1 = p1[0]
-
-            if isinstance(p1, dict):
-                table1_md = f"""
-| {t['col_param']} | {t['col_val']} |
-| :--- | :--- |
-| **{t['lbl_route']}** | {p1.get('route', '-')} |
-| **{t['lbl_type']}** | {p1.get('shipment_type', '-')} |
-| **{t['lbl_dist']}** | {p1.get('distance', '-')} |
-| **{t['lbl_cargo']}** | {p1.get('cargo_and_wagon', '-')} |
-| **{t['lbl_weight']}** | {p1.get('weight_info', '-')} |
-| **{t['lbl_period']}** | {p1.get('period', '-')} |
-"""
-                st.markdown(table1_md)
-
-            # --- РАЗДЕЛ 2. Коэффициенты и курс валют ---
-            st.markdown(f"#### ⚙️ {t['sec2_title']}")
-            p2 = data.get("part2", {})
-
-            if isinstance(p2, list) and len(p2) > 0:
-                p2 = p2[0]
-
-            if isinstance(p2, dict):
-                exch_rate = p2.get("exchange_rate", "-")
-                base_rate = p2.get("base_tariff", "-")
-
-                table2_rows = [
-                    f"| **{t['lbl_exchange']}** | {exch_rate} |",
-                    f"| **{t['lbl_base_rate']}** | {base_rate} |",
-                ]
-
-                coeffs = p2.get("coefficients", [])
-                if isinstance(coeffs, list):
-                    for coeff in coeffs:
-                        if isinstance(coeff, dict):
-                            c_name = coeff.get("name", "")
-                            c_val = coeff.get("value", "")
-                            table2_rows.append(f"| **{c_name}** | {c_val} |")
-
-                table2_md = (
-                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
-                    + "\n".join(table2_rows)
-                )
-                st.markdown(table2_md)
-
-            # --- РАЗДЕЛ 3. Расчет тарифа ---
-            st.markdown(f"#### 📐 {t['sec3_title']}")
-            p3 = data.get("part3", {})
-
-            if isinstance(p3, list) and len(p3) > 0:
-                p3 = p3[0]
-
-            if isinstance(p3, dict
+    try:
+      dyn_instruction = load_selective_context(
+          user_input, selected_year,
