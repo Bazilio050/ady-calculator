@@ -386,17 +386,20 @@ if st.button(t["calc_btn"], type="primary"):
 
             # --- РАЗДЕЛ 2. Коэффициенты и курс валют ---
             st.markdown(f"#### ⚙️ {t['sec2_title']}")
-            p2 = data["part2"]
-            table2_rows = [
-                f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |",
-                f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
-            ]
-            
-            for coeff in p2.get("coefficients", []):
-                table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
+p2 = data["part2"]
+table2_rows = [
+    f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |",
+    f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |",
+]
 
-            table2_md = f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(table2_rows)
-            st.markdown(table2_md)
+for coeff in p2.get("coefficients", []):
+  table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
+
+table2_md = (
+    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
+    + "\n".join(table2_rows)
+)
+st.markdown(table2_md)
 
             # --- РАЗДЕЛ 3. Расчет тарифа ---
             st.markdown(f"#### 📐 {t['sec3_title']}")
