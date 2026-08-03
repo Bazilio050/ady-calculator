@@ -83,7 +83,8 @@ UI_TEXT = {
     "AZ": {
         "title": "ADY Tarif Kalkulyatoru",
         "subtitle": (
-            "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili"
+            "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt"
+            " ili"
         ),
         "year_select": "Fraxt ili:",
         "lang_select": "Dil / Language:",
@@ -127,7 +128,9 @@ UI_TEXT = {
     },
     "RU": {
         "title": "ADY Tarif Kalkulyatoru",
-        "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
+        "subtitle": (
+            "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год"
+        ),
         "year_select": "Фрахтовый год:",
         "lang_select": "Язык / Language:",
         "input_header": "Введите данные по перевозке:",
@@ -481,4 +484,102 @@ if st.button(t["calc_btn"], type="primary"):
             )
             prompt_text = prompt_header + get_static_rules()
 
-            data =
+            data = call_gemini_json(client, prompt_text, dyn_instruction)
+
+            train_holder.empty()
+
+            st.success(t["success"].format(selected_year))
+            st.markdown(f"### {t['result_title']}")
+
+            # --- РАЗДЕЛ 1. Маршрут и условия перевозки ---
+            st.markdown(f"#### 📍 {t['sec1_title']}")
+            p1 = data.get("part1", {})
+            if isinstance(p1, list) and len(p1) > 0:
+                p1 = p1[0]
+
+            if isinstance(p1, dict):
+                table1_md = f"""
+| {t['col_param']} | {t['col_val']} |
+| :--- | :--- |
+| **{t['lbl_route']}** | {p1.get('route', '-')} |
+| **{t['lbl_type']}** | {p1.get('shipment_type', '-')} |
+| **{t['lbl_dist']}** | {p1.get('distance', '-')} |
+| **{t['lbl_cargo']}** | {p1.get('cargo_and_wagon', '-')} |
+| **{t['lbl_weight']}** | {p1.get('weight_info', '-')} |
+| **{t['lbl_period']}** | {p1.get('period', '-')} |
+"""
+                st.markdown(table1_md)
+
+            # --- РАЗДЕЛ 2. Коэффициенты и курс валют ---
+            st.markdown(f"#### ⚙️ {t['sec2_title']}")
+            p2 = data.get("part2", {})
+
+            if isinstance(p2, list) and len(p2) > 0:
+                p2 = p2[0]
+
+            if isinstance(p2, dict):
+                exch_rate = p2.get("exchange_rate", "-")
+                base_rate = p2.get("base_tariff", "-")
+
+                table2_rows = [
+                    f"| **{t['lbl_exchange']}** | {exch_rate} |",
+                    f"| **{t['lbl_base_rate']}** | {base_rate} |",
+                ]
+
+                coeffs = p2.get("coefficients", [])
+                if isinstance(coeffs, list):
+                    for coeff in coeffs:
+                        if isinstance(coeff, dict):
+                            c_name = coeff.get("name", "")
+                            c_val = coeff.get("value", "")
+                            table2_rows.append(f"| **{c_name}** | {c_val} |")
+
+                table2_md = (
+                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
+                    + "\n".join(table2_rows)
+                )
+                st.markdown(table2_md)
+
+            # --- РАЗДЕЛ 3. Расчет тарифа ---
+            st.markdown(f"#### 📐 {t['sec3_title']}")
+            p3 = data.get("part3", {})
+
+            if isinstance(p3, list) and len(p3) > 0:
+                p3 = p3[0]
+
+            if isinstance(p3, dict):
+                st.markdown(f"**{t['formula_title']}**")
+                st.code(p3.get("formula", "-"), language="text")
+
+                st.markdown(f"**{t['rates_title']}**")
+                table3_rows = [
+                    f"| **{t['lbl_net_rate']}** | **{p3.get('net_ady_rate', '-')}** |"
+                ]
+                if p3.get("express_rate"):
+                    table3_rows.append(
+                        f"| **{t['lbl_express_rate']}** |"
+                        f" **{p3.get('express_rate')}** |"
+                    )
+
+                table3_md = (
+                    f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
+                    + "\n".join(table3_rows)
+                )
+                st.markdown(table3_md)
+
+                st.markdown(f"**{t['notes_title']}**")
+                notes_list = p3.get("notes", [])
+                if isinstance(notes_list, list):
+                    for idx, note in enumerate(notes_list, start=1):
+                        st.markdown(f"{idx}. *{note}*")
+
+                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
+
+        except Exception as e:
+            train_holder.empty()
+            st.error(f"Error: {str(e)}")
+
+st.markdown("---")
+st.caption(
+    f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]"
+)
