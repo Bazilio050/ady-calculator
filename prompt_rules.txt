@@ -9,10 +9,9 @@ CRITICAL UNITS OF MEASUREMENT RULE:
 1. ABBREVIATIONS: Treat SPS = XPS (private wagons) and MPS = DDP (railway fleet) as identical terms!
    - For AZ language output, ALWAYS display wagon ownership as SPS or MPS (DO NOT use XPS or DDP in final output)!
 2. STRICT ROUTE DISTANCES:
-   - Baku yuk / Absheron to Yalama = EXACTLY 204 KM! (NEVER USE 212 KM)!
-   - Yalama to Boyuk Kesik = EXACTLY 616 KM (belt 611-620 km)!
-   - ALWAYS USE EXACT DISTANCES FROM EXCEL/TXT DISTANCE TABLES! DO NOT ESTIMATE DISTANCES!
-   - Minimum distances: Export = min 101 km (belt 101-110km), Import = min 151 km (belt 151-160km)!
+   - STRICTLY USE DISTANCE DATA FROM Distances.txt (or Məsafə.txt)!
+   - NEVER hardcode, guess, or estimate distance values.
+   - Match the exact distance (km) and corresponding tariff belt (kəmər) directly from the provided Distances file for the requested station pair.
 3. SPECIAL WAGONS & PASSENGER WAGONS (Clauses 3.1.2.5 - 3.1.2.8):
    - Passenger/Mail wagons (GNG 99910000): Billable weight strictly = 66 TONS (no Table 2 multipliers). Take base rate from 25 tons BTT category (Table 7 col 6)!
    - Transporters: min 5 tons/axle (4 axles = min 20t, 6 axles = min 30t, 8 axles = min 40t)!
