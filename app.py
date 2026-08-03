@@ -83,8 +83,7 @@ UI_TEXT = {
     "AZ": {
         "title": "ADY Tarif Kalkulyatoru",
         "subtitle": (
-            "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt"
-            " ili"
+            "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili"
         ),
         "year_select": "Fraxt ili:",
         "lang_select": "Dil / Language:",
@@ -128,9 +127,7 @@ UI_TEXT = {
     },
     "RU": {
         "title": "ADY Tarif Kalkulyatoru",
-        "subtitle": (
-            "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год"
-        ),
+        "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
         "year_select": "Фрахтовый год:",
         "lang_select": "Язык / Language:",
         "input_header": "Введите данные по перевозке:",
@@ -374,16 +371,12 @@ def load_selective_context(user_query, year_label, lang):
     rules_text = "\n\n".join(loaded_rules)
 
     system_instruction = (
-        f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ"
-        " ГОД!\n"
-        f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU ="
-        " Russian, EN = English).\nДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ"
-        " ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\nСТРОГО ИСПОЛЬЗУЙ"
-        " ТОЧНЫЕ РАССТОЯНИЯ ИЗ ФАЙЛА Distances.txt! НАПРИМЕР: YALAMA - BÖYÜK KƏSİK"
-        " = СТРОГО 616 KM (KƏMƏР: 611-620 KM). ЗАПРЕЩЕНО РАССЧИТЫВАТЬ ИЛИ"
-        " УГАДЫВАТЬ РАССТОЯНИЯ САМОСТОЯТЕЛЬНО!\nИСПОЛЬЗУЙ КУРСЫ ВАЛЮТ ИЗ"
-        " СПРАВОЧНИКА КУРСОВ (Currency_Exchange.txt) ДЛЯ ПЕРЕСЧЕТА СТАВОК ИЗ CHF В"
-        " USD!\n\n" + rules_text
+        f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
+        f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
+        f"ДЛЯ АЗЕРБАЙДЖАНСКОГО ЯЗЫКА (AZ) ИСПОЛЬЗОВАТЬ ОБОЗНАЧЕНИЯ SPS (ВМЕСТО XPS) И MPS (ВМЕСТО DDP)!\n"
+        f"СТРОГО ИСПОЛЬЗУЙ ТОЧНЫЕ РАССТОЯНИЯ И ТАРИФНЫЕ ПОЯСА ИЗ ФАЙЛА Distances.txt! ЗАПРЕЩЕНО РАССЧИТЫВАТЬ ИЛИ УГАДЫВАТЬ РАССТОЯНИЯ САМОСТОЯТЕЛЬНО!\n"
+        f"ИСПОЛЬЗУЙ КУРСЫ ВАЛЮТ ИЗ СПРАВОЧНИКА КУРСОВ (Currency_Exchange.txt) ДЛЯ ПЕРЕСЧЕТА СТАВОК ИЗ CHF В USD!\n\n"
+        + rules_text
     )
     return system_instruction
 
@@ -501,85 +494,4 @@ if st.button(t["calc_btn"], type="primary"):
                 table1_md = f"""
 | {t['col_param']} | {t['col_val']} |
 | :--- | :--- |
-| **{t['lbl_route']}** | {p1.get('route', '-')} |
-| **{t['lbl_type']}** | {p1.get('shipment_type', '-')} |
-| **{t['lbl_dist']}** | {p1.get('distance', '-')} |
-| **{t['lbl_cargo']}** | {p1.get('cargo_and_wagon', '-')} |
-| **{t['lbl_weight']}** | {p1.get('weight_info', '-')} |
-| **{t['lbl_period']}** | {p1.get('period', '-')} |
-"""
-                st.markdown(table1_md)
-
-            # --- РАЗДЕЛ 2. Коэффициенты и курс валют ---
-            st.markdown(f"#### ⚙️ {t['sec2_title']}")
-            p2 = data.get("part2", {})
-
-            if isinstance(p2, list) and len(p2) > 0:
-                p2 = p2[0]
-
-            if isinstance(p2, dict):
-                exch_rate = p2.get("exchange_rate", "-")
-                base_rate = p2.get("base_tariff", "-")
-
-                table2_rows = [
-                    f"| **{t['lbl_exchange']}** | {exch_rate} |",
-                    f"| **{t['lbl_base_rate']}** | {base_rate} |",
-                ]
-
-                coeffs = p2.get("coefficients", [])
-                if isinstance(coeffs, list):
-                    for coeff in coeffs:
-                        if isinstance(coeff, dict):
-                            c_name = coeff.get("name", "")
-                            c_val = coeff.get("value", "")
-                            table2_rows.append(f"| **{c_name}** | {c_val} |")
-
-                table2_md = (
-                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
-                    + "\n".join(table2_rows)
-                )
-                st.markdown(table2_md)
-
-            # --- РАЗДЕЛ 3. Расчет тарифа ---
-            st.markdown(f"#### 📐 {t['sec3_title']}")
-            p3 = data.get("part3", {})
-
-            if isinstance(p3, list) and len(p3) > 0:
-                p3 = p3[0]
-
-            if isinstance(p3, dict):
-                st.markdown(f"**{t['formula_title']}**")
-                st.code(p3.get("formula", "-"), language="text")
-
-                st.markdown(f"**{t['rates_title']}**")
-                table3_rows = [
-                    f"| **{t['lbl_net_rate']}** | **{p3.get('net_ady_rate', '-')}** |"
-                ]
-                if p3.get("express_rate"):
-                    table3_rows.append(
-                        f"| **{t['lbl_express_rate']}** |"
-                        f" **{p3.get('express_rate')}** |"
-                    )
-
-                table3_md = (
-                    f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
-                    + "\n".join(table3_rows)
-                )
-                st.markdown(table3_md)
-
-                st.markdown(f"**{t['notes_title']}**")
-                notes_list = p3.get("notes", [])
-                if isinstance(notes_list, list):
-                    for idx, note in enumerate(notes_list, start=1):
-                        st.markdown(f"{idx}. *{note}*")
-
-                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
-
-        except Exception as e:
-            train_holder.empty()
-            st.error(f"Error: {str(e)}")
-
-st.markdown("---")
-st.caption(
-    f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]"
-)
+| **{t['lbl_route']}** | {p1.get
