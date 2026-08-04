@@ -311,6 +311,10 @@
       "private_park": {
         "description_ru": "Для приватного дизель-генератора берется 0.12 CHF за ось-км. За проезд бригады плата не взимается.",
         "rate_per_axle_km_chf": 0.12
+      },
+      "empty_wagon_in_loaded_section": {
+        "description_ru": "Порожний вагон в составе груженой рефсекции (независимо от принадлежности) - 0.10 CHF за ось-км",
+        "rate_per_axle_km_chf": 0.10
       }
     },
     "fruit_veg_discount_0_60": {
@@ -327,6 +331,54 @@
         "04100", "04200", "04300", "04400", 
         "05100", "05200", "05300"
       ]
+    }
+  },
+  "thermos_and_substitution_rules_section_3_1_2_2": {
+    "_source": "3.1.2.2. Vaqon-termos və vaqon-ledniklərdə daşınma",
+    "_page": 26,
+    "table_references": {
+      "table": 5,
+      "columns": [4, 5],
+      "built_in_discount": 0.60,
+      "description_ru": "В ставки Таблицы 5 (ст. 4 и 5) для термосов уже заложен коэффициент 0,60"
+    },
+    "substitution_rules": [
+      {
+        "type": "ref_instead_of_covered_IZVK",
+        "mark": "İZVK",
+        "description_ru": "Рефвагон вместо крытого вагона без поддержания температуры. Расчет как для универсального вагона, мин. вес 40 тонн.",
+        "min_weight_tons": 40,
+        "calculation_as": "universal_wagon"
+      },
+      {
+        "type": "ref_instead_of_thermos_IZVT",
+        "mark": "İZVT",
+        "description_ru": "Рефвагон вместо вагона-термоса. Расчет как для вагона-термоса.",
+        "calculation_as": "thermos_wagon"
+      },
+      {
+        "type": "thermos_instead_of_covered_VTVK",
+        "mark": "VTVK",
+        "description_ru": "Вагон-термос по просьбе отправителя вместо крытого вагона. Расчет как универсальный вагон, мин. вес 60 тонн.",
+        "min_weight_tons": 60,
+        "calculation_as": "universal_wagon"
+      }
+    ]
+  },
+  "automobile_transporters_section_3_1_2_3": {
+    "_source": "3.1.3. Avtomobillərin daşınması üçün nəzərdə tutulmuş ixtisaslaşdırılmış hərəkət heyətində daşınma",
+    "_pages": "26-27",
+    "base_rules": {
+      "table": 5,
+      "column": 6,
+      "min_weight_tons": 10,
+      "base_category_tons": 10,
+      "description_ru": "Автовозы: расчет по Таблице 5 (ст. 6) с использованием базовых ставок 10-тонной категории Таблицы 7. Расчетный вес не менее 10 тонн."
+    },
+    "double_deck_platform_rule": {
+      "coefficient_value": 0.80,
+      "description_ru": "Двухъярусные платформы-автовозы: применяется коэффициент 0.80 к тарифным ставкам крытых автовозов (Таблица 5, ст. 6)",
+      "apply_to": "double_deck_platforms"
     }
   }
 }
