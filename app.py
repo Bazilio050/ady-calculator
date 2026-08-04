@@ -402,22 +402,23 @@ def call_gemini_json(client, prompt, instruction):
     return json.loads(raw_text.strip())
 
 
-# 9. ЧЕСТНЫЙ МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON
+# 9. ЧЕСТНЫЙ МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON (ПОРЯДОК: БАЗА -> КУРС -> КОЭФФИЦИЕНТЫ)
 def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_metal, is_loaded_1015):
-    # 1. Перевод базы в USD
+    # 1. Сначала База, затем Деление на курс
     current_val = base_chf / exchange_rate
-    
-    # 2. Формируем строго зафиксированную последовательность формулы
     formula_parts = [f"{base_chf:.2f} / {exchange_rate}"]
     
+    # 2. Продуктовый коэффициент (1.04)
     if is_import_timber_metal:
         formula_parts.append("1.04")
         current_val *= 1.04
         
+    # 3. Коэффициент груженого хода (1.015)
     if is_loaded_1015:
         formula_parts.append("1.015")
         current_val *= 1.015
         
+    # 4. Собственный вагон (0.85) — в самом конце
     if is_sps:
         formula_parts.append("0.85")
         current_val *= 0.85
@@ -549,10 +550,10 @@ if st.button(t["calc_btn"], type="primary"):
 
                 st.markdown(f"#### ⚙️ {t['sec2_title']}")
                 
-                # Выстраиваем порядок строк Раздела 2 строго по порядку участия в формуле
+                # ИДЕАЛЬНЫЙ ПОРЯДОК: БАЗА -> КУРС -> 1.04 -> 1.015 -> 0.85
                 table2_rows = [
-                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate_text', f'1 USD = {ex_rate} CHF')} |",
                     f"| **{t['lbl_base_rate']}** | {base_chf:.2f} CHF/t ({p2.get('table_info_text', '')}) |",
+                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate_text', f'1 USD = {ex_rate} CHF')} |",
                 ]
 
                 if is_import_tm:
