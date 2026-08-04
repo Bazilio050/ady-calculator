@@ -121,6 +121,9 @@ UI_TEXT = {
         "note_timber_metal": "İdxal rejimində meşə materialları və qara metallar üçün 1.04 əmsalı tətbiq edilmişdir.",
         "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
         "note_min_weight": "Faktiki çəki minimal tarif normasından aşağı olduğu üçün hesablama minimal norma üzrə aparılmışdır.",
+        "lbl_coef_sps": "Özəl vaqon (SPS)",
+        "lbl_coef_loaded": "Yüklü rejim əmsalı",
+        "lbl_coef_import": "Meşə/Metal idxal əmsalı",
     },
     "RU": {
         "title": "Тарифный калькулятор ADY",
@@ -171,6 +174,9 @@ UI_TEXT = {
         "note_timber_metal": "В режиме импорта применен коэффициент 1.04 для лесных грузов и черных металлов.",
         "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
         "note_min_weight": "Так как фактический вес ниже минимальной нормы, расчет произведен по минимальной весовой норме.",
+        "lbl_coef_sps": "Собственный вагон (СПС)",
+        "lbl_coef_loaded": "Коэффициент груженого хода",
+        "lbl_coef_import": "Коэффициент на импорт леса/металла",
     },
     "EN": {
         "title": "ADY Tariff Calculator",
@@ -221,6 +227,9 @@ UI_TEXT = {
         "note_timber_metal": "Coefficient 1.04 applied for import of timber and ferrous metals.",
         "note_coef_1015": "Additional coefficient applied: 1.015.",
         "note_min_weight": "Since actual weight is below minimum billable weight, calculation is based on minimum weight.",
+        "lbl_coef_sps": "Private wagon (SPS)",
+        "lbl_coef_loaded": "Loaded run coefficient",
+        "lbl_coef_import": "Timber/Metal import coefficient",
     },
 }
 
@@ -362,11 +371,7 @@ def load_selective_context(user_query, year_label, lang):
     system_instruction = (
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-        f"СТРОГИЕ ПРАВИЛА:\n"
-        f"1. Для RU языка строго использовать 'СПС' (вместо SPS) и 'МПС' (вместо MPS).\n"
-        f"2. МИН. РАСЧЕТНАЯ НОРМА ЧЕКИ (СТРОГОЕ ПРАВИЛО!): Если фактический вес < минимальной нормы (например, факт 40т, а норма 45т/60т), ЗАПРЕЩЕНО брать колонку фактического веса! СТАВКА СТРОГО БЕРЕТСЯ ИЗ КОЛОНКИ МИН. НОРМЫ (45т/60т)!\n"
-        f"3. МПС vs СПС: Для МПС берется 100% базовая ставка из таблицы. Для СПС применяется коэффициент k = 0.85 к базовой ставке таблицы.\n"
-        f"4. СТАНЦИИ: Если станция пограничная (Yalama, Boyuk Kesik, Astara, Culfa, Alat), писать с припиской '-eksp.' (например, 'Yalama-eksp. - Böyük Kəsik-eksp.').\n\n"
+        f"ВАЖНО: Твоя задача — извлечь данные и вернуть их в JSON. Математические расчёты формул НЕ ДЕЛАЙ, за тебя их сделает Python-код!\n\n"
         + rules_text
     )
     return system_instruction
@@ -397,19 +402,40 @@ def call_gemini_json(client, prompt, instruction):
     return json.loads(raw_text.strip())
 
 
-# 9. Интерфейс расчета
+# 9. ЧЕСТНЫЙ МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON
+def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_metal, is_loaded_1015):
+    # 1. Перевод базы в USD
+    current_val = base_chf / exchange_rate
+    
+    # 2. Формируем строго зафиксированную последовательность формулы
+    formula_parts = [f"{base_chf:.2f} / {exchange_rate}"]
+    
+    if is_import_timber_metal:
+        formula_parts.append("1.04")
+        current_val *= 1.04
+        
+    if is_loaded_1015:
+        formula_parts.append("1.015")
+        current_val *= 1.015
+        
+    if is_sps:
+        formula_parts.append("0.85")
+        current_val *= 0.85
+        
+    formula_str = " * ".join(formula_parts) + f" = {current_val:.2f} USD/t"
+    net_rate_str = f"{current_val:.2f} USD/t"
+    express_rate_str = f"{(current_val * 1.02):.2f} USD/t"
+    
+    return formula_str, net_rate_str, express_rate_str
+
+
+# 10. Интерфейс расчета
 user_input = st.text_area(
     t["input_header"], height=150, placeholder=t["input_placeholder"]
 )
 
 
 def get_static_rules():
-    rules_file = "prompt_rules.txt"
-    rules_content = ""
-    if os.path.exists(rules_file):
-        with open(rules_file, "r", encoding="utf-8") as f:
-            rules_content = f.read()
-
     schema_dict = {
         "part1": {
             "route": "string",
@@ -420,21 +446,18 @@ def get_static_rules():
             "period": "string"
         },
         "part2": {
-            "exchange_rate": "string",
-            "base_tariff": "string",
-            "coefficients": [{"name": "string", "value": "string"}]
-        },
-        "part3": {
-            "formula": "string",
-            "net_ady_rate": "string",
-            "express_rate": "string",
-            "notes": []
+            "exchange_rate_val": 0.79,
+            "exchange_rate_text": "1 USD = 0.79 CHF (period info)",
+            "base_tariff_chf": 14.45,
+            "table_info_text": "Таблица 3, расстояние 191-200 км, 45 т",
+            "is_sps": True,
+            "is_import_timber_metal": True,
+            "is_loaded_1015": True
         }
     }
 
     return (
-        rules_content
-        + "\n\nOUTPUT FORMAT (MANDATORY JSON):\nReturn ONLY a valid JSON object matching exactly this structure:\n"
+        "Extract shipment parameters and return JSON matching exactly this schema:\n"
         + json.dumps(schema_dict, indent=2)
     )
 
@@ -460,9 +483,8 @@ if st.button(t["calc_btn"], type="primary"):
             )
 
             prompt_header = (
-                f"Make exact calculation for (Freight Year: {selected_year},"
-                f" Language: {selected_lang}):\n{user_input}\n\nCRITICAL RULES (OUTPUT"
-                f" LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
+                f"Extract data for (Freight Year: {selected_year},"
+                f" Language: {selected_lang}):\n{user_input}\n\n"
             )
             prompt_text = prompt_header + get_static_rules()
 
@@ -508,85 +530,78 @@ if st.button(t["calc_btn"], type="primary"):
                 )
                 st.markdown(table1_md)
 
-            # Раздел 2
-            st.markdown(f"#### ⚙️ {t['sec2_title']}")
+            # Раздел 2 & 3: Математика на Python
             p2 = data.get("part2", {})
             if isinstance(p2, list) and len(p2) > 0:
                 p2 = p2[0]
 
             if isinstance(p2, dict):
+                base_chf = float(p2.get("base_tariff_chf", 0.0))
+                ex_rate = float(p2.get("exchange_rate_val", 0.79))
+                is_sps = bool(p2.get("is_sps", False))
+                is_import_tm = bool(p2.get("is_import_timber_metal", False))
+                is_loaded = bool(p2.get("is_loaded_1015", True))
+
+                # Запуск движка Python
+                formula_str, net_rate_str, express_rate_str = compute_python_tariff(
+                    base_chf, ex_rate, is_sps, is_import_tm, is_loaded
+                )
+
+                st.markdown(f"#### ⚙️ {t['sec2_title']}")
                 table2_rows = [
-                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate', '-')} |",
-                    f"| **{t['lbl_base_rate']}** | {p2.get('base_tariff', '-')} |",
+                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate_text', f'1 USD = {ex_rate} CHF')} |",
+                    f"| **{t['lbl_base_rate']}** | {base_chf:.2f} CHF/t ({p2.get('table_info_text', '')}) |",
                 ]
 
-                coeffs = p2.get("coefficients", [])
-                if isinstance(coeffs, list):
-                    for coeff in coeffs:
-                        if isinstance(coeff, dict):
-                            table2_rows.append(
-                                f"| **{coeff.get('name', '')}** | {coeff.get('value', '')} |"
-                            )
+                if is_sps:
+                    table2_rows.append(f"| **{t['lbl_coef_sps']}** | 0.85 |")
+                if is_loaded:
+                    table2_rows.append(f"| **{t['lbl_coef_loaded']}** | 1.015 |")
+                if is_import_tm:
+                    table2_rows.append(f"| **{t['lbl_coef_import']}** | 1.04 |")
 
                 st.markdown(
                     f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
                     + "\n".join(table2_rows)
                 )
 
-            # Раздел 3
-            st.markdown(f"#### 📐 {t['sec3_title']}")
-            p3 = data.get("part3", {})
-            if isinstance(p3, list) and len(p3) > 0:
-                p3 = p3[0]
-
-            if isinstance(p3, dict):
+                # Раздел 3
+                st.markdown(f"#### 📐 {t['sec3_title']}")
                 st.markdown(f"**{t['formula_title']}**")
-                st.code(p3.get("formula", "-"), language="text")
+                st.code(formula_str, language="text")
 
                 st.markdown(f"**{t['rates_title']}**")
                 table3_rows = [
-                    f"| **{t['lbl_net_rate']}** | **{p3.get('net_ady_rate', '-')}** |"
+                    f"| **{t['lbl_net_rate']}** | **{net_rate_str}** |",
+                    f"| **{t['lbl_express_rate']}** | **{express_rate_str}** |"
                 ]
-
-                express_val = p3.get("express_rate")
-                if express_val:
-                    table3_rows.append(
-                        f"| **{t['lbl_express_rate']}** | **{express_val}** |"
-                    )
 
                 st.markdown(
                     f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
                     + "\n".join(table3_rows)
                 )
 
-                # Динамическая сборка примечаний (Qeydlər)
+                # Динамическая сборка примечаний
                 auto_notes = []
-                input_check = user_input.lower()
-                weight_str = str(p1.get("weight_info", "")).lower()
-
-                if any(k in input_check for k in ["sps", "özəl", "спс", "собствен"]):
+                if is_sps:
                     auto_notes.append(t["note_sps"])
 
-                ship_type = str(p1.get("shipment_type", "")).lower()
-                if any(k in ship_type for k in ["idxal", "импорт", "import"]):
+                ship_type = str(p1.get("shipment_type", "")).lower() if isinstance(p1, dict) else ""
+                if "idxal" in ship_type or "импорт" in ship_type or "import" in ship_type:
                     auto_notes.append(t["note_import"])
-                elif any(k in ship_type for k in ["ixrac", "экспорт", "export"]):
+                elif "ixrac" in ship_type or "экспорт" in ship_type or "export" in ship_type:
                     auto_notes.append(t["note_export"])
 
+                weight_str = str(p1.get("weight_info", "")).lower() if isinstance(p1, dict) else ""
                 if ("faktiki" in weight_str or "фактическ" in weight_str) and ("min" in weight_str or "hesablaşma" in weight_str or "расчетн" in weight_str):
                     auto_notes.append(t["note_min_weight"])
 
-                coeffs = p2.get("coefficients", []) if isinstance(p2, dict) else []
-                coeff_values = [str(c.get("value", "")) for c in coeffs if isinstance(c, dict)]
-                coeff_str = " ".join(coeff_values)
-
-                if "1.04" in coeff_str and "tranzit" not in ship_type and "транзит" not in ship_type:
+                if is_import_tm:
                     auto_notes.append(t["note_timber_metal"])
-                if "1.015" in coeff_str or "1,015" in coeff_str:
+                if is_loaded:
                     auto_notes.append(t["note_coef_1015"])
 
-                if express_val:
-                    auto_notes.append(t["note_express"])
+                auto_notes.append(t["note_express"])
 
                 if auto_notes:
                     st.markdown(f"**{t['notes_title']}**")
