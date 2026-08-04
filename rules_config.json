@@ -380,5 +380,108 @@
       "description_ru": "Двухъярусные платформы-автовозы: применяется коэффициент 0.80 к тарифным ставкам крытых автовозов (Таблица 5, ст. 6)",
       "apply_to": "double_deck_platforms"
     }
+  },
+  "table_6_liquid_cargo_mapping": {
+    "_source": "Cədvəl 6 - Çəndə və bunker yarımvaqonlarda daşınan maye yüklərin tarif qiymətləri",
+    "_page": 31,
+    "base_weight_category_tons": 25,
+    "columns": {
+      "col_2_oil_and_products": {
+        "column_number": 2,
+        "name_az": "Neft və neft məhsulları",
+        "name_ru": "Нефть и нефтепродукты",
+        "gng_prefixes": [
+          "27090010", "27090090", "2710", "2712", "2713", "27149000", "2715",
+          "340319", "340399", "3404", "381121", "381129", "38170050", "38241000"
+        ]
+      },
+      "col_3_energy_gases": {
+        "column_number": 3,
+        "name_az": "Enerjili qazlar",
+        "name_ru": "Энергетические газы",
+        "gng_prefixes": ["2705", "2711"]
+      },
+      "col_4_gases_and_hydrocarbons": {
+        "column_number": 4,
+        "name_az": "Qazlar və karbohidrogenlər",
+        "name_ru": "Газы и углеводороды",
+        "gng_prefixes": [
+          "27071", "27072", "27073", "27074", "27075", "27079920", "28011",
+          "28013000", "28013010", "28041", "28042", "28043", "28044", "28112100",
+          "28121100", "28141", "28539030", "2901", "2902", "29321200",
+          "29333100", "29333955", "3817"
+        ],
+        "exceptions": ["38170050"]
+      },
+      "col_5_alcohols_and_phenols": {
+        "column_number": 5,
+        "name_az": "Spirt və fenollar",
+        "name_ru": "Спирты и фенолы",
+        "gng_prefixes": [
+          "1520", "270779980", "2905", "2906", "2907", "2908", "29094100",
+          "29321300", "3820", "38237", "3826", "39053"
+        ]
+      },
+      "col_6_perishable_food": {
+        "column_number": 6,
+        "name_az": "Tez xarab olan yüklər",
+        "name_ru": "Скоропортящиеся и пищевые наливные грузы",
+        "gng_prefixes": [
+          "0401", "04032000", "04032039", "04039091", "04039099", "04041000",
+          "04041048", "04049089", "0405", "0406", "1501", "1502", "1503", "1504",
+          "1505", "1506", "15161000", "15161090", "151790", "15180091", "15180099",
+          "2009", "2105", "2201", "2202", "2203", "2204", "2205", "2206"
+        ]
+      },
+      "col_7_other_liquids_default": {
+        "column_number": 7,
+        "name_az": "Digər yüklər",
+        "name_ru": "Прочие наливные грузы (по умолчанию)",
+        "is_default": true
+      },
+      "col_8_private_tanks_hydrocarbons": {
+        "column_number": 8,
+        "name_az": "Özəl çənlər (Karbohidrogenlər)",
+        "name_ru": "Углеводороды в приватных цистернах (СПС)",
+        "only_private_wagons": true,
+        "gng_prefixes": [
+          "27071", "27072", "27073", "290211", "29022", "29023",
+          "290241", "290244", "29026", "29027", "29029"
+        ]
+      }
+    }
+  },
+  "private_wagons_section_3_2": {
+    "_source": "3.2. Özəl (daşıyıcıya mənsub olmayan) yük vaqonlarında yüklü və boş halda daşımalar",
+    "_pages": "41-42",
+    "general_private_wagon_coefficient": {
+      "coefficient_value": 0.85,
+      "description_ru": "Основной понижающий коэффициент 0.85 при перевозке в приватных/арендованных вагонах (пп. 3.1 и 3.5)"
+    },
+    "empty_return_private_wagons": {
+      "rate_per_axle_km_chf": 0.10,
+      "description_ru": "Порожний пробег приватных вагонов (возврат после выгрузки, под погрузку, промывку) - 0.10 CHF за ось-км",
+      "empty_gng_codes": ["99210000", "99213000", "99220000", "99223000"]
+    },
+    "empty_inventory_containers_on_private_platforms": {
+      "rate_per_axle_km_chf": 0.10,
+      "description_ru": "Перевозка порожних контейнеров инвентарного парка на приватных платформах - 0.10 CHF за ось-км"
+    },
+    "containers_on_private_wagons": {
+      "coefficient_value": 0.85,
+      "description_ru": "Коэффициент 0.85 за перевозку контейнеров на приватных вагонах (п. 3.4)"
+    },
+    "private_tanks_hydrocarbons_0_70": {
+      "coefficient_value": 0.70,
+      "description_ru": "Специальный коэффициент 0.70 (вместо 0.85) для углеводородов по Таблице 6 (столбец 8) в приватных цистернах",
+      "gng_prefixes": [
+        "27071", "27072", "27073", "290211", "29022", "29023",
+        "290241", "290242", "290243", "290244", "29026", "29027", "29029"
+      ]
+    },
+    "road_trains_and_bodies_on_private_platforms": {
+      "coefficient_value": 0.85,
+      "description_ru": "Коэффициент 0.85 для автопоездов и съемных кузовов по Таблице 5 (ст. 7 и 8) на приватных платформах"
+    }
   }
 }
