@@ -78,10 +78,7 @@ UI_TEXT = {
         "year_select": "Fraxt ili:",
         "lang_select": "Dil / Language:",
         "input_header": "Daşıma parametrlərini daxil edin:",
-        "input_placeholder": (
-            "Nümunə:\nMarşrut: Yalama - Abşeron\nYük: Kağız və ya karton"
-            " tullantıları (GNG 4707), 35 ton\nVəziyyət: SPS örtülü vaqon"
-        ),
+        "input_placeholder": "Nümunə:\nMarşrut: Yalama - Abşeron\nYük: Kağız və ya karton tullantıları (GNG 4707), 35 ton\nVəziyyət: SPS örtülü vaqon",
         "calc_btn": "🚀 Tarifi hesabla",
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
         "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...",
@@ -93,11 +90,7 @@ UI_TEXT = {
         "formula_title": "Hesablama düsturu:",
         "rates_title": "Yekun tariflər:",
         "notes_title": "Qeydlər:",
-        "disclaimer": (
-            "Qeyd olunan tariflərə stansiya xərcləri (yükləmə-boşaltma, tərtibat,"
-            " sənədləşmə, vaqonların verilməsi-yığılması və s.) və əlavə"
-            " yığımlar daxil deyildir."
-        ),
+        "disclaimer": "Qeyd olunan tariflərə stansiya xərcləri (yükləmə-boşaltma, tərtibat, sənədləşmə, vaqonların verilməsi-yığılması və s.) və əlavə yığımlar daxil deyildir.",
         "col_param": "Parametr",
         "col_val": "Qiymət / Həcm",
         "col_rate_type": "Tarif növü",
@@ -131,10 +124,7 @@ UI_TEXT = {
         "year_select": "Фрахтовый год:",
         "lang_select": "Язык / Language:",
         "input_header": "Введите данные по перевозке:",
-        "input_placeholder": (
-            "Пример:\nМаршрут: Ялама - Апшерон\nГруз: Отходы бумаги (ГНГ 4707),"
-            " 35 тонн\nСостояние: СПС крытый вагон"
-        ),
+        "input_placeholder": "Пример:\nМаршрут: Ялама - Апшерон\nГруз: Отходы бумаги (ГНГ 4707), 35 тонн\nСостояние: СПС крытый вагон",
         "calc_btn": "🚀 Рассчитать тариф",
         "warning_empty": "Пожалуйста, введите условия расчета.",
         "spinner_text": "Считаем тариф согласно Тарифной политике {}...",
@@ -146,11 +136,7 @@ UI_TEXT = {
         "formula_title": "Формула расчета:",
         "rates_title": "Итоговые тарифы:",
         "notes_title": "Примечания:",
-        "disclaimer": (
-            "Ставки приведены без учета станционных расходов (погрузка-выгрузка,"
-            " маневровые работы, оформление документов, подача-уборка вагонов"
-            " и т.д.) и дополнительных сборов."
-        ),
+        "disclaimer": "Ставки приведены без учета станционных расходов (погрузка-выгрузка, маневровые работы, оформление документов, подача-уборка вагонов и т.д.) и дополнительных сборов.",
         "col_param": "Параметр",
         "col_val": "Значение / Объем",
         "col_rate_type": "Тип тарифа",
@@ -184,10 +170,7 @@ UI_TEXT = {
         "year_select": "Freight Year:",
         "lang_select": "Language:",
         "input_header": "Enter shipment details:",
-        "input_placeholder": (
-            "Example:\nRoute: Yalama - Absheron\nCargo: Paper scrap (NHM 4707),"
-            " 35 tons\nCondition: SPS covered wagon"
-        ),
+        "input_placeholder": "Example:\nRoute: Yalama - Absheron\nCargo: Paper scrap (NHM 4707), 35 tons\nCondition: SPS covered wagon",
         "calc_btn": "🚀 Calculate Freight Rate",
         "warning_empty": "Please enter shipment requirements.",
         "spinner_text": "Calculating rates according to Tariff Policy {}...",
@@ -199,11 +182,7 @@ UI_TEXT = {
         "formula_title": "Calculation Formula:",
         "rates_title": "Final Rates:",
         "notes_title": "Notes:",
-        "disclaimer": (
-            "Rates are quoted excluding station charges (loading/unloading,"
-            " shunting, documentation, wagon positioning, etc.) and additional"
-            " fees."
-        ),
+        "disclaimer": "Rates are quoted excluding station charges (loading/unloading, shunting, documentation, wagon positioning, etc.) and additional fees.",
         "col_param": "Parameter",
         "col_val": "Value / Volume",
         "col_rate_type": "Rate Type",
@@ -520,16 +499,7 @@ if st.button(t["calc_btn"], type="primary"):
                 val_weight = p1.get('weight_info', '-')
                 val_period = p1.get('period', '-')
 
-                table1_md = (
-                    f"| {col_param} | {col_val} |\n"
-                    f"| :--- | :--- |\n"
-                    f"| **{lbl_route}** | {val_route} |\n"
-                    f"| **{lbl_type}** | {val_type} |\n"
-                    f"| **{lbl_dist}** | {val_dist} |\n"
-                    f"| **{lbl_cargo}** | {val_cargo} |\n"
-                    f"| **{lbl_weight}** | {val_weight} |\n"
-                    f"| **{lbl_period}** | {val_period} |"
-                )
+                table1_md = f"| {col_param} | {col_val} |\n| :--- | :--- |\n| **{lbl_route}** | {val_route} |\n| **{lbl_type}** | {val_type} |\n| **{lbl_dist}** | {val_dist} |\n| **{lbl_cargo}** | {val_cargo} |\n| **{lbl_weight}** | {val_weight} |\n| **{lbl_period}** | {val_period} |"
                 st.markdown(table1_md)
 
             # Раздел 2 & 3: Математика на Python
@@ -596,4 +566,32 @@ if st.button(t["calc_btn"], type="primary"):
 
                 ship_type = str(p1.get("shipment_type", "")).lower() if isinstance(p1, dict) else ""
                 if is_min_dist_applied:
-                    if "
+                    if "idxal" in ship_type or "импорт" in ship_type or "import" in ship_type:
+                        auto_notes.append(t["note_import_dist"])
+                    elif "ixrac" in ship_type or "экспорт" in ship_type or "export" in ship_type:
+                        auto_notes.append(t["note_export_dist"])
+
+                if is_min_weight_applied:
+                    auto_notes.append(t["note_min_weight"])
+
+                if is_import_tm:
+                    auto_notes.append(t["note_timber_metal"])
+                    
+                if is_loaded:
+                    auto_notes.append(t["note_coef_1015"])
+
+                auto_notes.append(t["note_express"])
+
+                if auto_notes:
+                    st.markdown(f"**{t['notes_title']}**")
+                    for idx, note in enumerate(auto_notes, start=1):
+                        st.markdown(f"{idx}. *{note}*")
+
+                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
+
+        except Exception as e:
+            train_holder.empty()
+            st.error(f"Error: {str(e)}")
+
+st.markdown("---")
+st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
