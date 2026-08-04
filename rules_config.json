@@ -282,5 +282,51 @@
       ],
       "exceptions": ["7401", "7418", "7501", "7615", "81052"]
     }
+  },
+  "refrigerator_wagons_section_3_1_2_1": {
+    "_source": "3.1.2.1. Refrijerator (soyuducu) vaqonlarda daşıma",
+    "_page": 25,
+    "weight_base_rules": {
+      "under_25_tons": {
+        "description_ru": "Загрузка менее 25 тонн: берется ставка 20-тонной категории Таблицы 7 (ст. 5) и умножается на 25 тонн (Таблица 5, ст. 2)",
+        "calculation": "table7_col5_rate * 25"
+      },
+      "25_tons_and_above": {
+        "description_ru": "Загрузка 25 тонн и более: берется ставка 25-тонной категории Таблицы 7 (ст. 6) и умножается на расчетный вес (Таблица 5, ст. 3)",
+        "calculation": "table7_col6_rate * rounded_weight"
+      }
+    },
+    "section_composition_coefficients": {
+      "1_diesel_1_cargo_wagon": 1.70,
+      "1_diesel_2_cargo_wagons": 1.40,
+      "1_diesel_3_cargo_wagons": 1.10,
+      "1_diesel_4_cargo_wagons": 1.00,
+      "1_diesel_5_or_more_cargo_wagons": 0.85
+    },
+    "diesel_generator_and_crew_fees": {
+      "inventory_park": {
+        "description_ru": "Для дизель-генератора перевозчика и бригады оплата включена в тариф",
+        "fee": 0.0
+      },
+      "private_park": {
+        "description_ru": "Для приватного дизель-генератора берется 0.12 CHF за ось-км. За проезд бригады плата не взимается.",
+        "rate_per_axle_km_chf": 0.12
+      }
+    },
+    "fruit_veg_discount_0_60": {
+      "_description_ru": "Скидка 0.60 для плодоовощной продукции, произведенной в странах Тарифного Соглашения. Применяется СТРОГО при наличии флага происхождения в запросе.",
+      "coefficient_value": 0.60,
+      "requires_explicit_origin_flag": true,
+      "origin_flag_name": "is_produced_in_tariff_agreement_country",
+      "gng_prefixes": [
+        "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710",
+        "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810",
+        "12129100"
+      ],
+      "etsng_prefixes": [
+        "04100", "04200", "04300", "04400", 
+        "05100", "05200", "05300"
+      ]
+    }
   }
 }
