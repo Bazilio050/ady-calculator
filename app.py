@@ -417,15 +417,187 @@ def get_static_rules():
             "distance": "string",
             "cargo_and_wagon": "string",
             "weight_info": "string",
-            "period": "string",
+            "period": "string"
         },
         "part2": {
             "exchange_rate": "string",
             "base_tariff": "string",
-            "coefficients": [{"name": "string", "value": "string"}],
+            "coefficients": [{"name": "string", "value": "string"}]
         },
         "part3": {
             "formula": "string",
             "net_ady_rate": "string",
             "express_rate": "string",
-            "notes": [],
+            "notes": []
+        }
+    }
+
+    return (
+        rules_content
+        + "\n\nOUTPUT FORMAT (MANDATORY JSON):\nReturn ONLY a valid JSON object matching exactly this structure:\n"
+        + json.dumps(schema_dict, indent=2)
+    )
+
+
+if st.button(t["calc_btn"], type="primary"):
+    if not user_input.strip():
+        st.warning(t["warning_empty"])
+    else:
+        train_holder = st.empty()
+        train_holder.markdown(
+            f"""
+            <div class="train-track">
+                <div class="train-animation">═══ 🚃 🚃 🚃 🚃 🚃 🚃 🚂</div>
+            </div>
+            <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        try:
+            dyn_instruction = load_selective_context(
+                user_input, selected_year, selected_lang
+            )
+
+            prompt_header = (
+                f"Make exact calculation for (Freight Year: {selected_year},"
+                f" Language: {selected_lang}):\n{user_input}\n\nCRITICAL RULES (OUTPUT"
+                f" LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
+            )
+            prompt_text = prompt_header + get_static_rules()
+
+            data = call_gemini_json(client, prompt_text, dyn_instruction)
+
+            train_holder.empty()
+
+            st.success(t["success"].format(selected_year))
+            st.markdown(f"### {t['result_title']}")
+
+            # Раздел 1
+            st.markdown(f"#### 📍 {t['sec1_title']}")
+            p1 = data.get("part1", {})
+            if isinstance(p1, list) and len(p1) > 0:
+                p1 = p1[0]
+
+            if isinstance(p1, dict):
+                col_param = t['col_param']
+                col_val = t['col_val']
+                lbl_route = t['lbl_route']
+                lbl_type = t['lbl_type']
+                lbl_dist = t['lbl_dist']
+                lbl_cargo = t['lbl_cargo']
+                lbl_weight = t['lbl_weight']
+                lbl_period = t['lbl_period']
+                
+                val_route = p1.get('route', '-')
+                val_type = p1.get('shipment_type', '-')
+                val_dist = p1.get('distance', '-')
+                val_cargo = p1.get('cargo_and_wagon', '-')
+                val_weight = p1.get('weight_info', '-')
+                val_period = p1.get('period', '-')
+
+                table1_md = (
+                    f"| {col_param} | {col_val} |\n"
+                    f"| :--- | :--- |\n"
+                    f"| **{lbl_route}** | {val_route} |\n"
+                    f"| **{lbl_type}** | {val_type} |\n"
+                    f"| **{lbl_dist}** | {val_dist} |\n"
+                    f"| **{lbl_cargo}** | {val_cargo} |\n"
+                    f"| **{lbl_weight}** | {val_weight} |\n"
+                    f"| **{lbl_period}** | {val_period} |"
+                )
+                st.markdown(table1_md)
+
+            # Раздел 2
+            st.markdown(f"#### ⚙️ {t['sec2_title']}")
+            p2 = data.get("part2", {})
+            if isinstance(p2, list) and len(p2) > 0:
+                p2 = p2[0]
+
+            if isinstance(p2, dict):
+                table2_rows = [
+                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate', '-')} |",
+                    f"| **{t['lbl_base_rate']}** | {p2.get('base_tariff', '-')} |",
+                ]
+
+                coeffs = p2.get("coefficients", [])
+                if isinstance(coeffs, list):
+                    for coeff in coeffs:
+                        if isinstance(coeff, dict):
+                            table2_rows.append(
+                                f"| **{coeff.get('name', '')}** | {coeff.get('value', '')} |"
+                            )
+
+                st.markdown(
+                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
+                    + "\n".join(table2_rows)
+                )
+
+            # Раздел 3
+            st.markdown(f"#### 📐 {t['sec3_title']}")
+            p3 = data.get("part3", {})
+            if isinstance(p3, list) and len(p3) > 0:
+                p3 = p3[0]
+
+            if isinstance(p3, dict):
+                st.markdown(f"**{t['formula_title']}**")
+                st.code(p3.get("formula", "-"), language="text")
+
+                st.markdown(f"**{t['rates_title']}**")
+                table3_rows = [
+                    f"| **{t['lbl_net_rate']}** | **{p3.get('net_ady_rate', '-')}** |"
+                ]
+
+                express_val = p3.get("express_rate")
+                if express_val:
+                    table3_rows.append(
+                        f"| **{t['lbl_express_rate']}** | **{express_val}** |"
+                    )
+
+                st.markdown(
+                    f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
+                    + "\n".join(table3_rows)
+                )
+
+                # Динамическая сборка примечаний (Qeydlər)
+                auto_notes = []
+                input_check = user_input.lower()
+                weight_str = str(p1.get("weight_info", "")).lower()
+
+                if any(k in input_check for k in ["sps", "özəl", "спс", "собствен"]):
+                    auto_notes.append(t["note_sps"])
+
+                ship_type = str(p1.get("shipment_type", "")).lower()
+                if any(k in ship_type for k in ["idxal", "импорт", "import"]):
+                    auto_notes.append(t["note_import"])
+                elif any(k in ship_type for k in ["ixrac", "экспорт", "export"]):
+                    auto_notes.append(t["note_export"])
+
+                if ("faktiki" in weight_str or "фактическ" in weight_str) and ("min" in weight_str or "hesablaşma" in weight_str or "расчетн" in weight_str):
+                    auto_notes.append(t["note_min_weight"])
+
+                coeffs = p2.get("coefficients", []) if isinstance(p2, dict) else []
+                coeff_values = [str(c.get("value", "")) for c in coeffs if isinstance(c, dict)]
+                coeff_str = " ".join(coeff_values)
+
+                if "1.04" in coeff_str and "tranzit" not in ship_type and "транзит" not in ship_type:
+                    auto_notes.append(t["note_timber_metal"])
+                if "1.015" in coeff_str or "1,015" in coeff_str:
+                    auto_notes.append(t["note_coef_1015"])
+
+                if express_val:
+                    auto_notes.append(t["note_express"])
+
+                if auto_notes:
+                    st.markdown(f"**{t['notes_title']}**")
+                    for idx, note in enumerate(auto_notes, start=1):
+                        st.markdown(f"{idx}. *{note}*")
+
+                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
+
+        except Exception as e:
+            train_holder.empty()
+            st.error(f"Error: {str(e)}")
+
+st.markdown("---")
+st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
