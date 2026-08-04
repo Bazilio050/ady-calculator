@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -262,10 +263,9 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 
-# 7. Загрузка контекста
+# 7. Загрузка контекста (без громоздких таблиц сетки — гигантская экономия)
 @st.cache_data(show_spinner=False)
 def load_selective_context(user_query, year_label, lang):
-    query_lower = user_query.lower()
     files_to_load = [
         "system_instruction.txt",
         "GNG_Column_Mapping.txt",
@@ -278,67 +278,6 @@ def load_selective_context(user_query, year_label, lang):
             files_to_load.append(dist_file)
             break
 
-    if any(k in query_lower for k in ["tranzit", "транзит", "transit"]):
-        for f_name in ["Table_4_Tariffs.txt", "Table4.txt", "Cədvəl4.txt"]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-    elif any(
-        k in query_lower
-        for k in [
-            "цистерн",
-            "çən",
-            "tank",
-            "нефть",
-            "neft",
-            "газ",
-            "qaz",
-            "масло",
-            "спирт",
-            "2709",
-            "2710",
-        ]
-    ):
-        for f_name in [
-            "Table_6_Tariffs.txt",
-            "Table_6_Tanks.txt",
-            "Table6.txt",
-            "Cədvəl6.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-    elif any(
-        k in query_lower
-        for k in ["реф", "ref", "термос", "termos", "автовоз", "автопоезд"]
-    ):
-        for f_name in [
-            "Table_5_Tariffs.txt",
-            "Table_5_Reef.txt",
-            "Table5.txt",
-            "Cədvəl5.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-    elif any(
-        k in query_lower
-        for k in ["контейнер", "konteyner", "tank-container", "ref-container"]
-    ):
-        for f_name in [
-            "Table_9_Tariffs.txt",
-            "Table_10_Tariffs.txt",
-            "Table9.txt",
-            "Table10.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-    else:
-        for f_name in ["Table_3_Tariffs.txt", "Table3.txt", "Cədvəl3.txt"]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-
     loaded_rules = []
     for txt_file in set(files_to_load):
         if os.path.exists(txt_file):
@@ -350,13 +289,83 @@ def load_selective_context(user_query, year_label, lang):
     system_instruction = (
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-        f"ОБЯЗАННОСТЬ: Извлечь параметры и возвратить их в JSON. Все текстовые примечания строятся через логические флаги (is_min_weight_applied, is_min_distance_applied)!\n\n"
+        f"ОБЯЗАННОСТЬ: Извлечь параметры и возвратить их в JSON. Обязательно вернуть числовые distance_km (расстояние в км) и weight_tons (расчетный вес в тоннах)!\n\n"
         + rules_text
     )
     return system_instruction
 
 
-# 8. Вызов Gemini
+# 8. ПАРСИНГ БАЗОВОЙ СТАВКИ ИЗ ТЕКСТОВЫХ ФАЙЛОВ ТАБЛИЦ (100% ТОЧНОСТЬ PYTHON)
+def find_table_base_rate(table_filename, distance, weight):
+    if not os.path.exists(table_filename):
+        return None, ""
+
+    with open(table_filename, "r", encoding="utf-8") as f:
+        lines = [line.strip() for line in f if line.strip()]
+
+    # Ищем строки с диапазонами и числами
+    data_rows = []
+    for line in lines:
+        parts = [p.strip() for p in line.split("|") if p.strip()]
+        if len(parts) >= 3:
+            # Ищем диапазоны вида 501-510 или числовые колонки
+            dist_match = re.search(r"(\d+)\s*[-–—]\s*(\d+)", parts[0])
+            if dist_match:
+                min_d = int(dist_match.group(1))
+                max_d = int(dist_match.group(2))
+                data_rows.append((min_d, max_d, parts[1:], parts[0]))
+
+    # Ищем нужную строку по расстоянию
+    matched_row = None
+    for min_d, max_d, vals, dist_str in data_rows:
+        if min_d <= distance <= max_d:
+            matched_row = (vals, dist_str)
+            break
+
+    if not matched_row:
+        return None, ""
+
+    vals, dist_str = matched_row
+
+    # Маппинг колонок по весу для вагонных отправок (Таблицы 3 и 4)
+    # По умолчанию: <=10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60+
+    col_idx = 0
+    if weight <= 10:
+        col_idx = 0
+    elif weight <= 15:
+        col_idx = 1
+    elif weight <= 20:
+        col_idx = 2
+    elif weight <= 25:
+        col_idx = 3
+    elif weight <= 30:
+        col_idx = 4
+    elif weight <= 35:
+        col_idx = 5
+    elif weight <= 40:
+        col_idx = 6
+    elif weight <= 45:
+        col_idx = 7
+    elif weight <= 50:
+        col_idx = 8
+    elif weight <= 55:
+        col_idx = 9
+    else:
+        col_idx = min(10, len(vals) - 1)
+
+    if col_idx < len(vals):
+        val_str = vals[col_idx].replace(",", ".")
+        num_match = re.search(r"(\d+\.?\d*)", val_str)
+        if num_match:
+            rate_val = float(num_match.group(1))
+            table_name = "Таблица 4" if "4" in table_filename else "Таблица 3"
+            info_text = f"{table_name}, {dist_str} км, {int(weight)} т"
+            return rate_val, info_text
+
+    return None, ""
+
+
+# 9. Вызов Gemini
 def call_gemini_json(client, prompt, instruction):
     model_name = "gemini-3.6-flash"
 
@@ -381,7 +390,7 @@ def call_gemini_json(client, prompt, instruction):
     return json.loads(raw_text.strip())
 
 
-# 9. ЧЕСТНЫЙ МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON
+# 10. ЧЕСТНЫЙ МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON
 def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_metal, is_loaded_1015):
     current_val = base_chf / exchange_rate
     formula_parts = [f"{base_chf:.2f} / {exchange_rate}"]
@@ -406,7 +415,7 @@ def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_meta
     return formula_str, net_rate_str, express_rate_str
 
 
-# 10. Компактная структура JSON для максимальной экономии токенов
+# 11. Компактная структура JSON для максимальной экономии токенов
 def get_static_rules():
     schema_dict = {
         "part1": {
@@ -418,12 +427,15 @@ def get_static_rules():
             "period": "string"
         },
         "part2": {
+            "distance_km": 504,
+            "weight_tons": 55,
+            "table_filename": "Table_4_Tariffs.txt",
             "exchange_rate_val": 0.79,
             "exchange_rate_text": "1 USD = 0.79 CHF",
-            "base_tariff_chf": 14.45,
-            "table_info_text": "Table 3, 191-200 km, 45 t",
+            "base_tariff_chf": 24.56,
+            "table_info_text": "Table 4, 501-510 km, 55 t",
             "is_sps": True,
-            "is_import_timber_metal": True,
+            "is_import_timber_metal": False,
             "is_loaded_1015": True,
             "is_min_weight_applied": False,
             "is_min_distance_applied": False
@@ -436,13 +448,13 @@ def get_static_rules():
     )
 
 
-# 11. ОКОШКО ДЛЯ ВВОДА ПОЛЬЗОВАТЕЛЯ
+# 12. ОКОШКО ДЛЯ ВВОДА ПОЛЬЗОВАТЕЛЯ
 user_input = st.text_area(
     t["input_header"], height=150, placeholder=t["input_placeholder"]
 )
 
 
-# 12. Основной процесс расчетной кнопки
+# 13. Основной процесс расчетной кнопки
 if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
@@ -501,13 +513,26 @@ if st.button(t["calc_btn"], type="primary"):
                 table1_md = f"| {col_param} | {col_val} |\n| :--- | :--- |\n| **{lbl_route}** | {val_route} |\n| **{lbl_type}** | {val_type} |\n| **{lbl_dist}** | {val_dist} |\n| **{lbl_cargo}** | {val_cargo} |\n| **{lbl_weight}** | {val_weight} |\n| **{lbl_period}** | {val_period} |"
                 st.markdown(table1_md)
 
-            # Раздел 2 & 3: Математика на Python
+            # Раздел 2 & 3: Точный поиск базовой ставки + Математика на Python
             p2 = data.get("part2", {})
             if isinstance(p2, list) and len(p2) > 0:
                 p2 = p2[0]
 
             if isinstance(p2, dict):
-                base_chf = float(p2.get("base_tariff_chf", 0.0))
+                # Пробуем точный поиск базовой ставки через Python-парсер
+                dist_km = float(p2.get("distance_km", 0.0))
+                weight_t = float(p2.get("weight_tons", 0.0))
+                target_table = str(p2.get("table_filename", "Table_3_Tariffs.txt"))
+
+                exact_rate, exact_info = find_table_base_rate(target_table, dist_km, weight_t)
+                
+                if exact_rate is not None:
+                    base_chf = exact_rate
+                    table_info = exact_info
+                else:
+                    base_chf = float(p2.get("base_tariff_chf", 0.0))
+                    table_info = str(p2.get("table_info_text", ""))
+
                 ex_rate = float(p2.get("exchange_rate_val", 0.79))
                 is_sps = bool(p2.get("is_sps", False))
                 is_import_tm = bool(p2.get("is_import_timber_metal", False))
@@ -526,7 +551,7 @@ if st.button(t["calc_btn"], type="primary"):
                 
                 # Порядок Таблицы 2: БАЗА -> КУРС -> 1.04 -> 1.015 -> 0.85
                 table2_rows = [
-                    f"| **{t['lbl_base_rate']}** | {base_chf:.2f} CHF/t ({p2.get('table_info_text', '')}) |",
+                    f"| **{t['lbl_base_rate']}** | {base_chf:.2f} CHF/t ({table_info}) |",
                     f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate_text', f'1 USD = {ex_rate} CHF')} |",
                 ]
 
@@ -558,10 +583,9 @@ if st.button(t["calc_btn"], type="primary"):
                     + "\n".join(table3_rows)
                 )
 
-                # --- СБОРКА ПРИМЕЧАНИЙ (СТРОГИЙ ПОРЯДОК С ВЫРОВНЕННЫМИ ОТСТУПАМИ) ---
+                # --- СБОРКА ПРИМЕЧАНИЙ (СТРОГИЙ ПОРЯДОК) ---
                 auto_notes = []
                 
-                # 1. Условия расчета (дистанция и вес)
                 ship_type = str(p1.get("shipment_type", "")).lower() if isinstance(p1, dict) else ""
                 if is_min_dist_applied:
                     if "idxal" in ship_type or "импорт" in ship_type or "import" in ship_type:
@@ -572,22 +596,17 @@ if st.button(t["calc_btn"], type="primary"):
                 if is_min_weight_applied:
                     auto_notes.append(t["note_min_weight"])
 
-                # 2. Продуктовый коэффициент (1.04)
                 if is_import_tm:
                     auto_notes.append(t["note_timber_metal"])
                     
-                # 3. Коэффициент груженого хода (1.015)
                 if is_loaded:
                     auto_notes.append(t["note_coef_1015"])
 
-                # 4. Собственный вагон (СПС / 0.85)
                 if is_sps:
                     auto_notes.append(t["note_sps"])
 
-                # 5. ADY Express (+2%)
                 auto_notes.append(t["note_express"])
 
-                # Вывод примечаний
                 if auto_notes:
                     st.markdown(f"**{t['notes_title']}**")
                     for idx, note in enumerate(auto_notes, start=1):
