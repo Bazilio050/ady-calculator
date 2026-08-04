@@ -1,0 +1,26 @@
+{
+  "_document_info": {
+    "title": "2026-cı fraxt ili üçün beynəlxalq yük daşımaları üzrə tariflər",
+    "publisher": "Azərbaycan Dəmir Yolları (ADY)",
+    "year": 2026
+  },
+  "weight_rounding_table_1": {
+    "_source": "Cədvəl 1",
+    "_page": 9,
+    "_description_az": "Göndərmələrin tona qədər yuvarlaqlaşdırılmış hesablama çəkiləri",
+    "_description_ru": "Округление фактического веса отправки до расчетной весовой категории (тонн)",
+    "rules": [
+      {"min": 0, "max": 12, "rounded": 10},
+      {"min": 13, "max": 16, "rounded": 15},
+      {"min": 17, "max": 23, "rounded": 20},
+      {"min": 24, "max": 26, "rounded": 25},
+      {"min": 27, "max": 31, "rounded": 30},
+      {"min": 32, "max": 36, "rounded": 35},
+      {"min": 37, "max": 40, "rounded": 40},
+      {"min": 41, "max": 46, "rounded": 45},
+      {"min": 47, "max": 51, "rounded": 50},
+      {"min": 52, "max": 55, "rounded": 55},
+      {"min": 56, "max": 999, "rounded": 60}
+    ]
+  }
+}
