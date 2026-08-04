@@ -153,5 +153,105 @@
         ]
       }
     ]
+  },
+  "minimal_tariff_distances": {
+    "_source": "Minimal tarif məsafələri",
+    "_page": 13,
+    "_description_az": "Bütün növ daşınma (yüklü və boş) haqları hesablanarkən minimal tarif məsafələri (km)",
+    "_description_ru": "Минимальные тарифные расстояния для всех видов перевозок (км)",
+    "export_min_km": 101,
+    "import_min_km": 151
+  },
+  "import_export_general_coefficient_1_50": {
+    "_source": "Əlavə tətbiq edilən əmsallar və istiqamətlər üzrə xüsusi tariflər",
+    "_page": 14,
+    "_description_ru": "При расчете платы за импортные и экспортные перевозки (включая порожний возврат) к базовым тарифам СТРОГО применяется коэффициент 1,50 за исключением 5 конкретных пунктов.",
+    "_description_az": "İdxal və ixrac daşınma haqqı hesablanarkən baza tariflərinə 1,50 əmsalı tətbiq edilir (5 müstəsna hal nəzərə alınmaqla)",
+    "coefficient_value": 1.50,
+    "apply_for_modes": ["import", "export"],
+    "exceptions": [
+      {
+        "id": 1,
+        "type": "table_3",
+        "description_ru": "Расчеты по Таблице №3"
+      },
+      {
+        "id": 2,
+        "type": "timber_universal_wagon",
+        "description_ru": "Древесина и лесоматериалы (ГНГ 4403, 4404, 4407-4413), перевозимые повагонными отправками в универсальных вагонах",
+        "only_universal_wagons": true,
+        "gng_prefixes": ["4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"]
+      },
+      {
+        "id": 3,
+        "type": "ferrous_metals_universal_wagon",
+        "description_ru": "Черные металлы (ГНГ 72, 7301-7307), перевозимые повагонными отправками в универсальных вагонах",
+        "only_universal_wagons": true,
+        "gng_prefixes": ["72", "7301", "7302", "7303", "7304", "7305", "7306", "7307"]
+      },
+      {
+        "id": 4,
+        "type": "methanol_tanks",
+        "description_ru": "Метанол, перевозимый в цистернах и бункерных полувагонах",
+        "wagon_types": ["tank", "bunker_semi_wagon"],
+        "gng_prefixes": ["290511"]
+      },
+      {
+        "id": 5,
+        "type": "oil_products_table6_col2",
+        "description_ru": "Нефть и нефтепродукты (Таблица 6, столбец 2)",
+        "gng_prefixes": ["2709", "2710"]
+      }
+    ]
+  },
+  "import_timber_and_metals_coefficient_1_04": {
+    "_source": "Əlavə tətbiq edilən əmsallar və istiqamətlər üzrə xüsusi tariflər",
+    "_page": 14,
+    "_description_ru": "При импортных перевозках к базовым тарифам на лесоматериалы и черные металлы применяется коэффициент 1,04",
+    "_description_az": "İdxal daşımaları zamanı taxta və qara metalların baza tariflərinə əlavə 1,04 əmsalı tətbiq edilir",
+    "coefficient_value": 1.04,
+    "apply_for_modes": ["import"],
+    "gng_prefixes": [
+      "4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413",
+      "72", "7301", "7302", "7303", "7304", "7305", "7306", "7307"
+    ]
+  },
+  "specific_1_20_coefficients": {
+    "_source": "Əlavə tətbiq edilən əmsallar və istiqamətlər üzrə xüsusi tariflər",
+    "_page": 14,
+    "_description_ru": "Специфические правила применения коэффициента 1,20",
+    "rules": [
+      {
+        "type": "transit_route_alat_boyuk_kesik",
+        "coefficient_value": 1.20,
+        "description_ru": "Транзитные перевозки (груженые и порожние) по маршруту Алят – Беюк-Кясик – Алят в обоих направлениях (туда и обратно) НА ВСЕ ПЕРЕВОЗКИ БЕЗ ИСКЛЮЧЕНИЯ",
+        "description_az": "Ələt – Böyük Kəsik – Ələt marşrutu ilə tranzit daşımalar (yüklü və boş) üzrə baza tariflərinə 1,20 əmsalı tətbiq edilir",
+        "apply_for_modes": ["transit"],
+        "route_directions": [
+          "Alat -> Boyuk Kesik",
+          "Boyuk Kesik -> Alat"
+        ],
+        "cargo_exceptions": "NONE",
+        "state": ["loaded", "empty"]
+      },
+      {
+        "type": "import_transit_oil_tanks_once",
+        "coefficient_value": 1.20,
+        "apply_once": true,
+        "description_ru": "Импорт или транзит нефти и нефтепродуктов в цистернах и бункерных полувагонах (Таблица 6, столбец 2) - применяется один раз (bir dəfə)",
+        "apply_for_modes": ["import", "transit"],
+        "wagon_types": ["tank", "bunker_semi_wagon"],
+        "gng_prefixes": ["2709", "2710"]
+      },
+      {
+        "type": "transit_refrigerators_once",
+        "coefficient_value": 1.20,
+        "apply_once": true,
+        "description_ru": "Транзитные перевозки (груженыe и порожние) АРВ, рефрижераторных секций и реф-контейнеров - применяется один раз (bir dəfə)",
+        "apply_for_modes": ["transit"],
+        "equipment_types": ["ARV", "refrigerator_section", "refrigerator_container"],
+        "state": ["loaded", "empty"]
+      }
+    ]
   }
 }
