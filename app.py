@@ -74,9 +74,7 @@ st.markdown(
 UI_TEXT = {
     "AZ": {
         "title": "ADY Tarif Kalkulyatoru",
-        "subtitle": (
-            "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili"
-        ),
+        "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili",
         "year_select": "Fraxt ili:",
         "lang_select": "Dil / Language:",
         "input_header": "Daşıma parametrlərini daxil edin:",
@@ -116,30 +114,17 @@ UI_TEXT = {
         "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
         "api_warning": "⚠️ Xahiş olunur, GEMINI_API_KEY daxil edin.",
         "api_label": "Gemini API Key:",
-        "note_sps": (
-            "Özəl vaqonlar (SPS) üçün 0.85 güzəşt əmsalı tətbiq olunmuşdur."
-        ),
-        "note_import": (
-            "İdxal rejimində minimal tarif məsafəsi norması 151 km-dir."
-        ),
-        "note_export": (
-            "İxrac rejimində minimal tarif məsafəsi norması 101 km-dir."
-        ),
-        "note_express": (
-            "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur."
-        ),
-        "note_timber_metal": (
-            "İdxal rejimində meşə materialları və qara metallar üçün 1.04"
-            " əmsalı tətbiq edilmişdir."
-        ),
+        "note_sps": "Özəl vaqonlar (SPS) üçün 0.85 güzəşt əmsalı tətbiq olunmuşdur.",
+        "note_import": "İdxal rejimində minimal tarif məsafəsi norması 151 km-dir.",
+        "note_export": "İxrac rejimində minimal tarif məsafəsi norması 101 km-dir.",
+        "note_express": "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur.",
+        "note_timber_metal": "İdxal rejimində meşə materialları və qara metallar üçün 1.04 əmsalı tətbiq edilmişdir.",
         "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
         "note_min_weight": "Faktiki çəki minimal tarif normasından aşağı olduğu üçün hesablama minimal norma üzrə aparılmışdır.",
     },
     "RU": {
         "title": "Тарифный калькулятор ADY",
-        "subtitle": (
-            "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год"
-        ),
+        "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
         "year_select": "Фрахтовый год:",
         "lang_select": "Язык / Language:",
         "input_header": "Введите данные по перевозке:",
@@ -179,32 +164,17 @@ UI_TEXT = {
         "lbl_express_rate": "Итоговый тариф (включая ADY Express +2%)",
         "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY.",
         "api_label": "Введите Gemini API Key:",
-        "note_sps": (
-            "Применен скидочный коэффициент 0.85 для собственных вагонов (СПС)."
-        ),
-        "note_import": (
-            "В режиме импорта минимальное тарифное расстояние составляет 151"
-            " км."
-        ),
-        "note_export": (
-            "В режиме экспорта минимальное тарифное расстояние составляет 101"
-            " км."
-        ),
-        "note_express": (
-            "Применен дополнительный коэффициент +2% за сервис ADY Express."
-        ),
-        "note_timber_metal": (
-            "В режиме импорта применен коэффициент 1.04 для лесных грузов и"
-            " черных металлов."
-        ),
+        "note_sps": "Применен скидочный коэффициент 0.85 для собственных вагонов (СПС).",
+        "note_import": "В режиме импорта минимальное тарифное расстояние составляет 151 км.",
+        "note_export": "В режиме экспорта минимальное тарифное расстояние составляет 101 км.",
+        "note_express": "Применен дополнительный коэффициент +2% за сервис ADY Express.",
+        "note_timber_metal": "В режиме импорта применен коэффициент 1.04 для лесных грузов и черных металлов.",
         "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
         "note_min_weight": "Так как фактический вес ниже минимальной нормы, расчет произведен по минимальной весовой норме.",
     },
     "EN": {
         "title": "ADY Tariff Calculator",
-        "subtitle": (
-            "Railway freight tariff calculator for Azerbaijan — {} freight year"
-        ),
+        "subtitle": "Railway freight tariff calculator for Azerbaijan — {} freight year",
         "year_select": "Freight Year:",
         "lang_select": "Language:",
         "input_header": "Enter shipment details:",
@@ -244,17 +214,11 @@ UI_TEXT = {
         "lbl_express_rate": "Final Tariff (incl. ADY Express +2%)",
         "api_warning": "⚠️ Please provide GEMINI_API_KEY.",
         "api_label": "Enter Gemini API Key:",
-        "note_sps": (
-            "Discount coefficient 0.85 applied for private wagons (SPS)."
-        ),
+        "note_sps": "Discount coefficient 0.85 applied for private wagons (SPS).",
         "note_import": "Minimum tariff distance for import is 151 km.",
         "note_export": "Minimum tariff distance for export is 101 km.",
-        "note_express": (
-            "Additional coefficient +2% applied for ADY Express service."
-        ),
-        "note_timber_metal": (
-            "Coefficient 1.04 applied for import of timber and ferrous metals."
-        ),
+        "note_express": "Additional coefficient +2% applied for ADY Express service.",
+        "note_timber_metal": "Coefficient 1.04 applied for import of timber and ferrous metals.",
         "note_coef_1015": "Additional coefficient applied: 1.015.",
         "note_min_weight": "Since actual weight is below minimum billable weight, calculation is based on minimum weight.",
     },
@@ -465,61 +429,3 @@ def get_static_rules():
             "net_ady_rate": "string",
             "express_rate": "string",
             "notes": [],
-        },
-    }
-
-    return (
-        rules_content
-        + "\n\nOUTPUT FORMAT (MANDATORY JSON):\nReturn ONLY a valid JSON object matching exactly this structure:\n"
-        + json.dumps(schema_dict, indent=2)
-    )
-
-
-if st.button(t["calc_btn"], type="primary"):
-    if not user_input.strip():
-        st.warning(t["warning_empty"])
-    else:
-        train_holder = st.empty()
-        train_holder.markdown(
-            f"""
-            <div class="train-track">
-                <div class="train-animation">═══ 🚃 🚃 🚃 🚃 🚃 🚃 🚂</div>
-            </div>
-            <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        try:
-            dyn_instruction = load_selective_context(
-                user_input, selected_year, selected_lang
-            )
-
-            prompt_header = (
-                f"Make exact calculation for (Freight Year: {selected_year},"
-                f" Language: {selected_lang}):\n{user_input}\n\nCRITICAL RULES (OUTPUT"
-                f" LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
-            )
-            prompt_text = prompt_header + get_static_rules()
-
-            data = call_gemini_json(client, prompt_text, dyn_instruction)
-
-            train_holder.empty()
-
-            st.success(t["success"].format(selected_year))
-            st.markdown(f"### {t['result_title']}")
-
-            # Раздел 1
-            st.markdown(f"#### 📍 {t['sec1_title']}")
-            p1 = data.get("part1", {})
-            if isinstance(p1, list) and len(p1) > 0:
-                p1 = p1[0]
-
-            if isinstance(p1, dict):
-                st.markdown(
-                    f"| {t['col_param']} | {t['col_val']} |\n"
-                    f"| :--- | :--- |\n"
-                    f"| **{t['lbl_route']}** | {p1.get('route', '-')} |\n"
-                    f"| **{t['lbl_type']}** | {p1.get('shipment_type', '-')} |\n"
-                    f"| **{t['lbl_dist']}** | {p1.get('distance', '-')} |\n"
-                    f"| **{t['lbl_cargo']}**
