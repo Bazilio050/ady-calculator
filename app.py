@@ -263,7 +263,7 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 
-# 7. Загрузка контекста (без громоздких таблиц сетки — гигантская экономия)
+# 7. Загрузка контекста
 @st.cache_data(show_spinner=False)
 def load_selective_context(user_query, year_label, lang):
     files_to_load = [
@@ -272,11 +272,6 @@ def load_selective_context(user_query, year_label, lang):
         "Security_Cargo_GNG.txt",
         "Currency_Exchange.txt",
     ]
-
-    for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
-        if os.path.exists(dist_file):
-            files_to_load.append(dist_file)
-            break
 
     loaded_rules = []
     for txt_file in set(files_to_load):
@@ -289,13 +284,55 @@ def load_selective_context(user_query, year_label, lang):
     system_instruction = (
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-        f"ОБЯЗАННОСТЬ: Извлечь параметры и возвратить их в JSON. Обязательно вернуть числовые distance_km (расстояние в км) и weight_tons (расчетный вес в тоннах)!\n\n"
+        f"ОБЯЗАННОСТЬ: Извлечь параметры и возвратить их в JSON. Обязательно вернуть названия станций station_from и station_to, а также weight_tons!\n\n"
         + rules_text
     )
     return system_instruction
 
 
-# 8. ПАРСИНГ БАЗОВОЙ СТАВКИ ИЗ ТЕКСТОВЫХ ФАЙЛОВ ТАБЛИЦ (100% ТОЧНОСТЬ PYTHON)
+# 8. ПАРСЕР КИЛОМЕТРАЖА ИЗ Distances.txt (ПАРСИНГ PYTHON)
+def find_distance_in_file(st_from, st_to):
+    dist_file = None
+    for name in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
+        if os.path.exists(name):
+            dist_file = name
+            break
+
+    if not dist_file:
+        return None
+
+    with open(dist_file, "r", encoding="utf-8") as f:
+        lines = [line.strip() for line in f if line.strip()]
+
+    headers = []
+    for line in lines:
+        if "Yalama" in line and "|" in line:
+            headers = [h.strip().lower() for h in line.split("|") if h.strip()]
+            break
+
+    sf = st_from.lower()
+    st_name_target = st_to.lower()
+
+    header_col_idx = -1
+    for idx, h in enumerate(headers):
+        if sf in h:
+            header_col_idx = idx - 1  # учитываем колонку названия станции
+            break
+
+    for line in lines:
+        parts = [p.strip() for p in line.split("|") if p.strip()]
+        if len(parts) >= 3:
+            row_station = parts[0].lower()
+            if st_name_target in row_station or row_station in st_name_target:
+                if header_col_idx >= 0 and header_col_idx < len(parts) - 1:
+                    num_match = re.search(r"(\d+)", parts[header_col_idx + 1])
+                    if num_match:
+                        return int(num_match.group(1))
+
+    return None
+
+
+# 9. ПАРСЕР БАЗОВОЙ СТАВКИ ИЗ ТЕКСТОВЫХ СЕТОК (ПАРСИНГ PYTHON)
 def find_table_base_rate(table_filename, distance, weight):
     if not os.path.exists(table_filename):
         return None, ""
@@ -303,19 +340,16 @@ def find_table_base_rate(table_filename, distance, weight):
     with open(table_filename, "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
 
-    # Ищем строки с диапазонами и числами
     data_rows = []
     for line in lines:
         parts = [p.strip() for p in line.split("|") if p.strip()]
         if len(parts) >= 3:
-            # Ищем диапазоны вида 501-510 или числовые колонки
             dist_match = re.search(r"(\d+)\s*[-–—]\s*(\d+)", parts[0])
             if dist_match:
                 min_d = int(dist_match.group(1))
                 max_d = int(dist_match.group(2))
                 data_rows.append((min_d, max_d, parts[1:], parts[0]))
 
-    # Ищем нужную строку по расстоянию
     matched_row = None
     for min_d, max_d, vals, dist_str in data_rows:
         if min_d <= distance <= max_d:
@@ -327,9 +361,6 @@ def find_table_base_rate(table_filename, distance, weight):
 
     vals, dist_str = matched_row
 
-    # Маппинг колонок по весу для вагонных отправок (Таблицы 3 и 4)
-    # По умолчанию: <=10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60+
-    col_idx = 0
     if weight <= 10:
         col_idx = 0
     elif weight <= 15:
@@ -365,7 +396,7 @@ def find_table_base_rate(table_filename, distance, weight):
     return None, ""
 
 
-# 9. Вызов Gemini
+# 10. Вызов Gemini
 def call_gemini_json(client, prompt, instruction):
     model_name = "gemini-3.6-flash"
 
@@ -390,7 +421,7 @@ def call_gemini_json(client, prompt, instruction):
     return json.loads(raw_text.strip())
 
 
-# 10. ЧЕСТНЫЙ МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON
+# 11. МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON
 def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_metal, is_loaded_1015):
     current_val = base_chf / exchange_rate
     formula_parts = [f"{base_chf:.2f} / {exchange_rate}"]
@@ -415,7 +446,7 @@ def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_meta
     return formula_str, net_rate_str, express_rate_str
 
 
-# 11. Компактная структура JSON для максимальной экономии токенов
+# 12. Схема JSON
 def get_static_rules():
     schema_dict = {
         "part1": {
@@ -427,6 +458,8 @@ def get_static_rules():
             "period": "string"
         },
         "part2": {
+            "station_from": "Yalama",
+            "station_to": "Astara",
             "distance_km": 504,
             "weight_tons": 55,
             "table_filename": "Table_4_Tariffs.txt",
@@ -448,13 +481,13 @@ def get_static_rules():
     )
 
 
-# 12. ОКОШКО ДЛЯ ВВОДА ПОЛЬЗОВАТЕЛЯ
+# 13. ВВОД ПОЛЬЗОАТЕЛЯ
 user_input = st.text_area(
     t["input_header"], height=150, placeholder=t["input_placeholder"]
 )
 
 
-# 13. Основной процесс расчетной кнопки
+# 14. Основной процесс расчетной кнопки
 if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
@@ -513,17 +546,26 @@ if st.button(t["calc_btn"], type="primary"):
                 table1_md = f"| {col_param} | {col_val} |\n| :--- | :--- |\n| **{lbl_route}** | {val_route} |\n| **{lbl_type}** | {val_type} |\n| **{lbl_dist}** | {val_dist} |\n| **{lbl_cargo}** | {val_cargo} |\n| **{lbl_weight}** | {val_weight} |\n| **{lbl_period}** | {val_period} |"
                 st.markdown(table1_md)
 
-            # Раздел 2 & 3: Точный поиск базовой ставки + Математика на Python
+            # Раздел 2 & 3: Точный поиск км и базовой ставки через Python
             p2 = data.get("part2", {})
             if isinstance(p2, list) and len(p2) > 0:
                 p2 = p2[0]
 
             if isinstance(p2, dict):
-                # Пробуем точный поиск базовой ставки через Python-парсер
-                dist_km = float(p2.get("distance_km", 0.0))
+                st_from = str(p2.get("station_from", ""))
+                st_to = str(p2.get("station_to", ""))
+                
+                # 1. Точный поиск километража через Python
+                exact_dist = find_distance_in_file(st_from, st_to)
+                if exact_dist is not None:
+                    dist_km = float(exact_dist)
+                else:
+                    dist_km = float(p2.get("distance_km", 0.0))
+
                 weight_t = float(p2.get("weight_tons", 0.0))
                 target_table = str(p2.get("table_filename", "Table_3_Tariffs.txt"))
 
+                # 2. Точный поиск базовой ставки через Python
                 exact_rate, exact_info = find_table_base_rate(target_table, dist_km, weight_t)
                 
                 if exact_rate is not None:
@@ -549,7 +591,7 @@ if st.button(t["calc_btn"], type="primary"):
 
                 st.markdown(f"#### ⚙️ {t['sec2_title']}")
                 
-                # Порядок Таблицы 2: БАЗА -> КУРС -> 1.04 -> 1.015 -> 0.85
+                # Таблица 2: БАЗА -> КУРС -> 1.04 -> 1.015 -> 0.85
                 table2_rows = [
                     f"| **{t['lbl_base_rate']}** | {base_chf:.2f} CHF/t ({table_info}) |",
                     f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate_text', f'1 USD = {ex_rate} CHF')} |",
