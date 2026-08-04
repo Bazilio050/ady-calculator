@@ -22,5 +22,99 @@
       {"min": 52, "max": 55, "rounded": 55},
       {"min": 56, "max": 999, "rounded": 60}
     ]
+  },
+  "minimal_weight_norms_gng": {
+    "_source": "Vaqonların minimal yükləmə normasından asılı olan yüklər",
+    "_page": 11,
+    "_description_az": "Yüklərin YHN kodlarına görə vaqonların minimal yükləmə normaları (tonla)",
+    "_description_ru": "Минимальные нормы загрузки вагонов по кодам ГНГ (YHN) в тоннах",
+    "rules": [
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Daş kömür",
+        "cargo_name_ru": "Каменный уголь",
+        "gng_prefixes": ["2701", "2702"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Bütün filizlər, alüminium meşə/oksid (2618-2621 başqa)",
+        "cargo_name_ru": "Все руды, оксид алюминия (кроме 2618-2621)",
+        "gng_prefixes": ["26", "7203", "7401", "7501", "81052", "28182000"],
+        "exceptions": ["2618", "2619", "2620", "2621"]
+      },
+      {
+        "norm_tons": 45,
+        "cargo_name_az": "Meşə materialları",
+        "cargo_name_ru": "Лесоматериалы",
+        "gng_prefixes": ["4403", "4404", "4407"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Çuqun",
+        "cargo_name_ru": "Чугун",
+        "gng_prefixes": ["7201"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Gübrələr (3101 başqa)",
+        "cargo_name_ru": "Удобрения (кроме 3101)",
+        "gng_prefixes": ["31"],
+        "exceptions": ["3101"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Qənd",
+        "cargo_name_ru": "Сахар",
+        "gng_prefixes": ["1701"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Un",
+        "cargo_name_ru": "Мука",
+        "gng_prefixes": ["1101", "1102", "1103"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Dənli bitkilər",
+        "cargo_name_ru": "Зерновые культуры",
+        "gng_prefixes": ["10", "1107"]
+      },
+      {
+        "norm_tons": 50,
+        "cargo_name_az": "Pambıq",
+        "cargo_name_ru": "Хлопок",
+        "gng_prefixes": ["14042", "5201", "5202", "5203"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Qara metallar (7204 başqa)",
+        "cargo_name_ru": "Черные металлы (кроме 7204)",
+        "gng_prefixes": ["72"],
+        "exceptions": ["7204"]
+      },
+      {
+        "norm_tons": 50,
+        "cargo_name_az": "Qara metalların lomu və qırıntıları (72045 başqa)",
+        "cargo_name_ru": "Лом и отходы черных металлов (кроме 72045)",
+        "gng_prefixes": ["7204"],
+        "exceptions": ["72045"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Metallar (qara metaldan başqa)",
+        "cargo_name_ru": "Цветные металлы и прочие",
+        "gng_prefixes": [
+          "28045000", "28045090", "28049", "28053", "28054", "28054010", "28054090",
+          "7106", "7107", "7108", "7109", "7110", "7111", "7112", "7402", "7403",
+          "7405", "7406", "7502", "7504", "7601", "7603", "7801", "78042", "7901",
+          "79039", "8001", "81011", "810194", "810199", "81021", "810294", "810299",
+          "81039", "81039090", "810411", "810419", "81049", "81060010", "81072",
+          "81082", "81092", "81101", "81110011", "81121200", "811221", "81122110",
+          "81122190", "81123020", "81124100", "81125100", "81129291", "81129200",
+          "81129210", "81129231", "81129281", "81129289", "81130020"
+        ],
+        "exceptions": ["71101910"]
+      }
+    ]
   }
 }
