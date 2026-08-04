@@ -1,7 +1,7 @@
 import streamlit as st
 import traceback
 
-# 1. Настройки страницы (широкий макет)
+# 1. Настройки страницы
 st.set_page_config(
     page_title="AGT Cargo - ADY Tarif Kalkulyatoru",
     page_icon="🚂",
@@ -36,13 +36,16 @@ TRANSLATIONS = {
     }
 }
 
-# 3. Разметка: левая колонка (под контент), правая — пустая для прижимания формы влево
-col_left, col_space = st.columns([1, 1])
+# 3. Левый основной контейнер
+col_main, col_empty = st.columns([1, 1])
 
-with col_left:
-    # Селекторы языка и года (один под другим)
-    lang = st.selectbox("🌐 Dil / Language:", ["Azərbaycan", "Русский", "English"])
-    fraxt_year = st.selectbox("⚙️ Fraxt ili:", [2026, 2025])
+with col_main:
+    # Ограничиваем ширину селекторов (берём 35% от левой колонки)
+    col_selects, col_space = st.columns([0.35, 0.65])
+    
+    with col_selects:
+        lang = st.selectbox("🌐 Dil / Language:", ["Azərbaycan", "Русский", "English"])
+        fraxt_year = st.selectbox("⚙️ Fraxt ili:", [2026, 2025])
 
     t = TRANSLATIONS[lang]
 
@@ -56,7 +59,7 @@ with col_left:
         query_input = st.text_area(
             label=t["search_label"],
             placeholder=t["search_placeholder"],
-            height=160,  # Увеличенная высота контейнера для ввода
+            height=160,
             key="main_query_input"
         )
 
