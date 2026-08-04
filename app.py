@@ -133,7 +133,7 @@ UI_TEXT = {
             " əmsalı tətbiq edilmişdir."
         ),
         "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
-        "note_min_weight": "Faktiki çəki minimal tarif normasından aşağı olduğu üçün hesablama minimal norma (60 ton) üzrə aparılmışdır.",
+        "note_min_weight": "Faktiki çəki minimal tarif normasından aşağı olduğu üçün hesablama minimal norma üzrə aparılmışdır.",
     },
     "RU": {
         "title": "Тарифный калькулятор ADY",
@@ -198,7 +198,7 @@ UI_TEXT = {
             " черных металлов."
         ),
         "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
-        "note_min_weight": "Так как фактический вес ниже минимальной нормы, расчет произведен по минимальной весовой норме (60 тонн).",
+        "note_min_weight": "Так как фактический вес ниже минимальной нормы, расчет произведен по минимальной весовой норме.",
     },
     "EN": {
         "title": "ADY Tariff Calculator",
@@ -256,7 +256,7 @@ UI_TEXT = {
             "Coefficient 1.04 applied for import of timber and ferrous metals."
         ),
         "note_coef_1015": "Additional coefficient applied: 1.015.",
-        "note_min_weight": "Since actual weight is below minimum billable weight, calculation is based on minimum weight (60 tons).",
+        "note_min_weight": "Since actual weight is below minimum billable weight, calculation is based on minimum weight.",
     },
 }
 
@@ -400,7 +400,7 @@ def load_selective_context(user_query, year_label, lang):
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
         f"СТРОГИЕ ПРАВИЛА:\n"
         f"1. Для RU языка строго использовать 'СПС' (вместо SPS) и 'МПС' (вместо MPS).\n"
-        f"2. МИН. РАСЧЕТНАЯ НОРМА ЧЕКИ: Если фактический вес < минимальной нормы (например, GNG 72 = 60т), РАСЧЕТНЫЙ ВЕС СТРОГО ПРИНИМАЕТСЯ РАВНЫМ МИН. НОРМЕ (60 т) и колонка выбирается по 60 т!\n"
+        f"2. МИН. РАСЧЕТНАЯ НОРМА ЧЕКИ (СТРОГОЕ ПРАВИЛО!): Если фактический вес < минимальной нормы (например, факт 40т, а норма 45т/60т), ЗАПРЕЩЕНО брать колонку фактического веса! СТАВКА СТРОГО БЕРЕТСЯ ИЗ КОЛОНКИ МИН. НОРМЫ (45т/60т)!\n"
         f"3. МПС vs СПС: Для МПС берется 100% базовая ставка из таблицы. Для СПС применяется коэффициент k = 0.85 к базовой ставке таблицы.\n"
         f"4. СТАНЦИИ: Если станция пограничная (Yalama, Boyuk Kesik, Astara, Culfa, Alat), писать с припиской '-eksp.' (например, 'Yalama-eksp. - Böyük Kəsik-eksp.').\n\n"
         + rules_text
@@ -522,109 +522,4 @@ if st.button(t["calc_btn"], type="primary"):
                     f"| **{t['lbl_route']}** | {p1.get('route', '-')} |\n"
                     f"| **{t['lbl_type']}** | {p1.get('shipment_type', '-')} |\n"
                     f"| **{t['lbl_dist']}** | {p1.get('distance', '-')} |\n"
-                    f"| **{t['lbl_cargo']}** | {p1.get('cargo_and_wagon', '-')} |\n"
-                    f"| **{t['lbl_weight']}** | {p1.get('weight_info', '-')} |\n"
-                    f"| **{t['lbl_period']}** | {p1.get('period', '-')} |\n"
-                )
-
-            # Раздел 2
-            st.markdown(f"#### ⚙️ {t['sec2_title']}")
-            p2 = data.get("part2", {})
-            if isinstance(p2, list) and len(p2) > 0:
-                p2 = p2[0]
-
-            if isinstance(p2, dict):
-                table2_rows = [
-                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate', '-')} |",
-                    f"| **{t['lbl_base_rate']}** | {p2.get('base_tariff', '-')} |",
-                ]
-
-                coeffs = p2.get("coefficients", [])
-                if isinstance(coeffs, list):
-                    for coeff in coeffs:
-                        if isinstance(coeff, dict):
-                            table2_rows.append(
-                                f"| **{coeff.get('name', '')}** |"
-                                f" {coeff.get('value', '')} |"
-                            )
-
-                st.markdown(
-                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
-                    + "\n".join(table2_rows)
-                )
-
-            # Раздел 3
-            st.markdown(f"#### 📐 {t['sec3_title']}")
-            p3 = data.get("part3", {})
-            if isinstance(p3, list) and len(p3) > 0:
-                p3 = p3[0]
-
-            if isinstance(p3, dict):
-                st.markdown(f"**{t['formula_title']}**")
-                st.code(p3.get("formula", "-"), language="text")
-
-                st.markdown(f"**{t['rates_title']}**")
-                table3_rows = [
-                    f"| **{t['lbl_net_rate']}** | **{p3.get('net_ady_rate', '-')}** |"
-                ]
-                
-                # ADY Express всегда выводится по умолчанию
-                express_val = p3.get("express_rate")
-                if express_val:
-                    table3_rows.append(
-                        f"| **{t['lbl_express_rate']}** | **{express_val}** |"
-                    )
-
-                st.markdown(
-                    f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
-                    + "\n".join(table3_rows)
-                )
-
-                # Динамическая и полная сборка примечаний (Qeydlər)
-                auto_notes = []
-                input_check = user_input.lower()
-                weight_str = str(p1.get("weight_info", "")).lower()
-
-                # 1. Проверка вагонов СПС/SPS
-                if any(k in input_check for k in ["sps", "özəl", "спс", "собствен"]):
-                    auto_notes.append(t["note_sps"])
-
-                # 2. Проверка импорта/экспорта
-                ship_type = str(p1.get("shipment_type", "")).lower()
-                if any(k in ship_type for k in ["idxal", "импорт", "import"]):
-                    auto_notes.append(t["note_import"])
-                elif any(k in ship_type for k in ["ixrac", "экспорт", "export"]):
-                    auto_notes.append(t["note_export"])
-
-                # 3. Проверка разницы фактического и расчетного веса
-                if "55" in input_check and "60" in weight_str:
-                    auto_notes.append(t["note_min_weight"])
-
-                # 4. Проверка коэффициентов (1.04, 1.015)
-                coeffs = p2.get("coefficients", []) if isinstance(p2, dict) else []
-                coeff_values = [str(c.get("value", "")) for c in coeffs if isinstance(c, dict)]
-                coeff_str = " ".join(coeff_values)
-
-                if "1.04" in coeff_str:
-                    auto_notes.append(t["note_timber_metal"])
-                if "1.015" in coeff_str or "1,015" in coeff_str:
-                    auto_notes.append(t["note_coef_1015"])
-
-                # 5. ADY Express примечание по умолчанию
-                if express_val:
-                    auto_notes.append(t["note_express"])
-
-                # Выводим примечания
-                if auto_notes:
-                    st.markdown(f"**{t['notes_title']}**")
-                    for idx, note in enumerate(auto_notes, start=1):
-                        st.markdown(f"{idx}. *{note}*")
-
-                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
-
-        except Exception as e:
-            train_holder.empty()
-            st.error(f"Error: {str(e)}")
-
-st.markdown("---")
-st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
+                    f"| **{t['lbl_cargo']}**
