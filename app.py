@@ -1,11 +1,11 @@
 import streamlit as st
 import traceback
 
-# 1. Настройки страницы (компактная ширина, как в оригинале)
+# 1. Настройки страницы (широкий макет)
 st.set_page_config(
     page_title="AGT Cargo - ADY Tarif Kalkulyatoru",
     page_icon="🚂",
-    layout="centered"
+    layout="wide"
 )
 
 # 2. Переводы интерфейса
@@ -36,39 +36,40 @@ TRANSLATIONS = {
     }
 }
 
-# 3. Логотип и вертикальные селекторы (Fraxt ili строго ПОД Dil / Language)
-# При необходимости раскомментируйте логотип:
-# st.image("logo.png", width=160)
+# 3. Разметка: левая колонка (под контент), правая — пустая для прижимания формы влево
+col_left, col_space = st.columns([1, 1])
 
-lang = st.selectbox("🌐 Dil / Language:", ["Azərbaycan", "Русский", "English"])
-fraxt_year = st.selectbox("⚙️ Fraxt ili:", [2026, 2025])
+with col_left:
+    # Селекторы языка и года (один под другим)
+    lang = st.selectbox("🌐 Dil / Language:", ["Azərbaycan", "Русский", "English"])
+    fraxt_year = st.selectbox("⚙️ Fraxt ili:", [2026, 2025])
 
-t = TRANSLATIONS[lang]
+    t = TRANSLATIONS[lang]
 
-# 4. Заголовок
-st.markdown(f"## {t['title']}")
-st.caption(f"{t['subtitle']}")
-st.divider()
+    # Заголовок
+    st.markdown(f"## {t['title']}")
+    st.caption(f"{t['subtitle']}")
+    st.divider()
 
-# 5. Поле ввода запроса и кнопка
-try:
-    query_input = st.text_input(
-        label=t["search_label"],
-        placeholder=t["search_placeholder"],
-        key="main_query_input"
-    )
+    # 4. Форма с вытянутым по высоте окном ввода
+    try:
+        query_input = st.text_area(
+            label=t["search_label"],
+            placeholder=t["search_placeholder"],
+            height=160,  # Увеличенная высота контейнера для ввода
+            key="main_query_input"
+        )
 
-    st.write("")
-    calculate_btn = st.button(t["btn_calc"], type="primary", use_container_width=True)
+        st.write("")
+        calculate_btn = st.button(t["btn_calc"], type="primary", use_container_width=True)
 
-    if calculate_btn:
-        if not query_input.strip():
-            st.warning("⚠️ Пожалуйста, введите запрос для расчета.")
-        else:
-            st.subheader(t["results_header"])
-            # Здесь вызывается логика обработки запроса
-            st.success(f"Запрос принят: **{query_input}**")
+        if calculate_btn:
+            if not query_input.strip():
+                st.warning("⚠️ Пожалуйста, введите запрос для расчета.")
+            else:
+                st.subheader(t["results_header"])
+                st.success(f"Запрос принят: **{query_input}**")
 
-except Exception as err:
-    st.error("⚠️ Произошла ошибка при выполнении:")
-    st.code(traceback.format_exc())
+    except Exception as err:
+        st.error("⚠️ Произошла ошибка при выполнении:")
+        st.code(traceback.format_exc())
