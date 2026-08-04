@@ -1,7 +1,7 @@
 import streamlit as st
 import traceback
 
-# 1. Настройки страницы
+# 1. Настройки страницы (широкий макет)
 st.set_page_config(
     page_title="AGT Cargo - ADY Tarif Kalkulyatoru",
     page_icon="🚂",
@@ -36,12 +36,12 @@ TRANSLATIONS = {
     }
 }
 
-# 3. Левый основной контейнер
+# 3. Разметка: левая половина экрана под форму
 col_main, col_empty = st.columns([1, 1])
 
 with col_main:
-    # Ограничиваем ширину селекторов (берём 35% от левой колонки)
-    col_selects, col_space = st.columns([0.35, 0.65])
+    # Ультра-компактная колонка под селекторы (0.10)
+    col_selects, col_space = st.columns([0.10, 0.90])
     
     with col_selects:
         lang = st.selectbox("🌐 Dil / Language:", ["Azərbaycan", "Русский", "English"])
