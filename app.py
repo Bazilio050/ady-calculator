@@ -40,8 +40,8 @@ TRANSLATIONS = {
 col_main, col_empty = st.columns([1, 1])
 
 with col_main:
-    # Ультра-компактная колонка под селекторы (0.10)
-    col_selects, col_space = st.columns([0.10, 0.90])
+    # Оптимальная ширина под селекторы (0.20) — текст не режется
+    col_selects, col_space = st.columns([0.20, 0.80])
     
     with col_selects:
         lang = st.selectbox("🌐 Dil / Language:", ["Azərbaycan", "Русский", "English"])
