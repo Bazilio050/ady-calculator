@@ -70,7 +70,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 3. Переводы интерфейса
+# 3. Полные переводы интерфейса и примечаний на всех 3 языках
 UI_TEXT = {
     "AZ": {
         "title": "ADY Tarif Kalkulyatoru",
@@ -115,8 +115,8 @@ UI_TEXT = {
         "api_warning": "⚠️ Xahiş olunur, GEMINI_API_KEY daxil edin.",
         "api_label": "Gemini API Key:",
         "note_sps": "Özəl vaqonlar (SPS) üçün 0.85 güzəşt əmsalı tətbiq olunmuşdur.",
-        "note_import": "İdxal rejimində minimal tarif məsafəsi norması 151 km-dir.",
-        "note_export": "İxrac rejimində minimal tarif məsafəsi norması 101 km-dir.",
+        "note_import_dist": "İdxal rejimində faktiki məsafə normadan az olduğu üçün minimal 151 km tarif məsafəsi tətbiq olunmuşdur.",
+        "note_export_dist": "İxrac rejimində faktiki məsafə normadan az olduğu üçün minimal 101 km tarif məsafəsi tətbiq olunmuşdur.",
         "note_express": "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur.",
         "note_timber_metal": "İdxal rejimində meşə materialları və qara metallar üçün 1.04 əmsalı tətbiq edilmişdir.",
         "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
@@ -168,8 +168,8 @@ UI_TEXT = {
         "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY.",
         "api_label": "Введите Gemini API Key:",
         "note_sps": "Применен скидочный коэффициент 0.85 для собственных вагонов (СПС).",
-        "note_import": "В режиме импорта минимальное тарифное расстояние составляет 151 км.",
-        "note_export": "В режиме экспорта минимальное тарифное расстояние составляет 101 км.",
+        "note_import_dist": "Так как фактическое расстояние меньше нормы, применен минимальный тарифный пробег 151 км (импорт).",
+        "note_export_dist": "Так как фактическое расстояние меньше нормы, применен минимальный тарифный пробег 101 км (экспорт).",
         "note_express": "Применен дополнительный коэффициент +2% за сервис ADY Express.",
         "note_timber_metal": "В режиме импорта применен коэффициент 1.04 для лесных грузов и черных металлов.",
         "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
@@ -221,8 +221,8 @@ UI_TEXT = {
         "api_warning": "⚠️ Please provide GEMINI_API_KEY.",
         "api_label": "Enter Gemini API Key:",
         "note_sps": "Discount coefficient 0.85 applied for private wagons (SPS).",
-        "note_import": "Minimum tariff distance for import is 151 km.",
-        "note_export": "Minimum tariff distance for export is 101 km.",
+        "note_import_dist": "Since actual distance is below minimum norm, billable distance of 151 km applied (import).",
+        "note_export_dist": "Since actual distance is below minimum norm, billable distance of 101 km applied (export).",
         "note_express": "Additional coefficient +2% applied for ADY Express service.",
         "note_timber_metal": "Coefficient 1.04 applied for import of timber and ferrous metals.",
         "note_coef_1015": "Additional coefficient applied: 1.015.",
@@ -283,7 +283,7 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 
-# 7. Загрузка динамического контекста
+# 7. Загрузка контекста
 @st.cache_data(show_spinner=False)
 def load_selective_context(user_query, year_label, lang):
     query_lower = user_query.lower()
@@ -371,13 +371,13 @@ def load_selective_context(user_query, year_label, lang):
     system_instruction = (
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-        f"ВАЖНО: Твоя задача — извлечь данные и вернуть их в JSON. Математические расчёты формул НЕ ДЕЛАЙ, за тебя их сделает Python-код!\n\n"
+        f"ОБЯЗАННОСТЬ: Извлечь параметры и возвратить их в JSON. Все текстовые примечания строятся через логические флаги (is_min_weight_applied, is_min_distance_applied)!\n\n"
         + rules_text
     )
     return system_instruction
 
 
-# 8. Вызов Gemini — СТРОГО gemini-3.6-flash И temperature=0.0
+# 8. Вызов Gemini
 def call_gemini_json(client, prompt, instruction):
     model_name = "gemini-3.6-flash"
 
@@ -402,23 +402,19 @@ def call_gemini_json(client, prompt, instruction):
     return json.loads(raw_text.strip())
 
 
-# 9. ЧЕСТНЫЙ МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON (ПОРЯДОК: БАЗА -> КУРС -> КОЭФФИЦИЕНТЫ)
+# 9. ЧЕСТНЫЙ МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON
 def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_metal, is_loaded_1015):
-    # 1. Сначала База, затем Деление на курс
     current_val = base_chf / exchange_rate
     formula_parts = [f"{base_chf:.2f} / {exchange_rate}"]
     
-    # 2. Продуктовый коэффициент (1.04)
     if is_import_timber_metal:
         formula_parts.append("1.04")
         current_val *= 1.04
         
-    # 3. Коэффициент груженого хода (1.015)
     if is_loaded_1015:
         formula_parts.append("1.015")
         current_val *= 1.015
         
-    # 4. Собственный вагон (0.85) — в самом конце
     if is_sps:
         formula_parts.append("0.85")
         current_val *= 0.85
@@ -430,17 +426,12 @@ def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_meta
     return formula_str, net_rate_str, express_rate_str
 
 
-# 10. Интерфейс расчета
-user_input = st.text_area(
-    t["input_header"], height=150, placeholder=t["input_placeholder"]
-)
-
-
+# 10. Компактная структура JSON для максимальной экономии токенов
 def get_static_rules():
     schema_dict = {
         "part1": {
             "route": "string",
-            "shipment_type": "string",
+            "shipment_type": "string", # İdxal / İxrac / Tranzit
             "distance": "string",
             "cargo_and_wagon": "string",
             "weight_info": "string",
@@ -448,12 +439,14 @@ def get_static_rules():
         },
         "part2": {
             "exchange_rate_val": 0.79,
-            "exchange_rate_text": "1 USD = 0.79 CHF (period info)",
+            "exchange_rate_text": "1 USD = 0.79 CHF",
             "base_tariff_chf": 14.45,
-            "table_info_text": "Таблица 3, расстояние 191-200 км, 45 т",
+            "table_info_text": "Table 3, 191-200 km, 45 t",
             "is_sps": True,
             "is_import_timber_metal": True,
-            "is_loaded_1015": True
+            "is_loaded_1015": True,
+            "is_min_weight_applied": False, # True ТОЛЬКО если факт вес < мин нормы
+            "is_min_distance_applied": False # True ТОЛЬКО если факт км < 151км (импорт) или < 101км (экспорт)
         }
     }
 
@@ -463,6 +456,7 @@ def get_static_rules():
     )
 
 
+# 11. Основной процесс расчетной кнопки
 if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
@@ -542,15 +536,19 @@ if st.button(t["calc_btn"], type="primary"):
                 is_sps = bool(p2.get("is_sps", False))
                 is_import_tm = bool(p2.get("is_import_timber_metal", False))
                 is_loaded = bool(p2.get("is_loaded_1015", True))
+                
+                # Флаги строгого прибора примечаний
+                is_min_weight_applied = bool(p2.get("is_min_weight_applied", False))
+                is_min_dist_applied = bool(p2.get("is_min_distance_applied", False))
 
-                # Запуск движка Python
+                # Вычисление формулы
                 formula_str, net_rate_str, express_rate_str = compute_python_tariff(
                     base_chf, ex_rate, is_sps, is_import_tm, is_loaded
                 )
 
                 st.markdown(f"#### ⚙️ {t['sec2_title']}")
                 
-                # ИДЕАЛЬНЫЙ ПОРЯДОК: БАЗА -> КУРС -> 1.04 -> 1.015 -> 0.85
+                # Таблица Раздела 2 (Порядок: База -> Курс -> 1.04 -> 1.015 -> 0.85)
                 table2_rows = [
                     f"| **{t['lbl_base_rate']}** | {base_chf:.2f} CHF/t ({p2.get('table_info_text', '')}) |",
                     f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate_text', f'1 USD = {ex_rate} CHF')} |",
@@ -584,28 +582,37 @@ if st.button(t["calc_btn"], type="primary"):
                     + "\n".join(table3_rows)
                 )
 
-                # Динамическая сборка примечаний
+                # --- ТОЧНАЯ И ЯЗЫКОВО-НЕЗАВИСИМАЯ СБОРКА ПРИМЕЧАНИЙ (QEYDLƏR) ---
                 auto_notes = []
+                
+                # 1. СПС
                 if is_sps:
                     auto_notes.append(t["note_sps"])
 
+                # 2. Минимальное расстояние (ТОЛЬКО ЕСЛИ ПРИМЕНЕНО!)
                 ship_type = str(p1.get("shipment_type", "")).lower() if isinstance(p1, dict) else ""
-                if "idxal" in ship_type or "импорт" in ship_type or "import" in ship_type:
-                    auto_notes.append(t["note_import"])
-                elif "ixrac" in ship_type or "экспорт" in ship_type or "export" in ship_type:
-                    auto_notes.append(t["note_export"])
+                if is_min_dist_applied:
+                    if "idxal" in ship_type or "импорт" in ship_type or "import" in ship_type:
+                        auto_notes.append(t["note_import_dist"])
+                    elif "ixrac" in ship_type or "экспорт" in ship_type or "export" in ship_type:
+                        auto_notes.append(t["note_export_dist"])
 
-                weight_str = str(p1.get("weight_info", "")).lower() if isinstance(p1, dict) else ""
-                if ("faktiki" in weight_str or "фактическ" in weight_str) and ("min" in weight_str or "hesablaşma" in weight_str or "расчетн" in weight_str):
+                # 3. Минимальный вес (ТОЛЬКО ЕСЛИ ФАКТ < МИН НОРМЫ!)
+                if is_min_weight_applied:
                     auto_notes.append(t["note_min_weight"])
 
+                # 4. Импорт леса/металла (1.04)
                 if is_import_tm:
                     auto_notes.append(t["note_timber_metal"])
+                    
+                # 5. Груженый рейс (1.015)
                 if is_loaded:
                     auto_notes.append(t["note_coef_1015"])
 
+                # 6. ADY Express
                 auto_notes.append(t["note_express"])
 
+                # Вывод примечаний
                 if auto_notes:
                     st.markdown(f"**{t['notes_title']}**")
                     for idx, note in enumerate(auto_notes, start=1):
