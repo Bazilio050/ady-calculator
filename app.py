@@ -540,4 +540,161 @@ if st.button(t["calc_btn"], type="primary"):
 
             train_holder.empty()
 
-            st.success(t["success"].format(selected
+            st.success(t["success"].format(selected_year))
+            st.markdown(f"### {t['result_title']}")
+
+            p2 = data.get("part2", {})
+            if isinstance(p2, list) and len(p2) > 0:
+                p2 = p2[0]
+
+            # 1. ПРОВЕРКА МИНИМАЛЬНОЙ ВЕСОВОЙ НОРМЫ PYTHON Engine
+            gng_code = str(p2.get("gng_code", ""))
+            act_weight = float(p2.get("actual_weight_tons", 0.0))
+            min_norm_tons = get_minimal_weight_norm(gng_code)
+
+            is_min_weight_applied = False
+            billable_weight = act_weight
+
+            if min_norm_tons > 0 and act_weight < min_norm_tons:
+                billable_weight = min_norm_tons
+                is_min_weight_applied = True
+
+            # РАЗДЕЛ 1
+            st.markdown(f"#### 📍 {t['sec1_title']}")
+            p1 = data.get("part1", {})
+            if isinstance(p1, list) and len(p1) > 0:
+                p1 = p1[0]
+
+            if isinstance(p1, dict):
+                col_param = t['col_param']
+                col_val = t['col_val']
+                lbl_route = t['lbl_route']
+                lbl_type = t['lbl_type']
+                lbl_dist = t['lbl_dist']
+                lbl_cargo = t['lbl_cargo']
+                lbl_weight = t['lbl_weight']
+                lbl_period = t['lbl_period']
+                
+                val_route = p1.get('route', '-')
+                val_type = p1.get('shipment_type', '-')
+                val_dist = p1.get('distance', '-')
+                val_cargo = p1.get('cargo_and_wagon', '-')
+                
+                if is_min_weight_applied:
+                    val_weight = f"Faktiki çəki: {int(act_weight)} t, Hesablaşma çəkisi: {int(billable_weight)} t"
+                else:
+                    val_weight = p1.get('weight_info', f"{int(act_weight)} t")
+                    
+                val_period = p1.get('period', '-')
+
+                table1_md = f"| {col_param} | {col_val} |\n| :--- | :--- |\n| **{lbl_route}** | {val_route} |\n| **{lbl_type}** | {val_type} |\n| **{lbl_dist}** | {val_dist} |\n| **{lbl_cargo}** | {val_cargo} |\n| **{lbl_weight}** | {val_weight} |\n| **{lbl_period}** | {val_period} |"
+                st.markdown(table1_md)
+
+            # РАЗДЕЛ 2 & 3: Точный поиск км и базовой ставки через Python
+            if isinstance(p2, dict):
+                st_from = str(p2.get("station_from", ""))
+                st_to = str(p2.get("station_to", ""))
+                
+                # 2. Точный поиск километража через Python
+                exact_dist = find_distance_in_file(st_from, st_to)
+                if exact_dist is not None:
+                    dist_km = float(exact_dist)
+                else:
+                    dist_km = float(p2.get("distance_km", 0.0))
+
+                target_table = str(p2.get("table_filename", "Table_3_Tariffs.txt"))
+
+                # 3. Точный поиск базовой ставки через Python (с учетом минималки billable_weight)
+                exact_rate, exact_info = find_table_base_rate(target_table, dist_km, billable_weight)
+                
+                if exact_rate is not None:
+                    base_chf = exact_rate
+                    table_info = exact_info
+                else:
+                    base_chf = float(p2.get("base_tariff_chf", 0.0))
+                    table_info = str(p2.get("table_info_text", ""))
+
+                ex_rate = float(p2.get("exchange_rate_val", 0.79))
+                is_sps = bool(p2.get("is_sps", False))
+                is_import_tm = bool(p2.get("is_import_timber_metal", False))
+                is_loaded = bool(p2.get("is_loaded_1015", True))
+                is_min_dist_applied = bool(p2.get("is_min_distance_applied", False))
+
+                # Вычисление формулы
+                formula_str, net_rate_str, express_rate_str = compute_python_tariff(
+                    base_chf, ex_rate, is_sps, is_import_tm, is_loaded
+                )
+
+                st.markdown(f"#### ⚙️ {t['sec2_title']}")
+                
+                # Таблица 2: БАЗА -> КУРС -> 1.04 -> 1.015 -> 0.85
+                table2_rows = [
+                    f"| **{t['lbl_base_rate']}** | {base_chf:.2f} CHF/t ({table_info}) |",
+                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate_text', f'1 USD = {ex_rate} CHF')} |",
+                ]
+
+                if is_import_tm:
+                    table2_rows.append(f"| **{t['lbl_coef_import']}** | 1.04 |")
+                if is_loaded:
+                    table2_rows.append(f"| **{t['lbl_coef_loaded']}** | 1.015 |")
+                if is_sps:
+                    table2_rows.append(f"| **{t['lbl_coef_sps']}** | 0.85 |")
+
+                st.markdown(
+                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
+                    + "\n".join(table2_rows)
+                )
+
+                # Раздел 3
+                st.markdown(f"#### 📐 {t['sec3_title']}")
+                st.markdown(f"**{t['formula_title']}**")
+                st.code(formula_str, language="text")
+
+                st.markdown(f"**{t['rates_title']}**")
+                table3_rows = [
+                    f"| **{t['lbl_net_rate']}** | **{net_rate_str}** |",
+                    f"| **{t['lbl_express_rate']}** | **{express_rate_str}** |"
+                ]
+
+                st.markdown(
+                    f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
+                    + "\n".join(table3_rows)
+                )
+
+                # --- СБОРКА ПРИМЕЧАНИЙ (СТРОГИЙ ПОРЯДОК) ---
+                auto_notes = []
+                
+                ship_type = str(p1.get("shipment_type", "")).lower() if isinstance(p1, dict) else ""
+                if is_min_dist_applied:
+                    if "idxal" in ship_type or "импорт" in ship_type or "import" in ship_type:
+                        auto_notes.append(t["note_import_dist"])
+                    elif "ixrac" in ship_type or "экспорт" in ship_type or "export" in ship_type:
+                        auto_notes.append(t["note_export_dist"])
+
+                if is_min_weight_applied:
+                    auto_notes.append(t["note_min_weight"].format(f"{int(billable_weight)} t"))
+
+                if is_import_tm:
+                    auto_notes.append(t["note_timber_metal"])
+                    
+                if is_loaded:
+                    auto_notes.append(t["note_coef_1015"])
+
+                if is_sps:
+                    auto_notes.append(t["note_sps"])
+
+                auto_notes.append(t["note_express"])
+
+                if auto_notes:
+                    st.markdown(f"**{t['notes_title']}**")
+                    for idx, note in enumerate(auto_notes, start=1):
+                        st.markdown(f"{idx}. *{note}*")
+
+                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
+
+        except Exception as e:
+            train_holder.empty()
+            st.error(f"Error: {str(e)}")
+
+st.markdown("---")
+st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
