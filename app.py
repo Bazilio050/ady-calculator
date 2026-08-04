@@ -281,9 +281,25 @@ def determine_shipment_type_and_table(st_from, st_to):
     st_val = st_to.lower().strip()
 
     border_keywords = ["eksport", "eksp", "eks.", "eks", "liman", "aşırma"]
-    
-    is_from_border = any(k in sf for k in border_keywords) or sf in ["yalama", "astara", "böyük kəsik", "boyuk kesik", "culfa", "ələt", "alet"]
-    is_to_border = any(k in st_val for k in border_keywords) or st_val in ["yalama", "astara", "böyük kəsik", "boyuk kesik", "culfa", "ələt", "alet"]
+
+    is_from_border = any(k in sf for k in border_keywords) or sf in [
+        "yalama",
+        "astara",
+        "böyük kəsik",
+        "boyuk kesik",
+        "culfa",
+        "ələt",
+        "alet",
+    ]
+    is_to_border = any(k in st_val for k in border_keywords) or st_val in [
+        "yalama",
+        "astara",
+        "böyük kəsik",
+        "boyuk kesik",
+        "culfa",
+        "ələt",
+        "alet",
+    ]
 
     if is_from_border and is_to_border:
         return "transit", "Table_4_Tariffs.txt"
@@ -301,12 +317,29 @@ def get_minimal_weight_norm(gng_code_str):
     if not gng_clean:
         return 0.0
 
-    if any(gng_clean.startswith(prefix) for prefix in ["10", "1107", "2701", "2702", "26", "1101", "1102", "1103", "1701", "7201", "31"]):
+    if any(
+        gng_clean.startswith(prefix)
+        for prefix in [
+            "10",
+            "1107",
+            "2701",
+            "2702",
+            "26",
+            "1101",
+            "1102",
+            "1103",
+            "1701",
+            "7201",
+            "31",
+        ]
+    ):
         return 60.0
     if gng_clean.startswith("72") and not gng_clean.startswith("7204"):
         return 60.0
 
-    if gng_clean.startswith("7204") or any(gng_clean.startswith(p) for p in ["14042", "5201", "5202", "5203"]):
+    if gng_clean.startswith("7204") or any(
+        gng_clean.startswith(p) for p in ["14042", "5201", "5202", "5203"]
+    ):
         return 50.0
 
     if any(gng_clean.startswith(p) for p in ["4403", "4404", "4407"]):
@@ -329,7 +362,9 @@ def load_selective_context(user_query, year_label, lang):
     for txt_file in set(files_to_load):
         if os.path.exists(txt_file):
             with open(txt_file, "r", encoding="utf-8") as f:
-                loaded_rules.append(f"--- BAZA SƏNƏDİ: {txt_file} ---\n" + f.read())
+                loaded_rules.append(
+                    f"--- BAZA SƏNƏDİ: {txt_file} ---\n" + f.read()
+                )
 
     rules_text = "\n\n".join(loaded_rules)
 
@@ -474,82 +509,24 @@ def call_gemini_json(client, prompt, instruction):
 
 
 # 13. МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON
-def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_metal, is_loaded_1015):
+def compute_python_tariff(
+    base_chf, exchange_rate, is_sps, is_import_timber_metal, is_loaded_1015
+):
     current_val = base_chf / exchange_rate
     formula_parts = [f"{base_chf:.2f} / {exchange_rate}"]
-    
+
     if is_import_timber_metal:
         formula_parts.append("1.04")
         current_val *= 1.04
-        
+
     if is_loaded_1015:
         formula_parts.append("1.015")
         current_val *= 1.015
-        
+
     if is_sps:
         formula_parts.append("0.85")
         current_val *= 0.85
-        
+
     formula_str = " * ".join(formula_parts) + f" = {current_val:.2f} USD/t"
     net_rate_str = f"{current_val:.2f} USD/t"
-    express_val = current_val * 1.02
-    express_rate_str = f"{express_val:.2f} USD/t"
-    
-    return formula_str, net_rate_str, express_rate_str
-
-
-# 14. Схема JSON
-def get_static_rules():
-    schema_dict = {
-        "part1": {
-            "route": "string",
-            "cargo_and_wagon": "string",
-            "period": "string"
-        },
-        "part2": {
-            "gng_code": "1001",
-            "station_from": "Yalama-eksp.",
-            "station_to": "Astara-eksp.",
-            "actual_weight_tons": 35,
-            "exchange_rate_val": 0.79,
-            "exchange_rate_text": "1 USD = 0.79 CHF",
-            "is_sps": True,
-            "is_import_timber_metal": False,
-            "is_loaded_1015": True
-        }
-    }
-
-    return (
-        "Extract shipment parameters and return JSON matching exactly this schema:\n"
-        + json.dumps(schema_dict, indent=2)
-    )
-
-
-# 15. ВВОД ПОЛЬЗОВАТЕЛЯ
-user_input = st.text_area(
-    t["input_header"], height=150, placeholder=t["input_placeholder"]
-)
-
-
-# 16. Основной процесс расчетной кнопки
-if st.button(t["calc_btn"], type="primary"):
-    if not user_input.strip():
-        st.warning(t["warning_empty"])
-    else:
-        train_holder = st.empty()
-        spinner_msg = t["spinner_text"].format(selected_year)
-        train_html = (
-            '<div class="train-track">'
-            '<div class="train-animation">═══ 🚃 🚃 🚃 🚃 🚃 🚃 🚂</div>'
-            '</div>'
-            f'<center><span class="train-text"><b>{spinner_msg}</b></span></center>'
-        )
-        train_holder.markdown(train_html, unsafe_allow_html=True)
-
-        try:
-            dyn_instruction = load_selective_context(
-                user_input, selected_year, selected_lang
-            )
-
-            prompt_header = (
-                f"Extract data
+    express_val = current_val * 1.0
