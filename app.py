@@ -548,17 +548,19 @@ if st.button(t["calc_btn"], type="primary"):
                 )
 
                 st.markdown(f"#### ⚙️ {t['sec2_title']}")
+                
+                # Выстраиваем порядок строк Раздела 2 строго по порядку участия в формуле
                 table2_rows = [
                     f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate_text', f'1 USD = {ex_rate} CHF')} |",
                     f"| **{t['lbl_base_rate']}** | {base_chf:.2f} CHF/t ({p2.get('table_info_text', '')}) |",
                 ]
 
-                if is_sps:
-                    table2_rows.append(f"| **{t['lbl_coef_sps']}** | 0.85 |")
-                if is_loaded:
-                    table2_rows.append(f"| **{t['lbl_coef_loaded']}** | 1.015 |")
                 if is_import_tm:
                     table2_rows.append(f"| **{t['lbl_coef_import']}** | 1.04 |")
+                if is_loaded:
+                    table2_rows.append(f"| **{t['lbl_coef_loaded']}** | 1.015 |")
+                if is_sps:
+                    table2_rows.append(f"| **{t['lbl_coef_sps']}** | 0.85 |")
 
                 st.markdown(
                     f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
