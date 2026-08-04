@@ -114,7 +114,7 @@ UI_TEXT = {
         "note_express": "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur.",
         "note_timber_metal": "İdxal rejimində meşə materialları və qara metallar üçün 1.04 əmsalı tətbiq edilmişdir.",
         "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
-        "note_min_weight": "Faktiki çəki minimal tarif normasından aşağı olduğu üçün hesablama minimal norma üzrə aparılmışdır.",
+        "note_min_weight": "Faktiki çəki minimal tarif normasından aşağı olduğu üçün hesablama minimal norma ({}) üzrə aparılmışdır.",
         "lbl_coef_sps": "Özəl vaqon (SPS)",
         "lbl_coef_loaded": "Yüklü rejim əmsalı",
         "lbl_coef_import": "Meşə/Metal idxal əmsalı",
@@ -160,7 +160,7 @@ UI_TEXT = {
         "note_express": "Применен дополнительный коэффициент +2% за сервис ADY Express.",
         "note_timber_metal": "В режиме импорта применен коэффициент 1.04 для лесных грузов и черных металлов.",
         "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
-        "note_min_weight": "Так как фактический вес ниже минимальной нормы, расчет произведен по минимальной весовой норме.",
+        "note_min_weight": "Так как фактический вес ниже минимальной нормы, расчет произведен по минимальной весовой норме ({}).",
         "lbl_coef_sps": "Собственный вагон (СПС)",
         "lbl_coef_loaded": "Коэффициент груженого хода",
         "lbl_coef_import": "Коэффициент на импорт леса/металла",
@@ -206,7 +206,7 @@ UI_TEXT = {
         "note_express": "Additional coefficient +2% applied for ADY Express service.",
         "note_timber_metal": "Coefficient 1.04 applied for import of timber and ferrous metals.",
         "note_coef_1015": "Additional coefficient applied: 1.015.",
-        "note_min_weight": "Since actual weight is below minimum billable weight, calculation is based on minimum weight.",
+        "note_min_weight": "Since actual weight is below minimum billable weight, calculation is based on minimum weight ({}).",
         "lbl_coef_sps": "Private wagon (SPS)",
         "lbl_coef_loaded": "Loaded run coefficient",
         "lbl_coef_import": "Timber/Metal import coefficient",
@@ -263,7 +263,30 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 
-# 7. Загрузка контекста
+# 7. ВШИТЫЙ СПРАВОЧНИК МИНИМАЛЬНЫХ ВЕСОВЫХ НОРМ (ПО ВАШЕМУ ДОКУМЕНТУ стр 11-12)
+def get_minimal_weight_norm(gng_code_str):
+    gng_clean = re.sub(r"\D", "", str(gng_code_str))
+    if not gng_clean:
+        return 0.0
+
+    # 60 тонн: Зерновые (10, 1107, 1001), Уголь (2701, 2702), Руда (26), Мука (1101-1103), Сахар (1701), Металлы (72), Чугун (7201), Удобрения (31)
+    if any(gng_clean.startswith(prefix) for prefix in ["10", "1107", "2701", "2702", "26", "1101", "1102", "1103", "1701", "7201", "31"]):
+        return 60.0
+    if gng_clean.startswith("72") and not gng_clean.startswith("7204"):
+        return 60.0
+
+    # 50 тонн: Хлопок (14042, 5201-5203), Лом черных металлов (7204)
+    if gng_clean.startswith("7204") or any(gng_clean.startswith(p) for p in ["14042", "5201", "5202", "5203"]):
+        return 50.0
+
+    # 45 тонн: Лес (4403, 4404, 4407)
+    if any(gng_clean.startswith(p) for p in ["4403", "4404", "4407"]):
+        return 45.0
+
+    return 0.0
+
+
+# 8. Загрузка контекста
 @st.cache_data(show_spinner=False)
 def load_selective_context(user_query, year_label, lang):
     files_to_load = [
@@ -284,13 +307,13 @@ def load_selective_context(user_query, year_label, lang):
     system_instruction = (
         f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
         f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-        f"ОБЯЗАННОСТЬ: Извлечь параметры и возвратить их в JSON. Обязательно вернуть названия станций station_from и station_to, а также weight_tons!\n\n"
+        f"ОБЯЗАННОСТЬ: Извлечь параметры и возвратить их в JSON. Обязательно вернуть gng_code (код ГНГ), названия станций station_from и station_to, а также actual_weight_tons!\n\n"
         + rules_text
     )
     return system_instruction
 
 
-# 8. ПАРСЕР КИЛОМЕТРАЖА ИЗ Distances.txt (ПАРСИНГ PYTHON)
+# 9. ПАРСЕР КИЛОМЕТРАЖА ИЗ Distances.txt (ПАРСИНГ PYTHON)
 def find_distance_in_file(st_from, st_to):
     dist_file = None
     for name in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
@@ -316,7 +339,7 @@ def find_distance_in_file(st_from, st_to):
     header_col_idx = -1
     for idx, h in enumerate(headers):
         if sf in h:
-            header_col_idx = idx - 1  # учитываем колонку названия станции
+            header_col_idx = idx - 1
             break
 
     for line in lines:
@@ -332,7 +355,7 @@ def find_distance_in_file(st_from, st_to):
     return None
 
 
-# 9. ПАРСЕР БАЗОВОЙ СТАВКИ ИЗ ТЕКСТОВЫХ СЕТОК (ПАРСИНГ PYTHON)
+# 10. ПАРСЕР БАЗОВОЙ СТАВКИ ИЗ ТЕКСТОВЫХ СЕТОК (ПАРСИНГ PYTHON)
 def find_table_base_rate(table_filename, distance, weight):
     if not os.path.exists(table_filename):
         return None, ""
@@ -396,7 +419,7 @@ def find_table_base_rate(table_filename, distance, weight):
     return None, ""
 
 
-# 10. Вызов Gemini
+# 11. Вызов Gemini
 def call_gemini_json(client, prompt, instruction):
     model_name = "gemini-3.6-flash"
 
@@ -421,7 +444,7 @@ def call_gemini_json(client, prompt, instruction):
     return json.loads(raw_text.strip())
 
 
-# 11. МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON
+# 12. МАТЕМАТИЧЕСКИЙ ДВИЖОК В PYTHON
 def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_metal, is_loaded_1015):
     current_val = base_chf / exchange_rate
     formula_parts = [f"{base_chf:.2f} / {exchange_rate}"]
@@ -446,7 +469,7 @@ def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_meta
     return formula_str, net_rate_str, express_rate_str
 
 
-# 12. Схема JSON
+# 13. Схема JSON
 def get_static_rules():
     schema_dict = {
         "part1": {
@@ -458,19 +481,19 @@ def get_static_rules():
             "period": "string"
         },
         "part2": {
+            "gng_code": "1001",
             "station_from": "Yalama",
             "station_to": "Astara",
             "distance_km": 504,
-            "weight_tons": 55,
+            "actual_weight_tons": 35,
             "table_filename": "Table_4_Tariffs.txt",
             "exchange_rate_val": 0.79,
             "exchange_rate_text": "1 USD = 0.79 CHF",
             "base_tariff_chf": 24.56,
-            "table_info_text": "Table 4, 501-510 km, 55 t",
+            "table_info_text": "Table 4, 501-510 km, 60 t",
             "is_sps": True,
             "is_import_timber_metal": False,
             "is_loaded_1015": True,
-            "is_min_weight_applied": False,
             "is_min_distance_applied": False
         }
     }
@@ -481,13 +504,13 @@ def get_static_rules():
     )
 
 
-# 13. ВВОД ПОЛЬЗОАТЕЛЯ
+# 14. ВВОД ПОЛЬЗОВАТЕЛЯ
 user_input = st.text_area(
     t["input_header"], height=150, placeholder=t["input_placeholder"]
 )
 
 
-# 14. Основной процесс расчетной кнопки
+# 15. Основной процесс расчетной кнопки
 if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
@@ -517,148 +540,4 @@ if st.button(t["calc_btn"], type="primary"):
 
             train_holder.empty()
 
-            st.success(t["success"].format(selected_year))
-            st.markdown(f"### {t['result_title']}")
-
-            # Раздел 1
-            st.markdown(f"#### 📍 {t['sec1_title']}")
-            p1 = data.get("part1", {})
-            if isinstance(p1, list) and len(p1) > 0:
-                p1 = p1[0]
-
-            if isinstance(p1, dict):
-                col_param = t['col_param']
-                col_val = t['col_val']
-                lbl_route = t['lbl_route']
-                lbl_type = t['lbl_type']
-                lbl_dist = t['lbl_dist']
-                lbl_cargo = t['lbl_cargo']
-                lbl_weight = t['lbl_weight']
-                lbl_period = t['lbl_period']
-                
-                val_route = p1.get('route', '-')
-                val_type = p1.get('shipment_type', '-')
-                val_dist = p1.get('distance', '-')
-                val_cargo = p1.get('cargo_and_wagon', '-')
-                val_weight = p1.get('weight_info', '-')
-                val_period = p1.get('period', '-')
-
-                table1_md = f"| {col_param} | {col_val} |\n| :--- | :--- |\n| **{lbl_route}** | {val_route} |\n| **{lbl_type}** | {val_type} |\n| **{lbl_dist}** | {val_dist} |\n| **{lbl_cargo}** | {val_cargo} |\n| **{lbl_weight}** | {val_weight} |\n| **{lbl_period}** | {val_period} |"
-                st.markdown(table1_md)
-
-            # Раздел 2 & 3: Точный поиск км и базовой ставки через Python
-            p2 = data.get("part2", {})
-            if isinstance(p2, list) and len(p2) > 0:
-                p2 = p2[0]
-
-            if isinstance(p2, dict):
-                st_from = str(p2.get("station_from", ""))
-                st_to = str(p2.get("station_to", ""))
-                
-                # 1. Точный поиск километража через Python
-                exact_dist = find_distance_in_file(st_from, st_to)
-                if exact_dist is not None:
-                    dist_km = float(exact_dist)
-                else:
-                    dist_km = float(p2.get("distance_km", 0.0))
-
-                weight_t = float(p2.get("weight_tons", 0.0))
-                target_table = str(p2.get("table_filename", "Table_3_Tariffs.txt"))
-
-                # 2. Точный поиск базовой ставки через Python
-                exact_rate, exact_info = find_table_base_rate(target_table, dist_km, weight_t)
-                
-                if exact_rate is not None:
-                    base_chf = exact_rate
-                    table_info = exact_info
-                else:
-                    base_chf = float(p2.get("base_tariff_chf", 0.0))
-                    table_info = str(p2.get("table_info_text", ""))
-
-                ex_rate = float(p2.get("exchange_rate_val", 0.79))
-                is_sps = bool(p2.get("is_sps", False))
-                is_import_tm = bool(p2.get("is_import_timber_metal", False))
-                is_loaded = bool(p2.get("is_loaded_1015", True))
-                
-                # Флаги примечаний
-                is_min_weight_applied = bool(p2.get("is_min_weight_applied", False))
-                is_min_dist_applied = bool(p2.get("is_min_distance_applied", False))
-
-                # Вычисление формулы
-                formula_str, net_rate_str, express_rate_str = compute_python_tariff(
-                    base_chf, ex_rate, is_sps, is_import_tm, is_loaded
-                )
-
-                st.markdown(f"#### ⚙️ {t['sec2_title']}")
-                
-                # Таблица 2: БАЗА -> КУРС -> 1.04 -> 1.015 -> 0.85
-                table2_rows = [
-                    f"| **{t['lbl_base_rate']}** | {base_chf:.2f} CHF/t ({table_info}) |",
-                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate_text', f'1 USD = {ex_rate} CHF')} |",
-                ]
-
-                if is_import_tm:
-                    table2_rows.append(f"| **{t['lbl_coef_import']}** | 1.04 |")
-                if is_loaded:
-                    table2_rows.append(f"| **{t['lbl_coef_loaded']}** | 1.015 |")
-                if is_sps:
-                    table2_rows.append(f"| **{t['lbl_coef_sps']}** | 0.85 |")
-
-                st.markdown(
-                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
-                    + "\n".join(table2_rows)
-                )
-
-                # Раздел 3
-                st.markdown(f"#### 📐 {t['sec3_title']}")
-                st.markdown(f"**{t['formula_title']}**")
-                st.code(formula_str, language="text")
-
-                st.markdown(f"**{t['rates_title']}**")
-                table3_rows = [
-                    f"| **{t['lbl_net_rate']}** | **{net_rate_str}** |",
-                    f"| **{t['lbl_express_rate']}** | **{express_rate_str}** |"
-                ]
-
-                st.markdown(
-                    f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
-                    + "\n".join(table3_rows)
-                )
-
-                # --- СБОРКА ПРИМЕЧАНИЙ (СТРОГИЙ ПОРЯДОК) ---
-                auto_notes = []
-                
-                ship_type = str(p1.get("shipment_type", "")).lower() if isinstance(p1, dict) else ""
-                if is_min_dist_applied:
-                    if "idxal" in ship_type or "импорт" in ship_type or "import" in ship_type:
-                        auto_notes.append(t["note_import_dist"])
-                    elif "ixrac" in ship_type or "экспорт" in ship_type or "export" in ship_type:
-                        auto_notes.append(t["note_export_dist"])
-
-                if is_min_weight_applied:
-                    auto_notes.append(t["note_min_weight"])
-
-                if is_import_tm:
-                    auto_notes.append(t["note_timber_metal"])
-                    
-                if is_loaded:
-                    auto_notes.append(t["note_coef_1015"])
-
-                if is_sps:
-                    auto_notes.append(t["note_sps"])
-
-                auto_notes.append(t["note_express"])
-
-                if auto_notes:
-                    st.markdown(f"**{t['notes_title']}**")
-                    for idx, note in enumerate(auto_notes, start=1):
-                        st.markdown(f"{idx}. *{note}*")
-
-                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
-
-        except Exception as e:
-            train_holder.empty()
-            st.error(f"Error: {str(e)}")
-
-st.markdown("---")
-st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
+            st.success(t["success"].format(selected
