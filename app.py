@@ -40,34 +40,29 @@ TRANSLATIONS = {
 }
 
 # -----------------------------------------------------------------------------
-# 3. ОСНОВНАЯ ФУНКЦИЯ РАСЧЕТА
-# Вставьте сюда вашу логику парсинга строки и обращения к базе тарифов ADY
+# 3. ОСНОВНАЯ ФУНКЦИЯ РАСЧЕТА (Подключите сюда ваш калькулятор ADY)
 # -----------------------------------------------------------------------------
-def process_ady_calculation(query, year):
-    """
-    Ваша логика обработки запроса.
-    Параметры:
-        query (str): Текст из поля ввода (напр., 'Ялама Беюк Кясик 72 спс полувагон спс')
-        year (int): Фрахтовый год (напр., 2026)
-    """
-    # Пример вызова вашей внутренней функции парсинга/расчета:
-    # parsed_data = parse_query(query)
-    # result = calculate_tariff(parsed_data, year)
-    
-    # Заглушка структуры ответа (замените на вывод вашей функции):
+def calculate_tariff(query_text, year):
+    # ТУТ ДОЛЖЕН БЫТЬ ВАШ ИСХОДНЫЙ КОД ПАРСИНГА СТРОКИ И РАСЧЕТА ADY!
+    # Замените этот словарь на возврат реальных переменных из вашей функции:
     return {
-        "query": query,
-        "year": year,
-        "status": "success"
+        "from_station": "Ялама",
+        "to_station": "Беюк Кясик",
+        "distance": 504,
+        "weight": 72,
+        "wagon_type": "Полувагон (СПС)",
+        "rate_per_ton": 50.0,
+        "total_usd": 3600.00,
+        "total_azn": 6120.00
     }
 
 # -----------------------------------------------------------------------------
-# 4. РАЗМЕТКА И ИНТЕРФЕЙС
+# 4. ИНТЕРФЕЙС
 # -----------------------------------------------------------------------------
 col_main, col_empty = st.columns([1, 1])
 
 with col_main:
-    # Узкий блок под переключатели языка и года (0.20 от ширины)
+    # Узкий блок под селекторы (0.20 от ширины)
     col_selects, col_space = st.columns([0.20, 0.80])
     
     with col_selects:
@@ -97,19 +92,24 @@ with col_main:
             if not query_input.strip():
                 st.warning("⚠️ Пожалуйста, введите запрос для расчета.")
             else:
-                # Анимация загрузки ("Паровозик едет")
                 with st.spinner(t["spinner_text"]):
-                    # Вызов основной функции расчета
-                    calc_result = process_ady_calculation(query_input, fraxt_year)
+                    # Вызов вашей логики
+                    res = calculate_tariff(query_input, fraxt_year)
                 
                 st.subheader(t["results_header"])
                 
-                # Показ результатов расчета
-                st.success(f"Запрос успешно обработан: **{query_input}**")
+                # ВЫВОД РЕЗУЛЬТАТОВ НА ЭКРАН (Карточки с ответами)
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Маршрут", f"{res['from_station']} ➔ {res['to_station']}")
+                col2.metric("Расстояние", f"{res['distance']} км")
+                col3.metric("Вагон / Вес", f"{res['wagon_type']} / {res['weight']} т")
                 
-                # Подключите вывод вашей таблицы/карточек с результатами:
-                # st.dataframe(calc_result) или st.json(calc_result)
+                st.divider()
+                
+                res_usd, res_azn = st.columns(2)
+                res_usd.metric("Итого ($ USD)", f"${res['total_usd']:,.2f}")
+                res_azn.metric("Итого (AZN)", f"{res['total_azn']:,.2f} ₼")
 
     except Exception as err:
-        st.error("⚠️ Произошла ошибка при выполнении расчета:")
+        st.error("⚠️ Ошибка при расчете тарифа:")
         st.code(traceback.format_exc())
