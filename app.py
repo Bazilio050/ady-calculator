@@ -1,11 +1,11 @@
 import streamlit as st
 import traceback
 
-# 1. Настройки страницы
+# 1. Настройки страницы (компактная ширина, как в оригинале)
 st.set_page_config(
     page_title="AGT Cargo - ADY Tarif Kalkulyatoru",
     page_icon="🚂",
-    layout="wide"
+    layout="centered"
 )
 
 # 2. Переводы интерфейса
@@ -36,23 +36,21 @@ TRANSLATIONS = {
     }
 }
 
-# 3. Переключатели языка и года
-col_lang, col_year = st.columns(2)
+# 3. Логотип и вертикальные селекторы (Fraxt ili строго ПОД Dil / Language)
+# При необходимости раскомментируйте логотип:
+# st.image("logo.png", width=160)
 
-with col_lang:
-    lang = st.selectbox("🌐 Dil / Language:", ["Azərbaycan", "Русский", "English"])
-
-with col_year:
-    fraxt_year = st.selectbox("⚙️ Fraxt ili:", [2026, 2025])
+lang = st.selectbox("🌐 Dil / Language:", ["Azərbaycan", "Русский", "English"])
+fraxt_year = st.selectbox("⚙️ Fraxt ili:", [2026, 2025])
 
 t = TRANSLATIONS[lang]
 
-# Заголовок
+# 4. Заголовок
 st.markdown(f"## {t['title']}")
 st.caption(f"{t['subtitle']}")
 st.divider()
 
-# 4. Форма только для текста запроса
+# 5. Поле ввода запроса и кнопка
 try:
     query_input = st.text_input(
         label=t["search_label"],
@@ -68,7 +66,7 @@ try:
             st.warning("⚠️ Пожалуйста, введите запрос для расчета.")
         else:
             st.subheader(t["results_header"])
-            # Здесь вызывается логика парсинга вашего текста и расчета тарифа
+            # Здесь вызывается логика обработки запроса
             st.success(f"Запрос принят: **{query_input}**")
 
 except Exception as err:
