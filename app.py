@@ -525,6 +525,7 @@ if st.button(t["calc_btn"], type="primary"):
 
                 st.markdown(f"#### ⚙️ {t['sec2_title']}")
                 
+                # ИДЕАЛЬНЫЙ ПОРЯДОК: БАЗА -> КУРС -> 1.04 -> 1.015 -> 0.85 (СПС В САМОМ КОНЦЕ!)
                 table2_rows = [
                     f"| **{t['lbl_base_rate']}** | {base_chf:.2f} CHF/t ({p2.get('table_info_text', '')}) |",
                     f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate_text', f'1 USD = {ex_rate} CHF')} |",
@@ -558,40 +559,10 @@ if st.button(t["calc_btn"], type="primary"):
                     + "\n".join(table3_rows)
                 )
 
-                # Сборка примечаний
+                # --- СБОРКА ПРИМЕЧАНИЙ (ПОСЛЕДОВАТЕЛЬНОСТЬ) ---
                 auto_notes = []
                 
-                if is_sps:
-                    auto_notes.append(t["note_sps"])
-
+                # 1. Условия расчета (дистанция и вес)
                 ship_type = str(p1.get("shipment_type", "")).lower() if isinstance(p1, dict) else ""
                 if is_min_dist_applied:
                     if "idxal" in ship_type or "импорт" in ship_type or "import" in ship_type:
-                        auto_notes.append(t["note_import_dist"])
-                    elif "ixrac" in ship_type or "экспорт" in ship_type or "export" in ship_type:
-                        auto_notes.append(t["note_export_dist"])
-
-                if is_min_weight_applied:
-                    auto_notes.append(t["note_min_weight"])
-
-                if is_import_tm:
-                    auto_notes.append(t["note_timber_metal"])
-                    
-                if is_loaded:
-                    auto_notes.append(t["note_coef_1015"])
-
-                auto_notes.append(t["note_express"])
-
-                if auto_notes:
-                    st.markdown(f"**{t['notes_title']}**")
-                    for idx, note in enumerate(auto_notes, start=1):
-                        st.markdown(f"{idx}. *{note}*")
-
-                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
-
-        except Exception as e:
-            train_holder.empty()
-            st.error(f"Error: {str(e)}")
-
-st.markdown("---")
-st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
