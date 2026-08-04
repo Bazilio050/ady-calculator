@@ -278,12 +278,12 @@ client = genai.Client(api_key=api_key)
 # 7. ДВИЖОК ОПРЕДЕЛЕНИЯ ТИПА ПЕРЕВОЗКИ В PYTHON
 def determine_shipment_type_and_table(st_from, st_to):
     sf = st_from.lower().strip()
-    st = st_to.lower().strip()
+    st_val = st_to.lower().strip()
 
     border_keywords = ["eksport", "eksp", "eks.", "eks", "liman", "aşırma"]
     
     is_from_border = any(k in sf for k in border_keywords) or sf in ["yalama", "astara", "böyük kəsik", "boyuk kesik", "culfa", "ələt", "alet"]
-    is_to_border = any(k in st for k in border_keywords) or st in ["yalama", "astara", "böyük kəsik", "boyuk kesik", "culfa", "ələt", "alet"]
+    is_to_border = any(k in st_val for k in border_keywords) or st_val in ["yalama", "astara", "böyük kəsik", "boyuk kesik", "culfa", "ələt", "alet"]
 
     if is_from_border and is_to_border:
         return "transit", "Table_4_Tariffs.txt"
@@ -552,30 +552,4 @@ if st.button(t["calc_btn"], type="primary"):
             )
 
             prompt_header = (
-                f"Extract data for (Freight Year: {selected_year},"
-                f" Language: {selected_lang}):\n{user_input}\n\n"
-            )
-            prompt_text = prompt_header + get_static_rules()
-
-            data = call_gemini_json(client, prompt_text, dyn_instruction)
-
-            train_holder.empty()
-
-            st.success(t["success"].format(selected_year))
-            st.markdown(f"### {t['result_title']}")
-
-            p2 = data.get("part2", {})
-            if isinstance(p2, list) and len(p2) > 0:
-                p2 = p2[0]
-
-            if isinstance(p2, dict):
-                st_from = str(p2.get("station_from", ""))
-                st_to = str(p2.get("station_to", ""))
-
-                # 1. Автоматическое определение типа перевозки и таблицы в Python
-                ship_type_key, target_table = determine_shipment_type_and_table(st_from, st_to)
-                
-                type_display_map = {
-                    "transit": t["type_transit"],
-                    "import": t["type_import"],
-                    "export": t["type_export"],
+                f"Extract data
