@@ -247,11 +247,40 @@
         "type": "transit_refrigerators_once",
         "coefficient_value": 1.20,
         "apply_once": true,
-        "description_ru": "Транзитные перевозки (груженыe и порожние) АРВ, рефрижераторных секций и реф-контейнеров - применяется один раз (bir dəfə)",
+        "description_ru": "Транзитные перевозки (груженые и порожние) АРВ, рефрижераторных секций и реф-контейнеров - применяется один раз (bir dəfə)",
         "apply_for_modes": ["transit"],
         "equipment_types": ["ARV", "refrigerator_section", "refrigerator_container"],
         "state": ["loaded", "empty"]
       }
     ]
+  },
+  "section_3_1_1_universal_wagons": {
+    "_source": "3.1.1. Universal vaqonlarda yüklərin daşınması",
+    "_page": 18,
+    "table_selection_rules": {
+      "import_and_export": {
+        "description_ru": "Для импорта и экспорта базовые тарифы берутся из Таблицы 3",
+        "table": 3
+      },
+      "transit": {
+        "description_ru": "Для транзита базовые тарифы берутся из Таблицы 4",
+        "table": 4
+      },
+      "exceptions": ["oversized", "dangerous"]
+    },
+    "inventory_park_empty_return": {
+      "description_ru": "Возврат порожних вагонов инвентарного парка ЖД после выгрузки в страну приписки — БЕСПЛАТНО",
+      "tariff_usd": 0.0
+    },
+    "non_ferrous_metals_coefficient_1_20": {
+      "coefficient_value": 1.20,
+      "description_ru": "Повышающий коэффициент 1,20 для повагонных отправок цветных металлов, изделий и сплавов по указанному списку ГНГ",
+      "gng_prefixes": [
+        "28045090", "28049", "28054", "32121", "7106", "7107", "7108", "7109",
+        "7110", "7111", "7112", "7115", "74", "75", "76", "78", "79", "80", "81",
+        "8302", "83079", "8309", "8311", "85481"
+      ],
+      "exceptions": ["7401", "7418", "7501", "7615", "81052"]
+    }
   }
 }
