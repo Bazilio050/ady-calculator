@@ -558,4 +558,46 @@ if st.button(t["calc_btn"], type="primary"):
                     + "\n".join(table3_rows)
                 )
 
-                #
+                # --- СБОРКА ПРИМЕЧАНИЙ (СТРОГИЙ ПОРЯДОК С ВЫРОВНЕННЫМИ ОТСТУПАМИ) ---
+                auto_notes = []
+                
+                # 1. Условия расчета (дистанция и вес)
+                ship_type = str(p1.get("shipment_type", "")).lower() if isinstance(p1, dict) else ""
+                if is_min_dist_applied:
+                    if "idxal" in ship_type or "импорт" in ship_type or "import" in ship_type:
+                        auto_notes.append(t["note_import_dist"])
+                    elif "ixrac" in ship_type or "экспорт" in ship_type or "export" in ship_type:
+                        auto_notes.append(t["note_export_dist"])
+
+                if is_min_weight_applied:
+                    auto_notes.append(t["note_min_weight"])
+
+                # 2. Продуктовый коэффициент (1.04)
+                if is_import_tm:
+                    auto_notes.append(t["note_timber_metal"])
+                    
+                # 3. Коэффициент груженого хода (1.015)
+                if is_loaded:
+                    auto_notes.append(t["note_coef_1015"])
+
+                # 4. Собственный вагон (СПС / 0.85)
+                if is_sps:
+                    auto_notes.append(t["note_sps"])
+
+                # 5. ADY Express (+2%)
+                auto_notes.append(t["note_express"])
+
+                # Вывод примечаний
+                if auto_notes:
+                    st.markdown(f"**{t['notes_title']}**")
+                    for idx, note in enumerate(auto_notes, start=1):
+                        st.markdown(f"{idx}. *{note}*")
+
+                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
+
+        except Exception as e:
+            train_holder.empty()
+            st.error(f"Error: {str(e)}")
+
+st.markdown("---")
+st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
