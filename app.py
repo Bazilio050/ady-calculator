@@ -421,4 +421,179 @@ def compute_python_tariff(base_chf, exchange_rate, is_sps, is_import_timber_meta
         
     formula_str = " * ".join(formula_parts) + f" = {current_val:.2f} USD/t"
     net_rate_str = f"{current_val:.2f} USD/t"
-    express_rate_str = f"{(current_val * 1.
+    express_val = current_val * 1.02
+    express_rate_str = f"{express_val:.2f} USD/t"
+    
+    return formula_str, net_rate_str, express_rate_str
+
+
+# 10. Компактная структура JSON для максимальной экономии токенов
+def get_static_rules():
+    schema_dict = {
+        "part1": {
+            "route": "string",
+            "shipment_type": "string",
+            "distance": "string",
+            "cargo_and_wagon": "string",
+            "weight_info": "string",
+            "period": "string"
+        },
+        "part2": {
+            "exchange_rate_val": 0.79,
+            "exchange_rate_text": "1 USD = 0.79 CHF",
+            "base_tariff_chf": 14.45,
+            "table_info_text": "Table 3, 191-200 km, 45 t",
+            "is_sps": True,
+            "is_import_timber_metal": True,
+            "is_loaded_1015": True,
+            "is_min_weight_applied": False,
+            "is_min_distance_applied": False
+        }
+    }
+
+    return (
+        "Extract shipment parameters and return JSON matching exactly this schema:\n"
+        + json.dumps(schema_dict, indent=2)
+    )
+
+
+# 11. ОКОШКО ДЛЯ ВВОДА ПОЛЬЗОВАТЕЛЯ
+user_input = st.text_area(
+    t["input_header"], height=150, placeholder=t["input_placeholder"]
+)
+
+
+# 12. Основной процесс расчетной кнопки
+if st.button(t["calc_btn"], type="primary"):
+    if not user_input.strip():
+        st.warning(t["warning_empty"])
+    else:
+        train_holder = st.empty()
+        train_holder.markdown(
+            f"""
+            <div class="train-track">
+                <div class="train-animation">═══ 🚃 🚃 🚃 🚃 🚃 🚃 🚂</div>
+            </div>
+            <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        try:
+            dyn_instruction = load_selective_context(
+                user_input, selected_year, selected_lang
+            )
+
+            prompt_header = (
+                f"Extract data for (Freight Year: {selected_year},"
+                f" Language: {selected_lang}):\n{user_input}\n\n"
+            )
+            prompt_text = prompt_header + get_static_rules()
+
+            data = call_gemini_json(client, prompt_text, dyn_instruction)
+
+            train_holder.empty()
+
+            st.success(t["success"].format(selected_year))
+            st.markdown(f"### {t['result_title']}")
+
+            # Раздел 1
+            st.markdown(f"#### 📍 {t['sec1_title']}")
+            p1 = data.get("part1", {})
+            if isinstance(p1, list) and len(p1) > 0:
+                p1 = p1[0]
+
+            if isinstance(p1, dict):
+                col_param = t['col_param']
+                col_val = t['col_val']
+                lbl_route = t['lbl_route']
+                lbl_type = t['lbl_type']
+                lbl_dist = t['lbl_dist']
+                lbl_cargo = t['lbl_cargo']
+                lbl_weight = t['lbl_weight']
+                lbl_period = t['lbl_period']
+                
+                val_route = p1.get('route', '-')
+                val_type = p1.get('shipment_type', '-')
+                val_dist = p1.get('distance', '-')
+                val_cargo = p1.get('cargo_and_wagon', '-')
+                val_weight = p1.get('weight_info', '-')
+                val_period = p1.get('period', '-')
+
+                table1_md = (
+                    f"| {col_param} | {col_val} |\n"
+                    f"| :--- | :--- |\n"
+                    f"| **{lbl_route}** | {val_route} |\n"
+                    f"| **{lbl_type}** | {val_type} |\n"
+                    f"| **{lbl_dist}** | {val_dist} |\n"
+                    f"| **{lbl_cargo}** | {val_cargo} |\n"
+                    f"| **{lbl_weight}** | {val_weight} |\n"
+                    f"| **{lbl_period}** | {val_period} |"
+                )
+                st.markdown(table1_md)
+
+            # Раздел 2 & 3: Математика на Python
+            p2 = data.get("part2", {})
+            if isinstance(p2, list) and len(p2) > 0:
+                p2 = p2[0]
+
+            if isinstance(p2, dict):
+                base_chf = float(p2.get("base_tariff_chf", 0.0))
+                ex_rate = float(p2.get("exchange_rate_val", 0.79))
+                is_sps = bool(p2.get("is_sps", False))
+                is_import_tm = bool(p2.get("is_import_timber_metal", False))
+                is_loaded = bool(p2.get("is_loaded_1015", True))
+                
+                # Флаги примечаний
+                is_min_weight_applied = bool(p2.get("is_min_weight_applied", False))
+                is_min_dist_applied = bool(p2.get("is_min_distance_applied", False))
+
+                # Вычисление формулы
+                formula_str, net_rate_str, express_rate_str = compute_python_tariff(
+                    base_chf, ex_rate, is_sps, is_import_tm, is_loaded
+                )
+
+                st.markdown(f"#### ⚙️ {t['sec2_title']}")
+                
+                table2_rows = [
+                    f"| **{t['lbl_base_rate']}** | {base_chf:.2f} CHF/t ({p2.get('table_info_text', '')}) |",
+                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate_text', f'1 USD = {ex_rate} CHF')} |",
+                ]
+
+                if is_import_tm:
+                    table2_rows.append(f"| **{t['lbl_coef_import']}** | 1.04 |")
+                if is_loaded:
+                    table2_rows.append(f"| **{t['lbl_coef_loaded']}** | 1.015 |")
+                if is_sps:
+                    table2_rows.append(f"| **{t['lbl_coef_sps']}** | 0.85 |")
+
+                st.markdown(
+                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
+                    + "\n".join(table2_rows)
+                )
+
+                # Раздел 3
+                st.markdown(f"#### 📐 {t['sec3_title']}")
+                st.markdown(f"**{t['formula_title']}**")
+                st.code(formula_str, language="text")
+
+                st.markdown(f"**{t['rates_title']}**")
+                table3_rows = [
+                    f"| **{t['lbl_net_rate']}** | **{net_rate_str}** |",
+                    f"| **{t['lbl_express_rate']}** | **{express_rate_str}** |"
+                ]
+
+                st.markdown(
+                    f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
+                    + "\n".join(table3_rows)
+                )
+
+                # Сборка примечаний
+                auto_notes = []
+                
+                if is_sps:
+                    auto_notes.append(t["note_sps"])
+
+                ship_type = str(p1.get("shipment_type", "")).lower() if isinstance(p1, dict) else ""
+                if is_min_dist_applied:
+                    if "
