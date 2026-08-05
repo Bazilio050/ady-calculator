@@ -42,6 +42,44 @@
       "inventory_desc": "Railway inventory park"
     }
   },
+  "currency_rates": {
+    "_description_ru": "Курсы швейцарского франка (CHF) к доллару США (USD) по кварталам",
+    "default_period": "Q3_2026",
+    "periods": [
+      {
+        "id": "Q1_2026",
+        "keywords": ["q1", "1-ci kvartal", "1-ci rüb", "1 квартал", "январь", "февраль", "март", "yanvar", "fevral", "mart", "01.", "02.", "03."],
+        "rate_usd_to_chf": 0.80,
+        "label_az": "01.01.2026 - 31.03.2026-cı il tarixləri üzrə",
+        "label_ru": "на период 01.01.2026г. - 31.03.2026г.",
+        "label_en": "for period 01.01.2026 - 31.03.2026"
+      },
+      {
+        "id": "Q2_2026",
+        "keywords": ["q2", "2-ci kvartal", "2-ci rüb", "2 квартал", "апрель", "май", "июнь", "aprel", "may", "iyun", "04.", "05.", "06."],
+        "rate_usd_to_chf": 0.80,
+        "label_az": "01.04.2026 - 30.06.2026-cı il tarixləri üzrə",
+        "label_ru": "на период 01.04.2026г. - 30.06.2026г.",
+        "label_en": "for period 01.04.2026 - 30.06.2026"
+      },
+      {
+        "id": "Q3_2026",
+        "keywords": ["q3", "3-cü kvartal", "3-cü rüb", "3 квартал", "июль", "август", "сентябрь", "iyul", "avgust", "sentyabr", "07.", "08.", "09."],
+        "rate_usd_to_chf": 0.79,
+        "label_az": "01.07.2026 - 30.09.2026-cı il tarixləri üzrə",
+        "label_ru": "на период 01.07.2026г. - 30.09.2026г.",
+        "label_en": "for period 01.07.2026 - 30.09.2026"
+      },
+      {
+        "id": "Q4_2026",
+        "keywords": ["q4", "4-cü kvartal", "4-cü rüb", "4 квартал", "октябрь", "ноябрь", "декабрь", "oktyabr", "noyabr", "dekabr", "10.", "11.", "12."],
+        "rate_usd_to_chf": 0.79,
+        "label_az": "01.10.2026 - 31.12.2026-cı il tarixləri üzrə",
+        "label_ru": "на период 01.10.2026г. - 31.12.2026г.",
+        "label_en": "for period 01.10.2026 - 31.12.2026"
+      }
+    ]
+  },
   "weight_rounding_table_1": {
     "_source": "Cədvəl 1",
     "_page": 9,
