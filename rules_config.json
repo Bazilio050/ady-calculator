@@ -5,8 +5,12 @@
     "year": 2026
   },
   "border_stations": {
-    "_description_ru": "Пограничные станции, к которым всегда добавляется суффикс -eksp.",
-    "suffix": "-eksp.",
+    "_description_ru": "Пограничные станции и их языковые суффиксы",
+    "suffixes": {
+      "AZ": "-eksp.",
+      "RU": "-эксп.",
+      "EN": "-exp."
+    },
     "list": [
       "Yalama",
       "Boyuk Kesik",
