@@ -305,7 +305,7 @@ def find_distance_in_file(st_from, st_to):
             break
             
     if not target_file:
-        return 204  # Значение по умолчанию, если файл не найден
+        return 204
 
     s1, s2 = st_from.lower(), st_to.lower()
     with open(target_file, "r", encoding="utf-8") as f:
@@ -324,15 +324,14 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons):
         t_file = f"Table{table_num}.txt"
 
     if not os.path.exists(t_file):
-        return 12.93, f"Cədvəl {table_num}, {distance_km} km, {billable_weight_tons} t"
+        return 12.93, f"Cədvəl {table_num}, {distance_km} km, {int(billable_weight_tons)} t"
 
     found_range_str = f"{distance_km} km"
-    rate_chf = 12.93  # Фоллбэк
+    rate_chf = 12.93
 
     with open(t_file, "r", encoding="utf-8") as f:
         lines = f.readlines()
         for line in lines:
-            # Поиск диапазона расстояний в строке
             r_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", line)
             if r_match:
                 d_min, d_max = int(r_match.group(1)), int(r_match.group(2))
@@ -340,7 +339,6 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons):
                     found_range_str = f"{d_min}-{d_max} km"
                     numbers = re.findall(r"(\d+[\.,]\d+|\d+)", line)
                     if len(numbers) >= 2:
-                        # Берем число соответствующее колонке веса
                         rate_chf = float(numbers[-1].replace(",", "."))
                     break
 
@@ -417,8 +415,8 @@ def call_gemini_nlu(client, user_input_text):
 
     return json.loads(raw_text.strip())
 
-# 5. ГЛАВНЫЙ PYTHON-ДВИЖОК РАСЧЕТА
-def process_full_calculation(nlu_data, user_input_raw, lang, year):
+# 5. ГЛАВНЫЙ PYTHON-ДВИЖОК РАСЧЕТА (t передан как параметр!)
+def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     config = load_rules_config()
 
     st_from = nlu_data.get("route_from", "Yalama")
@@ -426,7 +424,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year):
     gng = nlu_data.get("cargo_gng_code", "4407")
     cargo_name = nlu_data.get("cargo_name_raw", "Meşə materialları")
     act_weight = float(nlu_data.get("actual_weight_tons", 55.0))
-    park_type = nlu_data.get("park_type", "SPS").upper()
+    park_type = str(nlu_data.get("park_type", "SPS")).upper()
 
     # 1. Станции и погрансуффиксы
     border_info = config.get("border_stations", {})
@@ -443,6 +441,201 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year):
     # 2. Вид перевозки
     if is_from_border and is_to_border:
         shipment_type_code = "transit"
-        shipment_type_display = t["type_transit"]
+        shipment_type_display = ui_t["type_transit"]
     elif is_from_border:
-        shipment_type
+        shipment_type_code = "import"
+        shipment_type_display = ui_t["type_import"]
+    else:
+        shipment_type_code = "export"
+        shipment_type_display = ui_t["type_export"]
+
+    # 3. Расстояние
+    dist_km = find_distance_in_file(st_from, st_to)
+
+    # 4. Расчетный вес
+    billable_weight = act_weight
+    min_norms = config.get("minimal_weight_norms_gng", {}).get("rules", [])
+    for rule in min_norms:
+        prefixes = rule.get("gng_prefixes", [])
+        if any(str(gng).startswith(p) for p in prefixes):
+            norm = rule.get("norm_tons", 0)
+            if billable_weight < norm:
+                billable_weight = float(norm)
+            break
+
+    # 5. Парк вагонов
+    lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
+    park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
+    cargo_wagon_display = f"GNG {gng} - {cargo_name}, Universal vaqon ({park_display})"
+
+    # 6. Выбор таблицы и получение базовой ставки CHF
+    table_num = 4 if shipment_type_code == "transit" else 3
+    base_chf, table_details = get_base_tariff_chf(table_num, dist_km, billable_weight)
+    base_tariff_display = f"{base_chf:.2f} CHF/ton ({table_details})"
+
+    # 7. Курс CHF/USD
+    usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
+
+    # 8. Коэффициенты
+    coeffs = []
+    
+    if park_type == "SPS":
+        coeffs.append(("Özəl vaqon əmsalı" if lang == "AZ" else ("Собственный вагон" if lang == "RU" else "Private wagon"), 0.85))
+
+    if shipment_type_code == "import" and any(str(gng).startswith(p) for p in ["44", "72", "73"]):
+        coeffs.append(("İdxal əmsalı (Meşə/Metal)" if lang == "AZ" else ("Импортный коэф. (Лес/Металл)" if lang == "RU" else "Import coeff."), 1.04))
+
+    input_lower = user_input_raw.lower()
+    is_empty_run = any(k in input_lower for k in ["boş", "порожн", "empty"])
+    if not is_empty_run:
+        add_coeff_info = config.get("general_additional_coefficient_1_015", {})
+        val_1015 = add_coeff_info.get("coefficient_value", 1.015)
+        lbl_1015 = add_coeff_info.get("labels", {}).get(lang, "Əlavə əmsal")
+        coeffs.append((lbl_1015, val_1015))
+
+    # 9. ЧИСТАЯ МАТЕМАТИКА РАСЧЕТА СТАВКИ USD/t
+    final_rate = base_chf / usd_rate
+    formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
+
+    for _, c_val in coeffs:
+        final_rate *= c_val
+        formula_parts.append(f"{c_val}")
+
+    unit = "USD/t" if lang != "RU" else "USD/т"
+    formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit}"
+    express_rate_str = f"{final_rate * 1.02:.2f} {unit}"
+
+    # 10. Формирование примечаний (Qeydlər)
+    notes = []
+    if park_type == "SPS":
+        notes.append(ui_t["note_sps"])
+    if shipment_type_code == "import":
+        notes.append(ui_t["note_import"])
+    elif shipment_type_code == "export":
+        notes.append(ui_t["note_export"])
+    if act_weight < billable_weight:
+        notes.append(ui_t["note_min_weight"])
+    if any(c[1] == 1.04 for c in coeffs):
+        notes.append(ui_t["note_timber_metal"])
+    if any(c[1] == 1.015 for c in coeffs):
+        notes.append(ui_t["note_coef_1015"])
+    notes.append(ui_t["note_express"])
+
+    return {
+        "part1": {
+            "route": route_display,
+            "shipment_type": shipment_type_display,
+            "distance": f"{dist_km} km",
+            "cargo_and_wagon": cargo_wagon_display,
+            "weight_info": f"{int(act_weight)} t",
+            "period": f"{year}-cı fraxt ili"
+        },
+        "part2": {
+            "exchange_rate": exchange_display,
+            "base_tariff": base_tariff_display,
+            "coefficients": [{"name": name, "value": f"{val}"} for name, val in coeffs]
+        },
+        "part3": {
+            "formula": formula_str,
+            "net_ady_rate": f"{final_rate:.2f} {unit}",
+            "express_rate": express_rate_str,
+            "notes": notes
+        }
+    }
+
+
+# ==============================================================================
+#  STREAMLIT UI (Отрисовка результатов)
+# ==============================================================================
+
+user_input = st.text_area(
+    t["input_header"], height=150, placeholder=t["input_placeholder"]
+)
+
+if st.button(t["calc_btn"], type="primary"):
+    if not user_input.strip():
+        st.warning(t["warning_empty"])
+    else:
+        train_holder = st.empty()
+        train_holder.markdown(
+            f"""
+            <div class="train-track">
+                <div class="train-animation">═══ 🚃 🚃 🚃 🚃 🚃 🚃 🚂</div>
+            </div>
+            <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        try:
+            # ШАГ 1: Gemini считывает 8 параметров NLU
+            nlu_res = call_gemini_nlu(client, user_input)
+
+            # ШАГ 2 и 3: Python выполняет 100% логики и расчетов (передаем t)
+            data = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
+
+            train_holder.empty()
+
+            st.success(t["success"].format(selected_year))
+            st.markdown(f"### {t['result_title']}")
+
+            # Раздел 1
+            st.markdown(f"#### 📍 {t['sec1_title']}")
+            p1 = data["part1"]
+            table1_md = (
+                f"| {t['col_param']} | {t['col_val']} |\n"
+                f"| :--- | :--- |\n"
+                f"| **{t['lbl_route']}** | {p1['route']} |\n"
+                f"| **{t['lbl_type']}** | {p1['shipment_type']} |\n"
+                f"| **{t['lbl_dist']}** | {p1['distance']} |\n"
+                f"| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n"
+                f"| **{t['lbl_weight']}** | {p1['weight_info']} |\n"
+                f"| **{t['lbl_period']}** | {p1['period']} |"
+            )
+            st.markdown(table1_md)
+
+            # Раздел 2
+            st.markdown(f"#### ⚙️ {t['sec2_title']}")
+            p2 = data["part2"]
+            table2_rows = [
+                f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |",
+                f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |",
+            ]
+            for coeff in p2["coefficients"]:
+                table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
+
+            st.markdown(
+                f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
+                + "\n".join(table2_rows)
+            )
+
+            # Раздел 3
+            st.markdown(f"#### 📐 {t['sec3_title']}")
+            p3 = data["part3"]
+            st.markdown(f"**{t['formula_title']}**")
+            st.code(p3["formula"], language="text")
+
+            st.markdown(f"**{t['rates_title']}**")
+            table3_rows = [
+                f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |",
+                f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |"
+            ]
+            st.markdown(
+                f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
+                + "\n".join(table3_rows)
+            )
+
+            # Примечания
+            if p3["notes"]:
+                st.markdown(f"**{t['notes_title']}**")
+                for idx, note in enumerate(p3["notes"], start=1):
+                    st.markdown(f"{idx}. *{note}*")
+
+            st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
+
+        except Exception as e:
+            train_holder.empty()
+            st.error(f"Error: {str(e)}")
+
+st.markdown("---")
+st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
