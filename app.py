@@ -1,561 +1,521 @@
-import json
-import os
-import streamlit as st
-from google import genai
-from google.genai import types
-
-# 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
-st.set_page_config(
-    page_title="ADY Tarif Kalkulyatoru", page_icon="🚂", layout="wide"
-)
-
-# 2. Скрытие системных элементов Streamlit и адаптивные стили
-st.markdown(
-    """
-    <style>
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    .stAppHeader {display: none;}
-    footer {visibility: hidden;}
-
-    div[data-testid="stVerticalBlock"]:has(div[data-testid="stSelectbox"]) {
-        max-width: 100% !important;
-        margin-left: 0 !important;
-        margin-right: auto !important;
-    }
-
-    .custom-title {
-        font-size: 24px !important;
-        font-weight: 700;
-        color: var(--text-color, #1E293B);
-        margin-top: 10px;
-        margin-bottom: 2px;
-        text-align: left;
-    }
-    .custom-subtitle {
-        font-size: 14px !important;
-        color: #64748B;
-        margin-bottom: 15px;
-        text-align: left;
-    }
-
-    @keyframes train-move {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100vw); }
-    }
-    .train-track {
-        width: 100%;
-        overflow: hidden;
-        background: #F1F5F9;
-        border-radius: 6px;
-        padding: 4px 0;
-        margin: 6px 0;
-        white-space: nowrap;
-    }
-    .train-animation {
-        display: inline-block;
-        font-size: 14px;
-        animation: train-move 3s linear infinite;
-    }
-    .train-text {
-        font-size: 13px;
-        color: #475569;
-    }
-
-    .stTextArea textarea {
-        width: 100% !important;
-    }
-    </style>
-""",
-    unsafe_allow_html=True,
-)
-
-# 3. Переводы интерфейса
-UI_TEXT = {
-    "AZ": {
-        "title": "ADY Tarif Kalkulyatoru",
-        "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili",
-        "year_select": "Fraxt ili:",
-        "lang_select": "Dil / Language:",
-        "input_header": "Daşıma parametrlərini daxil edin:",
-        "input_placeholder": (
-            "Nümunə:\nMarşrut: Yalama - Abşeron\nYük: Kağız və ya karton"
-            " tullantıları (GNG 4707), 35 ton\nVəziyyət: SPS örtülü vaqon"
-        ),
-        "calc_btn": "🚀 Tarifi hesabla",
-        "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
-        "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...",
-        "success": "Hesablama uğurla tamamlandı! (ADY Policy {})",
-        "result_title": "📋 Hesablama nəticəsi:",
-        "sec1_title": "1. Marşrut və daşıma şərtləri",
-        "sec2_title": "2. Əmsallar və valyuta məzənnəsi",
-        "sec3_title": "3. Tarifin hesablanması",
-        "formula_title": "Hesablama düsturu:",
-        "rates_title": "Yekun tariflər:",
-        "notes_title": "Qeydlər:",
-        "disclaimer": (
-            "Qeyd olunan tariflərə stansiya xərcləri (yükləmə-boşaltma, tərtibat,"
-            " sənədləşmə, vaqonların verilməsi-yığılması və s.) və əlavə"
-            " yığımlar daxil deyildir."
-        ),
-        "col_param": "Parametr",
-        "col_val": "Qiymət / Həcm",
-        "col_rate_type": "Tarif növü",
-        "col_amount": "Məblağ",
-        "lbl_route": "Marşrut",
-        "lbl_type": "Daşıma növü",
-        "lbl_dist": "Məsafə",
-        "lbl_cargo": "Yük / Vəziyyət",
-        "lbl_weight": "Faktiki / Hesablaşma çəkisi",
-        "lbl_period": "Dövr",
-        "lbl_exchange": "CHF/USD",
-        "lbl_base_rate": "Baza tarifi",
-        "lbl_net_rate": "Yekün ADY tarifi",
-        "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
-        "api_warning": "⚠️ Xahiş olunur, GEMINI_API_KEY daxil edin.",
-        "api_label": "Gemini API Key:",
-        "note_sps": "Özəl vaqonlar (SPS) üçün 0.85 güzəşt əmsalı tətbiq olunmuşdur.",
-        "note_import": "İdxal rejimində minimal tarif məsafəsi norması 151 km-dir.",
-        "note_export": "İxrac rejimində minimal tarif məsafəsi norması 101 km-dir.",
-        "note_express": "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur.",
-        "note_timber_metal": "İdxal rejimində meşə materialları və qara metallar üçün 1.04 əmsalı tətbiq edilmişdir.",
-        "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
-        "note_min_weight": "Faktiki çəki minimal tarif normasından aşağı olduğu üçün hesablama minimal norma üzrə aparılmışdır.",
-    },
+{
+  "_document_info": {
+    "title": "2026-cı fraxt ili üçün beynəlxalq yük daşımaları üzrə tariflər",
+    "publisher": "Azərbaycan Dəmir Yolları (ADY)",
+    "year": 2026
+  },
+  "border_stations": {
+    "_description_ru": "Пограничные станции, к которым всегда добавляется суффикс -eksp.",
+    "suffix": "-eksp.",
+    "list": [
+      "Yalama",
+      "Boyuk Kesik",
+      "Böyük Kəsik",
+      "Astara",
+      "Culfa",
+      "Alat",
+      "Ələt"
+    ]
+  },
+  "language_abbreviations": {
+    "_description_ru": "Языковые термины и аббревиатуры для типов парка вагонов",
     "RU": {
-        "title": "Тарифный калькулятор ADY",
-        "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
-        "year_select": "Фрахтовый год:",
-        "lang_select": "Язык / Language:",
-        "input_header": "Введите данные по перевозке:",
-        "input_placeholder": (
-            "Пример:\nМаршрут: Ялама - Апшерон\nГруз: Отходы бумаги (ГНГ 4707),"
-            " 35 тонн\nСостояние: СПС крытый вагон"
-        ),
-        "calc_btn": "🚀 Рассчитать тариф",
-        "warning_empty": "Пожалуйста, введите условия расчета.",
-        "spinner_text": "Считаем тариф согласно Тарифной политике {}...",
-        "success": "Расчет успешно выполнен! (Тарифная политика {})",
-        "result_title": "📋 Результат расчета:",
-        "sec1_title": "1. Маршрут и условия перевозки",
-        "sec2_title": "2. Коэффициенты и курс валют",
-        "sec3_title": "3. Расчет тарифа",
-        "formula_title": "Формула расчета:",
-        "rates_title": "Итоговые тарифы:",
-        "notes_title": "Примечания:",
-        "disclaimer": (
-            "Ставки приведены без учета станционных расходов (погрузка-выгрузка,"
-            " маневровые работы, оформление документов, подача-уборка вагонов"
-            " и т.д.) и дополнительных сборов."
-        ),
-        "col_param": "Параметр",
-        "col_val": "Значение / Объем",
-        "col_rate_type": "Тип тарифа",
-        "col_amount": "Сумма",
-        "lbl_route": "Маршрут",
-        "lbl_type": "Вид перевозки",
-        "lbl_dist": "Расстояние",
-        "lbl_cargo": "Груз / Состояние",
-        "lbl_weight": "Фактический / Расчетный вес",
-        "lbl_period": "Период",
-        "lbl_exchange": "CHF/USD",
-        "lbl_base_rate": "Базовый тариф",
-        "lbl_net_rate": "Итоговый тариф",
-        "lbl_express_rate": "Итоговый тариф (включая ADY Express +2%)",
-        "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY.",
-        "api_label": "Введите Gemini API Key:",
-        "note_sps": "Применен скидочный коэффициент 0.85 для собственных вагонов (СПС).",
-        "note_import": "В режиме импорта минимальное тарифное расстояние составляет 151 км.",
-        "note_export": "В режиме экспорта минимальное тарифное расстояние составляет 101 км.",
-        "note_express": "Применен дополнительный коэффициент +2% за сервис ADY Express.",
-        "note_timber_metal": "В режиме импорта применен коэффициент 1.04 для лесных грузов и черных металлов.",
-        "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
-        "note_min_weight": "Так как фактический вес ниже минимальной нормы, расчет произведен по минимальной весовой норме.",
+      "private_wagon": "СПС",
+      "inventory_wagon": "МПС",
+      "private_desc": "Собственный/Приватный вагон",
+      "inventory_desc": "Инвентарный парк"
+    },
+    "AZ": {
+      "private_wagon": "SPS",
+      "inventory_wagon": "MPS",
+      "private_desc": "Özəl vaqon",
+      "inventory_desc": "ADY vaqonu (İnventar parkı)"
     },
     "EN": {
-        "title": "ADY Tariff Calculator",
-        "subtitle": "Railway freight tariff calculator for Azerbaijan — {} freight year",
-        "year_select": "Freight Year:",
-        "lang_select": "Language:",
-        "input_header": "Enter shipment details:",
-        "input_placeholder": (
-            "Example:\nRoute: Yalama - Absheron\nCargo: Paper scrap (NHM 4707),"
-            " 35 tons\nCondition: SPS covered wagon"
-        ),
-        "calc_btn": "🚀 Calculate Freight Rate",
-        "warning_empty": "Please enter shipment requirements.",
-        "spinner_text": "Calculating rates according to Tariff Policy {}...",
-        "success": "Calculation completed successfully! (Tariff Policy {})",
-        "result_title": "📋 Calculation Results:",
-        "sec1_title": "1. Route and Shipment Conditions",
-        "sec2_title": "2. Coefficients and Exchange Rate",
-        "sec3_title": "3. Rate Calculation",
-        "formula_title": "Calculation Formula:",
-        "rates_title": "Final Rates:",
-        "notes_title": "Notes:",
-        "disclaimer": (
-            "Rates are quoted excluding station charges (loading/unloading,"
-            " shunting, documentation, wagon positioning, etc.) and additional"
-            " fees."
-        ),
-        "col_param": "Parameter",
-        "col_val": "Value / Volume",
-        "col_rate_type": "Rate Type",
-        "col_amount": "Amount",
-        "lbl_route": "Route",
-        "lbl_type": "Shipment Type",
-        "lbl_dist": "Distance",
-        "lbl_cargo": "Cargo / Condition",
-        "lbl_weight": "Actual / Billable Weight",
-        "lbl_period": "Period",
-        "lbl_exchange": "CHF/USD",
-        "lbl_base_rate": "Base Tariff",
-        "lbl_net_rate": "Final Tariff",
-        "lbl_express_rate": "Final Tariff (incl. ADY Express +2%)",
-        "api_warning": "⚠️ Please provide GEMINI_API_KEY.",
-        "api_label": "Enter Gemini API Key:",
-        "note_sps": "Discount coefficient 0.85 applied for private wagons (SPS).",
-        "note_import": "Minimum tariff distance for import is 151 km.",
-        "note_export": "Minimum tariff distance for export is 101 km.",
-        "note_express": "Additional coefficient +2% applied for ADY Express service.",
-        "note_timber_metal": "Coefficient 1.04 applied for import of timber and ferrous metals.",
-        "note_coef_1015": "Additional coefficient applied: 1.015.",
-        "note_min_weight": "Since actual weight is below minimum billable weight, calculation is based on minimum weight.",
-    },
-}
-
-# 4. Логотип
-logo_file = None
-for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
-    if os.path.exists(filename):
-        logo_file = filename
-        break
-
-if logo_file:
-    st.image(logo_file, width=200)
-
-# 5. Селекторы
-col_controls, _ = st.columns([4.0, 6.0])
-
-with col_controls:
-    selected_lang = st.selectbox(
-        f"🌐 {UI_TEXT['AZ']['lang_select']}",
-        options=["AZ", "RU", "EN"],
-        index=0,
-        format_func=lambda x: {
-            "AZ": "Azərbaycan",
-            "RU": "Русский",
-            "EN": "English",
-        }[x],
-    )
-    t = UI_TEXT[selected_lang]
-
-    selected_year = st.selectbox(
-        f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0
-    )
-
-st.markdown(
-    f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True
-)
-st.markdown(
-    f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>',
-    unsafe_allow_html=True,
-)
-
-# 6. API Key
-api_key = os.environ.get("GEMINI_API_KEY")
-if not api_key:
-    api_key = st.text_input(t["api_label"], type="password")
-
-if not api_key:
-    st.warning(t["api_warning"])
-    st.stop()
-
-client = genai.Client(api_key=api_key)
-
-
-# 6.1 Функция кэшируемого чтения конфигурации rules_config.json
-@st.cache_data(show_spinner=False)
-def load_rules_config():
-    if os.path.exists("rules_config.json"):
-        with open("rules_config.json", "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-
-# 7. Загрузка динамического контекста (БЕЗ system_instruction.txt)
-@st.cache_data(show_spinner=False)
-def load_selective_context(user_query, year_label, lang):
-    query_lower = user_query.lower()
-
-    # Больше НЕ подключаем system_instruction.txt
-    files_to_load = [
-        "GNG_Column_Mapping.txt",
-        "Security_Cargo_GNG.txt",
-        "Currency_Exchange.txt",
-    ]
-
-    for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
-        if os.path.exists(dist_file):
-            files_to_load.append(dist_file)
-            break
-
-    if any(k in query_lower for k in ["tranzit", "транзит", "transit"]):
-        for f_name in ["Table_4_Tariffs.txt", "Table4.txt", "Cədvəl4.txt"]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-    elif any(
-        k in query_lower
-        for k in [
-            "цистерн",
-            "çən",
-            "tank",
-            "нефть",
-            "neft",
-            "газ",
-            "qaz",
-            "масло",
-            "спирт",
-            "2709",
-            "2710",
-        ]
-    ):
-        for f_name in [
-            "Table_6_Tariffs.txt",
-            "Table_6_Tanks.txt",
-            "Table6.txt",
-            "Cədvəl6.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-    elif any(
-        k in query_lower
-        for k in ["реф", "ref", "термос", "termos", "автовоз", "автопоезд"]
-    ):
-        for f_name in [
-            "Table_5_Tariffs.txt",
-            "Table_5_Reef.txt",
-            "Table5.txt",
-            "Cədvəl5.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-    elif any(
-        k in query_lower
-        for k in ["контейнер", "konteyner", "tank-container", "ref-container"]
-    ):
-        for f_name in [
-            "Table_9_Tariffs.txt",
-            "Table_10_Tariffs.txt",
-            "Table9.txt",
-            "Table10.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-    else:
-        for f_name in ["Table_3_Tariffs.txt", "Table3.txt", "Cədvəl3.txt"]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-
-    loaded_rules = []
-    for txt_file in set(files_to_load):
-        if os.path.exists(txt_file):
-            with open(txt_file, "r", encoding="utf-8") as f:
-                loaded_rules.append(f"--- BAZA SƏNƏDİ: {txt_file} ---\n" + f.read())
-
-    rules_text = "\n\n".join(loaded_rules)
-
-    # Динамическое чтение пограничных станций из rules_config.json
-    config = load_rules_config()
-    border_info = config.get("border_stations", {})
-    border_stations_list = border_info.get(
-        "list", ["Yalama", "Boyuk Kesik", "Astara", "Culfa", "Alat"]
-    )
-    suffix = border_info.get("suffix", "-eksp.")
-    stations_str = ", ".join(border_stations_list)
-
-    system_instruction = (
-        f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
-        f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-        f"СТРОГИЕ ПРАВИЛА:\n"
-        f"1. Для RU языка использовать 'СПС' и 'МПС'. Для AZ/EN — 'SPS' и 'MPS'.\n"
-        f"2. МИН. РАСЧЕТНАЯ НОРМА ЧЕКИ: Если фактический вес < минимальной нормы, СТАВКА СТРОГО БЕРЕТСЯ ИЗ КОЛОНКИ МИН. НОРМЫ!\n"
-        f"3. МПС vs СПС: Для МПС берется 100% базовая ставка. Для СПС применяется коэффициент 0.85.\n"
-        f"4. СТАНЦИИ: Если станция пограничная ({stations_str}), писать с припиской '{suffix}' (например, 'Yalama{suffix} - Böyük Kəsik{suffix}').\n\n"
-        + rules_text
-    )
-    return system_instruction
-
-
-# 8. Вызов Gemini — СТРОГО gemini-3.6-flash И temperature=0.0
-def call_gemini_json(client, prompt, instruction):
-    model_name = "gemini-3.6-flash"
-
-    response = client.models.generate_content(
-        model=model_name,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=instruction,
-            temperature=0.0,
-            response_mime_type="application/json",
-        ),
-    )
-
-    raw_text = response.text.strip()
-    if raw_text.startswith("```json"):
-        raw_text = raw_text[7:]
-    elif raw_text.startswith("```"):
-        raw_text = raw_text[3:]
-    if raw_text.endswith("```"):
-        raw_text = raw_text[:-3]
-
-    return json.loads(raw_text.strip())
-
-
-# 9. Интерфейс расчета
-user_input = st.text_area(
-    t["input_header"], height=150, placeholder=t["input_placeholder"]
-)
-
-
-def get_static_rules():
-    rules_file = "prompt_rules.txt"
-    rules_content = ""
-    if os.path.exists(rules_file):
-        with open(rules_file, "r", encoding="utf-8") as f:
-            rules_content = f.read()
-
-    schema_dict = {
-        "part1": {
-            "route": "string",
-            "shipment_type": "string",
-            "distance": "string",
-            "cargo_and_wagon": "string",
-            "weight_info": "string",
-            "period": "string",
-        },
-        "part2": {
-            "exchange_rate": "string",
-            "base_tariff": "string",
-            "coefficients": [{"name": "string", "value": "string"}],
-        },
-        "part3": {
-            "formula": "string",
-            "net_ady_rate": "string",
-            "express_rate": "string",
-            "notes": [],
-        },
+      "private_wagon": "SPS",
+      "inventory_wagon": "MPS",
+      "private_desc": "Private wagon",
+      "inventory_desc": "Railway inventory park"
     }
-
-    return (
-        rules_content
-        + "\n\nOUTPUT FORMAT (MANDATORY JSON):\nReturn ONLY a valid JSON object matching exactly this structure:\n"
-        + json.dumps(schema_dict, indent=2)
-    )
-
-
-if st.button(t["calc_btn"], type="primary"):
-    if not user_input.strip():
-        st.warning(t["warning_empty"])
-    else:
-        train_holder = st.empty()
-        train_holder.markdown(
-            f"""
-            <div class="train-track">
-                <div class="train-animation">═══ 🚃 🚃 🚃 🚃 🚃 🚃 🚂</div>
-            </div>
-            <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        try:
-            dyn_instruction = load_selective_context(
-                user_input, selected_year, selected_lang
-            )
-
-            prompt_header = (
-                f"Make exact calculation for (Freight Year: {selected_year},"
-                f" Language: {selected_lang}):\n{user_input}\n\nCRITICAL RULES (OUTPUT"
-                f" LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
-            )
-            prompt_text = prompt_header + get_static_rules()
-
-            data = call_gemini_json(client, prompt_text, dyn_instruction)
-
-            train_holder.empty()
-
-            st.success(t["success"].format(selected_year))
-            st.markdown(f"### {t['result_title']}")
-
-            # Раздел 1
-            st.markdown(f"#### 📍 {t['sec1_title']}")
-            p1 = data.get("part1", {})
-            if isinstance(p1, list) and len(p1) > 0:
-                p1 = p1[0]
-
-            if isinstance(p1, dict):
-                col_param = t['col_param']
-                col_val = t['col_val']
-                lbl_route = t['lbl_route']
-                lbl_type = t['lbl_type']
-                lbl_dist = t['lbl_dist']
-                lbl_cargo = t['lbl_cargo']
-                lbl_weight = t['lbl_weight']
-                lbl_period = t['lbl_period']
-
-                val_route = p1.get('route', '-')
-                val_type = p1.get('shipment_type', '-')
-                val_dist = p1.get('distance', '-')
-                val_cargo = p1.get('cargo_and_wagon', '-')
-                val_weight = p1.get('weight_info', '-')
-                val_period = p1.get('period', '-')
-
-                table1_md = (
-                    f"| {col_param} | {col_val} |\n"
-                    f"| :--- | :--- |\n"
-                    f"| **{lbl_route}** | {val_route} |\n"
-                    f"| **{lbl_type}** | {val_type} |\n"
-                    f"| **{lbl_dist}** | {val_dist} |\n"
-                    f"| **{lbl_cargo}** | {val_cargo} |\n"
-                    f"| **{lbl_weight}** | {val_weight} |\n"
-                    f"| **{lbl_period}** | {val_period} |"
-                )
-                st.markdown(table1_md)
-
-            # Раздел 2
-            st.markdown(f"#### ⚙️ {t['sec2_title']}")
-            p2 = data.get("part2", {})
-            if isinstance(p2, list) and len(p2) > 0:
-                p2 = p2[0]
-
-            if isinstance(p2, dict):
-                table2_rows = [
-                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate', '-')} |",
-                    f"| **{t['lbl_base_rate']}** | {p2.get('base_tariff', '-')} |",
-                ]
-
-                coeffs = p2.get("coefficients", [])
-                if isinstance(coeffs, list):
-                    for coeff in coeffs:
-                        if isinstance(coeff, dict):
-                            table2_rows.append(
-                                f"| **{coeff.get('name', '')}** | {coeff.get('value', '')} |"
-                            )
-
-                st.markdown(
-                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
-                    + "\n".join(table2_rows)
-                )
-
-            # Раздел 3
-            st.markdown(f"#### 📐 {t['sec3_title']}")
-            p3 = data.get("part3", {})
-            if isinstance(p3, list) and len(p3) > 0:
-                p3 = p3[0]
-
-            if isinstance(p
+  },
+  "weight_rounding_table_1": {
+    "_source": "Cədvəl 1",
+    "_page": 9,
+    "_description_az": "Göndərmələrin tona qədər yuvarlaqlaşdırılmış hesablama çəkiləri",
+    "_description_ru": "Округление фактического веса отправки до расчетной весовой категории (тонн)",
+    "rules": [
+      {"min": 0, "max": 12, "rounded": 10},
+      {"min": 13, "max": 16, "rounded": 15},
+      {"min": 17, "max": 23, "rounded": 20},
+      {"min": 24, "max": 26, "rounded": 25},
+      {"min": 27, "max": 31, "rounded": 30},
+      {"min": 32, "max": 36, "rounded": 35},
+      {"min": 37, "max": 40, "rounded": 40},
+      {"min": 41, "max": 46, "rounded": 45},
+      {"min": 47, "max": 51, "rounded": 50},
+      {"min": 52, "max": 55, "rounded": 55},
+      {"min": 56, "max": 999, "rounded": 60}
+    ]
+  },
+  "minimal_weight_norms_gng": {
+    "_source": "Vaqonların minimal yükləmə normasından asılı olan yüklər",
+    "_pages": "11-12",
+    "_description_az": "Yüklərin YHN kodlarına görə vaqonların minimal yükləmə normaları (tonla)",
+    "_description_ru": "Минимальные нормы загрузки вагонов по кодам ГНГ (YHN) в тоннах",
+    "rules": [
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Daş kömür",
+        "cargo_name_ru": "Каменный уголь",
+        "gng_prefixes": ["2701", "2702"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Bütün filizlər, alüminium meşə/oksid (2618-2621 başqa)",
+        "cargo_name_ru": "Все руды, оксид алюминия (кроме 2618-2621)",
+        "gng_prefixes": ["26", "7203", "7401", "7501", "81052", "28182000"],
+        "exceptions": ["2618", "2619", "2620", "2621"]
+      },
+      {
+        "norm_tons": 45,
+        "cargo_name_az": "Meşə materialları",
+        "cargo_name_ru": "Лесоматериалы",
+        "gng_prefixes": ["4403", "4404", "4407"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Çuqun",
+        "cargo_name_ru": "Чугун",
+        "gng_prefixes": ["7201"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Gübrələr (3101 başqa)",
+        "cargo_name_ru": "Удобрения (кроме 3101)",
+        "gng_prefixes": ["31"],
+        "exceptions": ["3101"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Qənd",
+        "cargo_name_ru": "Сахар",
+        "gng_prefixes": ["1701"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Un",
+        "cargo_name_ru": "Мука",
+        "gng_prefixes": ["1101", "1102", "1103"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Dənli bitkilər",
+        "cargo_name_ru": "Зерновые культуры",
+        "gng_prefixes": ["10", "1107"]
+      },
+      {
+        "norm_tons": 50,
+        "cargo_name_az": "Pambıq",
+        "cargo_name_ru": "Хлопок",
+        "gng_prefixes": ["14042", "5201", "5202", "5203"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Qara metallar (7204 başqa)",
+        "cargo_name_ru": "Черные металлы (кроме 7204)",
+        "gng_prefixes": ["72"],
+        "exceptions": ["7204"]
+      },
+      {
+        "norm_tons": 50,
+        "cargo_name_az": "Qara metalların lomu və qırıntıları (72045 başqa)",
+        "cargo_name_ru": "Лом и отходы черных металлов (кроме 72045)",
+        "gng_prefixes": ["7204"],
+        "exceptions": ["72045"]
+      },
+      {
+        "norm_tons": 60,
+        "cargo_name_az": "Metallar (qara metaldan başqa - 60t norma)",
+        "cargo_name_ru": "Цветные металлы и сплавы (норма 60т)",
+        "gng_prefixes": [
+          "28045000", "28045090", "28049", "28053", "28054", "28054010", "28054090",
+          "7106", "7107", "7108", "7109", "7110", "7111", "7112", "7402", "7403",
+          "7405", "7406", "7502", "7504", "7601", "7603", "7801", "78042", "7901",
+          "79039", "8001", "81011", "810194", "810199", "81021", "810294", "810299",
+          "81039", "81039090", "810411", "810419", "81049", "81060010", "81072",
+          "81082", "81092", "81101", "81110011", "81121200", "811221", "81122110",
+          "81122190", "81123020", "81124100", "81125100", "81129291", "81129200",
+          "81129210", "81129231", "81129281", "81129289", "81130020"
+        ],
+        "exceptions": ["71101910"]
+      },
+      {
+        "norm_tons": 50,
+        "cargo_name_az": "Əlvan metallar və məmulatlar (страница 12 - 50t norma)",
+        "cargo_name_ru": "Цветные металлы и изделия (стр 12 - норма 50т)",
+        "gng_prefixes": [
+          "32121", "71101910", "7407", "7408", "7409", "7410", "7413", "7505", "7506",
+          "7604", "7605", "7606", "7607", "76149", "7804", "78060080", "7904", "7905",
+          "8003", "80070010", "80070080", "81019600", "81029500", "81029600", "81032",
+          "81039010", "81089030", "81089050"
+        ],
+        "exceptions": ["78042"]
+      },
+      {
+        "norm_tons": 40,
+        "cargo_name_az": "Əlvan metallar və məmulatlar (страница 12 - 40t norma)",
+        "cargo_name_ru": "Цветные металлы и изделия (стр 12 - норма 40т)",
+        "gng_prefixes": [
+          "7404", "7503", "7602", "7802", "7902", "7903", "8002", "81019700",
+          "81029700", "81033000", "81042", "81043", "81053", "81073", "81083",
+          "81093", "81102", "81110019", "81121300", "81122200", "81124110",
+          "81125200", "81130040", "85481", "85493", "85499", "85492000"
+        ],
+        "exceptions": ["79039"]
+      },
+      {
+        "norm_tons": 30,
+        "cargo_name_az": "Əlvan metallar və məmulatlar (страница 12 - 30t norma)",
+        "cargo_name_ru": "Цветные металлы и изделия (стр 12 - норма 30т)",
+        "gng_prefixes": [
+          "71159", "7411", "7412", "7415", "7419", "7507", "7508", "7608", "7609",
+          "7610", "7611", "7612", "7613", "76152", "7616", "7806", "7907", "8007",
+          "81059", "81060090", "81079", "81089", "81099", "81109", "81110090",
+          "811219", "81122900", "81129920", "81129970", "811259", "81129900",
+          "81129930", "81130090", "8302", "83061", "83079", "8309", "8311",
+          "8481", "8482", "84831", "84832", "84833", "84839000", "84839089", "8484"
+        ]
+      }
+    ]
+  },
+  "minimal_tariff_distances": {
+    "_source": "Minimal tarif məsafələri",
+    "_page": 13,
+    "_description_az": "Bütün növ daşınma (yüklü və boş) haqları hesablanarkən minimal tarif məsafələri (km)",
+    "_description_ru": "Минимальные тарифные расстояния для всех видов перевозок (км)",
+    "export_min_km": 101,
+    "import_min_km": 151
+  },
+  "import_export_general_coefficient_1_50": {
+    "_source": "Əlavə tətbiq edilən əmsallar və istiqamətlər üzrə xüsusi tariflər",
+    "_page": 14,
+    "_description_ru": "При расчете платы за импортные и экспортные перевозки (включая порожний возврат) к базовым тарифам СТРОГО применяется коэффициент 1,50 за исключением 5 конкретных пунктов.",
+    "_description_az": "İdxal və ixrac daşınma haqqı hesablanarkən baza tariflərinə 1,50 əmsalı tətbiq edilir (5 müstəsna hal nəzərə alınmaqla)",
+    "coefficient_value": 1.50,
+    "apply_for_modes": ["import", "export"],
+    "exceptions": [
+      {
+        "id": 1,
+        "type": "table_3",
+        "description_ru": "Расчеты по Таблице №3"
+      },
+      {
+        "id": 2,
+        "type": "timber_universal_wagon",
+        "description_ru": "Древесина и лесоматериалы (ГНГ 4403, 4404, 4407-4413), перевозимые повагонными отправками в универсальных вагонах",
+        "only_universal_wagons": true,
+        "gng_prefixes": ["4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"]
+      },
+      {
+        "id": 3,
+        "type": "ferrous_metals_universal_wagon",
+        "description_ru": "Черные металлы (ГНГ 72, 7301-7307), перевозимые повагонными отправками в универсальных вагонах",
+        "only_universal_wagons": true,
+        "gng_prefixes": ["72", "7301", "7302", "7303", "7304", "7305", "7306", "7307"]
+      },
+      {
+        "id": 4,
+        "type": "methanol_tanks",
+        "description_ru": "Метанол, перевозимый в цистернах и бункерных полувагонах",
+        "wagon_types": ["tank", "bunker_semi_wagon"],
+        "gng_prefixes": ["290511"]
+      },
+      {
+        "id": 5,
+        "type": "oil_products_table6_col2",
+        "description_ru": "Нефть и нефтепродукты (Таблица 6, столбец 2)",
+        "gng_prefixes": ["2709", "2710"]
+      }
+    ]
+  },
+  "import_timber_and_metals_coefficient_1_04": {
+    "_source": "Əlavə tətbiq edilən əmsallar və istiqamətlər üzrə xüsusi tariflər",
+    "_page": 14,
+    "_description_ru": "При импортных перевозках к базовым тарифам на лесоматериалы и черные металлы применяется коэффициент 1,04",
+    "_description_az": "İdxal daşımaları zamanı taxta və qara metalların baza tariflərinə əlavə 1,04 əmsalı tətbiq edilir",
+    "coefficient_value": 1.04,
+    "apply_for_modes": ["import"],
+    "gng_prefixes": [
+      "4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413",
+      "72", "7301", "7302", "7303", "7304", "7305", "7306", "7307"
+    ]
+  },
+  "specific_1_20_coefficients": {
+    "_source": "Əlavə tətbiq edilən əmsallar və istiqamətlər üzrə xüsusi tariflər",
+    "_page": 14,
+    "_description_ru": "Специфические правила применения коэффициента 1,20",
+    "rules": [
+      {
+        "type": "transit_route_alat_boyuk_kesik",
+        "coefficient_value": 1.20,
+        "description_ru": "Транзитные перевозки (груженые и порожние) по маршруту Алят – Беюк-Кясик – Алят в обоих направлениях (туда и обратно) НА ВСЕ ПЕРЕВОЗКИ БЕЗ ИСКЛЮЧЕНИЯ",
+        "description_az": "Ələt – Böyük Kəsik – Ələt marşrutu ilə tranzit daşımalar (yüklü və boş) üzrə baza tariflərinə 1,20 əmsalı tətbiq edilir",
+        "apply_for_modes": ["transit"],
+        "route_directions": [
+          "Alat -> Boyuk Kesik",
+          "Boyuk Kesik -> Alat"
+        ],
+        "cargo_exceptions": "NONE",
+        "state": ["loaded", "empty"]
+      },
+      {
+        "type": "import_transit_oil_tanks_once",
+        "coefficient_value": 1.20,
+        "apply_once": true,
+        "description_ru": "Импорт или транзит нефти и нефтепродуктов в цистернах и бункерных полувагонах (Таблица 6, столбец 2) - применяется один раз (bir dəfə)",
+        "apply_for_modes": ["import", "transit"],
+        "wagon_types": ["tank", "bunker_semi_wagon"],
+        "gng_prefixes": ["2709", "2710"]
+      },
+      {
+        "type": "transit_refrigerators_once",
+        "coefficient_value": 1.20,
+        "apply_once": true,
+        "description_ru": "Транзитные перевозки (груженые и порожние) АРВ, рефрижераторных секций и реф-контейнеров - применяется один раз (bir dəfə)",
+        "apply_for_modes": ["transit"],
+        "equipment_types": ["ARV", "refrigerator_section", "refrigerator_container"],
+        "state": ["loaded", "empty"]
+      }
+    ]
+  },
+  "section_3_1_1_universal_wagons": {
+    "_source": "3.1.1. Universal vaqonlarda yüklərin daşınması",
+    "_page": 18,
+    "table_selection_rules": {
+      "import_and_export": {
+        "description_ru": "Для импорта и экспорта базовые тарифы берутся из Таблицы 3",
+        "table": 3
+      },
+      "transit": {
+        "description_ru": "Для транзита базовые тарифы берутся из Таблицы 4",
+        "table": 4
+      },
+      "exceptions": ["oversized", "dangerous"]
+    },
+    "inventory_park_empty_return": {
+      "description_ru": "Возврат порожних вагонов инвентарного парка ЖД после выгрузки в страну приписки — БЕСПЛАТНО",
+      "tariff_usd": 0.0
+    },
+    "non_ferrous_metals_coefficient_1_20": {
+      "coefficient_value": 1.20,
+      "description_ru": "Повышающий коэффициент 1,20 для повагонных отправок цветных металлов, изделий и сплавов по указанному списку ГНГ",
+      "gng_prefixes": [
+        "28045090", "28049", "28054", "32121", "7106", "7107", "7108", "7109",
+        "7110", "7111", "7112", "7115", "74", "75", "76", "78", "79", "80", "81",
+        "8302", "83079", "8309", "8311", "85481"
+      ],
+      "exceptions": ["7401", "7418", "7501", "7615", "81052"]
+    }
+  },
+  "refrigerator_wagons_section_3_1_2_1": {
+    "_source": "3.1.2.1. Refrijerator (soyuducu) vaqonlarda daşıma",
+    "_page": 25,
+    "weight_base_rules": {
+      "under_25_tons": {
+        "description_ru": "Загрузка менее 25 тонн: берется ставка 20-тонной категории Таблицы 7 (ст. 5) и умножается на 25 тонн (Таблица 5, ст. 2)",
+        "calculation": "table7_col5_rate * 25"
+      },
+      "25_tons_and_above": {
+        "description_ru": "Загрузка 25 тонн и более: берется ставка 25-тонной категории Таблицы 7 (ст. 6) и умножается на расчетный вес (Таблица 5, ст. 3)",
+        "calculation": "table7_col6_rate * rounded_weight"
+      }
+    },
+    "section_composition_coefficients": {
+      "1_diesel_1_cargo_wagon": 1.70,
+      "1_diesel_2_cargo_wagons": 1.40,
+      "1_diesel_3_cargo_wagons": 1.10,
+      "1_diesel_4_cargo_wagons": 1.00,
+      "1_diesel_5_or_more_cargo_wagons": 0.85
+    },
+    "diesel_generator_and_crew_fees": {
+      "inventory_park": {
+        "description_ru": "Для дизель-генератора перевозчика и бригады оплата включена в тариф",
+        "fee": 0.0
+      },
+      "private_park": {
+        "description_ru": "Для приватного дизель-генератора берется 0.12 CHF за ось-км. За проезд бригады плата не взимается.",
+        "rate_per_axle_km_chf": 0.12
+      },
+      "empty_wagon_in_loaded_section": {
+        "description_ru": "Порожний вагон в составе груженой рефсекции (независимо от принадлежности) - 0.10 CHF за ось-км",
+        "rate_per_axle_km_chf": 0.10
+      }
+    },
+    "fruit_veg_discount_0_60": {
+      "_description_ru": "Скидка 0.60 для плодоовощной продукции, произведенной в странах Тарифного Соглашения. Применяется СТРОГО при наличии флага происхождения в запросе.",
+      "coefficient_value": 0.60,
+      "requires_explicit_origin_flag": true,
+      "origin_flag_name": "is_produced_in_tariff_agreement_country",
+      "gng_prefixes": [
+        "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710",
+        "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810",
+        "12129100"
+      ],
+      "etsng_prefixes": [
+        "04100", "04200", "04300", "04400", 
+        "05100", "05200", "05300"
+      ]
+    }
+  },
+  "thermos_and_substitution_rules_section_3_1_2_2": {
+    "_source": "3.1.2.2. Vaqon-termos və vaqon-ledniklərdə daşınma",
+    "_page": 26,
+    "table_references": {
+      "table": 5,
+      "columns": [4, 5],
+      "built_in_discount": 0.60,
+      "description_ru": "В ставки Таблицы 5 (ст. 4 и 5) для термосов уже заложен коэффициент 0,60"
+    },
+    "substitution_rules": [
+      {
+        "type": "ref_instead_of_covered_IZVK",
+        "mark": "İZVK",
+        "description_ru": "Рефвагон вместо крытого вагона без поддержания температуры. Расчет как для универсального вагона, мин. вес 40 тонн.",
+        "min_weight_tons": 40,
+        "calculation_as": "universal_wagon"
+      },
+      {
+        "type": "ref_instead_of_thermos_IZVT",
+        "mark": "İZVT",
+        "description_ru": "Рефвагон вместо вагона-термоса. Расчет как для вагона-термоса.",
+        "calculation_as": "thermos_wagon"
+      },
+      {
+        "type": "thermos_instead_of_covered_VTVK",
+        "mark": "VTVK",
+        "description_ru": "Вагон-термос по просьбе отправителя вместо крытого вагона. Расчет как универсальный вагон, мин. вес 60 тонн.",
+        "min_weight_tons": 60,
+        "calculation_as": "universal_wagon"
+      }
+    ]
+  },
+  "automobile_transporters_section_3_1_2_3": {
+    "_source": "3.1.3. Avtomobillərin daşınması üçün nəzərdə tutulmuş ixtisaslaşdırılmış hərəkət heyətində daşınma",
+    "_pages": "26-27",
+    "base_rules": {
+      "table": 5,
+      "column": 6,
+      "min_weight_tons": 10,
+      "base_category_tons": 10,
+      "description_ru": "Автовозы: расчет по Таблице 5 (ст. 6) с использованием базовых ставок 10-тонной категории Таблицы 7. Расчетный вес не менее 10 тонн."
+    },
+    "double_deck_platform_rule": {
+      "coefficient_value": 0.80,
+      "description_ru": "Двухъярусные платформы-автовозы: применяется коэффициент 0.80 к тарифным ставкам крытых автовозов (Таблица 5, ст. 6)",
+      "apply_to": "double_deck_platforms"
+    }
+  },
+  "table_6_liquid_cargo_mapping": {
+    "_source": "Cədvəl 6 - Çəndə və bunker yarımvaqonlarda daşınan maye yüklərin tarif qiymətləri",
+    "_page": 31,
+    "base_weight_category_tons": 25,
+    "columns": {
+      "col_2_oil_and_products": {
+        "column_number": 2,
+        "name_az": "Neft və neft məhsulları",
+        "name_ru": "Нефть и нефтепродукты",
+        "gng_prefixes": [
+          "27090010", "27090090", "2710", "2712", "2713", "27149000", "2715",
+          "340319", "340399", "3404", "381121", "381129", "38170050", "38241000"
+        ]
+      },
+      "col_3_energy_gases": {
+        "column_number": 3,
+        "name_az": "Enerjili qazlar",
+        "name_ru": "Энергетические газы",
+        "gng_prefixes": ["2705", "2711"]
+      },
+      "col_4_gases_and_hydrocarbons": {
+        "column_number": 4,
+        "name_az": "Qazlar və karbohidrogenlər",
+        "name_ru": "Газы и углеводороды",
+        "gng_prefixes": [
+          "27071", "27072", "27073", "27074", "27075", "27079920", "28011",
+          "28013000", "28013010", "28041", "28042", "28043", "28044", "28112100",
+          "28121100", "28141", "28539030", "2901", "2902", "29321200",
+          "29333100", "29333955", "3817"
+        ],
+        "exceptions": ["38170050"]
+      },
+      "col_5_alcohols_and_phenols": {
+        "column_number": 5,
+        "name_az": "Spirt və fenollar",
+        "name_ru": "Спирты и фенолы",
+        "gng_prefixes": [
+          "1520", "270779980", "2905", "2906", "2907", "2908", "29094100",
+          "29321300", "3820", "38237", "3826", "39053"
+        ]
+      },
+      "col_6_perishable_food": {
+        "column_number": 6,
+        "name_az": "Tez xarab olan yüklər",
+        "name_ru": "Скоропортящиеся и пищевые наливные грузы",
+        "gng_prefixes": [
+          "0401", "04032000", "04032039", "04039091", "04039099", "04041000",
+          "04041048", "04049089", "0405", "0406", "1501", "1502", "1503", "1504",
+          "1505", "1506", "15161000", "15161090", "151790", "15180091", "15180099",
+          "2009", "2105", "2201", "2202", "2203", "2204", "2205", "2206"
+        ]
+      },
+      "col_7_other_liquids_default": {
+        "column_number": 7,
+        "name_az": "Digər yüklər",
+        "name_ru": "Прочие наливные грузы (по умолчанию)",
+        "is_default": true
+      },
+      "col_8_private_tanks_hydrocarbons": {
+        "column_number": 8,
+        "name_az": "Özəl çənlər (Karbohidrogenlər)",
+        "name_ru": "Углеводороды в приватных цистернах (СПС)",
+        "only_private_wagons": true,
+        "gng_prefixes": [
+          "27071", "27072", "27073", "290211", "29022", "29023",
+          "290241", "290244", "29026", "29027", "29029"
+        ]
+      }
+    }
+  },
+  "private_wagons_section_3_2": {
+    "_source": "3.2. Özəl (daşıyıcıya mənsub olmayan) yük vaqonlarında yüklü və boş halda daşımalar",
+    "_pages": "41-42",
+    "general_private_wagon_coefficient": {
+      "coefficient_value": 0.85,
+      "description_ru": "Основной понижающий коэффициент 0.85 при перевозке в приватных/арендованных вагонах (пп. 3.1 и 3.5)"
+    },
+    "empty_return_private_wagons": {
+      "rate_per_axle_km_chf": 0.10,
+      "description_ru": "Порожний пробег приватных вагонов (возврат после выгрузки, под погрузку, промывку) - 0.10 CHF за ось-км",
+      "empty_gng_codes": ["99210000", "99213000", "99220000", "99223000"]
+    },
+    "empty_inventory_containers_on_private_platforms": {
+      "rate_per_axle_km_chf": 0.10,
+      "description_ru": "Перевозка порожних контейнеров инвентарного парка на приватных платформах - 0.10 CHF за ось-км"
+    },
+    "containers_on_private_wagons": {
+      "coefficient_value": 0.85,
+      "description_ru": "Коэффициент 0.85 за перевозку контейнеров на приватных вагонах (п. 3.4)"
+    },
+    "private_tanks_hydrocarbons_0_70": {
+      "coefficient_value": 0.70,
+      "description_ru": "Специальный коэффициент 0.70 (вместо 0.85) для углеводородов по Таблице 6 (столбец 8) в приватных цистернах",
+      "gng_prefixes": [
+        "27071", "27072", "27073", "290211", "29022", "29023",
+        "290241", "290242", "290243", "290244", "29026", "29027", "29029"
+      ]
+    },
+    "road_trains_and_bodies_on_private_platforms": {
+      "coefficient_value": 0.85,
+      "description_ru": "Коэффициент 0.85 для автопоездов и съемных кузовов по Таблице 5 (ст. 7 и 8) на приватных платформах"
+    }
+  }
+}
