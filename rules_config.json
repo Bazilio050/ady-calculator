@@ -17,6 +17,27 @@
       "Ələt"
     ]
   },
+  "language_abbreviations": {
+    "_description_ru": "Языковые термины и аббревиатуры для типов парка вагонов",
+    "RU": {
+      "private_wagon": "СПС",
+      "inventory_wagon": "МПС",
+      "private_desc": "Собственный/Приватный вагон",
+      "inventory_desc": "Инвентарный парк"
+    },
+    "AZ": {
+      "private_wagon": "SPS",
+      "inventory_wagon": "MPS",
+      "private_desc": "Özəl vaqon",
+      "inventory_desc": "ADY vaqonu (İnventar parkı)"
+    },
+    "EN": {
+      "private_wagon": "SPS",
+      "inventory_wagon": "MPS",
+      "private_desc": "Private wagon",
+      "inventory_desc": "Railway inventory park"
+    }
+  },
   "weight_rounding_table_1": {
     "_source": "Cədvəl 1",
     "_page": 9,
