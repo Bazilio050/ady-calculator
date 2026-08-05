@@ -1,3 +1,4 @@
+import csv
 import json
 import os
 import re
@@ -285,7 +286,7 @@ client = genai.Client(api_key=api_key)
 
 
 # ==============================================================================
-#  PYTHON LOGIC ENGINE (100% Вся логика и математика на чистом Python)
+#  PYTHON LOGIC ENGINE
 # ==============================================================================
 
 @st.cache_data(show_spinner=False)
@@ -295,7 +296,36 @@ def load_rules_config():
             return json.load(f)
     return {}
 
-# 1. Поиск расстояния по файлам расстояний
+# Кэшированная загрузка справочника ГНГ кодов из CSV
+@st.cache_data(show_spinner=False)
+def load_gng_dictionary():
+    gng_map = {}
+    if os.path.exists("gng_codes.csv"):
+        for enc in ["cp1251", "utf-8-sig", "utf-8"]:
+            try:
+                with open("gng_codes.csv", mode="r", encoding=enc) as f:
+                    # Автоопределение разделителя (запятая или точка с запятой)
+                    content = f.read(4096)
+                    sep = ";" if ";" in content else ","
+                    f.seek(0)
+                    reader = csv.DictReader(f, delimiter=sep)
+                    for row in reader:
+                        # Считываем поле кодов и наименования
+                        code_val = str(row.get("GNG_text", row.get("GNG_tex", ""))).strip()
+                        name_val = str(row.get("Наименование", "")).strip()
+                        if code_val:
+                            gng_map[code_val] = name_val
+                            # Для коротких кодов (первые 4 цифры)
+                            if len(code_val) >= 4:
+                                short_code = code_val[:4]
+                                if short_code not in gng_map:
+                                    gng_map[short_code] = name_val
+                break
+            except Exception:
+                continue
+    return gng_map
+
+# 1. Поиск расстояния
 def find_distance_in_file(st_from, st_to):
     dist_files = ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]
     target_file = None
@@ -317,7 +347,7 @@ def find_distance_in_file(st_from, st_to):
                     return int(match.group(1))
     return 204
 
-# 2. Определение базовой тарифной ставки CHF из файла таблицы
+# 2. Базовый тариф CHF
 def get_base_tariff_chf(table_num, distance_km, billable_weight_tons):
     t_file = f"Table_{table_num}_Tariffs.txt"
     if not os.path.exists(t_file):
@@ -344,7 +374,7 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons):
 
     return rate_chf, f"Cədvəl {table_num}, {found_range_str}, {int(billable_weight_tons)} t"
 
-# 3. Курс валюты на Python
+# 3. Курс CHF/USD
 def get_currency_rate(requested_period, lang="AZ"):
     config = load_rules_config()
     currency_data = config.get("currency_rates", {}) if isinstance(config, dict) else {}
@@ -370,7 +400,7 @@ def get_currency_rate(requested_period, lang="AZ"):
             "rate_usd_to_chf": 0.79,
             "label_az": "01.07.2026 - 30.09.2026-cı il tarixləri üzrə",
             "label_ru": "на период 01.07.2026г. - 30.09.2026г.",
-            "label_en": "for period 01.07.2026 - 31.03.2026"
+            "label_en": "for period 01.07.2026 - 30.09.2026"
         }
 
     rate = selected_period.get("rate_usd_to_chf", 0.79)
@@ -379,7 +409,7 @@ def get_currency_rate(requested_period, lang="AZ"):
 
     return rate, f"1 USD = {rate:.2f} CHF ({label_text})"
 
-# 4. ВЫЗОВ GEMINI ТОЛЬКО ДЛЯ NLU (Парсинг 8 базовых параметров)
+# 4. ВЫЗОВ GEMINI ДЛЯ NLU
 def call_gemini_nlu(client, user_input_text):
     prompt = (
         "Extract shipment parameters from text into JSON. Return ONLY JSON:\n"
@@ -415,18 +445,19 @@ def call_gemini_nlu(client, user_input_text):
 
     return json.loads(raw_text.strip())
 
-# 5. ГЛАВНЫЙ PYTHON-ДВИЖОК РАСЧЕТА (t передан как параметр!)
+# 5. ГЛАВНЫЙ PYTHON-ДВИЖОК
 def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     config = load_rules_config()
+    gng_dict = load_gng_dictionary()
 
     st_from = nlu_data.get("route_from", "Yalama")
     st_to = nlu_data.get("route_to", "Absheron")
-    gng = nlu_data.get("cargo_gng_code", "4407")
-    cargo_name = nlu_data.get("cargo_name_raw", "Meşə materialları")
+    gng = str(nlu_data.get("cargo_gng_code", "4407")).strip()
+    cargo_name_nlu = str(nlu_data.get("cargo_name_raw", "")).strip()
     act_weight = float(nlu_data.get("actual_weight_tons", 55.0))
     park_type = str(nlu_data.get("park_type", "SPS")).upper()
 
-    # 1. Станции и погрансуффиксы
+    # Станции и погрансуффиксы
     border_info = config.get("border_stations", {})
     border_list = border_info.get("list", ["Yalama", "Boyuk Kesik", "Böyük Kəsik", "Astara", "Culfa", "Alat", "Ələt"])
     suffix = border_info.get("suffixes", {}).get(lang, "-eksp.")
@@ -438,7 +469,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     display_to = f"{st_to}{suffix}" if is_to_border else st_to
     route_display = f"{display_from} - {display_to}"
 
-    # 2. Вид перевозки
+    # Вид перевозки
     if is_from_border and is_to_border:
         shipment_type_code = "transit"
         shipment_type_display = ui_t["type_transit"]
@@ -449,40 +480,50 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         shipment_type_code = "export"
         shipment_type_display = ui_t["type_export"]
 
-    # 3. Расстояние
+    # Расстояние
     dist_km = find_distance_in_file(st_from, st_to)
 
-    # 4. Расчетный вес
+    # Расчетный вес
     billable_weight = act_weight
     min_norms = config.get("minimal_weight_norms_gng", {}).get("rules", [])
     for rule in min_norms:
         prefixes = rule.get("gng_prefixes", [])
-        if any(str(gng).startswith(p) for p in prefixes):
+        if any(gng.startswith(p) for p in prefixes):
             norm = rule.get("norm_tons", 0)
             if billable_weight < norm:
                 billable_weight = float(norm)
             break
 
-    # 5. Парк вагонов
+    # Парк вагонов и наименование груза (С ЗAЩИТОЙ ОТ ДУБЛИРОВАНИЯ)
     lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
     park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
-    cargo_wagon_display = f"GNG {gng} - {cargo_name}, Universal vaqon ({park_display})"
 
-    # 6. Выбор таблицы и получение базовой ставки CHF
+    # Умная подстановка наименования груза из gng_codes.csv
+    resolved_cargo_name = ""
+    if lang == "RU" and gng in gng_dict:
+        resolved_cargo_name = gng_dict[gng]
+    elif cargo_name_nlu and not cargo_name_nlu.isdigit() and cargo_name_nlu != gng:
+        resolved_cargo_name = cargo_name_nlu
+
+    if resolved_cargo_name:
+        cargo_wagon_display = f"GNG {gng} - {resolved_cargo_name}, Universal vaqon ({park_display})"
+    else:
+        cargo_wagon_display = f"GNG {gng}, Universal vaqon ({park_display})"
+
+    # Базовая ставка
     table_num = 4 if shipment_type_code == "transit" else 3
     base_chf, table_details = get_base_tariff_chf(table_num, dist_km, billable_weight)
     base_tariff_display = f"{base_chf:.2f} CHF/ton ({table_details})"
 
-    # 7. Курс CHF/USD
+    # Курс CHF/USD
     usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
 
-    # 8. Коэффициенты
+    # Коэффициенты
     coeffs = []
-    
     if park_type == "SPS":
         coeffs.append(("Özəl vaqon əmsalı" if lang == "AZ" else ("Собственный вагон" if lang == "RU" else "Private wagon"), 0.85))
 
-    if shipment_type_code == "import" and any(str(gng).startswith(p) for p in ["44", "72", "73"]):
+    if shipment_type_code == "import" and any(gng.startswith(p) for p in ["44", "72", "73"]):
         coeffs.append(("İdxal əmsalı (Meşə/Metal)" if lang == "AZ" else ("Импортный коэф. (Лес/Металл)" if lang == "RU" else "Import coeff."), 1.04))
 
     input_lower = user_input_raw.lower()
@@ -493,7 +534,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         lbl_1015 = add_coeff_info.get("labels", {}).get(lang, "Əlavə əmsal")
         coeffs.append((lbl_1015, val_1015))
 
-    # 9. ЧИСТАЯ МАТЕМАТИКА РАСЧЕТА СТАВКИ USD/t
+    # Математический расчет
     final_rate = base_chf / usd_rate
     formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
 
@@ -505,7 +546,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit}"
     express_rate_str = f"{final_rate * 1.02:.2f} {unit}"
 
-    # 10. Формирование примечаний (Qeydlər)
+    # Примечания
     notes = []
     if park_type == "SPS":
         notes.append(ui_t["note_sps"])
@@ -545,7 +586,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
 
 # ==============================================================================
-#  STREAMLIT UI (Отрисовка результатов)
+#  STREAMLIT UI
 # ==============================================================================
 
 user_input = st.text_area(
@@ -568,10 +609,7 @@ if st.button(t["calc_btn"], type="primary"):
         )
 
         try:
-            # ШАГ 1: Gemini считывает 8 параметров NLU
             nlu_res = call_gemini_nlu(client, user_input)
-
-            # ШАГ 2 и 3: Python выполняет 100% логики и расчетов (передаем t)
             data = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
 
             train_holder.empty()
