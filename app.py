@@ -257,7 +257,7 @@ client = genai.Client(api_key=api_key)
 
 
 # ==============================================================================
-# 4. CACHED DATA LOADERS (Кэширование в оперативной памяти)
+# 4. CACHED DATA LOADERS (Кэширование в RAM)
 # ==============================================================================
 
 @st.cache_data(show_spinner=False)
@@ -361,7 +361,7 @@ def get_currency_rate(requested_period, lang="AZ"):
 
 
 # ==============================================================================
-# 5. GEMINI NLU CALL (Извлечение параметров)
+# 5. GEMINI NLU CALL
 # ==============================================================================
 def call_gemini_nlu(client, user_input_text):
     prompt = (
@@ -371,7 +371,7 @@ def call_gemini_nlu(client, user_input_text):
         '  "route_from": "string (origin station name without -eksp)",\n'
         '  "route_to": "string (destination station name without -eksp)",\n'
         '  "cargo_gng_code": "string (MUST extract 4-digit to 8-digit GNG/NHM code, e.g. 4407 or 44070000)",\n'
-        '  "cargo_name_raw": "string (cargo description in user input language, excluding GNG digits)",\n'
+        '  "cargo_name_raw": "string (commodity name ONLY, e.g. Timber/Meşə materialları/Лесоматериалы. EXCLUDE wagon types like covered/open/hopper/tank/gondola/крытый/полувагон/цистерна/SPS/MPS)",\n'
         '  "actual_weight_tons": float,\n'
         '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
@@ -379,7 +379,7 @@ def call_gemini_nlu(client, user_input_text):
         "}\n\n"
         "STRICT NLU RULES:\n"
         "1. Search specifically for GNG / NHM / ГНГ codes (4 to 8 digits long, e.g. 4407).\n"
-        "2. If user writes '4407', 'ГНГ 4407', or 'GNG 4407', set cargo_gng_code to '4407'.\n"
+        "2. Extract cargo_name_raw ONLY as the commodity name. Words like 'крытый', 'открытый', 'вагон', 'SPS', 'MPS', 'gondola' belong to wagon properties, NEVER cargo_name_raw!\n"
         "3. Keep station names clean (e.g. 'Yalama', 'Absheron', 'Boyuk Kesik').\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
@@ -479,9 +479,15 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
     park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
 
+    # Защитная фильтрация наименования груза от типов вагонов в Python
+    wagon_stop_words = ["крытый", "открытый", "вагон", "vaqon", "covered", "open", "sps", "mps", "спс", "мпс", "полувагон", "цистерна", "хоппер"]
+    clean_cargo_name = cargo_name_nlu
+    if clean_cargo_name.lower().strip() in wagon_stop_words:
+        clean_cargo_name = ""
+
     # Формирование строки груза
-    if cargo_name_nlu and not cargo_name_nlu.isdigit() and cargo_name_nlu != gng:
-        cargo_wagon_display = f"GNG {gng} - {cargo_name_nlu}, Universal vaqon ({park_display})"
+    if clean_cargo_name and not clean_cargo_name.isdigit() and clean_cargo_name != gng:
+        cargo_wagon_display = f"GNG {gng} - {clean_cargo_name}, Universal vaqon ({park_display})"
     elif gng:
         cargo_wagon_display = f"GNG {gng}, Universal vaqon ({park_display})"
     else:
