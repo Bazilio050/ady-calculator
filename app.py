@@ -331,14 +331,12 @@ def calculate_rate_on_python(data, user_input, usd_rate, lang):
     p2 = data.get("part2", {}) if isinstance(data, dict) else {}
     base_tariff_raw = p2.get("base_tariff", "")
     
-    # Извлечение чистой базовой ставки CHF из строки
     match = re.search(r"(\d+[\.,]\d+|\d+)", str(base_tariff_raw))
     if not match:
-        return data  # Возвращаем исх. данные, если число не найдено
+        return data
 
     base_val = float(match.group(1).replace(",", "."))
     
-    # Сбор коэффициентов из part2
     coeffs = p2.get("coefficients", [])
     coeff_list = []
     
@@ -350,7 +348,6 @@ def calculate_rate_on_python(data, user_input, usd_rate, lang):
                 if c_match:
                     coeff_list.append((c.get("name", ""), float(c_match.group(1).replace(",", "."))))
 
-    # Авто-проверка на доп. коэффициент 1.015 (если перевозка груженая)
     input_lower = user_input.lower()
     is_empty_run = any(k in input_lower for k in ["boş", "порожн", "empty"])
     
@@ -366,7 +363,6 @@ def calculate_rate_on_python(data, user_input, usd_rate, lang):
             coeffs.append({"name": label_name, "value": str(add_val)})
             p2["coefficients"] = coeffs
 
-    # Чистое математическое вычисление ставки USD/t
     final_rate = base_val / usd_rate
     formula_parts = [f"{base_val:.2f} / {usd_rate:.2f}"]
     
@@ -377,7 +373,6 @@ def calculate_rate_on_python(data, user_input, usd_rate, lang):
     unit = "USD/t" if lang != "RU" else "USD/т"
     formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit}"
     
-    # Формирование итоговой ставки с ADY Express (+2%)
     express_rate_val = final_rate * 1.02
     
     p3 = data.get("part3", {}) if isinstance(data, dict) else {}
@@ -599,7 +594,6 @@ if st.button(t["calc_btn"], type="primary"):
 
             train_holder.empty()
 
-            # Вычисление подбора курса и расчетов на чистом Python
             curr_info = get_currency_rate(user_input, selected_lang)
             usd_rate = curr_info["rate"]
             exchange_text = curr_info["formatted_text"]
@@ -703,4 +697,37 @@ if st.button(t["calc_btn"], type="primary"):
                 if any(k in input_check for k in ["sps", "özəl", "спс", "собствен"]):
                     auto_notes.append(t["note_sps"])
 
-                ship_type =
+                ship_type = str(p1.get("shipment_type", "")).lower()
+                if any(k in ship_type for k in ["idxal", "импорт", "import"]):
+                    auto_notes.append(t["note_import"])
+                elif any(k in ship_type for k in ["ixrac", "экспорт", "export"]):
+                    auto_notes.append(t["note_export"])
+
+                if ("faktiki" in weight_str or "фактическ" in weight_str) and ("min" in weight_str or "hesablaşma" in weight_str or "расчетн" in weight_str):
+                    auto_notes.append(t["note_min_weight"])
+
+                coeffs = p2.get("coefficients", []) if isinstance(p2, dict) else []
+                coeff_values = [str(c.get("value", "")) for c in coeffs if isinstance(c, dict)]
+                coeff_str = " ".join(coeff_values)
+
+                if "1.04" in coeff_str and "tranzit" not in ship_type and "транзит" not in ship_type:
+                    auto_notes.append(t["note_timber_metal"])
+                if "1.015" in coeff_str or "1,015" in coeff_str:
+                    auto_notes.append(t["note_coef_1015"])
+
+                if express_val:
+                    auto_notes.append(t["note_express"])
+
+                if auto_notes:
+                    st.markdown(f"**{t['notes_title']}**")
+                    for idx, note in enumerate(auto_notes, start=1):
+                        st.markdown(f"{idx}. *{note}*")
+
+                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
+
+        except Exception as e:
+            train_holder.empty()
+            st.error(f"Error: {str(e)}")
+
+st.markdown("---")
+st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
