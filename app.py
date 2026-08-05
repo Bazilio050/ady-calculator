@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -299,7 +300,6 @@ def get_currency_rate(user_query, lang="AZ"):
                     selected_period = p
                     break
 
-        # Если совпадений по ключевым словам нет — ищем Q3 по умолчанию
         if not selected_period:
             default_id = currency_data.get("default_period", "Q3_2026")
             for p in periods:
@@ -307,13 +307,12 @@ def get_currency_rate(user_query, lang="AZ"):
                     selected_period = p
                     break
 
-    # Жесткий запасной вариант (fallback), если вдруг config прочитался пустой
     if not selected_period or not isinstance(selected_period, dict):
         selected_period = {
             "rate_usd_to_chf": 0.79,
             "label_az": "01.07.2026 - 30.09.2026-cı il tarixləri üzrə",
             "label_ru": "на период 01.07.2026г. - 30.09.2026г.",
-            "label_en": "for period 01.07.2026 - 30.09.2026"
+            "label_en": "for period 01.07.2026 - 31.03.2026"
         }
 
     rate = selected_period.get("rate_usd_to_chf", 0.79)
@@ -324,6 +323,71 @@ def get_currency_rate(user_query, lang="AZ"):
         "rate": rate,
         "formatted_text": f"1 USD = {rate:.2f} CHF ({label_text})"
     }
+
+
+# 6.3 Вычисление математической формулы и итогового тарифа на чистом Python
+def calculate_rate_on_python(data, user_input, usd_rate, lang):
+    config = load_rules_config()
+    p2 = data.get("part2", {}) if isinstance(data, dict) else {}
+    base_tariff_raw = p2.get("base_tariff", "")
+    
+    # Извлечение чистой базовой ставки CHF из строки
+    match = re.search(r"(\d+[\.,]\d+|\d+)", str(base_tariff_raw))
+    if not match:
+        return data  # Возвращаем исх. данные, если число не найдено
+
+    base_val = float(match.group(1).replace(",", "."))
+    
+    # Сбор коэффициентов из part2
+    coeffs = p2.get("coefficients", [])
+    coeff_list = []
+    
+    if isinstance(coeffs, list):
+        for c in coeffs:
+            if isinstance(c, dict):
+                v_str = str(c.get("value", ""))
+                c_match = re.search(r"(\d+[\.,]\d+|\d+)", v_str)
+                if c_match:
+                    coeff_list.append((c.get("name", ""), float(c_match.group(1).replace(",", "."))))
+
+    # Авто-проверка на доп. коэффициент 1.015 (если перевозка груженая)
+    input_lower = user_input.lower()
+    is_empty_run = any(k in input_lower for k in ["boş", "порожн", "empty"])
+    
+    has_1015 = any(abs(v - 1.015) < 0.001 for _, v in coeff_list)
+    if not is_empty_run and not has_1015:
+        add_coeff_info = config.get("general_additional_coefficient_1_015", {})
+        add_val = add_coeff_info.get("coefficient_value", 1.015)
+        labels = add_coeff_info.get("labels", {})
+        label_name = labels.get(lang, "Əlavə əmsal")
+        
+        coeff_list.append((label_name, add_val))
+        if isinstance(coeffs, list):
+            coeffs.append({"name": label_name, "value": str(add_val)})
+            p2["coefficients"] = coeffs
+
+    # Чистое математическое вычисление ставки USD/t
+    final_rate = base_val / usd_rate
+    formula_parts = [f"{base_val:.2f} / {usd_rate:.2f}"]
+    
+    for _, val in coeff_list:
+        final_rate *= val
+        formula_parts.append(f"{val}")
+
+    unit = "USD/t" if lang != "RU" else "USD/т"
+    formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit}"
+    
+    # Формирование итоговой ставки с ADY Express (+2%)
+    express_rate_val = final_rate * 1.02
+    
+    p3 = data.get("part3", {}) if isinstance(data, dict) else {}
+    if isinstance(p3, dict):
+        p3["formula"] = formula_str
+        p3["net_ady_rate"] = f"{final_rate:.2f} {unit}"
+        p3["express_rate"] = f"{express_rate_val:.2f} {unit}"
+        data["part3"] = p3
+
+    return data
 
 
 # 7. Загрузка динамического контекста (БЕЗ system_instruction.txt)
@@ -410,10 +474,8 @@ def load_selective_context(user_query, year_label, lang):
 
     rules_text = "\n\n".join(loaded_rules)
 
-    # Динамическое чтение правил из rules_config.json
     config = load_rules_config()
     
-    # 1. Пограничные станции и языковые суффиксы
     border_info = config.get("border_stations", {}) if isinstance(config, dict) else {}
     border_stations_list = border_info.get(
         "list", ["Yalama", "Boyuk Kesik", "Astara", "Culfa", "Alat"]
@@ -422,7 +484,6 @@ def load_selective_context(user_query, year_label, lang):
     suffix = suffixes.get(lang, "-eksp.")
     stations_str = ", ".join(border_stations_list)
 
-    # 2. Языковые термины
     lang_dict = config.get("language_abbreviations", {}) if isinstance(config, dict) else {}
     lang_abbr = lang_dict.get(lang, {}) if isinstance(lang_dict, dict) else {}
     priv_term = lang_abbr.get("private_wagon", "SPS" if lang != "RU" else "СПС")
@@ -538,6 +599,13 @@ if st.button(t["calc_btn"], type="primary"):
 
             train_holder.empty()
 
+            # Вычисление подбора курса и расчетов на чистом Python
+            curr_info = get_currency_rate(user_input, selected_lang)
+            usd_rate = curr_info["rate"]
+            exchange_text = curr_info["formatted_text"]
+
+            data = calculate_rate_on_python(data, user_input, usd_rate, selected_lang)
+
             st.success(t["success"].format(selected_year))
             st.markdown(f"### {t['result_title']}")
 
@@ -583,10 +651,6 @@ if st.button(t["calc_btn"], type="primary"):
                 p2 = p2[0]
 
             if isinstance(p2, dict):
-                # Подтягиваем защищенный курс через Python из rules_config.json
-                curr_info = get_currency_rate(user_input, selected_lang)
-                exchange_text = curr_info["formatted_text"]
-
                 table2_rows = [
                     f"| **{t['lbl_exchange']}** | {exchange_text} |",
                     f"| **{t['lbl_base_rate']}** | {p2.get('base_tariff', '-')} |",
@@ -639,37 +703,4 @@ if st.button(t["calc_btn"], type="primary"):
                 if any(k in input_check for k in ["sps", "özəl", "спс", "собствен"]):
                     auto_notes.append(t["note_sps"])
 
-                ship_type = str(p1.get("shipment_type", "")).lower()
-                if any(k in ship_type for k in ["idxal", "импорт", "import"]):
-                    auto_notes.append(t["note_import"])
-                elif any(k in ship_type for k in ["ixrac", "экспорт", "export"]):
-                    auto_notes.append(t["note_export"])
-
-                if ("faktiki" in weight_str or "фактическ" in weight_str) and ("min" in weight_str or "hesablaşma" in weight_str or "расчетн" in weight_str):
-                    auto_notes.append(t["note_min_weight"])
-
-                coeffs = p2.get("coefficients", []) if isinstance(p2, dict) else []
-                coeff_values = [str(c.get("value", "")) for c in coeffs if isinstance(c, dict)]
-                coeff_str = " ".join(coeff_values)
-
-                if "1.04" in coeff_str and "tranzit" not in ship_type and "транзит" not in ship_type:
-                    auto_notes.append(t["note_timber_metal"])
-                if "1.015" in coeff_str or "1,015" in coeff_str:
-                    auto_notes.append(t["note_coef_1015"])
-
-                if express_val:
-                    auto_notes.append(t["note_express"])
-
-                if auto_notes:
-                    st.markdown(f"**{t['notes_title']}**")
-                    for idx, note in enumerate(auto_notes, start=1):
-                        st.markdown(f"{idx}. *{note}*")
-
-                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
-
-        except Exception as e:
-            train_holder.empty()
-            st.error(f"Error: {str(e)}")
-
-st.markdown("---")
-st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
+                ship_type =
