@@ -4,6 +4,19 @@
     "publisher": "Azərbaycan Dəmir Yolları (ADY)",
     "year": 2026
   },
+  "border_stations": {
+    "_description_ru": "Пограничные станции, к которым всегда добавляется суффикс -eksp.",
+    "suffix": "-eksp.",
+    "list": [
+      "Yalama",
+      "Boyuk Kesik",
+      "Böyük Kəsik",
+      "Astara",
+      "Culfa",
+      "Alat",
+      "Ələt"
+    ]
+  },
   "weight_rounding_table_1": {
     "_source": "Cədvəl 1",
     "_page": 9,
