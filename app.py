@@ -1,4 +1,3 @@
-import csv
 import json
 import os
 import re
@@ -6,12 +5,15 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-# 1. Page config — СТРОГО ПЕРВАЯ КОМАНДА STREAMLIT
+# ==============================================================================
+# 1. PAGE CONFIG & STYLES (Строго первая команда)
+# ==============================================================================
 st.set_page_config(
-    page_title="ADY Tarif Kalkulyatoru", page_icon="🚂", layout="wide"
+    page_title="ADY Tarif Kalkulyatoru",
+    page_icon="🚂",
+    layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit и стили
 st.markdown(
     """
     <style>
@@ -72,7 +74,9 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 3. Переводы интерфейса
+# ==============================================================================
+# 2. UI TEXTS (Мультиязычность)
+# ==============================================================================
 UI_TEXT = {
     "AZ": {
         "title": "ADY Tarif Kalkulyatoru",
@@ -80,10 +84,7 @@ UI_TEXT = {
         "year_select": "Fraxt ili:",
         "lang_select": "Dil / Language:",
         "input_header": "Daşıma parametrlərini daxil edin:",
-        "input_placeholder": (
-            "Nümunə:\nMarşrut: Yalama - Abşeron\nYük: Meşə materialları (GNG 4407),"
-            " 55 ton\nVəziyyət: SPS örtülü vaqon"
-        ),
+        "input_placeholder": "Nümunə:\nMarşrut: Yalama - Abşeron\nYük: Meşə materialları (GNG 4407), 55 ton\nVəziyyət: SPS örtülü vaqon",
         "calc_btn": "🚀 Tarifi hesabla",
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
         "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...",
@@ -95,11 +96,7 @@ UI_TEXT = {
         "formula_title": "Hesablama düsturu:",
         "rates_title": "Yekun tariflər:",
         "notes_title": "Qeydlər:",
-        "disclaimer": (
-            "Qeyd olunan tariflərə stansiya xərcləri (yükləmə-boşaltma, tərtibat,"
-            " sənədləşmə, vaqonların verilməsi-yığılması və s.) və əlavə"
-            " yığımlar daxil deyildir."
-        ),
+        "disclaimer": "Qeyd olunan tariflərə stansiya xərcləri (yükləmə-boşaltma, tərtibat, sənədləşmə, vaqonların verilməsi-yığılması və s.) və əlavə yığımlar daxil deyildir.",
         "col_param": "Parametr",
         "col_val": "Qiymət / Həcm",
         "col_rate_type": "Tarif növü",
@@ -125,7 +122,7 @@ UI_TEXT = {
         "note_express": "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur.",
         "note_timber_metal": "İdxal rejimində meşə materialları və qara metallar üçün 1.04 əmsalı tətbiq edilmişdir.",
         "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
-        "note_min_weight": "Faktiki çəki minimal tarif normasından aşağı olduğu üçün hesablama minimal norma üzrə aparılmışdır.",
+        "note_min_weight": "Faktiki çəki minimal tarif normasından aşağı olduğu üçün hesablama minimal norma üzrə aparılmışdır."
     },
     "RU": {
         "title": "Тарифный калькулятор ADY",
@@ -133,10 +130,7 @@ UI_TEXT = {
         "year_select": "Фрахтовый год:",
         "lang_select": "Язык / Language:",
         "input_header": "Введите данные по перевозке:",
-        "input_placeholder": (
-            "Пример:\nМаршрут: Ялама - Апшерон\nГруз: Лесоматериалы (ГНГ 4407),"
-            " 55 тонн\nСостояние: СПС крытый вагон"
-        ),
+        "input_placeholder": "Пример:\nМаршрут: Ялама - Апшерон\nГруз: Лесоматериалы (ГНГ 4407), 55 тонн\nСостояние: СПС крытый вагон",
         "calc_btn": "🚀 Рассчитать тариф",
         "warning_empty": "Пожалуйста, введите условия расчета.",
         "spinner_text": "Считаем тариф согласно Тарифной политике {}...",
@@ -148,11 +142,7 @@ UI_TEXT = {
         "formula_title": "Формула расчета:",
         "rates_title": "Итоговые тарифы:",
         "notes_title": "Примечания:",
-        "disclaimer": (
-            "Ставки приведены без учета станционных расходов (погрузка-выгрузка,"
-            " маневровые работы, оформление документов, подача-уборка вагонов"
-            " и т.д.) и дополнительных сборов."
-        ),
+        "disclaimer": "Ставки приведены без учета станционных расходов (погрузка-выгрузка, маневровые работы, оформление документов, подача-уборка вагонов и т.д.) и дополнительных сборов.",
         "col_param": "Параметр",
         "col_val": "Значение / Объем",
         "col_rate_type": "Тип тарифа",
@@ -178,7 +168,7 @@ UI_TEXT = {
         "note_express": "Применен дополнительный коэффициент +2% за сервис ADY Express.",
         "note_timber_metal": "В режиме импорта применен коэффициент 1.04 для лесных грузов и черных металлов.",
         "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
-        "note_min_weight": "Так как фактический вес ниже минимальной нормы, расчет произведен по минимальной весовой норме.",
+        "note_min_weight": "Так как фактический вес ниже минимальной нормы, расчет произведен по минимальной весовой норме."
     },
     "EN": {
         "title": "ADY Tariff Calculator",
@@ -186,10 +176,7 @@ UI_TEXT = {
         "year_select": "Freight Year:",
         "lang_select": "Language:",
         "input_header": "Enter shipment details:",
-        "input_placeholder": (
-            "Example:\nRoute: Yalama - Absheron\nCargo: Timber (NHM 4407),"
-            " 55 tons\nCondition: SPS covered wagon"
-        ),
+        "input_placeholder": "Example:\nRoute: Yalama - Absheron\nCargo: Timber (NHM 4407), 55 tons\nCondition: SPS covered wagon",
         "calc_btn": "🚀 Calculate Freight Rate",
         "warning_empty": "Please enter shipment requirements.",
         "spinner_text": "Calculating rates according to Tariff Policy {}...",
@@ -201,11 +188,7 @@ UI_TEXT = {
         "formula_title": "Calculation Formula:",
         "rates_title": "Final Rates:",
         "notes_title": "Notes:",
-        "disclaimer": (
-            "Rates are quoted excluding station charges (loading/unloading,"
-            " shunting, documentation, wagon positioning, etc.) and additional"
-            " fees."
-        ),
+        "disclaimer": "Rates are quoted excluding station charges (loading/unloading, shunting, documentation, wagon positioning, etc.) and additional fees.",
         "col_param": "Parameter",
         "col_val": "Value / Volume",
         "col_rate_type": "Rate Type",
@@ -231,49 +214,37 @@ UI_TEXT = {
         "note_express": "Additional coefficient +2% applied for ADY Express service.",
         "note_timber_metal": "Coefficient 1.04 applied for import of timber and ferrous metals.",
         "note_coef_1015": "Additional coefficient applied: 1.015.",
-        "note_min_weight": "Since actual weight is below minimum billable weight, calculation is based on minimum weight.",
-    },
+        "note_min_weight": "Since actual weight is below minimum billable weight, calculation is based on minimum weight."
+    }
 }
 
-# 4. Логотип
-logo_file = None
-for filename in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"]:
-    if os.path.exists(filename):
-        logo_file = filename
-        break
-
+# ==============================================================================
+# 3. HEADER & CONTROLS
+# ==============================================================================
+logo_file = next((f for f in ["logo.png", "Logo.png", "logo.PNG", "LOGO.PNG"] if os.path.exists(f)), None)
 if logo_file:
     st.image(logo_file, width=200)
 
-# 5. Селекторы
 col_controls, _ = st.columns([4.0, 6.0])
-
 with col_controls:
     selected_lang = st.selectbox(
         f"🌐 {UI_TEXT['AZ']['lang_select']}",
         options=["AZ", "RU", "EN"],
         index=0,
-        format_func=lambda x: {
-            "AZ": "Azərbaycan",
-            "RU": "Русский",
-            "EN": "English",
-        }[x],
+        format_func=lambda x: {"AZ": "Azərbaycan", "RU": "Русский", "EN": "English"}[x]
     )
     t = UI_TEXT[selected_lang]
 
     selected_year = st.selectbox(
-        f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0
+        f"⚙️ {t['year_select']}",
+        options=["2026", "2027"],
+        index=0
     )
 
-st.markdown(
-    f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True
-)
-st.markdown(
-    f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>',
-    unsafe_allow_html=True,
-)
+st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-# 6. API Key
+# API Key Handling
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.text_input(t["api_label"], type="password")
@@ -286,7 +257,7 @@ client = genai.Client(api_key=api_key)
 
 
 # ==============================================================================
-#  PYTHON LOGIC ENGINE
+# 4. CACHED DATA LOADERS (Мгновенная работа в оперативной памяти)
 # ==============================================================================
 
 @st.cache_data(show_spinner=False)
@@ -296,85 +267,66 @@ def load_rules_config():
             return json.load(f)
     return {}
 
-# Кэшированная загрузка справочника ГНГ кодов из CSV
+# Кэшированная загрузка файла расстояний (0.001 секунды при расчете)
 @st.cache_data(show_spinner=False)
-def load_gng_dictionary():
-    gng_map = {}
-    if os.path.exists("gng_codes.csv"):
-        for enc in ["cp1251", "utf-8-sig", "utf-8"]:
-            try:
-                with open("gng_codes.csv", mode="r", encoding=enc) as f:
-                    # Автоопределение разделителя (запятая или точка с запятой)
-                    content = f.read(4096)
-                    sep = ";" if ";" in content else ","
-                    f.seek(0)
-                    reader = csv.DictReader(f, delimiter=sep)
-                    for row in reader:
-                        # Считываем поле кодов и наименования
-                        code_val = str(row.get("GNG_text", row.get("GNG_tex", ""))).strip()
-                        name_val = str(row.get("Наименование", "")).strip()
-                        if code_val:
-                            gng_map[code_val] = name_val
-                            # Для коротких кодов (первые 4 цифры)
-                            if len(code_val) >= 4:
-                                short_code = code_val[:4]
-                                if short_code not in gng_map:
-                                    gng_map[short_code] = name_val
-                break
-            except Exception:
-                continue
-    return gng_map
-
-# 1. Поиск расстояния
-def find_distance_in_file(st_from, st_to):
+def load_distances_map():
+    dist_map = {}
     dist_files = ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]
-    target_file = None
-    for df in dist_files:
-        if os.path.exists(df):
-            target_file = df
-            break
-            
-    if not target_file:
-        return 204
-
-    s1, s2 = st_from.lower(), st_to.lower()
-    with open(target_file, "r", encoding="utf-8") as f:
-        for line in f:
-            line_lower = line.lower()
-            if (s1 in line_lower and s2 in line_lower) or (s2 in line_lower and s1 in line_lower):
-                match = re.search(r"(\d+)\s*(?:km|км)", line_lower)
+    target_file = next((df for df in dist_files if os.path.exists(df)), None)
+    
+    if target_file:
+        with open(target_file, "r", encoding="utf-8") as f:
+            for line in f:
+                match = re.search(r"(.+?)\s*[-–]\s*(.+?)\s+(\d+)\s*(?:km|км)", line, re.IGNORECASE)
                 if match:
-                    return int(match.group(1))
+                    s1 = match.group(1).strip().lower()
+                    s2 = match.group(2).strip().lower()
+                    km = int(match.group(3))
+                    dist_map[(s1, s2)] = km
+                    dist_map[(s2, s1)] = km
+    return dist_map
+
+def find_distance_in_memory(st_from, st_to):
+    dist_map = load_distances_map()
+    s1, s2 = st_from.strip().lower(), st_to.strip().lower()
+    
+    if (s1, s2) in dist_map:
+        return dist_map[(s1, s2)]
+        
+    for (k1, k2), dist in dist_map.items():
+        if (s1 in k1 or k1 in s1) and (s2 in k2 or k2 in s2):
+            return dist
+            
     return 204
 
-# 2. Базовый тариф CHF
-def get_base_tariff_chf(table_num, distance_km, billable_weight_tons):
+# Кэшированная загрузка тарифных таблиц CHF
+@st.cache_data(show_spinner=False)
+def load_table_rates(table_num):
     t_file = f"Table_{table_num}_Tariffs.txt"
     if not os.path.exists(t_file):
         t_file = f"Table{table_num}.txt"
-
-    if not os.path.exists(t_file):
-        return 12.93, f"Cədvəl {table_num}, {distance_km} km, {int(billable_weight_tons)} t"
-
-    found_range_str = f"{distance_km} km"
-    rate_chf = 12.93
-
-    with open(t_file, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-        for line in lines:
-            r_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", line)
-            if r_match:
-                d_min, d_max = int(r_match.group(1)), int(r_match.group(2))
-                if d_min <= distance_km <= d_max:
-                    found_range_str = f"{d_min}-{d_max} km"
+    
+    rates = []
+    if os.path.exists(t_file):
+        with open(t_file, "r", encoding="utf-8") as f:
+            for line in f:
+                r_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", line)
+                if r_match:
+                    d_min, d_max = int(r_match.group(1)), int(r_match.group(2))
                     numbers = re.findall(r"(\d+[\.,]\d+|\d+)", line)
                     if len(numbers) >= 2:
-                        rate_chf = float(numbers[-1].replace(",", "."))
-                    break
+                        val = float(numbers[-1].replace(",", "."))
+                        rates.append((d_min, d_max, val))
+    return rates
 
-    return rate_chf, f"Cədvəl {table_num}, {found_range_str}, {int(billable_weight_tons)} t"
+def get_base_tariff_chf(table_num, distance_km, billable_weight_tons):
+    rates = load_table_rates(table_num)
+    for d_min, d_max, val in rates:
+        if d_min <= distance_km <= d_max:
+            return val, f"Cədvəl {table_num}, {d_min}-{d_max} km, {int(billable_weight_tons)} t"
+            
+    return 12.93, f"Cədvəl {table_num}, {distance_km} km, {int(billable_weight_tons)} t"
 
-# 3. Курс CHF/USD
 def get_currency_rate(requested_period, lang="AZ"):
     config = load_rules_config()
     currency_data = config.get("currency_rates", {}) if isinstance(config, dict) else {}
@@ -409,7 +361,10 @@ def get_currency_rate(requested_period, lang="AZ"):
 
     return rate, f"1 USD = {rate:.2f} CHF ({label_text})"
 
-# 4. ВЫЗОВ GEMINI ДЛЯ NLU
+
+# ==============================================================================
+# 5. GEMINI NLU CALL
+# ==============================================================================
 def call_gemini_nlu(client, user_input_text):
     prompt = (
         "Extract shipment parameters from text into JSON. Return ONLY JSON:\n"
@@ -417,7 +372,7 @@ def call_gemini_nlu(client, user_input_text):
         '  "route_from": "string (station name)",\n'
         '  "route_to": "string (station name)",\n'
         '  "cargo_gng_code": "string (GNG code or empty)",\n'
-        '  "cargo_name_raw": "string (cargo description)",\n'
+        '  "cargo_name_raw": "string (cargo description in input language)",\n'
         '  "actual_weight_tons": float,\n'
         '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
@@ -427,7 +382,7 @@ def call_gemini_nlu(client, user_input_text):
     )
     
     response = client.models.generate_content(
-        model="gemini-3.6-flash",
+        model="gemini-3.5-flash-lite",
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.0,
@@ -445,10 +400,12 @@ def call_gemini_nlu(client, user_input_text):
 
     return json.loads(raw_text.strip())
 
-# 5. ГЛАВНЫЙ PYTHON-ДВИЖОК
+
+# ==============================================================================
+# 6. PYTHON CALCULATION ENGINE
+# ==============================================================================
 def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     config = load_rules_config()
-    gng_dict = load_gng_dictionary()
 
     st_from = nlu_data.get("route_from", "Yalama")
     st_to = nlu_data.get("route_to", "Absheron")
@@ -481,7 +438,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         shipment_type_display = ui_t["type_export"]
 
     # Расстояние
-    dist_km = find_distance_in_file(st_from, st_to)
+    dist_km = find_distance_in_memory(st_from, st_to)
 
     # Расчетный вес
     billable_weight = act_weight
@@ -494,19 +451,13 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
                 billable_weight = float(norm)
             break
 
-    # Парк вагонов и наименование груза (С ЗAЩИТОЙ ОТ ДУБЛИРОВАНИЯ)
+    # Парк вагонов
     lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
     park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
 
-    # Умная подстановка наименования груза из gng_codes.csv
-    resolved_cargo_name = ""
-    if lang == "RU" and gng in gng_dict:
-        resolved_cargo_name = gng_dict[gng]
-    elif cargo_name_nlu and not cargo_name_nlu.isdigit() and cargo_name_nlu != gng:
-        resolved_cargo_name = cargo_name_nlu
-
-    if resolved_cargo_name:
-        cargo_wagon_display = f"GNG {gng} - {resolved_cargo_name}, Universal vaqon ({park_display})"
+    # Формирование строки груза (ЗАЩИТА ОТ ДУБЛИРОВАНИЯ 4407 - 4407)
+    if cargo_name_nlu and not cargo_name_nlu.isdigit() and cargo_name_nlu != gng:
+        cargo_wagon_display = f"GNG {gng} - {cargo_name_nlu}, Universal vaqon ({park_display})"
     else:
         cargo_wagon_display = f"GNG {gng}, Universal vaqon ({park_display})"
 
@@ -534,7 +485,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         lbl_1015 = add_coeff_info.get("labels", {}).get(lang, "Əlavə əmsal")
         coeffs.append((lbl_1015, val_1015))
 
-    # Математический расчет
+    # Математика
     final_rate = base_chf / usd_rate
     formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
 
@@ -586,9 +537,8 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
 
 # ==============================================================================
-#  STREAMLIT UI
+# 7. STREAMLIT INTERFACE RENDERING
 # ==============================================================================
-
 user_input = st.text_area(
     t["input_header"], height=150, placeholder=t["input_placeholder"]
 )
