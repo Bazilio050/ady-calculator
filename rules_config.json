@@ -42,6 +42,17 @@
       "inventory_desc": "Railway inventory park"
     }
   },
+  "general_additional_coefficient_1_015": {
+    "_description_ru": "Дополнительный коэффициент 1.015, применяемый с 1 марта 2026 года на все перевозки, кроме порожнего пробега",
+    "coefficient_value": 1.015,
+    "effective_from": "2026-03-01",
+    "labels": {
+      "AZ": "Əlavə əmsal",
+      "RU": "Дополнительный коэффициент",
+      "EN": "Additional coefficient"
+    },
+    "exclude_empty_wagons": true
+  },
   "currency_rates": {
     "_description_ru": "Курсы швейцарского франка (CHF) к доллару США (USD) по кварталам",
     "default_period": "Q3_2026",
