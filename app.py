@@ -244,10 +244,16 @@ with col_controls:
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-# API Key Handling
+# API Key
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.text_input(t["api_label"], type="password")
+
+if not api_key:
+    st.warning(t["api_warning"])
+    st.stop()
+
+client = genai.Client(api_key=api_key)
 
 
 # ==============================================================================
@@ -355,17 +361,9 @@ def get_currency_rate(requested_period, lang="AZ"):
 
 
 # ==============================================================================
-# 5. GEMINI NLU CALL (Мультиязычная адаптация наименования)
+# 5. GEMINI NLU CALL
 # ==============================================================================
-def call_gemini_nlu(client, user_input_text, target_lang="AZ"):
-    lang_instructions = {
-        "AZ": "Translate or keep cargo_name_raw strictly in Azerbaijani (e.g. 'Meşə materialları', 'Ağac', 'Polad').",
-        "RU": "Translate or keep cargo_name_raw strictly in Russian (e.g. 'Лесоматериалы', 'Древесина', 'Сталь').",
-        "EN": "Translate or keep cargo_name_raw strictly in English (e.g. 'Timber', 'Steel', 'Wheat')."
-    }
-    
-    lang_rule = lang_instructions.get(target_lang, lang_instructions["AZ"])
-
+def call_gemini_nlu(client, user_input_text):
     prompt = (
         "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
         "Extract shipment parameters from text into JSON. Return ONLY clean JSON:\n"
@@ -373,7 +371,7 @@ def call_gemini_nlu(client, user_input_text, target_lang="AZ"):
         '  "route_from": "string (origin station name without -eksp)",\n'
         '  "route_to": "string (destination station name without -eksp)",\n'
         '  "cargo_gng_code": "string (MUST extract 4-digit to 8-digit GNG/NHM code, e.g. 4407 or 44070000)",\n'
-        '  "cargo_name_raw": "string (commodity name ONLY. EXCLUDE wagon types like covered/open/hopper/tank/gondola/крытый/полувагон/цистерна/SPS/MPS)",\n'
+        '  "cargo_name_raw": "string (commodity name ONLY, e.g. Timber/Meşə materialları/Лесоматериалы. EXCLUDE wagon types like covered/open/hopper/tank/gondola/крытый/полувагон/цистерна/SPS/MPS)",\n'
         '  "actual_weight_tons": float,\n'
         '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
@@ -382,8 +380,7 @@ def call_gemini_nlu(client, user_input_text, target_lang="AZ"):
         "STRICT NLU RULES:\n"
         "1. Search specifically for GNG / NHM / ГНГ codes (4 to 8 digits long, e.g. 4407).\n"
         "2. Extract cargo_name_raw ONLY as the commodity name. Words like 'крытый', 'открытый', 'вагон', 'SPS', 'MPS', 'gondola' belong to wagon properties, NEVER cargo_name_raw!\n"
-        f"3. LANGUAGE REQUIREMENT: {lang_rule}\n"
-        "4. Keep station names clean (e.g. 'Yalama', 'Absheron', 'Boyuk Kesik').\n\n"
+        "3. Keep station names clean (e.g. 'Yalama', 'Absheron', 'Boyuk Kesik').\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
     
@@ -441,16 +438,8 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     is_from_border = any(b.lower() in st_from.lower() for b in border_list)
     is_to_border = any(b.lower() in st_to.lower() for b in border_list)
 
-    if is_from_border and suffix not in st_from.lower():
-        display_from = f"{st_from}{suffix}"
-    else:
-        display_from = st_from
-
-    if is_to_border and suffix not in st_to.lower():
-        display_to = f"{st_to}{suffix}"
-    else:
-        display_to = st_to
-
+    display_from = st_from if (not is_from_border or suffix in st_from.lower()) else f"{st_from}{suffix}"
+    display_to = st_to if (not is_to_border or suffix in st_to.lower()) else f"{st_to}{suffix}"
     route_display = f"{display_from} - {display_to}"
 
     # 2. Логика направления (İdxal / İxrac / Tranzit)
@@ -587,12 +576,9 @@ user_input = st.text_area(
 )
 
 if st.button(t["calc_btn"], type="primary"):
-    if not api_key:
-        st.warning(t["api_warning"])
-    elif not user_input.strip():
+    if not user_input.strip():
         st.warning(t["warning_empty"])
     else:
-        client = genai.Client(api_key=api_key)
         train_holder = st.empty()
         train_holder.markdown(
             f"""
@@ -605,7 +591,7 @@ if st.button(t["calc_btn"], type="primary"):
         )
 
         try:
-            nlu_res = call_gemini_nlu(client, user_input, target_lang=selected_lang)
+            nlu_res = call_gemini_nlu(client, user_input)
             data = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
 
             train_holder.empty()
