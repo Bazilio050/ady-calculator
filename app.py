@@ -244,16 +244,10 @@ with col_controls:
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-# API Key Handling
+# API Key Handling (Не блокирует интерфейс, если отсутствует)
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.text_input(t["api_label"], type="password")
-
-if not api_key:
-    st.warning(t["api_warning"])
-    st.stop()
-
-client = genai.Client(api_key=api_key)
 
 
 # ==============================================================================
@@ -448,64 +442,4 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     is_to_border = any(b.lower() in st_to.lower() for b in border_list)
 
     display_from = st_from if (not is_from_border or suffix in st_from.lower()) else f"{st_from}{suffix}"
-    display_to = st_to if (not is_to_border or suffix in st_to.lower()) else f"{st_to}{suffix}"
-    route_display = f"{display_from} - {display_to}"
-
-    # 2. Логика направления (İdxal / İxrac / Tranzit)
-    if is_from_border and is_to_border:
-        shipment_type_code = "transit"
-        shipment_type_display = ui_t["type_transit"]
-    elif is_from_border and not is_to_border:
-        shipment_type_code = "import"
-        shipment_type_display = ui_t["type_import"]
-    elif not is_from_border and is_to_border:
-        shipment_type_code = "export"
-        shipment_type_display = ui_t["type_export"]
-    else:
-        shipment_type_code = "local"
-        shipment_type_display = "Daxili daşınma" if lang == "AZ" else ("Внутренняя перевозка" if lang == "RU" else "Domestic shipment")
-
-    # 3. Расстояние
-    dist_km = find_distance_in_memory(st_from, st_to)
-
-    # 4. Расчетный вес и минимальные нормы
-    billable_weight = act_weight
-    min_norms = config.get("minimal_weight_norms_gng", {}).get("rules", [])
-    for rule in min_norms:
-        prefixes = rule.get("gng_prefixes", [])
-        if any(gng.startswith(p) for p in prefixes):
-            norm = rule.get("norm_tons", 0)
-            if billable_weight < norm:
-                billable_weight = float(norm)
-            break
-
-    if act_weight < billable_weight:
-        weight_display = f"{int(act_weight)} t / {int(billable_weight)} t ({'norma' if lang=='AZ' else ('норма' if lang=='RU' else 'min. norm')})"
-    else:
-        weight_display = f"{int(act_weight)} t"
-
-    # 5. Парк вагонов
-    lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
-    park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
-
-    # Защитная фильтрация наименования груза от типов вагонов в Python
-    wagon_stop_words = ["крытый", "открытый", "вагон", "vaqon", "covered", "open", "sps", "mps", "спс", "мпс", "полувагон", "цистерна", "хоппер"]
-    clean_cargo_name = cargo_name_nlu
-    if clean_cargo_name.lower().strip() in wagon_stop_words:
-        clean_cargo_name = ""
-
-    # Формирование строки груза
-    if clean_cargo_name and not clean_cargo_name.isdigit() and clean_cargo_name != gng:
-        cargo_wagon_display = f"GNG {gng} - {clean_cargo_name}, Universal vaqon ({park_display})"
-    elif gng:
-        cargo_wagon_display = f"GNG {gng}, Universal vaqon ({park_display})"
-    else:
-        cargo_wagon_display = f"Universal vaqon ({park_display})"
-
-    # 6. Базовая ставка CHF
-    table_num = 4 if shipment_type_code == "transit" else 3
-    base_chf, table_details = get_base_tariff_chf(table_num, dist_km, billable_weight)
-    base_tariff_display = f"{base_chf:.2f} CHF/ton ({table_details})"
-
-    # 7. Курс CHF/USD
-    usd_rate, exchange_
+    display_to = st_to if (not
