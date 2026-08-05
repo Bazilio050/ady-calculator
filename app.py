@@ -10,7 +10,7 @@ st.set_page_config(
     page_title="ADY Tarif Kalkulyatoru", page_icon="🚂", layout="wide"
 )
 
-# 2. Скрытие системных элементов Streamlit и адаптивные стили
+# 2. Скрытие системных элементов Streamlit и стили
 st.markdown(
     """
     <style>
@@ -80,8 +80,8 @@ UI_TEXT = {
         "lang_select": "Dil / Language:",
         "input_header": "Daşıma parametrlərini daxil edin:",
         "input_placeholder": (
-            "Nümunə:\nMarşrut: Yalama - Abşeron\nYük: Kağız və ya karton"
-            " tullantıları (GNG 4707), 35 ton\nVəziyyət: SPS örtülü vaqon"
+            "Nümunə:\nMarşrut: Yalama - Abşeron\nYük: Meşə materialları (GNG 4407),"
+            " 55 ton\nVəziyyət: SPS örtülü vaqon"
         ),
         "calc_btn": "🚀 Tarifi hesabla",
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
@@ -115,6 +115,9 @@ UI_TEXT = {
         "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
         "api_warning": "⚠️ Xahiş olunur, GEMINI_API_KEY daxil edin.",
         "api_label": "Gemini API Key:",
+        "type_import": "İdxal daşınması",
+        "type_export": "İxrac daşınması",
+        "type_transit": "Tranzit daşınması",
         "note_sps": "Özəl vaqonlar (SPS) üçün 0.85 güzəşt əmsalı tətbiq olunmuşdur.",
         "note_import": "İdxal rejimində minimal tarif məsafəsi norması 151 km-dir.",
         "note_export": "İxrac rejimində minimal tarif məsafəsi norması 101 km-dir.",
@@ -130,8 +133,8 @@ UI_TEXT = {
         "lang_select": "Язык / Language:",
         "input_header": "Введите данные по перевозке:",
         "input_placeholder": (
-            "Пример:\nМаршрут: Ялама - Апшерон\nГруз: Отходы бумаги (ГНГ 4707),"
-            " 35 тонн\nСостояние: СПС крытый вагон"
+            "Пример:\nМаршрут: Ялама - Апшерон\nГруз: Лесоматериалы (ГНГ 4407),"
+            " 55 тонн\nСостояние: СПС крытый вагон"
         ),
         "calc_btn": "🚀 Рассчитать тариф",
         "warning_empty": "Пожалуйста, введите условия расчета.",
@@ -165,6 +168,9 @@ UI_TEXT = {
         "lbl_express_rate": "Итоговый тариф (включая ADY Express +2%)",
         "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY.",
         "api_label": "Введите Gemini API Key:",
+        "type_import": "Импортная перевозка",
+        "type_export": "Экспортная перевозка",
+        "type_transit": "Транзитная перевозка",
         "note_sps": "Применен скидочный коэффициент 0.85 для собственных вагонов (СПС).",
         "note_import": "В режиме импорта минимальное тарифное расстояние составляет 151 км.",
         "note_export": "В режиме экспорта минимальное тарифное расстояние составляет 101 км.",
@@ -180,8 +186,8 @@ UI_TEXT = {
         "lang_select": "Language:",
         "input_header": "Enter shipment details:",
         "input_placeholder": (
-            "Example:\nRoute: Yalama - Absheron\nCargo: Paper scrap (NHM 4707),"
-            " 35 tons\nCondition: SPS covered wagon"
+            "Example:\nRoute: Yalama - Absheron\nCargo: Timber (NHM 4407),"
+            " 55 tons\nCondition: SPS covered wagon"
         ),
         "calc_btn": "🚀 Calculate Freight Rate",
         "warning_empty": "Please enter shipment requirements.",
@@ -215,6 +221,9 @@ UI_TEXT = {
         "lbl_express_rate": "Final Tariff (incl. ADY Express +2%)",
         "api_warning": "⚠️ Please provide GEMINI_API_KEY.",
         "api_label": "Enter Gemini API Key:",
+        "type_import": "Import shipment",
+        "type_export": "Export shipment",
+        "type_transit": "Transit shipment",
         "note_sps": "Discount coefficient 0.85 applied for private wagons (SPS).",
         "note_import": "Minimum tariff distance for import is 151 km.",
         "note_export": "Minimum tariff distance for export is 101 km.",
@@ -275,7 +284,10 @@ if not api_key:
 client = genai.Client(api_key=api_key)
 
 
-# 6.1 Функция кэшируемого чтения конфигурации rules_config.json
+# ==============================================================================
+#  PYTHON LOGIC ENGINE (100% Вся логика и математика на чистом Python)
+# ==============================================================================
+
 @st.cache_data(show_spinner=False)
 def load_rules_config():
     if os.path.exists("rules_config.json"):
@@ -283,31 +295,79 @@ def load_rules_config():
             return json.load(f)
     return {}
 
+# 1. Поиск расстояния по файлам расстояний
+def find_distance_in_file(st_from, st_to):
+    dist_files = ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]
+    target_file = None
+    for df in dist_files:
+        if os.path.exists(df):
+            target_file = df
+            break
+            
+    if not target_file:
+        return 204  # Значение по умолчанию, если файл не найден
 
-# 6.2 Защищенная Python-функция подбора курса CHF/USD
-def get_currency_rate(user_query, lang="AZ"):
+    s1, s2 = st_from.lower(), st_to.lower()
+    with open(target_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line_lower = line.lower()
+            if (s1 in line_lower and s2 in line_lower) or (s2 in line_lower and s1 in line_lower):
+                match = re.search(r"(\d+)\s*(?:km|км)", line_lower)
+                if match:
+                    return int(match.group(1))
+    return 204
+
+# 2. Определение базовой тарифной ставки CHF из файла таблицы
+def get_base_tariff_chf(table_num, distance_km, billable_weight_tons):
+    t_file = f"Table_{table_num}_Tariffs.txt"
+    if not os.path.exists(t_file):
+        t_file = f"Table{table_num}.txt"
+
+    if not os.path.exists(t_file):
+        return 12.93, f"Cədvəl {table_num}, {distance_km} km, {billable_weight_tons} t"
+
+    found_range_str = f"{distance_km} km"
+    rate_chf = 12.93  # Фоллбэк
+
+    with open(t_file, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        for line in lines:
+            # Поиск диапазона расстояний в строке
+            r_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", line)
+            if r_match:
+                d_min, d_max = int(r_match.group(1)), int(r_match.group(2))
+                if d_min <= distance_km <= d_max:
+                    found_range_str = f"{d_min}-{d_max} km"
+                    numbers = re.findall(r"(\d+[\.,]\d+|\d+)", line)
+                    if len(numbers) >= 2:
+                        # Берем число соответствующее колонке веса
+                        rate_chf = float(numbers[-1].replace(",", "."))
+                    break
+
+    return rate_chf, f"Cədvəl {table_num}, {found_range_str}, {int(billable_weight_tons)} t"
+
+# 3. Курс валюты на Python
+def get_currency_rate(requested_period, lang="AZ"):
     config = load_rules_config()
     currency_data = config.get("currency_rates", {}) if isinstance(config, dict) else {}
     periods = currency_data.get("periods", []) if isinstance(currency_data, dict) else []
-    query_lower = str(user_query).lower()
 
     selected_period = None
-    if periods:
+    if requested_period and periods:
+        q_lower = str(requested_period).lower()
         for p in periods:
-            if isinstance(p, dict):
-                keywords = p.get("keywords", [])
-                if any(kw in query_lower for kw in keywords):
-                    selected_period = p
-                    break
+            if isinstance(p, dict) and any(kw in q_lower for kw in p.get("keywords", [])):
+                selected_period = p
+                break
 
-        if not selected_period:
-            default_id = currency_data.get("default_period", "Q3_2026")
-            for p in periods:
-                if isinstance(p, dict) and p.get("id") == default_id:
-                    selected_period = p
-                    break
+    if not selected_period:
+        default_id = currency_data.get("default_period", "Q3_2026")
+        for p in periods:
+            if isinstance(p, dict) and p.get("id") == default_id:
+                selected_period = p
+                break
 
-    if not selected_period or not isinstance(selected_period, dict):
+    if not selected_period:
         selected_period = {
             "rate_usd_to_chf": 0.79,
             "label_az": "01.07.2026 - 30.09.2026-cı il tarixləri üzrə",
@@ -319,193 +379,29 @@ def get_currency_rate(user_query, lang="AZ"):
     label_key = f"label_{lang.lower()}"
     label_text = selected_period.get(label_key, selected_period.get("label_az", ""))
 
-    return {
-        "rate": rate,
-        "formatted_text": f"1 USD = {rate:.2f} CHF ({label_text})"
-    }
+    return rate, f"1 USD = {rate:.2f} CHF ({label_text})"
 
-
-# 6.3 Вычисление математической формулы и итогового тарифа на чистом Python
-def calculate_rate_on_python(data, user_input, usd_rate, lang):
-    config = load_rules_config()
-    p2 = data.get("part2", {}) if isinstance(data, dict) else {}
-    base_tariff_raw = p2.get("base_tariff", "")
-    
-    match = re.search(r"(\d+[\.,]\d+|\d+)", str(base_tariff_raw))
-    if not match:
-        return data
-
-    base_val = float(match.group(1).replace(",", "."))
-    
-    coeffs = p2.get("coefficients", [])
-    coeff_list = []
-    
-    if isinstance(coeffs, list):
-        for c in coeffs:
-            if isinstance(c, dict):
-                v_str = str(c.get("value", ""))
-                c_match = re.search(r"(\d+[\.,]\d+|\d+)", v_str)
-                if c_match:
-                    coeff_list.append((c.get("name", ""), float(c_match.group(1).replace(",", "."))))
-
-    input_lower = user_input.lower()
-    is_empty_run = any(k in input_lower for k in ["boş", "порожн", "empty"])
-    
-    has_1015 = any(abs(v - 1.015) < 0.001 for _, v in coeff_list)
-    if not is_empty_run and not has_1015:
-        add_coeff_info = config.get("general_additional_coefficient_1_015", {})
-        add_val = add_coeff_info.get("coefficient_value", 1.015)
-        labels = add_coeff_info.get("labels", {})
-        label_name = labels.get(lang, "Əlavə əmsal")
-        
-        coeff_list.append((label_name, add_val))
-        if isinstance(coeffs, list):
-            coeffs.append({"name": label_name, "value": str(add_val)})
-            p2["coefficients"] = coeffs
-
-    final_rate = base_val / usd_rate
-    formula_parts = [f"{base_val:.2f} / {usd_rate:.2f}"]
-    
-    for _, val in coeff_list:
-        final_rate *= val
-        formula_parts.append(f"{val}")
-
-    unit = "USD/t" if lang != "RU" else "USD/т"
-    formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit}"
-    
-    express_rate_val = final_rate * 1.02
-    
-    p3 = data.get("part3", {}) if isinstance(data, dict) else {}
-    if isinstance(p3, dict):
-        p3["formula"] = formula_str
-        p3["net_ady_rate"] = f"{final_rate:.2f} {unit}"
-        p3["express_rate"] = f"{express_rate_val:.2f} {unit}"
-        data["part3"] = p3
-
-    return data
-
-
-# 7. Загрузка динамического контекста (БЕЗ system_instruction.txt)
-@st.cache_data(show_spinner=False)
-def load_selective_context(user_query, year_label, lang):
-    query_lower = user_query.lower()
-
-    files_to_load = [
-        "GNG_Column_Mapping.txt",
-        "Security_Cargo_GNG.txt",
-    ]
-
-    for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
-        if os.path.exists(dist_file):
-            files_to_load.append(dist_file)
-            break
-
-    if any(k in query_lower for k in ["tranzit", "транзит", "transit"]):
-        for f_name in ["Table_4_Tariffs.txt", "Table4.txt", "Cədvəl4.txt"]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-    elif any(
-        k in query_lower
-        for k in [
-            "цистерн",
-            "çən",
-            "tank",
-            "нефть",
-            "neft",
-            "газ",
-            "qaz",
-            "масло",
-            "спирт",
-            "2709",
-            "2710",
-        ]
-    ):
-        for f_name in [
-            "Table_6_Tariffs.txt",
-            "Table_6_Tanks.txt",
-            "Table6.txt",
-            "Cədvəl6.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-    elif any(
-        k in query_lower
-        for k in ["реф", "ref", "термос", "termos", "автовоз", "автопоезд"]
-    ):
-        for f_name in [
-            "Table_5_Tariffs.txt",
-            "Table_5_Reef.txt",
-            "Table5.txt",
-            "Cədvəl5.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-    elif any(
-        k in query_lower
-        for k in ["контейнер", "konteyner", "tank-container", "ref-container"]
-    ):
-        for f_name in [
-            "Table_9_Tariffs.txt",
-            "Table_10_Tariffs.txt",
-            "Table9.txt",
-            "Table10.txt",
-        ]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-    else:
-        for f_name in ["Table_3_Tariffs.txt", "Table3.txt", "Cədvəl3.txt"]:
-            if os.path.exists(f_name):
-                files_to_load.append(f_name)
-                break
-
-    loaded_rules = []
-    for txt_file in set(files_to_load):
-        if os.path.exists(txt_file):
-            with open(txt_file, "r", encoding="utf-8") as f:
-                loaded_rules.append(f"--- BAZA SƏNƏDİ: {txt_file} ---\n" + f.read())
-
-    rules_text = "\n\n".join(loaded_rules)
-
-    config = load_rules_config()
-    
-    border_info = config.get("border_stations", {}) if isinstance(config, dict) else {}
-    border_stations_list = border_info.get(
-        "list", ["Yalama", "Boyuk Kesik", "Astara", "Culfa", "Alat"]
+# 4. ВЫЗОВ GEMINI ТОЛЬКО ДЛЯ NLU (Парсинг 8 базовых параметров)
+def call_gemini_nlu(client, user_input_text):
+    prompt = (
+        "Extract shipment parameters from text into JSON. Return ONLY JSON:\n"
+        "{\n"
+        '  "route_from": "string (station name)",\n'
+        '  "route_to": "string (station name)",\n'
+        '  "cargo_gng_code": "string (GNG code or empty)",\n'
+        '  "cargo_name_raw": "string (cargo description)",\n'
+        '  "actual_weight_tons": float,\n'
+        '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
+        '  "park_type": "string (SPS/MPS)",\n'
+        '  "requested_period": "string or null"\n'
+        "}\n\n"
+        f"USER INPUT:\n{user_input_text}"
     )
-    suffixes = border_info.get("suffixes", {}) if isinstance(border_info, dict) else {}
-    suffix = suffixes.get(lang, "-eksp.")
-    stations_str = ", ".join(border_stations_list)
-
-    lang_dict = config.get("language_abbreviations", {}) if isinstance(config, dict) else {}
-    lang_abbr = lang_dict.get(lang, {}) if isinstance(lang_dict, dict) else {}
-    priv_term = lang_abbr.get("private_wagon", "SPS" if lang != "RU" else "СПС")
-    inv_term = lang_abbr.get("inventory_wagon", "MPS" if lang != "RU" else "МПС")
-
-    system_instruction = (
-        f"ВНИМАНИЕ: Применяется Тарифная политика ADY на {year_label} ФРАХТОВЫЙ ГОД!\n"
-        f"ОТВЕТ ДОЛЖЕН БЫТЬ СТРОГО НА ЯЗЫКЕ: {lang} (AZ = Azerbaijani, RU = Russian, EN = English).\n"
-        f"СТРОГИЕ ПРАВИЛА:\n"
-        f"1. Для обозначения парка вагонов строго использовать: '{priv_term}' (собственный вагон) и '{inv_term}' (инвентарный вагон).\n"
-        f"2. МИН. РАСЧЕТНАЯ НОРМА ЧЕКИ: Если фактический вес < минимальной нормы, СТАВКА СТРОГО БЕРЕТСЯ ИЗ КОЛОНКИ МИН. НОРМЫ!\n"
-        f"3. {inv_term} vs {priv_term}: Для {inv_term} берется 100% базовая ставка. Для {priv_term} применяется коэффициент 0.85.\n"
-        f"4. СТАНЦИИ: Если станция пограничная ({stations_str}), писать с припиской '{suffix}' (например, 'Yalama{suffix} - Böyük Kəsik{suffix}').\n\n"
-        + rules_text
-    )
-    return system_instruction
-
-
-# 8. Вызов Gemini — СТРОГО gemini-3.6-flash И temperature=0.0
-def call_gemini_json(client, prompt, instruction):
-    model_name = "gemini-3.6-flash"
-
+    
     response = client.models.generate_content(
-        model=model_name,
+        model="gemini-3.6-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
-            system_instruction=instruction,
             temperature=0.0,
             response_mime_type="application/json",
         ),
@@ -521,213 +417,32 @@ def call_gemini_json(client, prompt, instruction):
 
     return json.loads(raw_text.strip())
 
+# 5. ГЛАВНЫЙ PYTHON-ДВИЖОК РАСЧЕТА
+def process_full_calculation(nlu_data, user_input_raw, lang, year):
+    config = load_rules_config()
 
-# 9. Интерфейс расчета
-user_input = st.text_area(
-    t["input_header"], height=150, placeholder=t["input_placeholder"]
-)
+    st_from = nlu_data.get("route_from", "Yalama")
+    st_to = nlu_data.get("route_to", "Absheron")
+    gng = nlu_data.get("cargo_gng_code", "4407")
+    cargo_name = nlu_data.get("cargo_name_raw", "Meşə materialları")
+    act_weight = float(nlu_data.get("actual_weight_tons", 55.0))
+    park_type = nlu_data.get("park_type", "SPS").upper()
 
+    # 1. Станции и погрансуффиксы
+    border_info = config.get("border_stations", {})
+    border_list = border_info.get("list", ["Yalama", "Boyuk Kesik", "Böyük Kəsik", "Astara", "Culfa", "Alat", "Ələt"])
+    suffix = border_info.get("suffixes", {}).get(lang, "-eksp.")
 
-def get_static_rules():
-    schema_dict = {
-        "part1": {
-            "route": "string",
-            "shipment_type": "string",
-            "distance": "string",
-            "cargo_and_wagon": "string",
-            "weight_info": "string",
-            "period": "string",
-        },
-        "part2": {
-            "exchange_rate": "string",
-            "base_tariff": "string",
-            "coefficients": [{"name": "string", "value": "string"}],
-        },
-        "part3": {
-            "formula": "string",
-            "net_ady_rate": "string",
-            "express_rate": "string",
-            "notes": [],
-        },
-    }
+    is_from_border = any(b.lower() in st_from.lower() for b in border_list)
+    is_to_border = any(b.lower() in st_to.lower() for b in border_list)
 
-    return (
-        "CRITICAL INSTRUCTIONS:\n"
-        "1. Return ONLY a valid JSON object matching exactly the structure below.\n"
-        "2. Keep values short and concise.\n"
-        "3. Include GNG code and short cargo name in 'cargo_and_wagon'.\n"
-        "4. Do NOT use the word 'şkalası' in base_tariff.\n"
-        "5. Keep 'notes' array strictly empty [].\n\n"
-        "OUTPUT FORMAT (MANDATORY JSON):\n"
-        + json.dumps(schema_dict, indent=2)
-    )
+    display_from = f"{st_from}{suffix}" if is_from_border else st_from
+    display_to = f"{st_to}{suffix}" if is_to_border else st_to
+    route_display = f"{display_from} - {display_to}"
 
-
-if st.button(t["calc_btn"], type="primary"):
-    if not user_input.strip():
-        st.warning(t["warning_empty"])
-    else:
-        train_holder = st.empty()
-        train_holder.markdown(
-            f"""
-            <div class="train-track">
-                <div class="train-animation">═══ 🚃 🚃 🚃 🚃 🚃 🚃 🚂</div>
-            </div>
-            <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        try:
-            dyn_instruction = load_selective_context(
-                user_input, selected_year, selected_lang
-            )
-
-            prompt_header = (
-                f"Make exact calculation for (Freight Year: {selected_year},"
-                f" Language: {selected_lang}):\n{user_input}\n\nCRITICAL RULES (OUTPUT"
-                f" LANGUAGE MUST BE STRICTLY: {selected_lang}):\n"
-            )
-            prompt_text = prompt_header + get_static_rules()
-
-            data = call_gemini_json(client, prompt_text, dyn_instruction)
-
-            train_holder.empty()
-
-            curr_info = get_currency_rate(user_input, selected_lang)
-            usd_rate = curr_info["rate"]
-            exchange_text = curr_info["formatted_text"]
-
-            data = calculate_rate_on_python(data, user_input, usd_rate, selected_lang)
-
-            st.success(t["success"].format(selected_year))
-            st.markdown(f"### {t['result_title']}")
-
-            # Раздел 1
-            st.markdown(f"#### 📍 {t['sec1_title']}")
-            p1 = data.get("part1", {})
-            if isinstance(p1, list) and len(p1) > 0:
-                p1 = p1[0]
-
-            if isinstance(p1, dict):
-                col_param = t['col_param']
-                col_val = t['col_val']
-                lbl_route = t['lbl_route']
-                lbl_type = t['lbl_type']
-                lbl_dist = t['lbl_dist']
-                lbl_cargo = t['lbl_cargo']
-                lbl_weight = t['lbl_weight']
-                lbl_period = t['lbl_period']
-
-                val_route = p1.get('route', '-')
-                val_type = p1.get('shipment_type', '-')
-                val_dist = p1.get('distance', '-')
-                val_cargo = p1.get('cargo_and_wagon', '-')
-                val_weight = p1.get('weight_info', '-')
-                val_period = p1.get('period', '-')
-
-                table1_md = (
-                    f"| {col_param} | {col_val} |\n"
-                    f"| :--- | :--- |\n"
-                    f"| **{lbl_route}** | {val_route} |\n"
-                    f"| **{lbl_type}** | {val_type} |\n"
-                    f"| **{lbl_dist}** | {val_dist} |\n"
-                    f"| **{lbl_cargo}** | {val_cargo} |\n"
-                    f"| **{lbl_weight}** | {val_weight} |\n"
-                    f"| **{lbl_period}** | {val_period} |"
-                )
-                st.markdown(table1_md)
-
-            # Раздел 2
-            st.markdown(f"#### ⚙️ {t['sec2_title']}")
-            p2 = data.get("part2", {})
-            if isinstance(p2, list) and len(p2) > 0:
-                p2 = p2[0]
-
-            if isinstance(p2, dict):
-                table2_rows = [
-                    f"| **{t['lbl_exchange']}** | {exchange_text} |",
-                    f"| **{t['lbl_base_rate']}** | {p2.get('base_tariff', '-')} |",
-                ]
-
-                coeffs = p2.get("coefficients", [])
-                if isinstance(coeffs, list):
-                    for coeff in coeffs:
-                        if isinstance(coeff, dict):
-                            table2_rows.append(
-                                f"| **{coeff.get('name', '')}** | {coeff.get('value', '')} |"
-                            )
-
-                st.markdown(
-                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
-                    + "\n".join(table2_rows)
-                )
-
-            # Раздел 3
-            st.markdown(f"#### 📐 {t['sec3_title']}")
-            p3 = data.get("part3", {})
-            if isinstance(p3, list) and len(p3) > 0:
-                p3 = p3[0]
-
-            if isinstance(p3, dict):
-                st.markdown(f"**{t['formula_title']}**")
-                st.code(p3.get("formula", "-"), language="text")
-
-                st.markdown(f"**{t['rates_title']}**")
-                table3_rows = [
-                    f"| **{t['lbl_net_rate']}** | **{p3.get('net_ady_rate', '-')}** |"
-                ]
-
-                express_val = p3.get("express_rate")
-                if express_val:
-                    table3_rows.append(
-                        f"| **{t['lbl_express_rate']}** | **{express_val}** |"
-                    )
-
-                st.markdown(
-                    f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
-                    + "\n".join(table3_rows)
-                )
-
-                # Динамическая сборка примечаний (Qeydlər)
-                auto_notes = []
-                input_check = user_input.lower()
-                weight_str = str(p1.get("weight_info", "")).lower()
-
-                if any(k in input_check for k in ["sps", "özəl", "спс", "собствен"]):
-                    auto_notes.append(t["note_sps"])
-
-                ship_type = str(p1.get("shipment_type", "")).lower()
-                if any(k in ship_type for k in ["idxal", "импорт", "import"]):
-                    auto_notes.append(t["note_import"])
-                elif any(k in ship_type for k in ["ixrac", "экспорт", "export"]):
-                    auto_notes.append(t["note_export"])
-
-                if ("faktiki" in weight_str or "фактическ" in weight_str) and ("min" in weight_str or "hesablaşma" in weight_str or "расчетн" in weight_str):
-                    auto_notes.append(t["note_min_weight"])
-
-                coeffs = p2.get("coefficients", []) if isinstance(p2, dict) else []
-                coeff_values = [str(c.get("value", "")) for c in coeffs if isinstance(c, dict)]
-                coeff_str = " ".join(coeff_values)
-
-                if "1.04" in coeff_str and "tranzit" not in ship_type and "транзит" not in ship_type:
-                    auto_notes.append(t["note_timber_metal"])
-                if "1.015" in coeff_str or "1,015" in coeff_str:
-                    auto_notes.append(t["note_coef_1015"])
-
-                if express_val:
-                    auto_notes.append(t["note_express"])
-
-                if auto_notes:
-                    st.markdown(f"**{t['notes_title']}**")
-                    for idx, note in enumerate(auto_notes, start=1):
-                        st.markdown(f"{idx}. *{note}*")
-
-                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
-
-        except Exception as e:
-            train_holder.empty()
-            st.error(f"Error: {str(e)}")
-
-st.markdown("---")
-st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
+    # 2. Вид перевозки
+    if is_from_border and is_to_border:
+        shipment_type_code = "transit"
+        shipment_type_display = t["type_transit"]
+    elif is_from_border:
+        shipment_type
