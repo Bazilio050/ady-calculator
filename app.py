@@ -244,7 +244,7 @@ with col_controls:
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-# API Key Handling
+# API Key
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.text_input(t["api_label"], type="password")
@@ -257,7 +257,7 @@ client = genai.Client(api_key=api_key)
 
 
 # ==============================================================================
-# 4. CACHED DATA LOADERS (Мгновенная работа в оперативной памяти)
+# 4. CACHED DATA LOADERS (Кэширование в оперативной памяти)
 # ==============================================================================
 
 @st.cache_data(show_spinner=False)
@@ -267,7 +267,6 @@ def load_rules_config():
             return json.load(f)
     return {}
 
-# Кэшированная загрузка файла расстояний (0.001 секунды при расчете)
 @st.cache_data(show_spinner=False)
 def load_distances_map():
     dist_map = {}
@@ -299,7 +298,6 @@ def find_distance_in_memory(st_from, st_to):
             
     return 204
 
-# Кэшированная загрузка тарифных таблиц CHF
 @st.cache_data(show_spinner=False)
 def load_table_rates(table_num):
     t_file = f"Table_{table_num}_Tariffs.txt"
@@ -363,21 +361,26 @@ def get_currency_rate(requested_period, lang="AZ"):
 
 
 # ==============================================================================
-# 5. GEMINI NLU CALL
+# 5. GEMINI NLU CALL (Извлечение параметров)
 # ==============================================================================
 def call_gemini_nlu(client, user_input_text):
     prompt = (
-        "Extract shipment parameters from text into JSON. Return ONLY JSON:\n"
+        "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
+        "Extract shipment parameters from text into JSON. Return ONLY clean JSON:\n"
         "{\n"
-        '  "route_from": "string (station name)",\n'
-        '  "route_to": "string (station name)",\n'
-        '  "cargo_gng_code": "string (GNG code or empty)",\n'
-        '  "cargo_name_raw": "string (cargo description in input language)",\n'
+        '  "route_from": "string (origin station name without -eksp)",\n'
+        '  "route_to": "string (destination station name without -eksp)",\n'
+        '  "cargo_gng_code": "string (MUST extract 4-digit to 8-digit GNG/NHM code, e.g. 4407 or 44070000)",\n'
+        '  "cargo_name_raw": "string (cargo description in user input language, excluding GNG digits)",\n'
         '  "actual_weight_tons": float,\n'
         '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
         '  "requested_period": "string or null"\n'
         "}\n\n"
+        "STRICT NLU RULES:\n"
+        "1. Search specifically for GNG / NHM / ГНГ codes (4 to 8 digits long, e.g. 4407).\n"
+        "2. If user writes '4407', 'ГНГ 4407', or 'GNG 4407', set cargo_gng_code to '4407'.\n"
+        "3. Keep station names clean (e.g. 'Yalama', 'Absheron', 'Boyuk Kesik').\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
     
@@ -414,33 +417,49 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     act_weight = float(nlu_data.get("actual_weight_tons", 55.0))
     park_type = str(nlu_data.get("park_type", "SPS")).upper()
 
-    # Станции и погрансуффиксы
+    # 1. Станции и погранобозначения (-eksp.)
     border_info = config.get("border_stations", {})
-    border_list = border_info.get("list", ["Yalama", "Boyuk Kesik", "Böyük Kəsik", "Astara", "Culfa", "Alat", "Ələt"])
-    suffix = border_info.get("suffixes", {}).get(lang, "-eksp.")
+    border_list = border_info.get("list", [
+        "Yalama", "Ялама", 
+        "Boyuk Kesik", "Böyük Kəsik", "Беюк-Кесик", "Беюк Кесик",
+        "Astara", "Астара", 
+        "Culfa", "Джульфа", 
+        "Alat", "Ələt", "Алят",
+        "Samur", "Самур"
+    ])
+
+    if lang == "RU":
+        suffix = "-эксп."
+    elif lang == "EN":
+        suffix = "-exp."
+    else:
+        suffix = "-eksp."
 
     is_from_border = any(b.lower() in st_from.lower() for b in border_list)
     is_to_border = any(b.lower() in st_to.lower() for b in border_list)
 
-    display_from = f"{st_from}{suffix}" if is_from_border else st_from
-    display_to = f"{st_to}{suffix}" if is_to_border else st_to
+    display_from = st_from if (not is_from_border or suffix in st_from.lower()) else f"{st_from}{suffix}"
+    display_to = st_to if (not is_to_border or suffix in st_to.lower()) else f"{st_to}{suffix}"
     route_display = f"{display_from} - {display_to}"
 
-    # Вид перевозки
+    # 2. Логика направления (İdxal / İxrac / Tranzit)
     if is_from_border and is_to_border:
         shipment_type_code = "transit"
         shipment_type_display = ui_t["type_transit"]
-    elif is_from_border:
+    elif is_from_border and not is_to_border:
         shipment_type_code = "import"
         shipment_type_display = ui_t["type_import"]
-    else:
+    elif not is_from_border and is_to_border:
         shipment_type_code = "export"
         shipment_type_display = ui_t["type_export"]
+    else:
+        shipment_type_code = "local"
+        shipment_type_display = "Daxili daşınma" if lang == "AZ" else ("Внутренняя перевозка" if lang == "RU" else "Domestic shipment")
 
-    # Расстояние
+    # 3. Расстояние
     dist_km = find_distance_in_memory(st_from, st_to)
 
-    # Расчетный вес
+    # 4. Расчетный вес и минимальные нормы
     billable_weight = act_weight
     min_norms = config.get("minimal_weight_norms_gng", {}).get("rules", [])
     for rule in min_norms:
@@ -451,25 +470,32 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
                 billable_weight = float(norm)
             break
 
-    # Парк вагонов
+    if act_weight < billable_weight:
+        weight_display = f"{int(act_weight)} t / {int(billable_weight)} t ({'norma' if lang=='AZ' else ('норма' if lang=='RU' else 'min. norm')})"
+    else:
+        weight_display = f"{int(act_weight)} t"
+
+    # 5. Парк вагонов
     lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
     park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
 
-    # Формирование строки груза (ЗАЩИТА ОТ ДУБЛИРОВАНИЯ 4407 - 4407)
+    # Формирование строки груза
     if cargo_name_nlu and not cargo_name_nlu.isdigit() and cargo_name_nlu != gng:
         cargo_wagon_display = f"GNG {gng} - {cargo_name_nlu}, Universal vaqon ({park_display})"
-    else:
+    elif gng:
         cargo_wagon_display = f"GNG {gng}, Universal vaqon ({park_display})"
+    else:
+        cargo_wagon_display = f"Universal vaqon ({park_display})"
 
-    # Базовая ставка
+    # 6. Базовая ставка CHF
     table_num = 4 if shipment_type_code == "transit" else 3
     base_chf, table_details = get_base_tariff_chf(table_num, dist_km, billable_weight)
     base_tariff_display = f"{base_chf:.2f} CHF/ton ({table_details})"
 
-    # Курс CHF/USD
+    # 7. Курс CHF/USD
     usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
 
-    # Коэффициенты
+    # 8. Коэффициенты
     coeffs = []
     if park_type == "SPS":
         coeffs.append(("Özəl vaqon əmsalı" if lang == "AZ" else ("Собственный вагон" if lang == "RU" else "Private wagon"), 0.85))
@@ -485,7 +511,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         lbl_1015 = add_coeff_info.get("labels", {}).get(lang, "Əlavə əmsal")
         coeffs.append((lbl_1015, val_1015))
 
-    # Математика
+    # 9. Формула и расчёт
     final_rate = base_chf / usd_rate
     formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
 
@@ -497,7 +523,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit}"
     express_rate_str = f"{final_rate * 1.02:.2f} {unit}"
 
-    # Примечания
+    # 10. Примечания
     notes = []
     if park_type == "SPS":
         notes.append(ui_t["note_sps"])
@@ -519,7 +545,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
             "shipment_type": shipment_type_display,
             "distance": f"{dist_km} km",
             "cargo_and_wagon": cargo_wagon_display,
-            "weight_info": f"{int(act_weight)} t",
+            "weight_info": weight_display,
             "period": f"{year}-cı fraxt ili"
         },
         "part2": {
