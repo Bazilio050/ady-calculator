@@ -283,7 +283,39 @@ def load_rules_config():
     return {}
 
 
-# 7. Загрузка динамического контекста (БЕЗ system_instruction.txt)
+# 6.2 Чистая Python-функция подбора курса CHF/USD на основе правил
+def get_currency_rate(user_query, lang="AZ"):
+    config = load_rules_config()
+    currency_data = config.get("currency_rates", {})
+    periods = currency_data.get("periods", [])
+    query_lower = user_query.lower()
+
+    selected_period = None
+    for p in periods:
+        keywords = p.get("keywords", [])
+        if any(kw in query_lower for kw in keywords):
+            selected_period = p
+            break
+
+    # Если в запросе нет конкретного месяца/квартала — берём Q3 по умолчанию
+    if not selected_period:
+        default_id = currency_data.get("default_period", "Q3_2026")
+        for p in periods:
+            if p.get("id") == default_id:
+                selected_period = p
+                break
+
+    rate = selected_period.get("rate_usd_to_chf", 0.79)
+    label_key = f"label_{lang.lower()}"
+    label_text = selected_period.get(label_key, selected_period.get("label_az", ""))
+
+    return {
+        "rate": rate,
+        "formatted_text": f"1 USD = {rate:.2f} CHF ({label_text})"
+    }
+
+
+# 7. Загрузка динамического контекста (БЕЗ system_instruction.txt и Currency_Exchange.txt)
 @st.cache_data(show_spinner=False)
 def load_selective_context(user_query, year_label, lang):
     query_lower = user_query.lower()
@@ -291,7 +323,6 @@ def load_selective_context(user_query, year_label, lang):
     files_to_load = [
         "GNG_Column_Mapping.txt",
         "Security_Cargo_GNG.txt",
-        "Currency_Exchange.txt",
     ]
 
     for dist_file in ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]:
@@ -371,7 +402,7 @@ def load_selective_context(user_query, year_label, lang):
     # Динамическое чтение правил из rules_config.json
     config = load_rules_config()
     
-    # 1. Пограничные станции и их языковые суффиксы
+    # 1. Пограничные станции и языковые суффиксы
     border_info = config.get("border_stations", {})
     border_stations_list = border_info.get(
         "list", ["Yalama", "Boyuk Kesik", "Astara", "Culfa", "Alat"]
@@ -429,7 +460,6 @@ user_input = st.text_area(
 )
 
 
-# Автономные правила форматирования JSON (без зависимости от prompt_rules.txt)
 def get_static_rules():
     schema_dict = {
         "part1": {
@@ -541,8 +571,12 @@ if st.button(t["calc_btn"], type="primary"):
                 p2 = p2[0]
 
             if isinstance(p2, dict):
+                # Подтягиваем авто-курс через Python из rules_config.json
+                curr_info = get_currency_rate(user_input, selected_lang)
+                exchange_text = curr_info["formatted_text"]
+
                 table2_rows = [
-                    f"| **{t['lbl_exchange']}** | {p2.get('exchange_rate', '-')} |",
+                    f"| **{t['lbl_exchange']}** | {exchange_text} |",
                     f"| **{t['lbl_base_rate']}** | {p2.get('base_tariff', '-')} |",
                 ]
 
