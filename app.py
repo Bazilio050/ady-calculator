@@ -283,27 +283,38 @@ def load_rules_config():
     return {}
 
 
-# 6.2 Чистая Python-функция подбора курса CHF/USD на основе правил
+# 6.2 Защищенная Python-функция подбора курса CHF/USD
 def get_currency_rate(user_query, lang="AZ"):
     config = load_rules_config()
-    currency_data = config.get("currency_rates", {})
-    periods = currency_data.get("periods", [])
-    query_lower = user_query.lower()
+    currency_data = config.get("currency_rates", {}) if isinstance(config, dict) else {}
+    periods = currency_data.get("periods", []) if isinstance(currency_data, dict) else []
+    query_lower = str(user_query).lower()
 
     selected_period = None
-    for p in periods:
-        keywords = p.get("keywords", [])
-        if any(kw in query_lower for kw in keywords):
-            selected_period = p
-            break
-
-    # Если в запросе нет конкретного месяца/квартала — берём Q3 по умолчанию
-    if not selected_period:
-        default_id = currency_data.get("default_period", "Q3_2026")
+    if periods:
         for p in periods:
-            if p.get("id") == default_id:
-                selected_period = p
-                break
+            if isinstance(p, dict):
+                keywords = p.get("keywords", [])
+                if any(kw in query_lower for kw in keywords):
+                    selected_period = p
+                    break
+
+        # Если совпадений по ключевым словам нет — ищем Q3 по умолчанию
+        if not selected_period:
+            default_id = currency_data.get("default_period", "Q3_2026")
+            for p in periods:
+                if isinstance(p, dict) and p.get("id") == default_id:
+                    selected_period = p
+                    break
+
+    # Жесткий запасной вариант (fallback), если вдруг config прочитался пустой
+    if not selected_period or not isinstance(selected_period, dict):
+        selected_period = {
+            "rate_usd_to_chf": 0.79,
+            "label_az": "01.07.2026 - 30.09.2026-cı il tarixləri üzrə",
+            "label_ru": "на период 01.07.2026г. - 30.09.2026г.",
+            "label_en": "for period 01.07.2026 - 30.09.2026"
+        }
 
     rate = selected_period.get("rate_usd_to_chf", 0.79)
     label_key = f"label_{lang.lower()}"
@@ -315,7 +326,7 @@ def get_currency_rate(user_query, lang="AZ"):
     }
 
 
-# 7. Загрузка динамического контекста (БЕЗ system_instruction.txt и Currency_Exchange.txt)
+# 7. Загрузка динамического контекста (БЕЗ system_instruction.txt)
 @st.cache_data(show_spinner=False)
 def load_selective_context(user_query, year_label, lang):
     query_lower = user_query.lower()
@@ -403,16 +414,17 @@ def load_selective_context(user_query, year_label, lang):
     config = load_rules_config()
     
     # 1. Пограничные станции и языковые суффиксы
-    border_info = config.get("border_stations", {})
+    border_info = config.get("border_stations", {}) if isinstance(config, dict) else {}
     border_stations_list = border_info.get(
         "list", ["Yalama", "Boyuk Kesik", "Astara", "Culfa", "Alat"]
     )
-    suffixes = border_info.get("suffixes", {})
+    suffixes = border_info.get("suffixes", {}) if isinstance(border_info, dict) else {}
     suffix = suffixes.get(lang, "-eksp.")
     stations_str = ", ".join(border_stations_list)
 
     # 2. Языковые термины
-    lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
+    lang_dict = config.get("language_abbreviations", {}) if isinstance(config, dict) else {}
+    lang_abbr = lang_dict.get(lang, {}) if isinstance(lang_dict, dict) else {}
     priv_term = lang_abbr.get("private_wagon", "SPS" if lang != "RU" else "СПС")
     inv_term = lang_abbr.get("inventory_wagon", "MPS" if lang != "RU" else "МПС")
 
@@ -571,7 +583,7 @@ if st.button(t["calc_btn"], type="primary"):
                 p2 = p2[0]
 
             if isinstance(p2, dict):
-                # Подтягиваем авто-курс через Python из rules_config.json
+                # Подтягиваем защищенный курс через Python из rules_config.json
                 curr_info = get_currency_rate(user_input, selected_lang)
                 exchange_text = curr_info["formatted_text"]
 
