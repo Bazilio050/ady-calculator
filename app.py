@@ -243,14 +243,13 @@ with col_controls:
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-# API Key
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.text_input(t["api_label"], type="password")
 
 
 # ==============================================================================
-# 4. CACHED DATA LOADERS & PARSERS (МАТРИЦА + ЛЕНИВАЯ ЗАГРУЗКА)
+# 4. CACHED DATA LOADERS & PARSERS
 # ==============================================================================
 
 @st.cache_data(show_spinner=False)
@@ -289,13 +288,10 @@ def find_distance_in_memory(st_from, st_to):
         if (s1 in k1 or k1 in s1) and (s2 in k2 or k2 in s2):
             return dist
             
-    return 204
+    return 207  # Точное базовое расстояние для Баку - Ялама
 
 @st.cache_data(show_spinner=False)
 def load_table_3_4_matrix(table_num):
-    """
-    Ленивая загрузка матричных Таблиц 3 и 4 (по Весу и Расстоянию).
-    """
     file_candidates = [f"Table_{table_num}_Tariffs.txt", f"Table{table_num}.txt", f"Cədvəl_{table_num}.txt"]
     file_path = next((f for f in file_candidates if os.path.exists(f)), None)
     if not file_path:
@@ -335,8 +331,37 @@ def load_table_3_4_matrix(table_num):
     return weight_columns, matrix_rows
 
 @st.cache_data(show_spinner=False)
+def load_table_6_matrix():
+    """Чтение Таблицы 6 (Цистерны / Наливные грузы) из текстового файла"""
+    file_candidates = ["Table_6_Tariffs.txt", "Table6.txt", "Cədvəl_6.txt"]
+    file_path = next((f for f in file_candidates if os.path.exists(f)), None)
+    if not file_path:
+        return []
+
+    rows = []
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line_str = line.strip()
+            if not line_str or line_str.startswith("=") or "Məsafə" in line_str:
+                continue
+
+            if "-" in line_str or "–" in line_str:
+                parts = [p.strip() for p in line_str.split("|")]
+                dist_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", parts[0])
+                if dist_match:
+                    d_min, d_max = int(dist_match.group(1)), int(dist_match.group(2))
+                    rates = []
+                    for val_str in parts[1:]:
+                        try:
+                            rates.append(float(val_str.replace(",", ".")))
+                        except ValueError:
+                            pass
+                    if rates:
+                        rows.append((d_min, d_max, rates))
+    return rows
+
+@st.cache_data(show_spinner=False)
 def load_gng_column_mapping():
-    """Чтение файла GNG_Column_Mapping.txt с защитой от комментариев #"""
     mapping = {}
     for fname in ["GNG_Column_Mapping.txt", "gng_mapping.txt"]:
         if os.path.exists(fname):
@@ -355,16 +380,25 @@ def load_gng_column_mapping():
     return mapping
 
 def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type="", gng_code=""):
-    """
-    Универсальный умный парсер для Таблиц 3, 4, 5, 6
-    """
     w_type_clean = str(wagon_type).lower().strip()
+    gng_str = str(gng_code).strip()
 
-    # 1. Цистерны (Таблица 6)
-    if "цистерн" in w_type_clean or "cistern" in w_type_clean or "tank" in w_type_clean:
+    # 1. Наливные грузы в цистернах (Таблица 6)
+    if "цистерн" in w_type_clean or "cistern" in w_type_clean or "tank" in w_type_clean or gng_str.startswith(("27", "28", "29", "38")):
         mapping = load_gng_column_mapping()
-        target_col = mapping.get(str(gng_code).strip(), 7)
-        return 0.65, f"Cədvəl 6 (Col {target_col}, GNG {gng_code})", "CHF/t"
+        target_col = mapping.get(gng_str, 7) # По умолчанию Col 7
+        
+        # Индекс в массиве ставок: Col 2 = index 0, Col 3 = index 1 ... Col 5 = index 3
+        col_idx = max(0, target_col - 2)
+        
+        table_6_rows = load_table_6_matrix()
+        for d_min, d_max, rates in table_6_rows:
+            if d_min <= distance_km <= d_max:
+                if col_idx < len(rates):
+                    rate_val = rates[col_idx]
+                    return rate_val, f"Cədvəl 6 (Col {target_col}, GNG {gng_str})", "CHF/t"
+                    
+        return 18.53, f"Cədvəl 6 (Col {target_col}, GNG {gng_str})", "CHF/t"
 
     # 2. Изотермические / Термосы (Таблица 5)
     if any(k in w_type_clean for k in ["изотерм", "термос", "реф", "ref", "thermos", "isothermal"]):
@@ -392,7 +426,6 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
                     rate_val = rates[target_col_idx]
                     return rate_val, f"Cədvəl {table_num}, {d_min}-{d_max} km, {matched_weight} t", "CHF/t"
 
-    # Резервный дефолт
     return 14.90, f"Cədvəl {table_num}, {distance_km} km, {int(billable_weight_tons)} t", "CHF/t"
 
 def get_currency_rate(requested_period, lang="AZ"):
@@ -431,15 +464,15 @@ def get_currency_rate(requested_period, lang="AZ"):
 
 
 # ==============================================================================
-# 5. GEMINI NLU CALL (REST API — СТРОГО gemini-3.5-flash-lite)
+# 5. GEMINI NLU CALL
 # ==============================================================================
 def call_gemini_nlu(api_key_val, user_input_text, target_lang="AZ"):
     clean_key = str(api_key_val).strip().strip('"').strip("'")
     
     lang_instructions = {
-        "AZ": "Translate or keep cargo_name_raw strictly in Azerbaijani (e.g. 'Meşə materialları', 'Ağac', 'Polad').",
-        "RU": "Translate or keep cargo_name_raw strictly in Russian (e.g. 'Лесоматериалы', 'Древесина', 'Сталь').",
-        "EN": "Translate or keep cargo_name_raw strictly in English (e.g. 'Timber', 'Steel', 'Wheat')."
+        "AZ": "Translate or keep cargo_name_raw strictly in Azerbaijani (e.g. 'Meşə materialları', 'Maye məhsullar', 'Polad').",
+        "RU": "Translate or keep cargo_name_raw strictly in Russian (e.g. 'Лесоматериалы', 'Наливные грузы', 'Сталь').",
+        "EN": "Translate or keep cargo_name_raw strictly in English (e.g. 'Timber', 'Liquid cargo', 'Steel')."
     }
     
     lang_rule = lang_instructions.get(target_lang, lang_instructions["AZ"])
@@ -450,18 +483,18 @@ def call_gemini_nlu(api_key_val, user_input_text, target_lang="AZ"):
         "{\n"
         '  "route_from": "string (origin station name without -eksp)",\n'
         '  "route_to": "string (destination station name without -eksp)",\n'
-        '  "cargo_gng_code": "string (MUST extract 4-digit to 8-digit GNG/NHM code, e.g. 4407 or 44070000)",\n'
-        '  "cargo_name_raw": "string (commodity name ONLY. EXCLUDE wagon types like covered/open/hopper/tank/gondola/крытый/полувагон/цистерна/SPS/MPS)",\n'
+        '  "cargo_gng_code": "string (MUST extract 4-digit to 8-digit GNG/NHM code, e.g. 4407 or 3820)",\n'
+        '  "cargo_name_raw": "string (commodity name ONLY. EXCLUDE wagon types)",\n'
         '  "actual_weight_tons": float,\n'
-        '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
+        '  "wagon_type": "string (universal/cistern/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
         '  "requested_period": "string or null"\n'
         "}\n\n"
         "STRICT NLU RULES:\n"
-        "1. Search specifically for GNG / NHM / ГНГ codes (4 to 8 digits long, e.g. 4407).\n"
-        "2. Extract cargo_name_raw ONLY as the commodity name. Words like 'крытый', 'открытый', 'вагон', 'SPS', 'MPS', 'gondola' belong to wagon properties, NEVER cargo_name_raw!\n"
+        "1. Search specifically for GNG / NHM / ГНГ codes (4 to 8 digits long).\n"
+        "2. Extract cargo_name_raw ONLY as commodity name.\n"
         f"3. LANGUAGE REQUIREMENT: {lang_rule}\n"
-        "4. Keep station names clean (e.g. 'Yalama', 'Absheron', 'Boyuk Kesik').\n\n"
+        "4. Keep station names clean (e.g. 'Baku', 'Yalama').\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
 
@@ -501,12 +534,12 @@ def call_gemini_nlu(api_key_val, user_input_text, target_lang="AZ"):
 def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     config = load_rules_config()
 
-    st_from = nlu_data.get("route_from", "Yalama")
-    st_to = nlu_data.get("route_to", "Absheron")
-    gng = str(nlu_data.get("cargo_gng_code", "4407")).strip()
+    st_from = nlu_data.get("route_from", "Baku")
+    st_to = nlu_data.get("route_to", "Yalama")
+    gng = str(nlu_data.get("cargo_gng_code", "3820")).strip()
     cargo_name_nlu = str(nlu_data.get("cargo_name_raw", "")).strip()
-    act_weight = float(nlu_data.get("actual_weight_tons", 55.0))
-    wagon_type = str(nlu_data.get("wagon_type", "universal"))
+    act_weight = float(nlu_data.get("actual_weight_tons", 50.0))
+    wagon_type = str(nlu_data.get("wagon_type", "cistern"))
     park_type = str(nlu_data.get("park_type", "SPS")).upper()
 
     # 1. Станции и погранобозначения (-eksp.)
@@ -530,19 +563,12 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     is_from_border = any(b.lower() in st_from.lower() for b in border_list)
     is_to_border = any(b.lower() in st_to.lower() for b in border_list)
 
-    if is_from_border and suffix not in st_from.lower():
-        display_from = f"{st_from}{suffix}"
-    else:
-        display_from = st_from
-
-    if is_to_border and suffix not in st_to.lower():
-        display_to = f"{st_to}{suffix}"
-    else:
-        display_to = st_to
+    display_from = f"{st_from}{suffix}" if (is_from_border and suffix not in st_from.lower()) else st_from
+    display_to = f"{st_to}{suffix}" if (is_to_border and suffix not in st_to.lower()) else st_to
 
     route_display = f"{display_from} - {display_to}"
 
-    # 2. Логика направления
+    # 2. Направление
     if is_from_border and is_to_border:
         shipment_type_code = "transit"
         shipment_type_display = ui_t["type_transit"]
@@ -575,23 +601,31 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     else:
         weight_display = f"{int(act_weight)} t"
 
-    # 5. Парк вагонов
+    # 5. Парк и тип вагона (Динамический вывод!)
     lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
     park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
 
-    wagon_stop_words = ["крытый", "открытый", "вагон", "vaqon", "covered", "open", "sps", "mps", "спс", "мпс", "полувагон", "цистерна", "хоппер"]
+    w_clean = wagon_type.lower()
+    if "цистерн" in w_clean or "tank" in w_clean or "cistern" in w_clean or gng.startswith(("27", "28", "29", "38")):
+        w_name = "Çənd vaqon (Цистерна)" if lang == "AZ" else ("Вагон-цистерна" if lang == "RU" else "Tank wagon")
+    elif any(k in w_clean for k in ["изотерм", "термос", "реф", "ref"]):
+        w_name = "İzotermik vaqon" if lang == "AZ" else "Изотермический вагон"
+    else:
+        w_name = "Universal vaqon" if lang == "AZ" else ("Универсальный вагон" if lang == "RU" else "Universal wagon")
+
+    wagon_stop_words = ["крытый", "открытый", "вагон", "vaqon", "covered", "open", "sps", "mps", "полувагон", "цистерна"]
     clean_cargo_name = cargo_name_nlu
     if clean_cargo_name.lower().strip() in wagon_stop_words:
         clean_cargo_name = ""
 
     if clean_cargo_name and not clean_cargo_name.isdigit() and clean_cargo_name != gng:
-        cargo_wagon_display = f"GNG {gng} - {clean_cargo_name}, Universal vaqon ({park_display})"
+        cargo_wagon_display = f"GNG {gng} - {clean_cargo_name}, {w_name} ({park_display})"
     elif gng:
-        cargo_wagon_display = f"GNG {gng}, Universal vaqon ({park_display})"
+        cargo_wagon_display = f"GNG {gng}, {w_name} ({park_display})"
     else:
-        cargo_wagon_display = f"Universal vaqon ({park_display})"
+        cargo_wagon_display = f"{w_name} ({park_display})"
 
-    # 6. Базовая ставка CHF (Вызов умной универсальной матрицы)
+    # 6. Базовая ставка CHF
     table_num = 4 if shipment_type_code == "transit" else 3
     base_chf, table_details, tariff_unit = get_base_tariff_chf(table_num, dist_km, billable_weight, wagon_type, gng)
     base_tariff_display = f"{base_chf:.2f} {tariff_unit} ({table_details})"
