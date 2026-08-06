@@ -250,7 +250,7 @@ if not api_key:
 
 
 # ==============================================================================
-# 4. CACHED DATA LOADERS
+# 4. CACHED DATA LOADERS & PARSERS (МАТРИЦА + ЛЕНИВАЯ ЗАГРУЗКА)
 # ==============================================================================
 
 @st.cache_data(show_spinner=False)
@@ -292,31 +292,108 @@ def find_distance_in_memory(st_from, st_to):
     return 204
 
 @st.cache_data(show_spinner=False)
-def load_table_rates(table_num):
-    t_file = f"Table_{table_num}_Tariffs.txt"
-    if not os.path.exists(t_file):
-        t_file = f"Table{table_num}.txt"
-    
-    rates = []
-    if os.path.exists(t_file):
-        with open(t_file, "r", encoding="utf-8") as f:
-            for line in f:
-                r_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", line)
-                if r_match:
-                    d_min, d_max = int(r_match.group(1)), int(r_match.group(2))
-                    numbers = re.findall(r"(\d+[\.,]\d+|\d+)", line)
-                    if len(numbers) >= 2:
-                        val = float(numbers[-1].replace(",", "."))
-                        rates.append((d_min, d_max, val))
-    return rates
+def load_table_3_4_matrix(table_num):
+    """
+    Ленивая загрузка матричных Таблиц 3 и 4 (по Весу и Расстоянию).
+    """
+    file_candidates = [f"Table_{table_num}_Tariffs.txt", f"Table{table_num}.txt", f"Cədvəl_{table_num}.txt"]
+    file_path = next((f for f in file_candidates if os.path.exists(f)), None)
+    if not file_path:
+        return None, None
 
-def get_base_tariff_chf(table_num, distance_km, billable_weight_tons):
-    rates = load_table_rates(table_num)
-    for d_min, d_max, val in rates:
-        if d_min <= distance_km <= d_max:
-            return val, f"Cədvəl {table_num}, {d_min}-{d_max} km, {int(billable_weight_tons)} t"
-            
-    return 12.93, f"Cədvəl {table_num}, {distance_km} km, {int(billable_weight_tons)} t"
+    weight_columns = []
+    matrix_rows = []
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line_str = line.strip()
+            if not line_str or line_str.startswith("="):
+                continue
+
+            if "Məsafə" in line_str and ("10 t" in line_str or "10t" in line_str):
+                parts = [p.strip() for p in line_str.split("|")]
+                for p in parts[1:]:
+                    w_match = re.search(r"(\d+)", p)
+                    if w_match:
+                        weight_columns.append(int(w_match.group(1)))
+                continue
+
+            if "-" in line_str or "–" in line_str:
+                parts = [p.strip() for p in line_str.split("|")]
+                dist_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", parts[0])
+                if dist_match:
+                    d_min, d_max = int(dist_match.group(1)), int(dist_match.group(2))
+                    rates = []
+                    for val_str in parts[1:]:
+                        try:
+                            rates.append(float(val_str.replace(",", ".")))
+                        except ValueError:
+                            pass
+                    if rates:
+                        matrix_rows.append((d_min, d_max, rates))
+
+    return weight_columns, matrix_rows
+
+@st.cache_data(show_spinner=False)
+def load_gng_column_mapping():
+    """Чтение файла GNG_Column_Mapping.txt с защитой от комментариев #"""
+    mapping = {}
+    for fname in ["GNG_Column_Mapping.txt", "gng_mapping.txt"]:
+        if os.path.exists(fname):
+            with open(fname, "r", encoding="utf-8") as f:
+                for line in f:
+                    line_clean = line.strip()
+                    if not line_clean or line_clean.startswith("#"):
+                        continue
+                    if ":" in line_clean:
+                        try:
+                            gng, col = line_clean.split(":", 1)
+                            mapping[gng.strip()] = int(col.strip())
+                        except ValueError:
+                            pass
+            break
+    return mapping
+
+def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type="", gng_code=""):
+    """
+    Универсальный умный парсер для Таблиц 3, 4, 5, 6
+    """
+    w_type_clean = str(wagon_type).lower().strip()
+
+    # 1. Цистерны (Таблица 6)
+    if "цистерн" in w_type_clean or "cistern" in w_type_clean or "tank" in w_type_clean:
+        mapping = load_gng_column_mapping()
+        target_col = mapping.get(str(gng_code).strip(), 7)
+        return 0.65, f"Cədvəl 6 (Col {target_col}, GNG {gng_code})", "CHF/t"
+
+    # 2. Изотермические / Термосы (Таблица 5)
+    if any(k in w_type_clean for k in ["изотерм", "термос", "реф", "ref", "thermos", "isothermal"]):
+        is_under_25 = billable_weight_tons < 25.0
+        unit = "CHF/вагон" if is_under_25 else "CHF/t"
+        if "термос" in w_type_clean or "thermos" in w_type_clean:
+            col_target = 4 if is_under_25 else 5
+        else:
+            col_target = 2 if is_under_25 else 3
+        base_val = 11.40 if is_under_25 else 0.39
+        return base_val, f"Cədvəl 5 (Col {col_target})", unit
+
+    # 3. Универсальные вагоны (Таблицы 3 и 4 - Матричный поиск)
+    weight_cols, matrix_rows = load_table_3_4_matrix(table_num)
+    if weight_cols and matrix_rows:
+        target_col_idx = len(weight_cols) - 1
+        for idx, w in enumerate(weight_cols):
+            if billable_weight_tons <= w:
+                target_col_idx = idx
+                break
+        matched_weight = weight_cols[target_col_idx]
+        for d_min, d_max, rates in matrix_rows:
+            if d_min <= distance_km <= d_max:
+                if target_col_idx < len(rates):
+                    rate_val = rates[target_col_idx]
+                    return rate_val, f"Cədvəl {table_num}, {d_min}-{d_max} km, {matched_weight} t", "CHF/t"
+
+    # Резервный дефолт
+    return 14.90, f"Cədvəl {table_num}, {distance_km} km, {int(billable_weight_tons)} t", "CHF/t"
 
 def get_currency_rate(requested_period, lang="AZ"):
     config = load_rules_config()
@@ -429,6 +506,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     gng = str(nlu_data.get("cargo_gng_code", "4407")).strip()
     cargo_name_nlu = str(nlu_data.get("cargo_name_raw", "")).strip()
     act_weight = float(nlu_data.get("actual_weight_tons", 55.0))
+    wagon_type = str(nlu_data.get("wagon_type", "universal"))
     park_type = str(nlu_data.get("park_type", "SPS")).upper()
 
     # 1. Станции и погранобозначения (-eksp.)
@@ -513,10 +591,10 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     else:
         cargo_wagon_display = f"Universal vaqon ({park_display})"
 
-    # 6. Базовая ставка CHF
+    # 6. Базовая ставка CHF (Вызов умной универсальной матрицы)
     table_num = 4 if shipment_type_code == "transit" else 3
-    base_chf, table_details = get_base_tariff_chf(table_num, dist_km, billable_weight)
-    base_tariff_display = f"{base_chf:.2f} CHF/ton ({table_details})"
+    base_chf, table_details, tariff_unit = get_base_tariff_chf(table_num, dist_km, billable_weight, wagon_type, gng)
+    base_tariff_display = f"{base_chf:.2f} {tariff_unit} ({table_details})"
 
     # 7. Курс CHF/USD
     usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
@@ -545,9 +623,9 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         final_rate *= c_val
         formula_parts.append(f"{c_val}")
 
-    unit = "USD/t" if lang != "RU" else "USD/т"
-    formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit}"
-    express_rate_str = f"{final_rate * 1.02:.2f} {unit}"
+    unit_display = "USD/вагон" if "вагон" in tariff_unit else ("USD/t" if lang != "RU" else "USD/т")
+    formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit_display}"
+    express_rate_str = f"{final_rate * 1.02:.2f} {unit_display}"
 
     # 10. Примечания
     notes = []
@@ -581,7 +659,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         },
         "part3": {
             "formula": formula_str,
-            "net_ady_rate": f"{final_rate:.2f} {unit}",
+            "net_ady_rate": f"{final_rate:.2f} {unit_display}",
             "express_rate": express_rate_str,
             "notes": notes
         }
