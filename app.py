@@ -1,9 +1,8 @@
 import json
 import os
 import re
+import requests
 import streamlit as st
-from google import genai
-from google.genai import types
 
 # ==============================================================================
 # 1. PAGE CONFIG & STYLES (Строго первая команда)
@@ -355,11 +354,9 @@ def get_currency_rate(requested_period, lang="AZ"):
 
 
 # ==============================================================================
-# 5. GEMINI NLU CALL (СТРОГО gemini-3.5-flash-lite)
+# 5. GEMINI NLU CALL (REST API — СТРОГО gemini-3.5-flash-lite)
 # ==============================================================================
 def call_gemini_nlu(api_key_val, user_input_text, target_lang="AZ"):
-    client = genai.Client(api_key=api_key_val)
-    
     lang_instructions = {
         "AZ": "Translate or keep cargo_name_raw strictly in Azerbaijani (e.g. 'Meşə materialları', 'Ağac', 'Polad').",
         "RU": "Translate or keep cargo_name_raw strictly in Russian (e.g. 'Лесоматериалы', 'Древесина', 'Сталь').",
@@ -388,17 +385,26 @@ def call_gemini_nlu(api_key_val, user_input_text, target_lang="AZ"):
         "4. Keep station names clean (e.g. 'Yalama', 'Absheron', 'Boyuk Kesik').\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
-    
-    response = client.models.generate_content(
-        model="gemini-3.5-flash-lite",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.0,
-            response_mime_type="application/json",
-        ),
-    )
 
-    raw_text = response.text.strip()
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": api_key_val.strip()
+    }
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.0,
+            "responseMimeType": "application/json"
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
+    
+    result_json = response.json()
+    raw_text = result_json["candidates"][0]["content"]["parts"][0]["text"].strip()
+
     if raw_text.startswith("```json"):
         raw_text = raw_text[7:]
     elif raw_text.startswith("```"):
