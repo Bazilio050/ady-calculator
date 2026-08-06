@@ -457,8 +457,8 @@ def get_currency_rate(requested_period, lang="AZ"):
     label_key = f"label_{lang.lower()}"
     label_text = selected_period.get(label_key, selected_period.get("label_az", ""))
 
-    # Число делается жирным шрифтом, описание — курсивом
-    return rate, f"**{rate:.2f}** CHF *({label_text})*"
+    # Rəqəm və valyuta birlikdə bold tünd edilir: **0.79 CHF**
+    return rate, f"**{rate:.2f} CHF** *({label_text})*"
 
 
 # ==============================================================================
@@ -623,15 +623,15 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     else:
         cargo_wagon_display = f"{w_name} ({park_display})"
 
-    # 6. Базовая ставка CHF (Выделение числа жирным + источник курсивом)
+    # 6. Базовая ставка CHF (Rəqəm və valyuta birlikdə bold: **18.53 CHF/t**)
     table_num = 4 if shipment_type_code == "transit" else 3
     base_chf, table_details, tariff_unit = get_base_tariff_chf(table_num, dist_km, billable_weight, wagon_type, gng)
-    base_tariff_display = f"**{base_chf:.2f}** {tariff_unit} *({table_details})*"
+    base_tariff_display = f"**{base_chf:.2f} {tariff_unit}** *({table_details})*"
 
     # 7. Курс CHF/USD
     usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
 
-    # 8. Коэффициенты (Значения сделаны жирными)
+    # 8. Коэффициенты (Rəqəm bold edilir)
     coeffs = []
     if park_type == "SPS":
         coeffs.append(("Özəl vaqon əmsalı" if lang == "AZ" else ("Собственный вагон" if lang == "RU" else "Private wagon"), 0.85))
@@ -689,7 +689,6 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         "part2": {
             "exchange_rate": exchange_display,
             "base_tariff": base_tariff_display,
-            # Коэффициенты выставляются жирным **val**
             "coefficients": [{"name": name, "value": f"**{val}**"} for name, val in coeffs]
         },
         "part3": {
@@ -749,7 +748,7 @@ if st.button(t["calc_btn"], type="primary"):
             )
             st.markdown(table1_md)
 
-            # Раздел 2 (С визуальным выделением чисел!)
+            # Раздел 2 (Форматированный с Bold rəqəmlər + Italic izah)
             st.markdown(f"#### ⚙️ {t['sec2_title']}")
             p2 = data["part2"]
             table2_rows = [
