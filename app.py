@@ -357,6 +357,8 @@ def get_currency_rate(requested_period, lang="AZ"):
 # 5. GEMINI NLU CALL (REST API — СТРОГО gemini-3.5-flash-lite)
 # ==============================================================================
 def call_gemini_nlu(api_key_val, user_input_text, target_lang="AZ"):
+    clean_key = str(api_key_val).strip().strip('"').strip("'")
+    
     lang_instructions = {
         "AZ": "Translate or keep cargo_name_raw strictly in Azerbaijani (e.g. 'Meşə materialları', 'Ağac', 'Polad').",
         "RU": "Translate or keep cargo_name_raw strictly in Russian (e.g. 'Лесоматериалы', 'Древесина', 'Сталь').",
@@ -387,10 +389,8 @@ def call_gemini_nlu(api_key_val, user_input_text, target_lang="AZ"):
     )
 
     url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent"
-    headers = {
-        "Content-Type": "application/json",
-        "x-goog-api-key": api_key_val.strip()
-    }
+    params = {"key": clean_key}
+    headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
@@ -399,8 +399,11 @@ def call_gemini_nlu(api_key_val, user_input_text, target_lang="AZ"):
         }
     }
 
-    response = requests.post(url, headers=headers, json=payload)
-    response.raise_for_status()
+    response = requests.post(url, params=params, headers=headers, json=payload)
+    
+    if response.status_code != 200:
+        masked_key = clean_key[:6] + "..." + clean_key[-4:] if len(clean_key) > 10 else "НЕ УКАЗАН"
+        raise Exception(f"Google API Error [{response.status_code}]: {response.text} (Использованный ключ: {masked_key})")
     
     result_json = response.json()
     raw_text = result_json["candidates"][0]["content"]["parts"][0]["text"].strip()
