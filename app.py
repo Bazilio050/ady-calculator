@@ -15,10 +15,6 @@ GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 # 2. ПРЯМОЙ REST-ЗАПРОС К GEMINI API
 # ==========================================
 def call_gemini_nlu(prompt_text):
-    """
-    Отправляет текстовый запрос напрямую через REST API.
-    Работает с ключами AQ... (Tier 1) и AIza... (Free).
-    """
     if not GEMINI_API_KEY:
         st.error("API Key tapılmadı! / Секретный ключ GEMINI_API_KEY не найден в Secrets.")
         return None
@@ -77,9 +73,6 @@ def call_gemini_nlu(prompt_text):
 
 @st.cache_data(show_spinner=False)
 def load_table_3_4_matrix(table_num):
-    """
-    Считывает Таблицу 3 или 4 как двухмерную матрицу (Расстояние x Вес).
-    """
     file_candidates = [f"Table_{table_num}_Tariffs.txt", f"Table{table_num}.txt", f"Cədvəl_{table_num}.txt"]
     file_path = None
     for f in file_candidates:
@@ -99,7 +92,6 @@ def load_table_3_4_matrix(table_num):
             if not line_str or line_str.startswith("="):
                 continue
 
-            # Ищем заголовок колонок весов (Məsafə | 10 t | 15 t ... | 60 t)
             if "Məsafə" in line_str and ("10 t" in line_str or "10t" in line_str):
                 parts = [p.strip() for p in line_str.split("|")]
                 for p in parts[1:]:
@@ -108,7 +100,6 @@ def load_table_3_4_matrix(table_num):
                         weight_columns.append(int(weight_match.group(1)))
                 continue
 
-            # Ищем строки с диапазоном километров (например, 201-210)
             if "-" in line_str or "–" in line_str:
                 parts = [p.strip() for p in line_str.split("|")]
                 dist_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", parts[0])
@@ -130,13 +121,11 @@ def load_table_3_4_matrix(table_num):
 
 
 def get_matrix_rate_table_3_4(table_num, distance_km, billable_weight_tons):
-    """Находит точную ставку в Таблице 3 или 4"""
     weight_cols, matrix_rows = load_table_3_4_matrix(table_num)
 
     if not weight_cols or not matrix_rows:
         return 14.90, f"Cədvəl {table_num} (Default)"
 
-    # Определяем нужную колонку веса (градация вверх)
     target_col_idx = len(weight_cols) - 1
     for idx, w in enumerate(weight_cols):
         if billable_weight_tons <= w:
@@ -145,7 +134,6 @@ def get_matrix_rate_table_3_4(table_num, distance_km, billable_weight_tons):
 
     matched_weight = weight_cols[target_col_idx]
 
-    # Ищем диапазон километража
     for d_min, d_max, rates in matrix_rows:
         if d_min <= distance_km <= d_max:
             if target_col_idx < len(rates):
@@ -157,14 +145,12 @@ def get_matrix_rate_table_3_4(table_num, distance_km, billable_weight_tons):
 
 @st.cache_data(show_spinner=False)
 def load_gng_column_mapping():
-    """Считывает файл сопоставления ГНГ -> Столбец Таблицы 6 (с защитой от комментариев)"""
     mapping = {}
     for fname in ["GNG_Column_Mapping.txt", "gng_mapping.txt"]:
         if os.path.exists(fname):
             with open(fname, "r", encoding="utf-8") as f:
                 for line in f:
                     line_clean = line.strip()
-                    # Игнорируем пустые строки и комментарии с решеткой #
                     if not line_clean or line_clean.startswith("#"):
                         continue
                         
@@ -179,7 +165,6 @@ def load_gng_column_mapping():
 
 
 def get_table_6_rate(distance_km, gng_code):
-    """Возвращает ставку для наливных грузов (Таблица 6)"""
     mapping = load_gng_column_mapping()
     target_col = mapping.get(str(gng_code).strip(), 7)
     base_rate = 0.65
@@ -187,7 +172,6 @@ def get_table_6_rate(distance_km, gng_code):
 
 
 def get_table_5_rate(distance_km, billable_weight_tons, wagon_type):
-    """Возвращает ставку для спец. вагонов (Таблица 5) с учётом оплаты 'за вагон'"""
     is_under_25 = billable_weight_tons < 25.0
     w_type_lower = wagon_type.lower()
     
@@ -205,8 +189,8 @@ def get_table_5_rate(distance_km, billable_weight_tons, wagon_type):
 # ==========================================
 
 def determine_shipment_type(route_from, route_to):
-    """Определяет направление перевозки по пограничным станциям"""
-    borders = ["yalama", "böyük kəsik", "boyuk kesik", "astara", "culfa", "samur"]
+    """Поддержка латиницы и кириллицы для погранпереходов"""
+    borders = ["yalama", "ялама", "böyük kəsik", "boyuk kesik", "беюк кясик", "astara", "астара", "culfa", "джульфа", "samur", "самур"]
     rf = str(route_from).lower().strip()
     rt = str(route_to).lower().strip()
     
@@ -224,7 +208,6 @@ def determine_shipment_type(route_from, route_to):
 
 
 def calculate_freight(parsed_data):
-    """Главный расчётный движок"""
     rf = parsed_data.get("route_from", "Yalama-eksp.")
     rt = parsed_data.get("route_to", "Absheron")
     actual_weight = float(parsed_data.get("actual_weight_tons") or 35.0)
@@ -233,25 +216,40 @@ def calculate_freight(parsed_data):
     cargo_name = parsed_data.get("cargo_name") or "Meşə materialları"
     park_type = parsed_data.get("park_type") or "SPS"
     
-    # Расчётный вес (норма)
     billable_weight = max(actual_weight, 45.0)
     distance_km = 204  # Определение расстояния
     
     shipment_code, shipment_name = determine_shipment_type(rf, rt)
     
-    # Динамический выбор таблицы
     wagon_clean = wagon_type.lower()
     if "цистерн" in wagon_clean or "cistern" in wagon_clean:
-        rate, source = get_table_6_rate(distance_km, gng_code)
+        base_rate, source = get_table_6_rate(distance_km, gng_code)
         unit = "CHF/т"
     elif any(k in wagon_clean for k in ["изотерм", "термос", "реф", "ref"]):
-        rate, unit, source = get_table_5_rate(distance_km, billable_weight, wagon_type)
+        base_rate, unit, source = get_table_5_rate(distance_km, billable_weight, wagon_type)
     elif shipment_code == "transit":
-        rate, source = get_matrix_rate_table_3_4(4, distance_km, billable_weight)
+        base_rate, source = get_matrix_rate_table_3_4(4, distance_km, billable_weight)
         unit = "CHF/т"
     else:
-        rate, source = get_matrix_rate_table_3_4(3, distance_km, billable_weight)
+        base_rate, source = get_matrix_rate_table_3_4(3, distance_km, billable_weight)
         unit = "CHF/т"
+
+    # --- РАСЧЕТ ИТОГОВОЙ СТОИМОСТИ ---
+    # Коэффициент парка (SPS = 1.0, MPS = 0.85)
+    park_coeff = 1.0 if park_type.upper() == "SPS" else 0.85
+    
+    # Расчет суммы в CHF
+    if "вагон" in unit:
+        total_chf = base_rate * park_coeff
+    else:
+        total_chf = base_rate * billable_weight * park_coeff
+
+    # Конвертация валют (Курсы ADY)
+    chf_to_usd = 1.14   # Курс CHF/USD
+    usd_to_azn = 1.70   # Фиксированный курс USD/AZN
+
+    total_usd = total_chf * chf_to_usd
+    total_azn = total_usd * usd_to_azn
 
     return {
         "route": f"{rf} - {rt}",
@@ -259,9 +257,13 @@ def calculate_freight(parsed_data):
         "distance_km": distance_km,
         "gng": f"GNG {gng_code} - {cargo_name}, {wagon_type} ({park_type})",
         "weight_info": f"{int(actual_weight)} t / {int(billable_weight)} t (norma)",
-        "rate": rate,
+        "rate": base_rate,
         "unit": unit,
-        "source": source
+        "source": source,
+        "park_coeff": park_coeff,
+        "total_chf": round(total_chf, 2),
+        "total_usd": round(total_usd, 2),
+        "total_azn": round(total_azn, 2)
     }
 
 # ==========================================
@@ -287,8 +289,8 @@ if st.button("🚀 Hesabla", type="primary"):
         if parsed:
             res = calculate_freight(parsed)
             
+            # БЛОК 1: МАРШРУТ И УСЛОВИЯ
             st.markdown("### 📍 1. Marşrut və daşıma şərtləri")
-            
             table_data = [
                 {"Parametr": "Marşrut", "Qiymət / Həcm": res["route"]},
                 {"Parametr": "Daşıma növü", "Qiymət / Həcm": res["shipment_name"]},
@@ -298,5 +300,21 @@ if st.button("🚀 Hesabla", type="primary"):
                 {"Parametr": "Baza Tarifi / Mənbə", "Qiymət / Həcm": f"{res['rate']} {res['unit']} ({res['source']})"},
                 {"Parametr": "Dövr", "Qiymət / Həcm": "2026-cı fraxt ili"}
             ]
-            
             st.table(table_data)
+
+            # БЛОК 2: КОЭФФИЦИЕНТЫ И ПОНИЖЕНИЯ
+            st.markdown("### 📊 2. Əmsallar və güzəştlər")
+            coeff_data = [
+                {"Əmsal növü": "Vaqon parkı əmsalı (SPS / MPS)", "Dəyər": f"{res['park_coeff']}"},
+                {"Əmsal növü": "CHF / USD valyuta məzənnəsi", "Dəyər": "1.14 USD"},
+                {"Əmsal növü": "USD / AZN rəsmi məzənnə", "Dəyər": "1.70 AZN"}
+            ]
+            st.table(coeff_data)
+
+            # БЛОК 3: ИТОГОВЫЙ РАСЧЕТ И СУММА В МАНАТАХ
+            st.markdown("### 💰 3. Yekun Tarif Hesabı")
+            
+            col1, col2, col3 = st.columns(3)
+            col1.metric(label="Məbləğ (CHF)", value=f"{res['total_chf']} CHF")
+            col2.metric(label="Məbləğ (USD)", value=f"{res['total_usd']} $")
+            col3.metric(label="Yekun Qiymət (AZN / Manat)", value=f"{res['total_azn']} ₼")
