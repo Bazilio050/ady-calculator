@@ -244,8 +244,8 @@ with col_controls:
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-# API Key
-api_key = os.environ.get("GEMINI_API_KEY")
+# API Key (берем из st.secrets, os.environ или текстового поля)
+api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.text_input(t["api_label"], type="password")
 
@@ -388,7 +388,7 @@ def call_gemini_nlu(client, user_input_text, target_lang="AZ"):
     )
     
     response = client.models.generate_content(
-        model="gemini-3.5-flash-lite",
+        model="gemini-2.5-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.0,
