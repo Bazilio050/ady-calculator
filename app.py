@@ -14,7 +14,7 @@ GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 # ==========================================
 # 2. ПРЯМОЙ REST-ЗАПРОС К GEMINI API
 # ==========================================
-def call_gemini_nlu(prompt_text):
+def call_gemini_nlu(prompt_text, lang):
     if not GEMINI_API_KEY:
         st.error("API Key tapılmadı! / Секретный ключ GEMINI_API_KEY не найден в Secrets.")
         return None
@@ -188,7 +188,7 @@ def get_table_5_rate(distance_km, billable_weight_tons, wagon_type):
 # 4. БИЗНЕС-ЛОГИКА PYTHON
 # ==========================================
 
-def determine_shipment_type(route_from, route_to):
+def determine_shipment_type(route_from, route_to, lang):
     borders = ["yalama", "ялама", "böyük kəsik", "boyuk kesik", "беюк кясик", "astara", "астара", "culfa", "джульфа", "samur", "самур"]
     rf = str(route_from).lower().strip()
     rt = str(route_to).lower().strip()
@@ -197,16 +197,16 @@ def determine_shipment_type(route_from, route_to):
     to_is_border = any(b in rt for b in borders)
 
     if from_is_border and to_is_border:
-        return "transit", "Tranzit daşınması"
+        return "transit", "Tranzit daşınması" if lang == "AZ" else "Транзитная перевозка"
     elif from_is_border and not to_is_border:
-        return "import", "İdxal daşınması"
+        return "import", "İdxal daşınması" if lang == "AZ" else "Импортная перевозка"
     elif not from_is_border and to_is_border:
-        return "export", "İxrac daşınması"
+        return "export", "İxrac daşınması" if lang == "AZ" else "Экспортная перевозка"
     else:
-        return "internal", "Daxili daşınma"
+        return "internal", "Daxili daşınma" if lang == "AZ" else "Внутренняя перевозка"
 
 
-def calculate_freight(parsed_data):
+def calculate_freight(parsed_data, lang, year_policy):
     rf = parsed_data.get("route_from", "Yalama-eksp.")
     rt = parsed_data.get("route_to", "Absheron")
     actual_weight = float(parsed_data.get("actual_weight_tons") or 35.0)
@@ -216,9 +216,9 @@ def calculate_freight(parsed_data):
     park_type = parsed_data.get("park_type") or "SPS"
     
     billable_weight = max(actual_weight, 45.0)
-    distance_km = 204  # Расстояние
+    distance_km = 204
     
-    shipment_code, shipment_name = determine_shipment_type(rf, rt)
+    shipment_code, shipment_name = determine_shipment_type(rf, rt, lang)
     
     wagon_clean = wagon_type.lower()
     if "цистерн" in wagon_clean or "cistern" in wagon_clean:
@@ -233,7 +233,6 @@ def calculate_freight(parsed_data):
         base_rate, source = get_matrix_rate_table_3_4(3, distance_km, billable_weight)
         unit = "CHF/т"
 
-    # РАСЧЕТ ИТОГОВ
     park_coeff = 1.0 if park_type.upper() == "SPS" else 0.85
     
     if "вагон" in unit:
@@ -257,67 +256,110 @@ def calculate_freight(parsed_data):
         "unit": unit,
         "source": source,
         "park_coeff": park_coeff,
+        "year_policy": year_policy,
         "total_chf": round(total_chf, 2),
         "total_usd": round(total_usd, 2),
         "total_azn": round(total_azn, 2)
     }
 
 # ==========================================
-# 5. ИНТЕРФЕЙС STREAMLIT С ЛОГОТИПОМ И ДИЗАЙНОМ
+# 5. ИНТЕРФЕЙС И ВЕРХНЯЯ ПАНЕЛЬ
 # ==========================================
 
-# Заголовок с логотипом
-col_logo, col_title = st.columns([1, 6])
-with col_logo:
-    st.markdown("## 🚂 **ADY**")
-with col_title:
-    st.title("ADY Tarif Kalkulyatoru")
-    st.caption("Azərbaycan Dəmir Yolları QSC — Yük Daşımalarının Avtomatlaşdırılmış Tarif Hesablama Sistemi")
+# 1. Шапка: Логотип и переключатели (Язык + Год)
+head_col1, head_col2, head_col3 = st.columns([4, 2, 2])
+
+with head_col1:
+    st.title("🚂 ADY Tarif Kalkulyatoru")
+    st.caption("Azərbaycan Dəmir Yolları QSC — Avtomatlaşdırılmış Tarif Hesablama Sistemi")
+
+with head_col2:
+    selected_lang = st.selectbox(
+        "🌐 Dil / Язык",
+        ["Azərbaycan", "Русский"]
+    )
+    lang_code = "AZ" if selected_lang == "Azərbaycan" else "RU"
+
+with head_col3:
+    year_policy = st.selectbox(
+        "📅 Tarif Siyasəti ili",
+        ["2026-cı fraxt ili", "2025-ci fraxt ili"]
+    )
 
 st.markdown("---")
 
-st.subheader("💬 Sorğunu daxil edin")
+# 2. Поле ввода текста
+prompt_label = "💬 Sorğunu daxil edin:" if lang_code == "AZ" else "💬 Введите ваш запрос:"
+btn_text = "🚀 Hesabla" if lang_code == "AZ" else "🚀 Рассчитать"
+
+default_prompt = "Yalama - Abşeron marşrutu üzrə 4407 meşə materialları 35 ton SPS vaqon"
+
 user_input = st.text_area(
-    "Məsələn: Yalama - Abşeron marşrutu üzrə 4407 meşə materialları 35 ton SPS vaqon",
+    prompt_label,
+    value=default_prompt,
     height=100
 )
 
-if st.button("🚀 Hesabla", type="primary"):
+# 3. Обработка кнопки расчета
+if st.button(btn_text, type="primary"):
     if not user_input.strip():
-        st.warning("Zəhmət olmasa sorğunu daxil edin!")
+        st.warning("Zəhmət olmasa sorğunu daxil edin!" if lang_code == "AZ" else "Пожалуйста, введите запрос!")
     else:
-        with st.spinner("Süni intellekt sorğunu təhlil edir..."):
-            parsed = call_gemini_nlu(user_input)
+        with st.spinner("Süni intellekt sorğunu təhlil edir..." if lang_code == "AZ" else "ИИ анализирует запрос..."):
+            parsed = call_gemini_nlu(user_input, lang_code)
             
         if parsed:
-            res = calculate_freight(parsed)
+            res = calculate_freight(parsed, lang_code, year_policy)
             
-            # БЛОК 1: МАРШРУТ И УСЛОВИЯ
-            st.markdown("### 📍 1. Marşrut və daşıma şərtləri")
-            table_data = [
-                {"Parametr": "Marşrut", "Qiymət / Həcm": res["route"]},
-                {"Parametr": "Daşıma növü", "Qiymət / Həcm": res["shipment_name"]},
-                {"Parametr": "Məsafə", "Qiymət / Həcm": f"{res['distance_km']} km"},
-                {"Parametr": "Yük / Vəziyyət", "Qiymət / Həcm": res["gng"]},
-                {"Parametr": "Faktiki / Hesablaşma çəkisi", "Qiymət / Həcm": res["weight_info"]},
-                {"Parametr": "Baza Tarifi / Mənbə", "Qiymət / Həcm": f"{res['rate']} {res['unit']} ({res['source']})"},
-                {"Parametr": "Dövr", "Qiymət / Həcm": "2026-cı fraxt ili"}
-            ]
+            # БЛОК 1: УСЛОВИЯ ПЕРЕВОЗКИ
+            h1 = "### 📍 1. Marşrut və daşıma şərtləri" if lang_code == "AZ" else "### 📍 1. Маршрут и условия перевозки"
+            st.markdown(h1)
+            
+            if lang_code == "AZ":
+                table_data = [
+                    {"Parametr": "Marşrut", "Qiymət / Həcm": res["route"]},
+                    {"Parametr": "Daşıma növü", "Qiymət / Həcm": res["shipment_name"]},
+                    {"Parametr": "Məsafə", "Qiymət / Həcm": f"{res['distance_km']} km"},
+                    {"Parametr": "Yük / Vəziyyət", "Qiymət / Həcm": res["gng"]},
+                    {"Parametr": "Faktiki / Hesablaşma çəkisi", "Qiymət / Həcm": res["weight_info"]},
+                    {"Parametr": "Baza Tarifi / Mənbə", "Qiymət / Həcm": f"{res['rate']} {res['unit']} ({res['source']})"},
+                    {"Parametr": "Dövr", "Qiymət / Həcm": res["year_policy"]}
+                ]
+            else:
+                table_data = [
+                    {"Параметр": "Маршрут", "Значение / Объём": res["route"]},
+                    {"Параметр": "Вид перевозки", "Значение / Объём": res["shipment_name"]},
+                    {"Параметр": "Расстояние", "Значение / Объём": f"{res['distance_km']} км"},
+                    {"Параметр": "Груз / Состояние", "Значение / Объём": res["gng"]},
+                    {"Параметр": "Фактический / Расчетный вес", "Значение / Объём": res["weight_info"]},
+                    {"Параметр": "Базовый тариф / Источник", "Значение / Объём": f"{res['rate']} {res['unit']} ({res['source']})"},
+                    {"Параметр": "Период", "Значение / Объём": res["year_policy"]}
+                ]
             st.table(table_data)
 
-            # БЛОК 2: КОЭФФИЦИЕНТЫ И ПОНИЖЕНИЯ
-            st.markdown("### 📊 2. Əmsallar və güzəştlər")
-            coeff_data = [
-                {"Əmsal növü": "Vaqon parkı əmsalı (SPS / MPS)", "Dəyər": f"{res['park_coeff']}"},
-                {"Əmsal növü": "CHF / USD valyuta məzənnəsi", "Dəyər": "1.14 USD"},
-                {"Əmsal növü": "USD / AZN rəsmi məzənnə", "Dəyər": "1.70 AZN"}
-            ]
+            # БЛОК 2: КОЭФФИЦИЕНТЫ
+            h2 = "### 📊 2. Əmsallar və güzəştlər" if lang_code == "AZ" else "### 📊 2. Коэффициенты и скидки"
+            st.markdown(h2)
+            
+            if lang_code == "AZ":
+                coeff_data = [
+                    {"Əmsal növü": "Vaqon parkı əmsalı (SPS / MPS)", "Dəyər": f"{res['park_coeff']}"},
+                    {"Əmsal növü": "CHF / USD valyuta məzənnəsi", "Dəyər": "1.14 USD"},
+                    {"Əmsal növü": "USD / AZN rəsmi məzənnə", "Dəyər": "1.70 AZN"}
+                ]
+            else:
+                coeff_data = [
+                    {"Тип коэффициента": "Коэффициент парка (СПС / МПС)", "Значение": f"{res['park_coeff']}"},
+                    {"Тип коэффициента": "Курс CHF / USD", "Значение": "1.14 USD"},
+                    {"Тип коэффициента": "Официальный курс USD / AZN", "Значение": "1.70 AZN"}
+                ]
             st.table(coeff_data)
 
-            # БЛОК 3: ИТОГОВЫЙ РАСЧЕТ И СУММА В МАНАТАХ
-            st.markdown("### 💰 3. Yekun Tarif Hesabı")
+            # БЛОК 3: ИТОГО
+            h3 = "### 💰 3. Yekun Tarif Hesabı" if lang_code == "AZ" else "### 💰 3. Итоговый расчет стоимости"
+            st.markdown(h3)
             
             col1, col2, col3 = st.columns(3)
-            col1.metric(label="Məbləğ (CHF)", value=f"{res['total_chf']} CHF")
-            col2.metric(label="Məbləğ (USD)", value=f"{res['total_usd']} $")
-            col3.metric(label="Yekun Qiymət (AZN / Manat)", value=f"{res['total_azn']} ₼")
+            col1.metric(label="Məbləğ (CHF)" if lang_code == "AZ" else "Сумма (CHF)", value=f"{res['total_chf']} CHF")
+            col2.metric(label="Məbləğ (USD)" if lang_code == "AZ" else "Сумма (USD)", value=f"{res['total_usd']} $")
+            col3.metric(label="Yekun Qiymət (AZN / Manat)" if lang_code == "AZ" else "Итоговая цена (AZN / Манат)", value=f"{res['total_azn']} ₼")
