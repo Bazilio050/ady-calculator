@@ -106,7 +106,7 @@ UI_TEXT = {
         "lbl_cargo": "Yük / Vəziyyət",
         "lbl_weight": "Faktiki / Hesablaşma çəkisi",
         "lbl_period": "Dövr",
-        "lbl_exchange": "CHF/USD",
+        "lbl_exchange": "Məzənnə",
         "lbl_base_rate": "Baza tarifi",
         "lbl_net_rate": "Yekün ADY tarifi",
         "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
@@ -152,7 +152,7 @@ UI_TEXT = {
         "lbl_cargo": "Груз / Состояние",
         "lbl_weight": "Фактический / Расчетный вес",
         "lbl_period": "Период",
-        "lbl_exchange": "CHF/USD",
+        "lbl_exchange": "Курс",
         "lbl_base_rate": "Базовый тариф",
         "lbl_net_rate": "Итоговый тариф",
         "lbl_express_rate": "Итоговый тариф (включая ADY Express +2%)",
@@ -198,7 +198,7 @@ UI_TEXT = {
         "lbl_cargo": "Cargo / Condition",
         "lbl_weight": "Actual / Billable Weight",
         "lbl_period": "Period",
-        "lbl_exchange": "CHF/USD",
+        "lbl_exchange": "Exchange rate",
         "lbl_base_rate": "Base Tariff",
         "lbl_net_rate": "Final Tariff",
         "lbl_express_rate": "Final Tariff (incl. ADY Express +2%)",
@@ -288,7 +288,7 @@ def find_distance_in_memory(st_from, st_to):
         if (s1 in k1 or k1 in s1) and (s2 in k2 or k2 in s2):
             return dist
             
-    return 207  # Точное базовое расстояние для Баку - Ялама
+    return 207
 
 @st.cache_data(show_spinner=False)
 def load_table_3_4_matrix(table_num):
@@ -332,7 +332,6 @@ def load_table_3_4_matrix(table_num):
 
 @st.cache_data(show_spinner=False)
 def load_table_6_matrix():
-    """Чтение Таблицы 6 (Цистерны / Наливные грузы) из текстового файла"""
     file_candidates = ["Table_6_Tariffs.txt", "Table6.txt", "Cədvəl_6.txt"]
     file_path = next((f for f in file_candidates if os.path.exists(f)), None)
     if not file_path:
@@ -383,12 +382,10 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
     w_type_clean = str(wagon_type).lower().strip()
     gng_str = str(gng_code).strip()
 
-    # 1. Наливные грузы в цистернах (Таблица 6)
+    # 1. Цистерны (Таблица 6)
     if "цистерн" in w_type_clean or "cistern" in w_type_clean or "tank" in w_type_clean or gng_str.startswith(("27", "28", "29", "38")):
         mapping = load_gng_column_mapping()
-        target_col = mapping.get(gng_str, 7) # По умолчанию Col 7
-        
-        # Индекс в массиве ставок: Col 2 = index 0, Col 3 = index 1 ... Col 5 = index 3
+        target_col = mapping.get(gng_str, 7)
         col_idx = max(0, target_col - 2)
         
         table_6_rows = load_table_6_matrix()
@@ -460,7 +457,7 @@ def get_currency_rate(requested_period, lang="AZ"):
     label_key = f"label_{lang.lower()}"
     label_text = selected_period.get(label_key, selected_period.get("label_az", ""))
 
-    return rate, f"1 USD = {rate:.2f} CHF ({label_text})"
+    return rate, f"{rate:.2f} CHF ({label_text})"
 
 
 # ==============================================================================
@@ -601,13 +598,13 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     else:
         weight_display = f"{int(act_weight)} t"
 
-    # 5. Парк и тип вагона (Динамический вывод!)
+    # 5. Парк и тип вагона
     lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
     park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
 
     w_clean = wagon_type.lower()
     if "цистерн" in w_clean or "tank" in w_clean or "cistern" in w_clean or gng.startswith(("27", "28", "29", "38")):
-        w_name = "Çənd vaqon (Цистерна)" if lang == "AZ" else ("Вагон-цистерна" if lang == "RU" else "Tank wagon")
+        w_name = "Çən vaqon" if lang == "AZ" else ("Вагон-цистерна" if lang == "RU" else "Tank wagon")
     elif any(k in w_clean for k in ["изотерм", "термос", "реф", "ref"]):
         w_name = "İzotermik vaqon" if lang == "AZ" else "Изотермический вагон"
     else:
@@ -661,14 +658,17 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit_display}"
     express_rate_str = f"{final_rate * 1.02:.2f} {unit_display}"
 
-    # 10. Примечания
+    # 10. Примечания (Умная проверка по расстоянию)
     notes = []
     if park_type == "SPS":
         notes.append(ui_t["note_sps"])
-    if shipment_type_code == "import":
+        
+    # Показываем правила минимальных км ТОЛЬКО если фактический dist_km не дотягивает до нормы
+    if shipment_type_code == "import" and dist_km < 151:
         notes.append(ui_t["note_import"])
-    elif shipment_type_code == "export":
+    elif shipment_type_code == "export" and dist_km < 101:
         notes.append(ui_t["note_export"])
+        
     if act_weight < billable_weight:
         notes.append(ui_t["note_min_weight"])
     if any(c[1] == 1.04 for c in coeffs):
