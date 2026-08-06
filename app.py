@@ -189,7 +189,6 @@ def get_table_5_rate(distance_km, billable_weight_tons, wagon_type):
 # ==========================================
 
 def determine_shipment_type(route_from, route_to):
-    """Поддержка латиницы и кириллицы для погранпереходов"""
     borders = ["yalama", "ялама", "böyük kəsik", "boyuk kesik", "беюк кясик", "astara", "астара", "culfa", "джульфа", "samur", "самур"]
     rf = str(route_from).lower().strip()
     rt = str(route_to).lower().strip()
@@ -217,7 +216,7 @@ def calculate_freight(parsed_data):
     park_type = parsed_data.get("park_type") or "SPS"
     
     billable_weight = max(actual_weight, 45.0)
-    distance_km = 204  # Определение расстояния
+    distance_km = 204  # Расстояние
     
     shipment_code, shipment_name = determine_shipment_type(rf, rt)
     
@@ -234,19 +233,16 @@ def calculate_freight(parsed_data):
         base_rate, source = get_matrix_rate_table_3_4(3, distance_km, billable_weight)
         unit = "CHF/т"
 
-    # --- РАСЧЕТ ИТОГОВОЙ СТОИМОСТИ ---
-    # Коэффициент парка (SPS = 1.0, MPS = 0.85)
+    # РАСЧЕТ ИТОГОВ
     park_coeff = 1.0 if park_type.upper() == "SPS" else 0.85
     
-    # Расчет суммы в CHF
     if "вагон" in unit:
         total_chf = base_rate * park_coeff
     else:
         total_chf = base_rate * billable_weight * park_coeff
 
-    # Конвертация валют (Курсы ADY)
-    chf_to_usd = 1.14   # Курс CHF/USD
-    usd_to_azn = 1.70   # Фиксированный курс USD/AZN
+    chf_to_usd = 1.14
+    usd_to_azn = 1.70
 
     total_usd = total_chf * chf_to_usd
     total_azn = total_usd * usd_to_azn
@@ -267,11 +263,18 @@ def calculate_freight(parsed_data):
     }
 
 # ==========================================
-# 5. ИНТЕРФЕЙС STREAMLIT
+# 5. ИНТЕРФЕЙС STREAMLIT С ЛОГОТИПОМ И ДИЗАЙНОМ
 # ==========================================
 
-st.title("🚂 ADY Tarif Kalkulyatoru")
-st.caption("Süni İntellekt və Python Rest-Engine tərəfindən idarə olunan sürətli hesablama sistemi")
+# Заголовок с логотипом
+col_logo, col_title = st.columns([1, 6])
+with col_logo:
+    st.markdown("## 🚂 **ADY**")
+with col_title:
+    st.title("ADY Tarif Kalkulyatoru")
+    st.caption("Azərbaycan Dəmir Yolları QSC — Yük Daşımalarının Avtomatlaşdırılmış Tarif Hesablama Sistemi")
+
+st.markdown("---")
 
 st.subheader("💬 Sorğunu daxil edin")
 user_input = st.text_area(
