@@ -244,14 +244,14 @@ with col_controls:
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-# API Key (берем из st.secrets, os.environ или текстового поля)
+# API Key
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.text_input(t["api_label"], type="password")
 
 
 # ==============================================================================
-# 4. CACHED DATA LOADERS (Кэширование в RAM)
+# 4. CACHED DATA LOADERS
 # ==============================================================================
 
 @st.cache_data(show_spinner=False)
@@ -355,9 +355,11 @@ def get_currency_rate(requested_period, lang="AZ"):
 
 
 # ==============================================================================
-# 5. GEMINI NLU CALL
+# 5. GEMINI NLU CALL (СТРОГО gemini-3.5-flash-lite)
 # ==============================================================================
-def call_gemini_nlu(client, user_input_text, target_lang="AZ"):
+def call_gemini_nlu(api_key_val, user_input_text, target_lang="AZ"):
+    client = genai.Client(api_key=api_key_val)
+    
     lang_instructions = {
         "AZ": "Translate or keep cargo_name_raw strictly in Azerbaijani (e.g. 'Meşə materialları', 'Ağac', 'Polad').",
         "RU": "Translate or keep cargo_name_raw strictly in Russian (e.g. 'Лесоматериалы', 'Древесина', 'Сталь').",
@@ -388,7 +390,7 @@ def call_gemini_nlu(client, user_input_text, target_lang="AZ"):
     )
     
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.5-flash-lite",
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.0,
@@ -453,7 +455,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
     route_display = f"{display_from} - {display_to}"
 
-    # 2. Логика направления (İdxal / İxrac / Tranzit)
+    # 2. Логика направления
     if is_from_border and is_to_border:
         shipment_type_code = "transit"
         shipment_type_display = ui_t["type_transit"]
@@ -470,7 +472,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     # 3. Расстояние
     dist_km = find_distance_in_memory(st_from, st_to)
 
-    # 4. Расчетный вес и минимальные нормы
+    # 4. Расчетный вес
     billable_weight = act_weight
     min_norms = config.get("minimal_weight_norms_gng", {}).get("rules", [])
     for rule in min_norms:
@@ -490,13 +492,11 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
     park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
 
-    # Защитная фильтрация наименования груза от типов вагонов в Python
     wagon_stop_words = ["крытый", "открытый", "вагон", "vaqon", "covered", "open", "sps", "mps", "спс", "мпс", "полувагон", "цистерна", "хоппер"]
     clean_cargo_name = cargo_name_nlu
     if clean_cargo_name.lower().strip() in wagon_stop_words:
         clean_cargo_name = ""
 
-    # Формирование строки груза
     if clean_cargo_name and not clean_cargo_name.isdigit() and clean_cargo_name != gng:
         cargo_wagon_display = f"GNG {gng} - {clean_cargo_name}, Universal vaqon ({park_display})"
     elif gng:
@@ -592,7 +592,6 @@ if st.button(t["calc_btn"], type="primary"):
     elif not user_input.strip():
         st.warning(t["warning_empty"])
     else:
-        client = genai.Client(api_key=api_key)
         train_holder = st.empty()
         train_holder.markdown(
             f"""
@@ -605,7 +604,7 @@ if st.button(t["calc_btn"], type="primary"):
         )
 
         try:
-            nlu_res = call_gemini_nlu(client, user_input, target_lang=selected_lang)
+            nlu_res = call_gemini_nlu(api_key, user_input, target_lang=selected_lang)
             data = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
 
             train_holder.empty()
