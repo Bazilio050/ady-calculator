@@ -2,9 +2,11 @@ import json
 import os
 import re
 import streamlit as st
+from google import genai
+from google.genai import types
 
 # =========================================================
-# 1. Page Config & CSS
+# 1. Page Config & Custom Styles
 # =========================================================
 st.set_page_config(
     page_title="ADY Tarif Kalkulyatoru", 
@@ -41,7 +43,7 @@ st.markdown(
 )
 
 # =========================================================
-# 2. Справочники и Переводы (UI_TEXT)
+# 2. Справочники и Локализация (UI_TEXT)
 # =========================================================
 BORDER_STATIONS = {
     "YALAMA": "Yalama (eksport)",
@@ -63,6 +65,8 @@ UI_TEXT = {
         "calc_btn": "🚀 Tarifi hesabla",
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
         "sec1_title": "1. Marşrut və daşıma şərtləri",
+        "sec2_title": "2. Əmsallar və valyuta məzənnəsi",
+        "sec3_title": "3. Tarifin hesablanması",
         "col_param": "Parametr",
         "col_val": "Qiymət / Həcm",
         "lbl_route": "Marşrut",
@@ -84,6 +88,8 @@ UI_TEXT = {
         "calc_btn": "🚀 Рассчитать тариф",
         "warning_empty": "Пожалуйста, введите условия расчета.",
         "sec1_title": "1. Маршрут и условия перевозки",
+        "sec2_title": "2. Коэффициенты и курс валют",
+        "sec3_title": "3. Расчет тарифа",
         "col_param": "Параметр",
         "col_val": "Значение / Объем",
         "lbl_route": "Маршрут",
@@ -114,7 +120,6 @@ def is_border_station(station_name: str) -> bool:
     return any(border in name_clean for border in BORDER_STATIONS.keys())
 
 def format_station_names(st_from: str, st_to: str) -> tuple:
-    """Если обе станции пограничные — у обеих гарантируется суффикс -eksp."""
     c_from = st_from.strip()
     c_to = st_to.strip()
     
@@ -131,7 +136,7 @@ def format_station_names(st_from: str, st_to: str) -> tuple:
 def calculate_billable_weight(fact_weight: float, gng_code: str, rules_config: dict) -> float:
     gng_str = str(gng_code).strip()
     
-    # Минималка для ГНГ 72 (Черные металлы) = 60 тонн
+    # Минималка для ГНГ 72 = 60 тонн
     if gng_str.startswith("72") or gng_str == "72":
         return max(fact_weight, 60.0)
         
@@ -143,7 +148,7 @@ def calculate_billable_weight(fact_weight: float, gng_code: str, rules_config: d
             
     return max(fact_weight, 10.0)
 
-def parse_input_text(text: str):
+def parse_input_fallback(text: str):
     st_from, st_to = "Yalama", "Beyuk kasik"
     gng_code = "72"
     fact_weight = 35.0
@@ -165,7 +170,7 @@ def parse_input_text(text: str):
     return st_from, st_to, gng_code, fact_weight, wagon_type
 
 # =========================================================
-# 4. Основной блок Streamlit UI
+# 4. Streamlit UI
 # =========================================================
 def main():
     config = load_config()
@@ -177,7 +182,7 @@ def main():
     
     txt = UI_TEXT[lang]
 
-    # --- Шапка с динамической проверкой логотипа ---
+    # --- Шапка с логотипом ---
     col_logo, col_title = st.columns([1, 7])
     with col_logo:
         if os.path.exists("logo.png"):
@@ -204,12 +209,13 @@ def main():
 
     calc_clicked = st.button(txt["calc_btn"], type="primary", use_container_width=True)
 
-    if calc_clicked or user_query:
+    if calc_clicked or user_query.strip():
         if not user_query.strip():
             st.warning(txt["warning_empty"])
             return
 
-        st_from_raw, st_to_raw, gng_code, fact_weight, wagon_type = parse_input_text(user_query)
+        # Парсинг ввода
+        st_from_raw, st_to_raw, gng_code, fact_weight, wagon_type = parse_input_fallback(user_query)
 
         # 1. Авто-определение типа перевозки и форматирование станций
         disp_from, disp_to, is_both_border = format_station_names(st_from_raw, st_to_raw)
@@ -226,7 +232,7 @@ def main():
         
         gng_display = f"GNG {gng_code}"
         if gng_code.startswith("72"):
-            gng_display = f"GNG {gng_code} - Qara metallar" if lang == "AZ" else f"ГНГ {gng_code} - Черные металлы"
+            gng_display = f"GNG {gng_code} (Qara metallar)" if lang == "AZ" else f"ГНГ {gng_code} (Черные металлы)"
 
         # 3. Расстояние
         distance_km = 512.0  
@@ -234,7 +240,7 @@ def main():
         st.divider()
         st.subheader(txt["sec1_title"])
 
-        # Вывод полной таблицы со строкой Dövr
+        # Вывод полной Секции 1 (со строкой Dövr)
         st.table([
             {txt["col_param"]: txt["lbl_route"], txt["col_val"]: f"{disp_from} - {disp_to}"},
             {txt["col_param"]: txt["lbl_mode"], txt["col_val"]: mode_str},
