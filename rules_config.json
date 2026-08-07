@@ -194,7 +194,7 @@
     "_description_ru": "При импортных перевозках к базовым тарифам на лесоматериалы и черные металлы применяется коэффициент 1,04",
     "_description_az": "İdxal daşımaları zamanı taxta və qara metalların baza tariflərinə əlavə 1,04 əmsalı tətbiq edilir",
     "coefficient_value": 1.04,
-    "apply_for_modes": ["import"],
+    "apply_for_modes": ["idxal", "import"],
     "gng_prefixes": [
       "4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413",
       "72", "7301", "7302", "7303", "7304", "7305", "7306", "7307"
@@ -206,6 +206,44 @@
     "general_private_wagon_coefficient": {
       "coefficient_value": 0.85,
       "description_ru": "Основной понижающий коэффициент 0.85 при перевозке в приватных/арендованных вагонах (пп. 3.1 и 3.5)"
+    }
+  },
+  "coefficients_updated_rules_2026": {
+    "import_export_base_1_50": {
+      "coefficient_value": 1.50,
+      "modes": ["idxal", "ixrac", "import", "export"],
+      "exceptions": {
+        "tables": [3],
+        "wood_gng": ["4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"],
+        "wood_wagon_types": ["universal"],
+        "metal_gng_prefixes": ["72"],
+        "metal_gng_exact": ["7301", "7302", "7303", "7304", "7305", "7306", "7307"],
+        "metal_wagon_types": ["universal"],
+        "methanol_gng": ["290511"],
+        "methanol_wagon_types": ["tank", "bunker_semi"],
+        "oil_table6_col2": true,
+        "oil_wagon_types": ["tank"]
+      }
+    },
+    "transit_alyat_beyuk_kesik_1_20": {
+      "coefficient_value": 1.20,
+      "modes": ["tranzit", "transit"],
+      "routes": [
+        ["ƏLƏT EKSPORT", "BÖYÜK KƏSIK (EKSPORT)"],
+        ["BÖYÜK KƏSIK (EKSPORT)", "ƏLƏT EKSPORT"]
+      ]
+    },
+    "oil_tank_import_transit_1_20": {
+      "coefficient_value": 1.20,
+      "modes": ["idxal", "tranzit", "import", "transit"],
+      "wagon_types": ["tank"],
+      "apply_once": true
+    },
+    "refrigerated_transit_1_20": {
+      "coefficient_value": 1.20,
+      "modes": ["tranzit", "transit"],
+      "wagon_types": ["refrigerated_section", "refrigerated_container"],
+      "apply_once": true
     }
   }
 }
