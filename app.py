@@ -114,7 +114,7 @@ def is_border_station(station_name: str) -> bool:
     return any(border in name_clean for border in BORDER_STATIONS.keys())
 
 def format_station_names(st_from: str, st_to: str) -> tuple:
-    """Если обе станции пограничные — у обеих гарантируется -eksp."""
+    """Если обе станции пограничные — у обеих гарантируется суффикс -eksp."""
     c_from = st_from.strip()
     c_to = st_to.strip()
     
@@ -144,7 +144,7 @@ def calculate_billable_weight(fact_weight: float, gng_code: str, rules_config: d
     return max(fact_weight, 10.0)
 
 def parse_input_text(text: str):
-    st_from, st_to = "Yalama", "Böyük Kəsik"
+    st_from, st_to = "Yalama", "Beyuk kasik"
     gng_code = "72"
     fact_weight = 35.0
     wagon_type = "universal"
@@ -170,24 +170,27 @@ def parse_input_text(text: str):
 def main():
     config = load_config()
 
-    # --- Переключатель языка на верхней панели ---
+    # --- Переключатель языка ---
     col_lang1, col_lang2 = st.columns([5, 1])
     with col_lang2:
         lang = st.selectbox("Dil / Language:", ["AZ", "RU"], index=0)
     
     txt = UI_TEXT[lang]
 
-    # --- Шапка с логотипом ---
-    st.markdown(
-        f"""
-        <div class="header-container">
-            <span style="font-size: 32px;">🚂</span>
-            <span class="custom-title">{txt['title']}</span>
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
-    st.caption(txt["subtitle"])
+    # --- Шапка с динамической проверкой логотипа ---
+    col_logo, col_title = st.columns([1, 7])
+    with col_logo:
+        if os.path.exists("logo.png"):
+            st.image("logo.png", width=75)
+        elif os.path.exists("ady_logo.png"):
+            st.image("ady_logo.png", width=75)
+        else:
+            st.markdown("<span style='font-size: 38px;'>🚂</span>", unsafe_allow_html=True)
+
+    with col_title:
+        st.markdown(f"<div class='custom-title'>{txt['title']}</div>", unsafe_allow_html=True)
+        st.caption(txt["subtitle"])
+
     st.divider()
 
     # --- Поле ввода запроса ---
@@ -208,7 +211,7 @@ def main():
 
         st_from_raw, st_to_raw, gng_code, fact_weight, wagon_type = parse_input_text(user_query)
 
-        # 1. Авто-определение типа перевозки
+        # 1. Авто-определение типа перевозки и форматирование станций
         disp_from, disp_to, is_both_border = format_station_names(st_from_raw, st_to_raw)
         
         if is_both_border or "транзит" in user_query.lower() or "tranzit" in user_query.lower():
@@ -223,7 +226,7 @@ def main():
         
         gng_display = f"GNG {gng_code}"
         if gng_code.startswith("72"):
-            gng_display = f"GNG {gng_code} (Qara metallar)" if lang == "AZ" else f"ГНГ {gng_code} (Черные металлы)"
+            gng_display = f"GNG {gng_code} - Qara metallar" if lang == "AZ" else f"ГНГ {gng_code} - Черные металлы"
 
         # 3. Расстояние
         distance_km = 512.0  
