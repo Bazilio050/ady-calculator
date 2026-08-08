@@ -327,8 +327,13 @@
     "refrigerated_transit_1_20": {
       "coefficient_value": 1.20,
       "modes": ["tranzit", "transit"],
-      "wagon_types": ["refrigerated_section", "refrigerated_container"],
-      "apply_once": true
+      "wagon_types": ["ref", "refrigerated", "thermos"],
+      "apply_once": true,
+      "labels": {
+        "AZ": "Tranzit ref əmsalı",
+        "RU": "Транзитный коэф. (реф)",
+        "EN": "Transit ref coeff."
+      }
     }
   }
 }
