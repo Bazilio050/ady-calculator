@@ -236,7 +236,6 @@ UI_TEXT = {
     }
 }
 
-# СЛОВАРЬ НАЗВАНИЙ СТАНЦИЙ ПО ЯЗЫКАМ
 STATION_TRANSLATIONS = {
     "yalama": {"AZ": "Yalama", "RU": "Ялама", "EN": "Yalama"},
     "absheron": {"AZ": "Abşeron", "RU": "Абшерон", "EN": "Absheron"},
@@ -273,7 +272,6 @@ with col_controls:
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-# API Key
 api_key = os.environ.get("GEMINI_API_KEY")
 if not api_key:
     api_key = st.text_input(t["api_label"], type="password")
@@ -525,7 +523,6 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     is_ta_origin = bool(nlu_data.get("is_tariff_agreement_origin", False))
     ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
 
-    # 1. Локализация наименований станций и погрансуффиксов
     border_info = config.get("border_stations", {})
     suffixes = border_info.get("suffixes", {"AZ": "-eksp.", "RU": "-эксп.", "EN": "-exp."})
     suffix = suffixes.get(lang, suffixes.get("AZ", "-eksp."))
@@ -546,116 +543,4 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
     if is_from_border and is_to_border:
         display_from = f"{disp_from}{suffix}"
-        display_to = f"{disp_to}{suffix}"
-    else:
-        display_from = f"{disp_from}{suffix}" if is_from_border else disp_from
-        display_to = f"{disp_to}{suffix}" if is_to_border else disp_to
-
-    route_display = f"{display_from} - {display_to}"
-
-    # 2. Логика направления
-    if is_from_border and is_to_border:
-        shipment_type_code = "transit"
-        shipment_type_display = ui_t["type_transit"]
-    elif is_from_border and not is_to_border:
-        shipment_type_code = "import"
-        shipment_type_display = ui_t["type_import"]
-    elif not is_from_border and is_to_border:
-        shipment_type_code = "export"
-        shipment_type_display = ui_t["type_export"]
-    else:
-        shipment_type_code = "local"
-        shipment_type_display = "Daxili daşınma" if lang == "AZ" else ("Внутренняя перевозка" if lang == "RU" else "Domestic shipment")
-
-    # 3. Расстояние (матрица)
-    dist_km = find_distance_in_memory(c_from, c_to)
-
-    # 4. Расчетный вес
-    billable_weight = act_weight
-
-    if gng.startswith("72"):
-        if billable_weight < 60.0:
-            billable_weight = 60.0
-    else:
-        min_norms = config.get("minimal_weight_norms_gng", {}).get("rules", [])
-        for rule in min_norms:
-            prefixes = rule.get("gng_prefixes", [])
-            if any(gng.startswith(p) for p in prefixes):
-                norm = rule.get("norm_tons", 0)
-                if billable_weight < norm:
-                    billable_weight = float(norm)
-                break
-
-    if act_weight < billable_weight:
-        weight_display = f"{int(act_weight) if act_weight.is_integer() else act_weight} t / {int(billable_weight) if billable_weight.is_integer() else billable_weight} t"
-    else:
-        weight_display = f"{int(act_weight) if act_weight.is_integer() else act_weight} t"
-
-    # 5. Выбор таблицы
-    is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "auto", "авто"]) or (ref_wagons_cnt is not None)
-    if is_ref_type and os.path.exists("Table_5_Tariffs.txt"):
-        table_num = 5
-    elif shipment_type_code == "transit":
-        table_num = 4
-    else:
-        table_num = 3
-
-    # 6. Базовая ставка CHF
-    base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, dist_km, billable_weight, "ref" if is_ref_type else wagon_type, lang)
-    unit_str = ui_t["unit_wagon"] if is_per_wagon else ui_t["unit_ton"]
-    chf_unit = "CHF/vaqon" if is_per_wagon else ("CHF/вагон" if (is_per_wagon and lang == "RU") else ("CHF/t" if lang != "RU" else "CHF/т"))
-    base_tariff_display = f"**{base_chf:.2f} {chf_unit}** ({table_details})"
-
-    # 7. Курс CHF/USD
-    usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
-
-    # 8. Коэффициенты
-    coeffs = []
-
-    # СПС (0.85)
-    if park_type == "SPS":
-        coeffs.append(("Özəl vaqon əmsalı" if lang == "AZ" else ("Собственный вагон" if lang == "RU" else "Private wagon"), 0.85))
-
-    # Базовый 1.50 для Импорта/Экспорта
-    applied_150_note = False
-    if shipment_type_code in ["import", "export"]:
-        ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
-        exceptions = ie_config.get("exceptions", {})
-        
-        is_150_exception = False
-        if table_num in exceptions.get("tables", []):
-            is_150_exception = True
-            
-        wood_codes = exceptions.get("wood_gng", [])
-        metal_prefixes = exceptions.get("metal_gng_prefixes", [])
-        metal_exact = exceptions.get("metal_gng_exact", [])
-        wood_wagons = exceptions.get("wood_wagon_types", ["universal"])
-        metal_wagons = exceptions.get("metal_wagon_types", ["universal"])
-        
-        if wagon_type in wood_wagons and any(gng.startswith(w) for w in wood_codes):
-            is_150_exception = True
-            
-        if wagon_type in metal_wagons and (
-            any(gng.startswith(m) for m in metal_prefixes) or gng in metal_exact
-        ):
-            is_150_exception = True
-
-        if not is_150_exception:
-            coeff_val = ie_config.get("coefficient_value", 1.50)
-            coeffs.append(("İdxal/İxrac baza əmsalı" if lang == "AZ" else ("Импорт/Экспорт базовый" if lang == "RU" else "Import/Export base"), coeff_val))
-            applied_150_note = True
-
-    # Импорт Леса и Металла (1.04)
-    if shipment_type_code == "import" and any(gng.startswith(p) for p in ["44", "72", "73"]):
-        coeffs.append(("İdxal əmsalı (Meşə/Metal)" if lang == "AZ" else ("Импортный коэф. (Лес/Металл)" if lang == "RU" else "Import coeff."), 1.04))
-
-    # Коэффициент состава рефсекции (6+1, 5+1, 3+1 и т.д.)
-    applied_ref_comp_note = False
-    if is_ref_type and ref_wagons_cnt is not None:
-        try:
-            w_cnt = int(ref_wagons_cnt)
-            ref_comp_cfg = config.get("table_5_rules", {}).get("ref_section_composition", {})
-            
-            if w_cnt >= 5:
-                item = ref_comp_cfg.get("5_or_more_wagons", {})
-                coeffs.append((item.get("labels", {}).get(lang, "Refseksiya t
+        display_to = f"{disp_to}{suffix
