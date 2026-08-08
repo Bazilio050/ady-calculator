@@ -297,11 +297,11 @@ def normalize_st_name(name):
     n = name.lower().strip()
     # Очистка Markdown разметки (**Böyük Kəsik**)
     n = re.sub(r'[\*\_\#]', '', n)
-    # Очистка вариаций суффиксов
+    # Очистка суффиксов (eksport, eksp, эксп, exp)
     n = re.sub(r'[\(\-–\s]*(eksport|eksp|эксп|exp|eks)[\)\.\s]*', '', n)
     # Транслитерация символов
     n = n.replace('ə', 'a').replace('ö', 'o').replace('ü', 'u').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
-    # Единый формат написания корня
+    # Единый формат корня
     n = n.replace('beyuk', 'boyuk').replace('elet', 'alat')
     return re.sub(r'[^a-z0-9]', '', n)
 
@@ -317,23 +317,30 @@ def load_distances_map():
 
         header_cols = []
         for line in lines:
-            if "|" in line and ("stansiya" in line.lower() or "yalama" in line.lower()):
+            # 1. Заголовок таблицы
+            if "|" in line and ("yalama" in line.lower() or "stansiyanın adı" in line.lower()):
                 parts = [p.strip() for p in line.split("|") if p.strip()]
                 if len(parts) >= 3:
+                    # Пропускаем первые 2 колонки (Название и Код)
                     header_cols = [normalize_st_name(p) for p in parts[2:]]
                 continue
             
+            # 2. Данные по станциям
             if "|" in line and header_cols and not line.startswith("| :---"):
                 parts = [p.strip() for p in line.split("|") if p.strip()]
                 if len(parts) >= 3:
                     row_st = normalize_st_name(parts[0])
-                    for i, val_str in enumerate(parts[2:]):
-                        if i < len(header_cols) and val_str.isdigit():
-                            km = int(val_str)
-                            col_st = header_cols[i]
-                            if row_st and col_st:
-                                dist_map[(row_st, col_st)] = km
-                                dist_map[(col_st, row_st)] = km
+                    val_parts = parts[2:]
+                    
+                    for i, val_str in enumerate(val_parts):
+                        if i < len(header_cols):
+                            digits = re.sub(r'[^\d]', '', val_str)
+                            if digits:
+                                km = int(digits)
+                                col_st = header_cols[i]
+                                if row_st and col_st:
+                                    dist_map[(row_st, col_st)] = km
+                                    dist_map[(col_st, row_st)] = km
             else:
                 match = re.search(r"(.+?)\s*[-–]\s*(.+?)\s+(\d+)\s*(?:km|км)", line, re.IGNORECASE)
                 if match:
