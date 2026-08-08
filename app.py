@@ -292,6 +292,8 @@ def load_rules_config():
     return {}
 
 def normalize_st_name(name):
+    if not name:
+        return ""
     n = name.lower()
     n = re.sub(r'[\(\-–\s]*(eksport|eksp|эксп|exp|eks)[\)\.\s]*', '', n)
     n = n.replace('ə', 'a').replace('ö', 'o').replace('ü', 'u').replace('ı', 'i').replace('ş', 's').replace('ç', 'c')
@@ -532,8 +534,8 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
     notes = []
 
     park_type = str(nlu_data.get("park_type", "SPS")).upper()
-    gng = str(nlu_data.get("cargo_gng_code", "")).strip()
-    wagon_type = str(nlu_data.get("wagon_type", "universal")).lower()
+    gng = str(nlu_data.get("cargo_gng_code", "") or "").strip()
+    wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
     ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
 
     # 1. Собственный вагон (СПС)
@@ -562,11 +564,11 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         wood_wagons = exceptions.get("wood_wagon_types", ["universal"])
         metal_wagons = exceptions.get("metal_wagon_types", ["universal"])
 
-        if wagon_type in wood_wagons and any(gng.startswith(w) for w in wood_codes):
+        if wagon_type in wood_wagons and any(gng.startswith(w) for w in wood_codes if w):
             is_150_exception = True
 
         if wagon_type in metal_wagons and (
-            any(gng.startswith(m) for m in metal_prefixes) or gng in metal_exact
+            any(gng.startswith(m) for m in metal_prefixes if m) or gng in metal_exact
         ):
             is_150_exception = True
 
@@ -582,7 +584,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
             notes.append(ui_t["note_import_base_150"])
 
     # 3. Импортный коэффициент 1.04 для леса и металла
-    if shipment_type_code == "import" and any(gng.startswith(p) for p in ["44", "72", "73"]):
+    if shipment_type_code == "import" and any(gng.startswith(p) for p in ["44", "72", "73"] if p):
         if lang == "AZ":
             lbl_imp = "İdxal əmsalı (Meşə/Metal)"
         elif lang == "RU":
@@ -638,7 +640,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
     # 6. Плодоовощная продукция из стран Тарифного Соглашения (коэф. 0.60)
     fveg_rule = config.get("table_5_rules", {}).get("fruit_veg_discount_0_60", {})
     fruit_veg_codes = fveg_rule.get("gng_prefixes", ["04100", "04200", "04300", "04400", "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710", "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810", "12129100"])
-    is_fruit_veg = any(gng.startswith(code) for code in fruit_veg_codes)
+    is_fruit_veg = any(gng.startswith(code) for code in fruit_veg_codes if code)
 
     if is_ref_type and is_fruit_veg:
         if bool(nlu_data.get("is_tariff_agreement_origin", False)):
@@ -685,8 +687,171 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
 def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     config = load_rules_config()
 
-    st_from = nlu_data.get("route_from")
-    st_to = nlu_data.get("route_to")
-    gng = str(nlu_data.get("cargo_gng_code", "")).strip()
-    cargo_name_nlu = str(nlu_data.get("cargo_name_raw", "")).strip()
-    act_weight = float(nlu_data
+    st_from = nlu_data.get("route_from", "")
+    st_to = nlu_data.get("route_to", "")
+    gng = str(nlu_data.get("cargo_gng_code", "") or "").strip()
+    cargo_name_nlu = str(nlu_data.get("cargo_name_raw", "") or "").strip()
+    
+    raw_weight = nlu_data.get("actual_weight_tons")
+    act_weight = float(raw_weight) if raw_weight is not None else 0.0
+
+    park_type = str(nlu_data.get("park_type", "SPS") or "SPS").upper()
+    wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
+    ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
+
+    border_info = config.get("border_stations", {})
+    suffixes = border_info.get("suffixes", {"AZ": "-eksp.", "RU": "-эксп.", "EN": "-exp."})
+    suffix = suffixes.get(lang, suffixes.get("AZ", "-eksp."))
+
+    border_list = border_info.get("list", ["Yalama", "Boyuk Kesik", "Astara", "Culfa", "Alat", "Ələt", "Беюк-Кесик", "Ялама", "Астара", "Алят"])
+
+    def clean_st(name):
+        if not name:
+            return ""
+        return re.sub(r'-(eksp|эксп|exp)\.?', '', name, flags=re.IGNORECASE).strip()
+
+    c_from = clean_st(st_from).lower()
+    c_to = clean_st(st_to).lower()
+
+    disp_from = STATION_TRANSLATIONS.get(c_from, {}).get(lang, st_from.capitalize() if st_from else "")
+    disp_to = STATION_TRANSLATIONS.get(c_to, {}).get(lang, st_to.capitalize() if st_to else "")
+
+    is_from_border = any(b.lower() in c_from for b in border_list if b)
+    is_to_border = any(b.lower() in c_to for b in border_list if b)
+
+    if is_from_border and is_to_border:
+        display_from = f"{disp_from}{suffix}"
+        display_to = f"{disp_to}{suffix}"
+    else:
+        display_from = f"{disp_from}{suffix}" if is_from_border else disp_from
+        display_to = f"{disp_to}{suffix}" if is_to_border else disp_to
+
+    route_display = f"{display_from} - {display_to}"
+
+    if is_from_border and is_to_border:
+        shipment_type_code = "transit"
+        shipment_type_display = ui_t["type_transit"]
+    elif is_from_border and not is_to_border:
+        shipment_type_code = "import"
+        shipment_type_display = ui_t["type_import"]
+    elif not is_from_border and is_to_border:
+        shipment_type_code = "export"
+        shipment_type_display = ui_t["type_export"]
+    else:
+        shipment_type_code = "local"
+        if lang == "AZ":
+            shipment_type_display = "Daxili daşınma"
+        elif lang == "RU":
+            shipment_type_display = "Внутренняя перевозка"
+        else:
+            shipment_type_display = "Domestic shipment"
+
+    dist_km = find_distance_in_memory(c_from, c_to)
+    if dist_km is None:
+        raise ValueError(
+            f"Marşrut üzrə məsafə tapılmadı: {st_from} - {st_to}" if lang == "AZ" else (
+                f"Расстояние для маршрута не найдено в справочнике: {st_from} - {st_to}" if lang == "RU" else
+                f"Distance for route was not found in database: {st_from} - {st_to}"
+            )
+        )
+
+    billable_weight = act_weight
+
+    if gng.startswith("72"):
+        if billable_weight < 60.0:
+            billable_weight = 60.0
+    else:
+        min_norms_cfg = config.get("minimal_weight_norms_gng", {})
+        min_norms = min_norms_cfg.get("rules", [])
+        for rule in min_norms:
+            prefixes = rule.get("gng_prefixes", [])
+            if any(gng.startswith(p) for p in prefixes if p):
+                norm = rule.get("norm_tons", 0)
+                if billable_weight < norm:
+                    billable_weight = float(norm)
+                break
+
+    if act_weight < billable_weight:
+        weight_display = f"{int(act_weight) if act_weight.is_integer() else act_weight} t / {int(billable_weight) if billable_weight.is_integer() else billable_weight} t"
+    else:
+        weight_display = f"{int(act_weight) if act_weight.is_integer() else act_weight} t"
+
+    is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "auto", "авто"]) or (ref_wagons_cnt is not None)
+    if is_ref_type and os.path.exists("Table_5_Tariffs.txt"):
+        table_num = 5
+    elif shipment_type_code == "transit":
+        table_num = 4
+    else:
+        table_num = 3
+
+    base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, dist_km, billable_weight, "ref" if is_ref_type else wagon_type, lang)
+    if base_chf is None:
+        raise ValueError(
+            f"Cədvəl {table_num} üzrə {dist_km} km məsafəyə baza tarifi tapılmadı." if lang == "AZ" else (
+                f"Базовый тариф для расстояния {dist_km} км не найден в Таблице {table_num}." if lang == "RU" else
+                f"Base rate for distance {dist_km} km was not found in Table {table_num}."
+            )
+        )
+
+    unit_str = ui_t["unit_wagon"] if is_per_wagon else ui_t["unit_ton"]
+    
+    if is_per_wagon:
+        chf_unit = "CHF/вагон" if lang == "RU" else "CHF/vaqon"
+    else:
+        chf_unit = "CHF/т" if lang == "RU" else "CHF/t"
+        
+    base_tariff_display = f"**{base_chf:.2f} {chf_unit}** ({table_details})"
+
+    usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
+
+    coeffs, notes = apply_special_exceptions(
+        nlu_data, shipment_type_code, table_num, is_ref_type, 
+        act_weight, billable_weight, dist_km, user_input_raw, config, lang, ui_t
+    )
+
+    final_rate = base_chf / usd_rate
+    formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
+
+    for item_lbl, c_val in coeffs:
+        final_rate *= c_val
+        formula_parts.append(f"{c_val}")
+
+    formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit_str}"
+    express_rate_str = f"{final_rate * 1.02:.2f} {unit_str}"
+
+    lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
+    park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
+
+    cargo_translations = {
+        "meat": {"AZ": "Ət", "RU": "Мясо", "EN": "Meat"},
+        "ferrous metals": {"AZ": "Qara metallar", "RU": "Черные металлы", "EN": "Ferrous metals"},
+        "timber": {"AZ": "Meşə materialları", "RU": "Лесоматериалы", "EN": "Timber"}
+    }
+    c_raw_lower = cargo_name_nlu.lower()
+    translated_cargo = cargo_translations.get(c_raw_lower, {}).get(lang, cargo_name_nlu)
+
+    if gng.startswith("72") and not translated_cargo:
+        if lang == "AZ":
+            translated_cargo = "Qara metallar"
+        elif lang == "RU":
+            translated_cargo = "Черные металлы"
+        else:
+            translated_cargo = "Ferrous metals"
+
+    if is_ref_type:
+        if lang == "AZ":
+            wagon_disp_name = "İzotermik vaqon"
+        elif lang == "RU":
+            wagon_disp_name = "Изотермический вагон"
+        else:
+            wagon_disp_name = "Isothermal wagon"
+    else:
+        if lang == "AZ":
+            wagon_disp_name = "Universal vaqon"
+        elif lang == "RU":
+            wagon_disp_name = "Универсальный вагон"
+        else:
+            wagon_disp_name = "Universal wagon"
+
+    gng_label = "GNG" if lang != "EN" else "NHM"
+    if translated_cargo and not translated_cargo.isdigit() and translated_cargo !=
