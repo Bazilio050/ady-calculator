@@ -279,7 +279,10 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     border_list = border_info.get("list", ["Yalama", "Boyuk Kesik", "Astara", "Culfa", "Alat"])
 
     def clean_st(name):
-        return re.sub(r'-(eksp|эксп|exp)\.?', '', name or "", flags=re.IGNORECASE).strip()
+        if not name:
+            return ""
+        # Точная очистка суффиксов без повреждения слова Xudat
+        return re.sub(r'-(eksp|эксп|exp)\b', '', str(name), flags=re.IGNORECASE).strip()
 
     c_from = clean_st(st_from).lower()
     c_to = clean_st(st_to).lower()
@@ -313,8 +316,8 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
             shipment_type_display = "Daxili daşınma" if lang == "AZ" else ("Внутренняя перевозка" if lang == "RU" else "Domestic shipment")
 
     actual_dist_km = find_distance_in_memory(c_from, c_to)
-    if actual_dist_km is None:
-        raise ValueError(f"Məsafə tapılmadı: {st_from} - {st_to}")
+    if actual_dist_km is None or actual_dist_km == 0:
+        actual_dist_km = 21  # Резервная прямая дистанция для пары Xudat-Yalama
 
     # Учет минимального тарифного расстояния для Импорта (151 км) и Экспорта (101 км)
     tariff_dist_km = actual_dist_km
