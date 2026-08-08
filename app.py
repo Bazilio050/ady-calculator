@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Кастомные стили для шапки и подвала
+# Кастомные стили
 st.markdown("""
     <style>
     .main-header {
@@ -38,29 +38,29 @@ st.markdown("""
         margin: 6px 0 0 0;
         font-size: 1.05rem;
     }
-    .agt-footer {
-        margin-top: 50px;
-        padding: 20px;
+    .agt-footer-left {
+        margin-top: 40px;
+        padding: 15px 20px;
         background-color: #f8f9fa;
-        border-top: 3px solid #ff5500;
-        border-radius: 8px;
-        text-align: center;
+        border-left: 5px solid #ff5500;
+        border-radius: 6px;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    .agt-footer-info p {
+        margin: 0;
+        font-size: 0.95rem;
         color: #333333;
     }
-    .agt-footer p {
-        margin: 2px 0;
-        font-size: 0.95rem;
-    }
-    .agt-brand {
-        font-weight: bold;
-        color: #ff5500;
-    }
     .agt-slogan {
-        font-size: 0.85rem;
-        letter-spacing: 2px;
-        color: #555555;
+        font-size: 0.8rem;
+        letter-spacing: 1.5px;
+        color: #666666;
         text-transform: uppercase;
-        margin-top: 5px !important;
+        margin-top: 3px !important;
+        font-weight: 600;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -118,7 +118,7 @@ UI_TEXT = {
         "unit_wagon": "USD/vaqon", 
         "table_name": "Cədvəl", 
         "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:",
-        "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur."
+        "footer_owner": "Bu layihə <b>AGT Cargo</b> şirkətinə məxsusdur."
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
@@ -172,7 +172,7 @@ UI_TEXT = {
         "unit_wagon": "USD/вагон", 
         "table_name": "Таблица", 
         "missing_title": "⚠️ Для точного расчета не хватает следующих данных:",
-        "footer_owner": "Данный проект принадлежит компании **AGT Cargo**."
+        "footer_owner": "Данный проект принадлежит компании <b>AGT Cargo</b>."
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
@@ -226,7 +226,7 @@ UI_TEXT = {
         "unit_wagon": "USD/wagon", 
         "table_name": "Table", 
         "missing_title": "⚠️ Required parameters missing:",
-        "footer_owner": "This project belongs to **AGT Cargo**."
+        "footer_owner": "This project belongs to <b>AGT Cargo</b>."
     }
 }
 
@@ -289,10 +289,17 @@ if st.button(t["calc_btn"], type="primary"):
         except Exception as e:
             st.error(f"Error: {str(e)}")
 
-# Подвал с указанием компании AGT Cargo
-st.markdown(f"""
-    <div class="agt-footer">
-        <p>{t['footer_owner']}</p>
-        <p class="agt-slogan">BE GLOBAL CONNECTED</p>
-    </div>
-""", unsafe_allow_html=True)
+# Левый нижний футер с выводом картинки и текста
+logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
+
+footer_col1, footer_col2 = st.columns([1, 4])
+with footer_col1:
+    if logo_path:
+        st.image(logo_path, width=160)
+with footer_col2:
+    st.markdown(f"""
+        <div style="padding-top: 10px;">
+            <p style="margin: 0; font-size: 0.95rem; color: #333333;">{t['footer_owner']}</p>
+            <p style="margin: 2px 0 0 0; font-size: 0.8rem; letter-spacing: 1.5px; color: #ff5500; font-weight: bold;">BE GLOBAL CONNECTED</p>
+        </div>
+    """, unsafe_allow_html=True)
