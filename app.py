@@ -448,22 +448,21 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
 
         return None, f"{tbl_name} 5, {distance_km} {km_unit}", is_per_wagon
 
-    # --- Обработка Таблиц 1-4 (Точная подгонка весовой шкалы 10t - 60t) ---
-    weight_steps = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
+    # --- Обработка Таблиц 1-4 динамически из rules_config.json ---
+    weight_intervals = config.get("tables_1_4_weight_intervals", [])
+    col_idx = 0
+    if weight_intervals:
+        for item in weight_intervals:
+            if item.get("min_weight", 0) <= billable_weight_tons <= item.get("max_weight", 999):
+                col_idx = item.get("column_index", 0)
+                break
 
     for d_min, d_max, vals in rates:
         if d_min <= distance_km <= d_max:
             if len(vals) == 11:
-                col_idx = 0
-                for idx, w_limit in enumerate(weight_steps):
-                    if billable_weight_tons <= w_limit:
-                        col_idx = idx
-                        break
-                    col_idx = idx
                 val = vals[col_idx]
             elif len(vals) > 1:
-                col_idx = min(int(billable_weight_tons // 10), len(vals) - 1)
-                val = vals[col_idx]
+                val = vals[min(col_idx, len(vals) - 1)]
             else:
                 val = vals[0]
 
@@ -786,19 +785,16 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
     billable_weight = act_weight
 
-    if gng.startswith("72"):
-        if billable_weight < 60.0:
-            billable_weight = 60.0
-    else:
-        min_norms_cfg = config.get("minimal_weight_norms_gng", {})
-        min_norms = min_norms_cfg.get("rules", [])
-        for rule in min_norms:
-            prefixes = rule.get("gng_prefixes", [])
-            if any(gng.startswith(p) for p in prefixes if p):
-                norm = rule.get("norm_tons", 0)
-                if billable_weight < norm:
-                    billable_weight = float(norm)
-                break
+    # Динамический расчет минимальной нормы загрузки из rules_config.json
+    min_norms_cfg = config.get("minimal_weight_norms_gng", {})
+    min_norms = min_norms_cfg.get("rules", [])
+    for rule in min_norms:
+        prefixes = rule.get("gng_prefixes", [])
+        if any(gng.startswith(p) for p in prefixes if p):
+            norm = rule.get("norm_tons", 0)
+            if billable_weight < norm:
+                billable_weight = float(norm)
+            break
 
     if act_weight < billable_weight:
         weight_display = f"{int(act_weight) if act_weight.is_integer() else act_weight} t / {int(billable_weight) if billable_weight.is_integer() else billable_weight} t"
