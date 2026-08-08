@@ -122,6 +122,7 @@ UI_TEXT = {
         "note_import_base_150": "İdxal/İxrac rejimində 1.50 baza əmsalı tətbiq olunmuşdur.",
         "note_express": "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur.",
         "note_timber_metal": "İdxal rejimində meşə materialları və qara metallar üçün 1.04 əmsalı tətbiq edilmişdir.",
+        "note_ref_transit_120": "Tranzit rejimində izotermik vaqonlar üçün 1.20 əmsalı tətbiq olunmuşdur.",
         "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
         "note_min_weight": "Faktiki çəki minimal tarif normasından aşağı olduğu üçün hesablama minimal norma üzrə aparılmışdır.",
         "note_ref_composition": "Refseksiyanın vaqon tərkibinə uyğun müvafiq əmsal tətbiq edilmişdir.",
@@ -173,6 +174,7 @@ UI_TEXT = {
         "note_import_base_150": "Применен базовый коэффициент 1.50 для импорта/экспорта.",
         "note_express": "Применен дополнительный коэффициент +2% за сервис ADY Express.",
         "note_timber_metal": "В режиме импорта применен коэффициент 1.04 для лесных грузов и черных металлов.",
+        "note_ref_transit_120": "Применен коэффициент 1.20 для транзита изотермических вагонов.",
         "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
         "note_min_weight": "Так как фактический вес ниже минимальной нормы, расчет произведен по минимальной весовой норме.",
         "note_ref_composition": "Применен соответствующий коэффициент согласно составу рефсекции.",
@@ -224,6 +226,7 @@ UI_TEXT = {
         "note_import_base_150": "Base import/export coefficient 1.50 applied.",
         "note_express": "Additional coefficient +2% applied for ADY Express service.",
         "note_timber_metal": "Coefficient 1.04 applied for import of timber and ferrous metals.",
+        "note_ref_transit_120": "Coefficient 1.20 applied for transit of isothermal wagons.",
         "note_coef_1015": "Additional coefficient applied: 1.015.",
         "note_min_weight": "Since actual weight is below minimum billable weight, calculation is based on minimum weight.",
         "note_ref_composition": "Coefficient applied according to refrigerated section composition.",
@@ -238,6 +241,7 @@ STATION_TRANSLATIONS = {
     "yalama": {"AZ": "Yalama", "RU": "Ялама", "EN": "Yalama"},
     "absheron": {"AZ": "Abşeron", "RU": "Абшерон", "EN": "Absheron"},
     "boyuk kesik": {"AZ": "Böyük Kəsik", "RU": "Беюк-Кесик", "EN": "Boyuk Kesik"},
+    "beyuk kesik": {"AZ": "Böyük Kəsik", "RU": "Беюк-Кесик", "EN": "Boyuk Kesik"},
     "astara": {"AZ": "Astara", "RU": "Астара", "EN": "Astara"},
     "culfa": {"AZ": "Culfa", "RU": "Джульфа", "EN": "Julfa"},
     "alat": {"AZ": "Ələt", "RU": "Алят", "EN": "Alyat"}
@@ -282,15 +286,14 @@ client = genai.Client(api_key=api_key)
 
 
 # ==============================================================================
-# 4. CACHED DATA LOADERS (Кэширование в RAM)
+# 4. CACHED DATA LOADERS (Парсер матрицы расстояний из Distances.txt)
 # ==============================================================================
 
-@st.cache_data(show_spinner=False)
-def load_rules_config():
-    if os.path.exists("rules_config.json"):
-        with open("rules_config.json", "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+def normalize_st_name(name):
+    n = name.lower()
+    n = re.sub(r'[\(\-–\s]*(eksport|eksp|эксп|exp|eks)[\)\.\s]*', '', n)
+    n = n.replace('ə', 'a').replace('ö', 'o').replace('ü', 'u').replace('ı', 'i').replace('ş', 's').replace('ç', 'c')
+    return re.sub(r'[^a-z0-9]', '', n)
 
 @st.cache_data(show_spinner=False)
 def load_distances_map():
@@ -300,20 +303,41 @@ def load_distances_map():
     
     if target_file:
         with open(target_file, "r", encoding="utf-8") as f:
-            for line in f:
+            lines = [l.strip() for l in f if l.strip()]
+
+        header_cols = []
+        for line in lines:
+            if "|" in line and ("stansiya" in line.lower() or "yalama" in line.lower()):
+                parts = [p.strip() for p in line.split("|") if p.strip()]
+                if len(parts) >= 3:
+                    header_cols = [normalize_st_name(p) for p in parts[2:]]
+                continue
+            
+            if "|" in line and header_cols and not line.startswith("| :---"):
+                parts = [p.strip() for p in line.split("|") if p.strip()]
+                if len(parts) >= 3:
+                    row_st = normalize_st_name(parts[0])
+                    for i, val_str in enumerate(parts[2:]):
+                        if i < len(header_cols) and val_str.isdigit():
+                            km = int(val_str)
+                            col_st = header_cols[i]
+                            dist_map[(row_st, col_st)] = km
+                            dist_map[(col_st, row_st)] = km
+            else:
                 match = re.search(r"(.+?)\s*[-–]\s*(.+?)\s+(\d+)\s*(?:km|км)", line, re.IGNORECASE)
                 if match:
-                    s1 = match.group(1).strip().lower()
-                    s2 = match.group(2).strip().lower()
+                    s1 = normalize_st_name(match.group(1))
+                    s2 = normalize_st_name(match.group(2))
                     km = int(match.group(3))
                     dist_map[(s1, s2)] = km
                     dist_map[(s2, s1)] = km
+
     return dist_map
 
 def find_distance_in_memory(st_from, st_to):
     dist_map = load_distances_map()
-    s1 = re.sub(r'-(eksp|эксп|exp)\.?', '', st_from, flags=re.IGNORECASE).strip().lower()
-    s2 = re.sub(r'-(eksp|эксп|exp)\.?', '', st_to, flags=re.IGNORECASE).strip().lower()
+    s1 = normalize_st_name(st_from)
+    s2 = normalize_st_name(st_to)
     
     if (s1, s2) in dist_map:
         return dist_map[(s1, s2)]
@@ -323,9 +347,6 @@ def find_distance_in_memory(st_from, st_to):
     for (k1, k2), dist in dist_map.items():
         if (s1 in k1 or k1 in s1) and (s2 in k2 or k2 in s2):
             return dist
-            
-    if ("yalama" in s1 or "yalama" in s2) and ("kesik" in s1 or "kesik" in s2 or "kəsik" in s1 or "kəsik" in s2):
-        return 512
             
     return 204
 
@@ -448,7 +469,7 @@ def call_gemini_nlu(client, user_input_text):
         '  "actual_weight_tons": float,\n'
         '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
-        '  "ref_section_cargo_wagons": integer or null (number of cargo wagons in refrig section, e.g. for "6+1" or "1+6" return 6; for "5+1" return 5; for "3+1" return 3),\n'
+        '  "ref_section_cargo_wagons": integer or null (number of cargo wagons in refrig section, e.g. for "6+1" or "1+6" or "5+1" return 5; for "3+1" return 3),\n'
         '  "is_tariff_agreement_origin": boolean,\n'
         '  "requested_period": "string or null"\n'
         "}\n\n"
@@ -510,7 +531,6 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     c_from = clean_st(st_from).lower()
     c_to = clean_st(st_to).lower()
 
-    # Перевод названий станций
     disp_from = STATION_TRANSLATIONS.get(c_from, {}).get(lang, st_from.capitalize())
     disp_to = STATION_TRANSLATIONS.get(c_to, {}).get(lang, st_to.capitalize())
 
@@ -540,7 +560,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         shipment_type_code = "local"
         shipment_type_display = "Daxili daşınma" if lang == "AZ" else ("Внутренняя перевозка" if lang == "RU" else "Domestic shipment")
 
-    # 3. Расстояние
+    # 3. Расстояние (матрица)
     dist_km = find_distance_in_memory(c_from, c_to)
 
     # 4. Расчетный вес
@@ -573,7 +593,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     else:
         table_num = 3
 
-    # 6. Базовая ставка CHF (жирный шрифт)
+    # 6. Базовая ставка CHF
     base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, dist_km, billable_weight, "ref" if is_ref_type else wagon_type, lang)
     unit_str = ui_t["unit_wagon"] if is_per_wagon else ui_t["unit_ton"]
     chf_unit = "CHF/vaqon" if is_per_wagon else ("CHF/вагон" if (is_per_wagon and lang == "RU") else ("CHF/t" if lang != "RU" else "CHF/т"))
@@ -589,7 +609,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     if park_type == "SPS":
         coeffs.append(("Özəl vaqon əmsalı" if lang == "AZ" else ("Собственный вагон" if lang == "RU" else "Private wagon"), 0.85))
 
-    # Базовый 1.50 для Импорта/Экспорта (полностью читается из rules_config.json)
+    # Базовый 1.50 для Импорта/Экспорта
     applied_150_note = False
     if shipment_type_code in ["import", "export"]:
         ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
@@ -622,7 +642,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     if shipment_type_code == "import" and any(gng.startswith(p) for p in ["44", "72", "73"]):
         coeffs.append(("İdxal əmsalı (Meşə/Metal)" if lang == "AZ" else ("Импортный коэф. (Лес/Металл)" if lang == "RU" else "Import coeff."), 1.04))
 
-    # Коэффициент состава рефсекции
+    # Коэффициент состава рефсекции (6+1, 5+1, 3+1 и т.д.)
     applied_ref_comp_note = False
     if is_ref_type and ref_wagons_cnt is not None:
         try:
@@ -647,6 +667,15 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
                 applied_ref_comp_note = True
         except (ValueError, TypeError):
             pass
+
+    # Коэффициент 1.20 для ТРАНЗИТА рефрижераторов
+    applied_ref_transit_note = False
+    if shipment_type_code == "transit" and is_ref_type:
+        ref_tr_cfg = config.get("coefficients_updated_rules_2026", {}).get("refrigerated_transit_1_20", {})
+        val_120 = ref_tr_cfg.get("coefficient_value", 1.20)
+        lbl_120 = ref_tr_cfg.get("labels", {}).get(lang, "Tranzit ref əmsalı")
+        coeffs.append((lbl_120, val_120))
+        applied_ref_transit_note = True
 
     # Специальный коэффициент 0.60 для плодоовощной продукции
     fveg_rule = config.get("table_5_rules", {}).get("fruit_veg_discount_0_60", {})
@@ -675,11 +704,10 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit_str}"
     express_rate_str = f"{final_rate * 1.02:.2f} {unit_str}"
 
-    # Парк и наименование (Полный перевод)
+    # Парк и наименование
     lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
     park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
 
-    # Перевод наименования груза
     cargo_translations = {
         "meat": {"AZ": "Ət", "RU": "Мясо", "EN": "Meat"},
         "ferrous metals": {"AZ": "Qara metallar", "RU": "Черные металлы", "EN": "Ferrous metals"},
@@ -691,7 +719,6 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     if gng.startswith("72") and not translated_cargo:
         translated_cargo = "Qara metallar" if lang == "AZ" else ("Черные металлы" if lang == "RU" else "Ferrous metals")
 
-    # Перевод наименования типа вагона
     if is_ref_type:
         wagon_disp_name = "İzotermik vaqon" if lang == "AZ" else ("Изотермический вагон" if lang == "RU" else "Isothermal wagon")
     else:
@@ -705,12 +732,11 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     else:
         cargo_wagon_display = f"{wagon_disp_name} ({park_display})"
 
-    # 10. Примечания (Выводятся ТОЛЬКО если правило сработало)
+    # 10. Примечания
     notes = []
     if park_type == "SPS":
         notes.append(ui_t["note_sps"])
     
-    # Правило 151 / 101 км проверяется СТРОГО по дистанции
     if shipment_type_code == "import" and dist_km < 151:
         notes.append(ui_t["note_import"])
     elif shipment_type_code == "export" and dist_km < 101:
@@ -724,6 +750,8 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         notes.append(ui_t["note_timber_metal"])
     if applied_ref_comp_note:
         notes.append(ui_t["note_ref_composition"])
+    if applied_ref_transit_note:
+        notes.append(ui_t["note_ref_transit_120"])
     if any(c[1] == 1.015 for c in coeffs):
         notes.append(ui_t["note_coef_1015"])
     notes.append(ui_t["note_express"])
