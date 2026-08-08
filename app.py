@@ -5,7 +5,7 @@ from utils import load_rules_config
 from nlu import call_gemini_nlu, validate_nlu_input
 from engine import process_full_calculation
 
-# Настройка страницы (логотип во вкладке и широкая верстка)
+# Настройка страницы
 st.set_page_config(
     page_title="ADY Express — Tariff Calculator", 
     page_icon="🚆", 
@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Стильный кастомный CSS баннер в корпоративных цветах ADY
+# Кастомные стили для шапки и подвала
 st.markdown("""
     <style>
     .main-header {
@@ -37,6 +37,30 @@ st.markdown("""
         color: #b0c4de !important;
         margin: 6px 0 0 0;
         font-size: 1.05rem;
+    }
+    .agt-footer {
+        margin-top: 50px;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-top: 3px solid #ff5500;
+        border-radius: 8px;
+        text-align: center;
+        color: #333333;
+    }
+    .agt-footer p {
+        margin: 2px 0;
+        font-size: 0.95rem;
+    }
+    .agt-brand {
+        font-weight: bold;
+        color: #ff5500;
+    }
+    .agt-slogan {
+        font-size: 0.85rem;
+        letter-spacing: 2px;
+        color: #555555;
+        text-transform: uppercase;
+        margin-top: 5px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -93,7 +117,8 @@ UI_TEXT = {
         "unit_ton": "USD/t", 
         "unit_wagon": "USD/vaqon", 
         "table_name": "Cədvəl", 
-        "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:"
+        "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:",
+        "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur."
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
@@ -146,7 +171,8 @@ UI_TEXT = {
         "unit_ton": "USD/т", 
         "unit_wagon": "USD/вагон", 
         "table_name": "Таблица", 
-        "missing_title": "⚠️ Для точного расчета не хватает следующих данных:"
+        "missing_title": "⚠️ Для точного расчета не хватает следующих данных:",
+        "footer_owner": "Данный проект принадлежит компании **AGT Cargo**."
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
@@ -199,18 +225,18 @@ UI_TEXT = {
         "unit_ton": "USD/t", 
         "unit_wagon": "USD/wagon", 
         "table_name": "Table", 
-        "missing_title": "⚠️ Required parameters missing:"
+        "missing_title": "⚠️ Required parameters missing:",
+        "footer_owner": "This project belongs to **AGT Cargo**."
     }
 }
 
-# Блок управления языком и фрахтовым годом
 col_controls, _ = st.columns([4.0, 6.0])
 with col_controls:
     selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
     t = UI_TEXT[selected_lang]
     selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
 
-# Вывод стильной шапки-баннера
+# Баннер
 st.markdown(f"""
     <div class="main-header">
         <h1>🚆 {t['title']}</h1>
@@ -229,7 +255,6 @@ if st.button(t["calc_btn"], type="primary"):
         try:
             nlu_res = call_gemini_nlu(client, user_input, selected_lang)
             
-            # Раскрывающийся блок для быстрой отладки NLU
             with st.expander("🔍 Gemini NLU JSON (Для проверки распознавания)"):
                 st.json(nlu_res)
 
@@ -244,18 +269,15 @@ if st.button(t["calc_btn"], type="primary"):
                 
                 p1, p2, p3 = data["part1"], data["part2"], data["part3"]
                 
-                # Раздел 1
                 st.markdown(f"#### 📍 {t['sec1_title']}")
                 st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n| **{t['lbl_route']}** | {p1['route']} |\n| **{t['lbl_type']}** | {p1['shipment_type']} |\n| **{t['lbl_dist']}** | {p1['distance']} |\n| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n| **{t['lbl_weight']}** | {p1['weight_info']} |\n| **{t['lbl_period']}** | {p1['period']} |")
 
-                # Раздел 2
                 st.markdown(f"#### ⚙️ {t['sec2_title']}")
                 t2_rows = [f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |", f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"]
                 for coeff in p2["coefficients"]:
                     t2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
                 st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(t2_rows))
 
-                # Раздел 3
                 st.markdown(f"#### 📐 {t['sec3_title']}")
                 st.code(p3["formula"], language="text")
                 st.markdown(f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |\n| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |")
@@ -266,3 +288,11 @@ if st.button(t["calc_btn"], type="primary"):
                         st.markdown(f"{idx}. *{note}*")
         except Exception as e:
             st.error(f"Error: {str(e)}")
+
+# Подвал с указанием компании AGT Cargo
+st.markdown(f"""
+    <div class="agt-footer">
+        <p>{t['footer_owner']}</p>
+        <p class="agt-slogan">BE GLOBAL CONNECTED</p>
+    </div>
+""", unsafe_allow_html=True)
