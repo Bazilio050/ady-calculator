@@ -166,24 +166,36 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         try:
             w_cnt = int(ref_wagons_cnt)
             ref_comp_cfg = config.get("table_5_rules", {}).get("ref_section_composition", {})
-            item = None
+            
+            c_val = None
+            c_lbl = None
+            
             if w_cnt >= 5:
-                item = ref_comp_cfg.get("5_or_more_wagons")
-            elif w_cnt == 4:
-                item = ref_comp_cfg.get("4_wagons")
+                item = ref_comp_cfg.get("5_or_more_wagons", {})
+                c_val = item.get("coefficient_value", 0.85)
+                if c_val == 1.0:
+                    c_val = 0.85
+                labels = item.get("labels", {}) if isinstance(item, dict) else {}
+                c_lbl = labels.get(lang, "Ref 5+ vaqon (0.85 güzəşt)") if labels else "Ref 5+ vaqon (0.85 güzəşt)"
             elif w_cnt == 3:
-                item = ref_comp_cfg.get("3_wagons")
+                item = ref_comp_cfg.get("3_wagons", {})
+                c_val = item.get("coefficient_value", 1.10)
+                labels = item.get("labels", {}) if isinstance(item, dict) else {}
+                c_lbl = labels.get(lang, "Ref 3 vaqon") if labels else "Ref 3 vaqon"
             elif w_cnt == 2:
-                item = ref_comp_cfg.get("2_wagons")
+                item = ref_comp_cfg.get("2_wagons", {})
+                c_val = item.get("coefficient_value", 1.40)
+                labels = item.get("labels", {}) if isinstance(item, dict) else {}
+                c_lbl = labels.get(lang, "Ref 2 vaqon") if labels else "Ref 2 vaqon"
             elif w_cnt == 1:
-                item = ref_comp_cfg.get("1_wagon")
+                item = ref_comp_cfg.get("1_wagon", {})
+                c_val = item.get("coefficient_value", 1.70)
+                labels = item.get("labels", {}) if isinstance(item, dict) else {}
+                c_lbl = labels.get(lang, "Ref 1 vaqon") if labels else "Ref 1 vaqon"
 
-            if item:
-                c_val = item.get("coefficient_value")
-                if c_val and c_val != 1.0:
-                    c_lbl = item.get("labels", {}).get(lang, "Ref Section Coeff")
-                    coeffs.append((c_lbl, c_val))
-                    notes.append(ui_t["note_ref_composition"])
+            if c_val and c_val != 1.0:
+                coeffs.append((c_lbl, c_val))
+                notes.append(ui_t["note_ref_composition"])
         except (ValueError, TypeError):
             pass
 
@@ -244,7 +256,6 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     park_type = str(nlu_data.get("park_type", "SPS") or "SPS").upper()
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
     
-    # 100% Страховка состава рефсекции из текста (5+1, 1+5, 6+1 и т.д.)
     ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
     if ref_wagons_cnt is None:
         match_plus = re.search(r'(\d+)\s*\+\s*1|1\s*\+\s*(\d+)', user_input_raw)
