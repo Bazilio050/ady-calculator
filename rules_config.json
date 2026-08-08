@@ -57,13 +57,17 @@
   "coefficients_updated_rules_2026": {
     "import_export_base_1_50": {
       "coefficient_value": 1.50,
-      "labels": {"AZ": "İdxal/İxrac baza əmsalı", "RU": "Базовый коэф. Импорт/Экспорт", "EN": "Import/Export Base Coeff"},
+      "labels": {
+        "AZ": "İdxal/İxrac baza əmsalı",
+        "RU": "Базовый коэф. Импорт/Экспорт",
+        "EN": "Import/Export Base Coeff"
+      },
       "exceptions": {
-        "tables": [5],
-        "wood_gng": ["44"],
-        "metal_gng_prefixes": ["72", "73"],
-        "wood_wagon_types": ["universal"],
-        "metal_wagon_types": ["universal"]
+        "tables": [3],
+        "wood_gng_prefixes": ["4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"],
+        "metal_gng_prefixes": ["72", "7301", "7302", "7303", "7304", "7305", "7306", "7307"],
+        "methanol_gng_prefixes": ["290511"],
+        "oil_gng_prefixes": ["2709", "2710"]
       }
     },
     "import_metal_wood_1_04": {
