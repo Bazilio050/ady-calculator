@@ -122,7 +122,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
     ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
 
-    # 1. Собственный вагон (СПС) - Коэффициент МПС (1.0) ИГНОРИРУЕТСЯ и не выводится!
+    # 1. Собственный вагон (СПС) - Коэффициент МПС (1.0) ИГНОРИРУЕТСЯ
     if park_type == "SPS":
         park_cfg = config.get("park_type_coefficients", {}).get("SPS")
         c_val = park_cfg.get("coefficient_value", 0.85) if park_cfg else 0.85
@@ -130,7 +130,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         coeffs.append((c_lbl, c_val))
         notes.append(ui_t["note_sps"])
 
-    # 2. Базовый коэффициент 1.50 для Импорта/Экспорта и его 5 ИСКЛЮЧЕНИЙ
+    # 2. Базовый коэффициент 1.50 для Импорта/Экспорта и его исключения
     if shipment_type_code in ["import", "export"]:
         ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
         exceptions = ie_config.get("exceptions", {})
@@ -153,6 +153,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
             coeffs.append((lbl_ie, coeff_val))
             notes.append(ui_t["note_import_base_150"])
 
+    # 3. Импортный коэффициент 1.04
     imp_cfg = config.get("coefficients_updated_rules_2026", {}).get("import_metal_wood_1_04", {})
     imp_prefixes = imp_cfg.get("gng_prefixes", ["44", "72", "73"])
     if shipment_type_code == "import" and any(gng.startswith(p) for p in imp_prefixes if p):
@@ -161,6 +162,58 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         coeffs.append((lbl_imp, coeff_val))
         notes.append(ui_t["note_timber_metal"])
 
+    # 4. Состав рефсекции по официальному документу ADY (1.70 / 1.40 / 1.10 / 0.85)
+    if is_ref_type and ref_wagons_cnt is not None:
+        try:
+            w_cnt = int(ref_wagons_cnt)
+            ref_comp_cfg = config.get("table_5_rules", {}).get("ref_section_composition", {})
+            item = None
+            if w_cnt >= 5:
+                item = ref_comp_cfg.get("5_or_more_wagons")
+            elif w_cnt == 4:
+                item = ref_comp_cfg.get("4_wagons")
+            elif w_cnt == 3:
+                item = ref_comp_cfg.get("3_wagons")
+            elif w_cnt == 2:
+                item = ref_comp_cfg.get("2_wagons")
+            elif w_cnt == 1:
+                item = ref_comp_cfg.get("1_wagon")
+
+            if item:
+                c_val = item.get("coefficient_value")
+                # Значение 1.00 (стандарт 4+1) пропускаем, чтобы не засорять формулу
+                if c_val and c_val != 1.0:
+                    c_lbl = item.get("labels", {}).get(lang, "Ref Section Coeff")
+                    coeffs.append((c_lbl, c_val))
+                    notes.append(ui_t["note_ref_composition"])
+        except (ValueError, TypeError):
+            pass
+
+    # 5. Транзитный коэффициент для изотермических вагонов 1.20
+    if shipment_type_code == "transit" and is_ref_type:
+        ref_tr_cfg = config.get("coefficients_updated_rules_2026", {}).get("refrigerated_transit_1_20", {})
+        val_120 = ref_tr_cfg.get("coefficient_value", 1.20)
+        lbl_120 = ref_tr_cfg.get("labels", {}).get(lang, "Transit Ref Coeff")
+        coeffs.append((lbl_120, val_120))
+        notes.append(ui_t["note_ref_transit_120"])
+
+    # 6. Плодоовощная скидка 0.60
+    fveg_rule = config.get("table_5_rules", {}).get("fruit_veg_discount_0_60", {})
+    fruit_veg_codes = fveg_rule.get("gng_prefixes", [])
+    if is_ref_type and any(gng.startswith(code) for code in fruit_veg_codes if code):
+        if bool(nlu_data.get("is_tariff_agreement_origin", False)):
+            val_060 = fveg_rule.get("coefficient_value", 0.60)
+            lbl_fv = fveg_rule.get("labels", {}).get(lang, "Fruit/Veg Discount")
+            coeffs.append((lbl_fv, val_060))
+        else:
+            note_hints = {
+                "AZ": "💡 Qeyd: Yük Tarif Razılaşması iştirakçısı olan ölkələrdə istehsal olunubsa, 0.60 güzəşt əmsalı tətbiq edilə bilər.",
+                "RU": "💡 Примечание: Если груз произведен в стране Тарифного Соглашения, может применяться скидочный коэффициент 0.60.",
+                "EN": "💡 Note: If cargo originates from a Tariff Agreement country, a 0.60 discount coefficient may apply."
+            }
+            notes.append(note_hints.get(lang, note_hints["AZ"]))
+
+    # 7. Дополнительный коэффициент 1.015
     input_lower = user_input_raw.lower()
     if not any(k in input_lower for k in ["boş", "порожн", "empty"]):
         add_coeff_info = config.get("general_additional_coefficient_1_015", {})
@@ -250,7 +303,6 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     act_w_str = f"{int(act_weight) if act_weight.is_integer() else act_weight}"
     bill_w_str = f"{int(billable_weight) if billable_weight.is_integer() else billable_weight}"
     
-    # Новый понятный формат веса: 35 t (min. 45 t)
     if act_weight < billable_weight:
         weight_display = f"{act_w_str} t (min. {bill_w_str} t)"
     else:
