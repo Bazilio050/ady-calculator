@@ -272,16 +272,6 @@ with col_controls:
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-api_key = os.environ.get("GEMINI_API_KEY")
-if not api_key:
-    api_key = st.text_input(t["api_label"], type="password")
-
-if not api_key:
-    st.warning(t["api_warning"])
-    st.stop()
-
-client = genai.Client(api_key=api_key)
-
 
 # ==============================================================================
 # 4. CACHED DATA LOADERS
@@ -540,3 +530,24 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
     is_from_border = any(b.lower() in c_from for b in border_list)
     is_to_border = any(b.lower() in c_to for b in border_list)
+
+    if is_from_border and is_to_border:
+        display_from = f"{disp_from}{suffix}"
+        display_to = f"{disp_to}{suffix}"
+    else:
+        display_from = f"{disp_from}{suffix}" if is_from_border else disp_from
+        display_to = f"{disp_to}{suffix}" if is_to_border else disp_to
+
+    route_display = f"{display_from} - {display_to}"
+
+    if is_from_border and is_to_border:
+        shipment_type_code = "transit"
+        shipment_type_display = ui_t["type_transit"]
+    elif is_from_border and not is_to_border:
+        shipment_type_code = "import"
+        shipment_type_display = ui_t["type_import"]
+    elif not is_from_border and is_to_border:
+        shipment_type_code = "export"
+        shipment_type_display = ui_t["type_export"]
+    else:
+        shipment_type
