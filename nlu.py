@@ -16,11 +16,13 @@ def call_gemini_nlu(client, user_input_text, lang):
         '  "actual_weight_tons": float or null,\n'
         '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
-        '  "ref_section_cargo_wagons": integer or null (CRITICAL: Extract number of cargo wagons in refrigerated section. Examples: "5+1" -> 5, "1+5" -> 5, "6+1" -> 6, "3 wagons ref" -> 3),\n'
+        '  "ref_section_cargo_wagons": integer or null,\n'
         '  "is_tariff_agreement_origin": boolean,\n'
         '  "requested_period": "string or null",\n'
         '  "explicit_mode": "string or null (import/export/transit)"\n'
         "}\n\n"
+        "REFRIGERATED SECTION RULES:\n"
+        "- Parse patterns like '5+1', '1+5', '6+1', '1+6', '5 реф', '5 вагонов' and extract the number of CARGO wagons into 'ref_section_cargo_wagons' (e.g. 5, 6, 3).\n\n"
         "STRICT STATION NORMALIZATION RULES:\n"
         "- Convert ANY station name (Russian, Azerbaijani, typos, slang, missing letters) directly into official ADY station Latin names:\n"
         "  * 'Баладжары' / 'Баладжар' / 'Baladjary' / 'Baladžary' -> 'Bileceri'\n"
