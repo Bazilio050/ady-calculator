@@ -281,6 +281,7 @@ else:
 
 
 # ==============================================================================
+# 4. CACHED DATA LOADERS & DISTANCE PARSER# ==============================================================================
 # 4. CACHED DATA LOADERS & DISTANCE PARSER
 # ==============================================================================
 
@@ -294,9 +295,14 @@ def load_rules_config():
 def normalize_st_name(name):
     if not name:
         return ""
-    n = name.lower()
+    n = name.lower().strip()
+    # Удаляем суффиксы эксп/eksp/exp
     n = re.sub(r'[\(\-–\s]*(eksport|eksp|эксп|exp|eks)[\)\.\s]*', '', n)
+    # Заменяем специфические символы
     n = n.replace('ə', 'a').replace('ö', 'o').replace('ü', 'u').replace('ı', 'i').replace('ş', 's').replace('ç', 'c')
+    # Приводим варианты beyuk / boyuk к единому формату
+    n = n.replace('beyuk', 'boyuk')
+    # Оставляем только буквы и цифры
     return re.sub(r'[^a-z0-9]', '', n)
 
 @st.cache_data(show_spinner=False)
@@ -325,16 +331,18 @@ def load_distances_map():
                         if i < len(header_cols) and val_str.isdigit():
                             km = int(val_str)
                             col_st = header_cols[i]
-                            dist_map[(row_st, col_st)] = km
-                            dist_map[(col_st, row_st)] = km
+                            if row_st and col_st:
+                                dist_map[(row_st, col_st)] = km
+                                dist_map[(col_st, row_st)] = km
             else:
                 match = re.search(r"(.+?)\s*[-–]\s*(.+?)\s+(\d+)\s*(?:km|км)", line, re.IGNORECASE)
                 if match:
                     s1 = normalize_st_name(match.group(1))
                     s2 = normalize_st_name(match.group(2))
                     km = int(match.group(3))
-                    dist_map[(s1, s2)] = km
-                    dist_map[(s2, s1)] = km
+                    if s1 and s2:
+                        dist_map[(s1, s2)] = km
+                        dist_map[(s2, s1)] = km
 
     return dist_map
 
@@ -342,16 +350,35 @@ def find_distance_in_memory(st_from, st_to):
     dist_map = load_distances_map()
     s1 = normalize_st_name(st_from)
     s2 = normalize_st_name(st_to)
-    
+
+    # 1. Прямое совпадение по нормализованным именам
     if (s1, s2) in dist_map:
         return dist_map[(s1, s2)]
     if (s2, s1) in dist_map:
         return dist_map[(s2, s1)]
-        
+
+    # 2. Поиск по подстрокам (например, 'yalama' в 'yalamast')
     for (k1, k2), dist in dist_map.items():
         if (s1 in k1 or k1 in s1) and (s2 in k2 or k2 in s2):
             return dist
-            
+        if (s1 in k2 or k2 in s1) and (s2 in k1 or k1 in s2):
+            return dist
+
+    # 3. Резервные фиксированные значения для ключевых погранпереходов (если текстовый файл пуст/не найден)
+    fallback_routes = {
+        ("yalama", "boyukkesik"): 502,
+        ("boyukkesik", "yalama"): 502,
+        ("yalama", "astara"): 507,
+        ("astara", "yalama"): 507,
+        ("boyukkesik", "astara"): 692,
+        ("astara", "boyukkesik"): 692,
+    }
+
+    if (s1, s2) in fallback_routes:
+        return fallback_routes[(s1, s2)]
+    if (s2, s1) in fallback_routes:
+        return fallback_routes[(s2, s1)]
+
     return None
 
 @st.cache_data(show_spinner=False)
