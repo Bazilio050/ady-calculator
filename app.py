@@ -916,6 +916,10 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     else:
         period_str = f"{year} freight year"
 
+    coeffs_list = []
+    for c_name, c_val in coeffs:
+        coeffs_list.append({"name": c_name, "value": str(c_val)})
+
     return {
         "part1": {
             "route": route_display,
@@ -928,8 +932,114 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         "part2": {
             "exchange_rate": exchange_display,
             "base_tariff": base_tariff_display,
-            "coefficients": [{"name": c_name, "value": f"{c_val}"} for c_name, c_val in coeffs]
+            "coefficients": coeffs_list
         },
         "part3": {
             "formula": formula_str,
-            "net_ady_rate": f
+            "net_ady_rate": f"{final_rate:.2f} {unit_str}",
+            "express_rate": express_rate_str,
+            "notes": notes
+        }
+    }
+
+
+# ==============================================================================
+# 7. STREAMLIT INTERFACE RENDERING
+# ==============================================================================
+
+if st.button(t["calc_btn"], type="primary"):
+    if not user_input.strip():
+        st.warning(t["warning_empty"])
+    elif not user_api_key.strip():
+        st.error(t["api_warning"])
+    else:
+        client = genai.Client(api_key=user_api_key.strip())
+        train_holder = st.empty()
+        train_holder.markdown(
+            f"""
+            <div class="train-track">
+                <div class="train-animation">═══ 🚃 🚃 🚃 🚃 🚃 🚃 🚂</div>
+            </div>
+            <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        try:
+            nlu_res = call_gemini_nlu(client, user_input)
+            
+            missing_fields = validate_nlu_input(nlu_res, selected_lang)
+            
+            if missing_fields:
+                train_holder.empty()
+                st.warning(t["missing_title"])
+                for missing_item in missing_fields:
+                    st.markdown(f"* {missing_item}")
+                st.info("Xahiş olunur, yuxarıdakı xanaya çatışmayan parametrləri əlavə edib yenidən cəhd edin." if selected_lang == "AZ" else (
+                    "Пожалуйста, дополните запрос в поле выше необходимыми данными и нажмите кнопку повторно." if selected_lang == "RU" else
+                    "Please add the missing details to the input field above and try again."
+                ))
+            else:
+                data = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
+
+                train_holder.empty()
+
+                st.success(t["success"].format(selected_year))
+                st.markdown(f"### {t['result_title']}")
+
+                st.markdown(f"#### 📍 {t['sec1_title']}")
+                p1 = data["part1"]
+                table1_md = (
+                    f"| {t['col_param']} | {t['col_val']} |\n"
+                    f"| :--- | :--- |\n"
+                    f"| **{t['lbl_route']}** | {p1['route']} |\n"
+                    f"| **{t['lbl_type']}** | {p1['shipment_type']} |\n"
+                    f"| **{t['lbl_dist']}** | {p1['distance']} |\n"
+                    f"| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n"
+                    f"| **{t['lbl_weight']}** | {p1['weight_info']} |\n"
+                    f"| **{t['lbl_period']}** | {p1['period']} |"
+                )
+                st.markdown(table1_md)
+
+                st.markdown(f"#### ⚙️ {t['sec2_title']}")
+                p2 = data["part2"]
+                table2_rows = [
+                    f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |",
+                    f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |",
+                ]
+                for coeff in p2["coefficients"]:
+                    table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
+
+                st.markdown(
+                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
+                    + "\n".join(table2_rows)
+                )
+
+                st.markdown(f"#### 📐 {t['sec3_title']}")
+                p3 = data["part3"]
+                st.markdown(f"**{t['formula_title']}**")
+                st.code(p3["formula"], language="text")
+
+                st.markdown(f"**{t['rates_title']}**")
+                table3_rows = [
+                    f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |",
+                    f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |"
+                ]
+                st.markdown(
+                    f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
+                    + "\n".join(table3_rows)
+                )
+
+                if p3["notes"]:
+                    st.markdown(f"**{t['notes_title']}**")
+                    for idx, note in enumerate(p3["notes"], start=1):
+                        st.markdown(f"{idx}. *{note}*")
+
+                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
+
+        except Exception as e:
+            train_holder.empty()
+            st.error(f"Error: {str(e)}")
+
+st.markdown("---")
+st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
