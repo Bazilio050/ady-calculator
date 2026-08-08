@@ -102,14 +102,15 @@
       }
     },
     "ref_section_composition": {
-      "5_or_more_wagons": {"coefficient_value": 1.00, "labels": {"AZ": "Ref 5+ vaqon", "RU": "Реф 5+ вагонов", "EN": "Ref 5+ wagons"}},
-      "3_wagons": {"coefficient_value": 1.15, "labels": {"AZ": "Ref 3 vaqon", "RU": "Реф 3 вагона", "EN": "Ref 3 wagons"}},
-      "2_wagons": {"coefficient_value": 1.30, "labels": {"AZ": "Ref 2 vaqon", "RU": "Реф 2 вагона", "EN": "Ref 2 wagons"}},
-      "1_wagon": {"coefficient_value": 1.50, "labels": {"AZ": "Ref 1 vaqon", "RU": "Реф 1 вагон", "EN": "Ref 1 wagon"}}
+      "5_or_more_wagons": {"coefficient_value": 0.85, "labels": {"AZ": "Ref 5+ vaqon (0.85 güzəşt)", "RU": "Реф 5+ вагонов (скидка 0.85)", "EN": "Ref 5+ wagons (0.85 discount)"}},
+      "4_wagons": {"coefficient_value": 1.00, "labels": {"AZ": "Ref 4 vaqon", "RU": "Реф 4 вагона", "EN": "Ref 4 wagons"}},
+      "3_wagons": {"coefficient_value": 1.10, "labels": {"AZ": "Ref 3 vaqon", "RU": "Реф 3 вагона", "EN": "Ref 3 wagons"}},
+      "2_wagons": {"coefficient_value": 1.40, "labels": {"AZ": "Ref 2 vaqon", "RU": "Реф 2 вагона", "EN": "Ref 2 wagons"}},
+      "1_wagon": {"coefficient_value": 1.70, "labels": {"AZ": "Ref 1 vaqon", "RU": "Реф 1 вагон", "EN": "Ref 1 wagon"}}
     },
     "fruit_veg_discount_0_60": {
       "coefficient_value": 0.60,
-      "gng_prefixes": ["07", "08"],
+      "gng_prefixes": ["07", "08", "04100", "04200", "04300", "04400", "05100", "05200", "05300", "12129100"],
       "labels": {"AZ": "Meyvə-tərəvəz güzəşti", "RU": "Скидка на плодоовощные", "EN": "Fruit/Veg Discount"}
     }
   },
