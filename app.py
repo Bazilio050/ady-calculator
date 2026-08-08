@@ -5,85 +5,220 @@ from utils import load_rules_config
 from nlu import call_gemini_nlu, validate_nlu_input
 from engine import process_full_calculation
 
-st.set_page_config(page_title="ADY Tarif Kalkulyatoru", page_icon="🚂", layout="wide")
+# Настройка страницы (логотип во вкладке и широкая верстка)
+st.set_page_config(
+    page_title="ADY Express — Tariff Calculator", 
+    page_icon="🚆", 
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# Стильный кастомный CSS баннер в корпоративных цветах ADY
+st.markdown("""
+    <style>
+    .main-header {
+        background: linear-gradient(135deg, #0e2a47 0%, #1a4a75 100%);
+        padding: 24px;
+        border-radius: 12px;
+        color: white;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .main-header h1 {
+        color: #ffffff !important;
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .main-header p {
+        color: #b0c4de !important;
+        margin: 6px 0 0 0;
+        font-size: 1.05rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 UI_TEXT = {
     "AZ": {
-        "title": "ADY Tarif Kalkulyatoru", "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili",
-        "year_select": "Fraxt ili:", "lang_select": "Dil / Language:", "input_header": "Daşıma parametrlərini daxil edin:",
+        "title": "ADY Tarif Kalkulyatoru", 
+        "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili",
+        "year_select": "Fraxt ili:", 
+        "lang_select": "Dil / Language:", 
+        "input_header": "Daşıma parametrlərini daxil edin:",
         "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
-        "calc_btn": "🚀 Tarifi hesabla", "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
-        "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...", "success": "Hesablama uğurla tamamlandı! (ADY Policy {})",
-        "result_title": "📋 Hesablama nəticəsi:", "sec1_title": "1. Marşrut və daşıma şərtləri", "sec2_title": "2. Əmsallar və valyuta məzənnəsi",
-        "sec3_title": "3. Tarifin hesablanması", "formula_title": "Hesablama düsturu:", "rates_title": "Yekun tariflər:",
-        "notes_title": "Qeydlər:", "disclaimer": "Qeyd olunan tariflərə stansiya xərcləri və əlavə yığımlar daxil deyildir.",
-        "col_param": "Parametr", "col_val": "Qiymət / Həcm", "col_rate_type": "Tarif növü", "col_amount": "Məblağ",
-        "lbl_route": "Marşrut", "lbl_type": "Daşıma növü", "lbl_dist": "Məsafə", "lbl_cargo": "Yük / Vəziyyət",
-        "lbl_weight": "Faktiki / Hesablaşma çəkisi", "lbl_period": "Dövr", "lbl_exchange": "CHF/USD", "lbl_base_rate": "Baza tarifi",
-        "lbl_net_rate": "Yekün ADY tarifi", "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
-        "api_warning": "⚠️ Xahiş olunur, GEMINI_API_KEY daxil edin.", "api_label": "Gemini API Key:",
-        "type_import": "İdxal daşınması", "type_export": "İxrac daşınması", "type_transit": "Tranzit daşınması",
-        "note_sps": "Özəl vaqonlar (SPS) üçün 0.85 güzəşt əmsalı tətbiq olunmuşdur.", "note_import": "İdxal rejimində minimal tarif məsafəsi norması 151 km-dir.",
-        "note_export": "İxrac rejimində minimal tarif məsafəsi norması 101 km-dir.", "note_import_base_150": "İdxal/İxrac rejimində 1.50 baza əmsalı tətbiq olunmuşdur.",
-        "note_express": "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur.", "note_timber_metal": "İdxal rejimində meşə materialları və qara metallar üçün 1.04 əmsalı tətbiq edilmişdir.",
-        "note_ref_transit_120": "Tranzit rejimində izotermik vaqonlar üçün 1.20 əmsalı tətbiq olunmuşdur.", "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
-        "note_min_weight": "Hesablama minimal norma üzrə aparılmışdır.", "note_ref_composition": "Refseksiyanın vaqon tərkibinə uyğun müvafiq əmsal tətbiq edilmişdir.",
-        "unit_ton": "USD/t", "unit_wagon": "USD/vaqon", "table_name": "Cədvəl", "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:"
+        "calc_btn": "🚀 Tarifi hesabla", 
+        "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
+        "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...", 
+        "success": "Hesablama uğurla tamamlandı! (ADY Policy {})",
+        "result_title": "📋 Hesablama nəticəsi:", 
+        "sec1_title": "1. Marşrut və daşıma şərtləri", 
+        "sec2_title": "2. Əmsallar və valyuta məzənnəsi",
+        "sec3_title": "3. Tarifin hesablanması", 
+        "formula_title": "Hesablama düsturu:", 
+        "rates_title": "Yekun tariflər:",
+        "notes_title": "Qeydlər:", 
+        "disclaimer": "Qeyd olunan tariflərə stansiya xərcləri və əlavə yığımlar daxil deyildir.",
+        "col_param": "Parametr", 
+        "col_val": "Qiymət / Həcm", 
+        "col_rate_type": "Tarif növü", 
+        "col_amount": "Məblağ",
+        "lbl_route": "Marşrut", 
+        "lbl_type": "Daşıma növü", 
+        "lbl_dist": "Məsafə", 
+        "lbl_cargo": "Yük / Vəziyyət",
+        "lbl_weight": "Faktiki / Hesablaşma çəkisi", 
+        "lbl_period": "Dövr", 
+        "lbl_exchange": "CHF/USD", 
+        "lbl_base_rate": "Baza tarifi",
+        "lbl_net_rate": "Yekün ADY tarifi", 
+        "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
+        "api_warning": "⚠️ Xahiş olunur, GEMINI_API_KEY daxil edin.", 
+        "api_label": "Gemini API Key:",
+        "type_import": "İdxal daşınması", 
+        "type_export": "İxrac daşınması", 
+        "type_transit": "Tranzit daşınması",
+        "note_sps": "Özəl vaqonlar (SPS) üçün 0.85 güzəşt əmsalı tətbiq olunmuşdur.", 
+        "note_import": "İdxal rejimində minimal tarif məsafəsi norması 151 km-dir.",
+        "note_export": "İxrac rejimində minimal tarif məsafəsi norması 101 km-dir.", 
+        "note_import_base_150": "İdxal/İxrac rejimində 1.50 baza əmsalı tətbiq olunmuşdur.",
+        "note_express": "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur.", 
+        "note_timber_metal": "İdxal rejimində meşə materialları və qara metallar üçün 1.04 əmsalı tətbiq edilmişdir.",
+        "note_ref_transit_120": "Tranzit rejimində izotermik vaqonlar üçün 1.20 əmsalı tətbiq olunmuşdur.", 
+        "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
+        "note_min_weight": "Hesablama minimal norma üzrə aparılmışdır.", 
+        "note_ref_composition": "Refseksiyanın vaqon tərkibinə uyğun müvafiq əmsal tətbiq edilmişdir.",
+        "unit_ton": "USD/t", 
+        "unit_wagon": "USD/vaqon", 
+        "table_name": "Cədvəl", 
+        "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:"
     },
     "RU": {
-        "title": "Тарифный калькулятор ADY", "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
-        "year_select": "Фрахтовый год:", "lang_select": "Язык / Language:", "input_header": "Введите данные по перевозке:",
+        "title": "Тарифный калькулятор ADY", 
+        "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
+        "year_select": "Фрахтовый год:", 
+        "lang_select": "Язык / Language:", 
+        "input_header": "Введите данные по перевозке:",
         "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
-        "calc_btn": "🚀 Рассчитать тариф", "warning_empty": "Пожалуйста, введите условия расчета.",
-        "spinner_text": "Считаем тариф согласно Тарифной политике {}...", "success": "Расчет успешно выполнен! (Тарифная политика {})",
-        "result_title": "📋 Результат расчета:", "sec1_title": "1. Маршрут и условия перевозки", "sec2_title": "2. Коэффициенты и курс валют",
-        "sec3_title": "3. Расчет тарифа", "formula_title": "Формула расчета:", "rates_title": "Итоговые тарифы:",
-        "notes_title": "Примечания:", "disclaimer": "Ставки приведены без учета станционных расходов и дополнительных сборов.",
-        "col_param": "Параметр", "col_val": "Значение / Объем", "col_rate_type": "Тип тарифа", "col_amount": "Сумма",
-        "lbl_route": "Маршрут", "lbl_type": "Вид перевозки", "lbl_dist": "Расстояние", "lbl_cargo": "Груз / Состояние",
-        "lbl_weight": "Фактический / Расчетный вес", "lbl_period": "Период", "lbl_exchange": "CHF/USD", "lbl_base_rate": "Базовый тариф",
-        "lbl_net_rate": "Итоговый тариф", "lbl_express_rate": "Итоговый тариф (включая ADY Express +2%)",
-        "api_warning": "⚠️ Пожалуйста, укажите GEMINI_API_KEY.", "api_label": "Gemini API Key:",
-        "type_import": "Импортная перевозка", "type_export": "Экспортная перевозка", "type_transit": "Транзитная перевозка",
-        "note_sps": "Применен скидочный коэффициент 0.85 для собственных вагонов (СПС).", "note_import": "В режиме импорта минимальное тарифное расстояние составляет 151 км.",
-        "note_export": "В режиме экспорта минимальное тарифное расстояние составляет 101 км.", "note_import_base_150": "Применен базовый коэффициент 1.50 для импорта/экспорта.",
-        "note_express": "Применен дополнительный коэффициент +2% за сервис ADY Express.", "note_timber_metal": "В режиме импорта применен коэффициент 1.04 для лесных грузов и черных металлов.",
-        "note_ref_transit_120": "Применен коэффициент 1.20 для транзита изотермических вагонов.", "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
-        "note_min_weight": "Расчет произведен по минимальной весовой норме.", "note_ref_composition": "Применен соответствующий коэффициент согласно составу рефсекции.",
-        "unit_ton": "USD/т", "unit_wagon": "USD/вагон", "table_name": "Таблица", "missing_title": "⚠️ Для точного расчета не хватает следующих данных:"
+        "calc_btn": "🚀 Рассчитать тариф", 
+        "warning_empty": "Пожалуйста, введите условия расчета.",
+        "spinner_text": "Считаем тариф согласно Тарифной политике {}...", 
+        "success": "Расчет успешно выполнен! (Тарифная политика {})",
+        "result_title": "📋 Результат расчета:", 
+        "sec1_title": "1. Маршрут и условия перевозки", 
+        "sec2_title": "2. Коэффициенты и курс валют",
+        "sec3_title": "3. Расчет тарифа", 
+        "formula_title": "Формула расчета:", 
+        "rates_title": "Итоговые тарифы:",
+        "notes_title": "Примечания:", 
+        "disclaimer": "Ставки приведены без учета станционных расходов и дополнительных сборов.",
+        "col_param": "Параметр", 
+        "col_val": "Значение / Объем", 
+        "col_rate_type": "Тип тарифа", 
+        "col_amount": "Сумма",
+        "lbl_route": "Маршрут", 
+        "lbl_type": "Вид перевозки", 
+        "lbl_dist": "Расстояние", 
+        "lbl_cargo": "Груз / Состояние",
+        "lbl_weight": "Фактический / Расчетный вес", 
+        "lbl_period": "Период", 
+        "lbl_exchange": "CHF/USD", 
+        "lbl_base_rate": "Базовый тариф",
+        "lbl_net_rate": "Итоговый тариф", 
+        "lbl_express_rate": "Итоговый тариф (включая ADY Express +2%)",
+        "api_warning": "⚠️ Пожалуйста, укажите GEMINI_API_KEY.", 
+        "api_label": "Gemini API Key:",
+        "type_import": "Импортная перевозка", 
+        "type_export": "Экспортная перевозка", 
+        "type_transit": "Транзитная перевозка",
+        "note_sps": "Применен скидочный коэффициент 0.85 для собственных вагонов (СПС).", 
+        "note_import": "В режиме импорта минимальное тарифное расстояние составляет 151 км.",
+        "note_export": "В режиме экспорта минимальное тарифное расстояние составляет 101 км.", 
+        "note_import_base_150": "Применен базовый коэффициент 1.50 для импорта/экспорта.",
+        "note_express": "Применен дополнительный коэффициент +2% за сервис ADY Express.", 
+        "note_timber_metal": "В режиме импорта применен коэффициент 1.04 для лесных грузов и черных металлов.",
+        "note_ref_transit_120": "Применен коэффициент 1.20 для транзита изотермических вагонов.", 
+        "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
+        "note_min_weight": "Расчет произведен по минимальной весовой норме.", 
+        "note_ref_composition": "Применен соответствующий коэффициент согласно составу рефсекции.",
+        "unit_ton": "USD/т", 
+        "unit_wagon": "USD/вагон", 
+        "table_name": "Таблица", 
+        "missing_title": "⚠️ Для точного расчета не хватает следующих данных:"
     },
     "EN": {
-        "title": "ADY Tariff Calculator", "subtitle": "Railway freight tariff calculator for Azerbaijan — {} freight year",
-        "year_select": "Freight Year:", "lang_select": "Language:", "input_header": "Enter shipment details:",
+        "title": "ADY Tariff Calculator", 
+        "subtitle": "Railway freight tariff calculator for Azerbaijan — {} freight year",
+        "year_select": "Freight Year:", 
+        "lang_select": "Language:", 
+        "input_header": "Enter shipment details:",
         "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
-        "calc_btn": "🚀 Calculate Freight Rate", "warning_empty": "Please enter shipment requirements.",
-        "spinner_text": "Calculating rates according to Tariff Policy {}...", "success": "Calculation completed successfully! (Tariff Policy {})",
-        "result_title": "📋 Calculation Results:", "sec1_title": "1. Route and Shipment Conditions", "sec2_title": "2. Coefficients and Exchange Rate",
-        "sec3_title": "3. Rate Calculation", "formula_title": "Calculation Formula:", "rates_title": "Final Rates:",
-        "notes_title": "Notes:", "disclaimer": "Rates are quoted excluding station charges and additional fees.",
-        "col_param": "Parameter", "col_val": "Value / Volume", "col_rate_type": "Rate Type", "col_amount": "Amount",
-        "lbl_route": "Route", "lbl_type": "Shipment Type", "lbl_dist": "Distance", "lbl_cargo": "Cargo / Condition",
-        "lbl_weight": "Actual / Billable Weight", "lbl_period": "Period", "lbl_exchange": "CHF/USD", "lbl_base_rate": "Base Tariff",
-        "lbl_net_rate": "Final Tariff", "lbl_express_rate": "Final Tariff (incl. ADY Express +2%)",
-        "api_warning": "⚠️ Please provide GEMINI_API_KEY.", "api_label": "Gemini API Key:",
-        "type_import": "Import shipment", "type_export": "Export shipment", "type_transit": "Transit shipment",
-        "note_sps": "Discount coefficient 0.85 applied for private wagons (SPS).", "note_import": "Minimum tariff distance for import is 151 km.",
-        "note_export": "Minimum tariff distance for export is 101 km.", "note_import_base_150": "Base import/export coefficient 1.50 applied.",
-        "note_express": "Additional coefficient +2% applied for ADY Express service.", "note_timber_metal": "Coefficient 1.04 applied for import of timber and ferrous metals.",
-        "note_ref_transit_120": "Coefficient 1.20 applied for transit of isothermal wagons.", "note_coef_1015": "Additional coefficient applied: 1.015.",
-        "note_min_weight": "Calculation is based on minimum weight.", "note_ref_composition": "Coefficient applied according to refrigerated section composition.",
-        "unit_ton": "USD/t", "unit_wagon": "USD/wagon", "table_name": "Table", "missing_title": "⚠️ Required parameters missing:"
+        "calc_btn": "🚀 Calculate Freight Rate", 
+        "warning_empty": "Please enter shipment requirements.",
+        "spinner_text": "Calculating rates according to Tariff Policy {}...", 
+        "success": "Calculation completed successfully! (Tariff Policy {})",
+        "result_title": "📋 Calculation Results:", 
+        "sec1_title": "1. Route and Shipment Conditions", 
+        "sec2_title": "2. Coefficients and Exchange Rate",
+        "sec3_title": "3. Rate Calculation", 
+        "formula_title": "Calculation Formula:", 
+        "rates_title": "Final Rates:",
+        "notes_title": "Notes:", 
+        "disclaimer": "Rates are quoted excluding station charges and additional fees.",
+        "col_param": "Parameter", 
+        "col_val": "Value / Volume", 
+        "col_rate_type": "Rate Type", 
+        "col_amount": "Amount",
+        "lbl_route": "Route", 
+        "lbl_type": "Shipment Type", 
+        "lbl_dist": "Distance", 
+        "lbl_cargo": "Cargo / Condition",
+        "lbl_weight": "Actual / Billable Weight", 
+        "lbl_period": "Period", 
+        "lbl_exchange": "CHF/USD", 
+        "lbl_base_rate": "Base Tariff",
+        "lbl_net_rate": "Final Tariff", 
+        "lbl_express_rate": "Final Tariff (incl. ADY Express +2%)",
+        "api_warning": "⚠️ Please provide GEMINI_API_KEY.", 
+        "api_label": "Gemini API Key:",
+        "type_import": "Import shipment", 
+        "type_export": "Export shipment", 
+        "type_transit": "Transit shipment",
+        "note_sps": "Discount coefficient 0.85 applied for private wagons (SPS).", 
+        "note_import": "Minimum tariff distance for import is 151 km.",
+        "note_export": "Minimum tariff distance for export is 101 km.", 
+        "note_import_base_150": "Base import/export coefficient 1.50 applied.",
+        "note_express": "Additional coefficient +2% applied for ADY Express service.", 
+        "note_timber_metal": "Coefficient 1.04 applied for import of timber and ferrous metals.",
+        "note_ref_transit_120": "Coefficient 1.20 applied for transit of isothermal wagons.", 
+        "note_coef_1015": "Additional coefficient applied: 1.015.",
+        "note_min_weight": "Calculation is based on minimum weight.", 
+        "note_ref_composition": "Coefficient applied according to refrigerated section composition.",
+        "unit_ton": "USD/t", 
+        "unit_wagon": "USD/wagon", 
+        "table_name": "Table", 
+        "missing_title": "⚠️ Required parameters missing:"
     }
 }
 
+# Блок управления языком и фрахтовым годом
 col_controls, _ = st.columns([4.0, 6.0])
 with col_controls:
     selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
     t = UI_TEXT[selected_lang]
     selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
 
-st.title(t["title"])
-user_input = st.text_area(t["input_header"], height=150, placeholder=t["input_placeholder"])
+# Вывод стильной шапки-баннера
+st.markdown(f"""
+    <div class="main-header">
+        <h1>🚆 {t['title']}</h1>
+        <p>{t['subtitle'].format(selected_year)}</p>
+    </div>
+""", unsafe_allow_html=True)
+
+user_input = st.text_area(t["input_header"], height=130, placeholder=t["input_placeholder"])
 user_api_key = os.environ.get("GEMINI_API_KEY", "")
 
 if st.button(t["calc_btn"], type="primary"):
@@ -94,7 +229,7 @@ if st.button(t["calc_btn"], type="primary"):
         try:
             nlu_res = call_gemini_nlu(client, user_input, selected_lang)
             
-            # Отладка
+            # Раскрывающийся блок для быстрой отладки NLU
             with st.expander("🔍 Gemini NLU JSON (Для проверки распознавания)"):
                 st.json(nlu_res)
 
@@ -109,15 +244,18 @@ if st.button(t["calc_btn"], type="primary"):
                 
                 p1, p2, p3 = data["part1"], data["part2"], data["part3"]
                 
+                # Раздел 1
                 st.markdown(f"#### 📍 {t['sec1_title']}")
                 st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n| **{t['lbl_route']}** | {p1['route']} |\n| **{t['lbl_type']}** | {p1['shipment_type']} |\n| **{t['lbl_dist']}** | {p1['distance']} |\n| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n| **{t['lbl_weight']}** | {p1['weight_info']} |\n| **{t['lbl_period']}** | {p1['period']} |")
 
+                # Раздел 2
                 st.markdown(f"#### ⚙️ {t['sec2_title']}")
                 t2_rows = [f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |", f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"]
                 for coeff in p2["coefficients"]:
                     t2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
                 st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(t2_rows))
 
+                # Раздел 3
                 st.markdown(f"#### 📐 {t['sec3_title']}")
                 st.code(p3["formula"], language="text")
                 st.markdown(f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |\n| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |")
