@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Стили для баннера и нижнего подвала (футера)
+# Стили
 st.markdown("""
     <style>
     .main-header {
@@ -21,6 +21,7 @@ st.markdown("""
         padding: 24px;
         border-radius: 12px;
         color: white;
+        margin-top: 15px;
         margin-bottom: 25px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
@@ -190,7 +191,7 @@ UI_TEXT = {
         "rates_title": "Final Rates:",
         "notes_title": "Notes:", 
         "disclaimer": "Rates are quoted excluding station charges and additional fees.",
-        "col_param": "Parameter", 
+        "col_param": "Parametr", 
         "col_val": "Value / Volume", 
         "col_rate_type": "Rate Type", 
         "col_amount": "Amount",
@@ -229,7 +230,7 @@ UI_TEXT = {
 
 logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
 
-# Верхняя строка с логотипом слева и настройками справа
+# --- ВЕРХНЯЯ ШАПКА (1-Я СТРОКА: ЛОГОТИП СЛЕВА, ВЫБОР ЯЗЫКА/ГОДА СПРАВА) ---
 top_col1, top_col2 = st.columns([2, 3])
 with top_col1:
     if logo_path:
@@ -242,7 +243,7 @@ with top_col2:
     with sub_col2:
         selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
 
-# Баннер
+# --- СИНИЙ БАННЕР С ЗАГОЛОВКОМ (2-Я СТРОКА) ---
 st.markdown(f"""
     <div class="main-header">
         <h1>🚆 {t['title']}</h1>
@@ -250,6 +251,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
+# --- ПОЛЕ ВВОДА (3-Я СТРОКА) ---
 user_input = st.text_area(t["input_header"], height=130, placeholder=t["input_placeholder"])
 user_api_key = os.environ.get("GEMINI_API_KEY", "")
 
@@ -295,7 +297,7 @@ if st.button(t["calc_btn"], type="primary"):
         except Exception as e:
             st.error(f"Error: {str(e)}")
 
-# Подвал с указанием компании AGT Cargo в самом конце сайта (по центру)
+# --- ПОДВАЛ (ФУТЕР В САМОМ КОНЦЕ СТАЙТА) ---
 st.markdown(f"""
     <div class="agt-footer">
         <p>{t['footer_owner']}</p>
