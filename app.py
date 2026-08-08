@@ -609,24 +609,34 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         coeffs.append((c_lbl, c_val))
         notes.append(ui_t["note_sps"])
 
-    # 2. Базовый коэффициент 1.50 для Импорта/Экспорта
+    # 2. Базовый коэффициент 1.50 для Импорта/Экспорта и его 5 ИСКЛЮЧЕНИЙ
     if shipment_type_code in ["import", "export"]:
         ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
         exceptions = ie_config.get("exceptions", {})
         is_150_exception = False
 
-        if table_num in exceptions.get("tables", []):
+        # Исключение 1: Расчет из Таблицы 3
+        if table_num in exceptions.get("tables", [3]):
             is_150_exception = True
 
-        wood_codes = exceptions.get("wood_gng", [])
-        metal_prefixes = exceptions.get("metal_gng_prefixes", [])
-        wood_wagons = exceptions.get("wood_wagon_types", ["universal"])
-        metal_wagons = exceptions.get("metal_wagon_types", ["universal"])
-
-        if wagon_type in wood_wagons and any(gng.startswith(w) for w in wood_codes if w):
+        # Исключение 2: Лес и пиломатериалы (ГНГ 4403, 4404, 4407–4413) в универсальных вагонах
+        wood_codes = exceptions.get("wood_gng_prefixes", ["4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"])
+        if wagon_type == "universal" and any(gng.startswith(w) for w in wood_codes if w):
             is_150_exception = True
 
-        if wagon_type in metal_wagons and any(gng.startswith(m) for m in metal_prefixes if m):
+        # Исключение 3: Черные металлы (ГНГ 72, 7301–7307) в универсальных вагонах
+        metal_codes = exceptions.get("metal_gng_prefixes", ["72", "7301", "7302", "7303", "7304", "7305", "7306", "7307"])
+        if wagon_type == "universal" and any(gng.startswith(m) for m in metal_codes if m):
+            is_150_exception = True
+
+        # Исключение 4: Метанол в цистернах и бункерных полувагонах
+        methanol_codes = exceptions.get("methanol_gng_prefixes", ["290511"])
+        if wagon_type in ["tank", "cistern", "bunker"] and any(gng.startswith(m) for m in methanol_codes if m):
+            is_150_exception = True
+
+        # Исключение 5: Нефть и нефтепродукты (Таблица 6, столбец 2) в цистернах
+        oil_codes = exceptions.get("oil_gng_prefixes", ["2709", "2710"])
+        if wagon_type in ["tank", "cistern"] and any(gng.startswith(o) for o in oil_codes if o):
             is_150_exception = True
 
         if not is_150_exception:
@@ -922,110 +932,4 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         },
         "part3": {
             "formula": formula_str,
-            "net_ady_rate": f"{final_rate:.2f} {unit_str}",
-            "express_rate": express_rate_str,
-            "notes": notes
-        }
-    }
-
-
-# ==============================================================================
-# 7. STREAMLIT INTERFACE RENDERING
-# ==============================================================================
-
-if st.button(t["calc_btn"], type="primary"):
-    if not user_input.strip():
-        st.warning(t["warning_empty"])
-    elif not user_api_key.strip():
-        st.error(t["api_warning"])
-    else:
-        client = genai.Client(api_key=user_api_key.strip())
-        train_holder = st.empty()
-        train_holder.markdown(
-            f"""
-            <div class="train-track">
-                <div class="train-animation">═══ 🚃 🚃 🚃 🚃 🚃 🚃 🚂</div>
-            </div>
-            <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        try:
-            nlu_res = call_gemini_nlu(client, user_input)
-            
-            missing_fields = validate_nlu_input(nlu_res, selected_lang)
-            
-            if missing_fields:
-                train_holder.empty()
-                st.warning(t["missing_title"])
-                for missing_item in missing_fields:
-                    st.markdown(f"* {missing_item}")
-                st.info("Xahiş olunur, yuxarıdakı xanaya çatışmayan parametrləri əlavə edib yenidən cəhd edin." if selected_lang == "AZ" else (
-                    "Пожалуйста, дополните запрос в поле выше необходимыми данными и нажмите кнопку повторно." if selected_lang == "RU" else
-                    "Please add the missing details to the input field above and try again."
-                ))
-            else:
-                data = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
-
-                train_holder.empty()
-
-                st.success(t["success"].format(selected_year))
-                st.markdown(f"### {t['result_title']}")
-
-                st.markdown(f"#### 📍 {t['sec1_title']}")
-                p1 = data["part1"]
-                table1_md = (
-                    f"| {t['col_param']} | {t['col_val']} |\n"
-                    f"| :--- | :--- |\n"
-                    f"| **{t['lbl_route']}** | {p1['route']} |\n"
-                    f"| **{t['lbl_type']}** | {p1['shipment_type']} |\n"
-                    f"| **{t['lbl_dist']}** | {p1['distance']} |\n"
-                    f"| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n"
-                    f"| **{t['lbl_weight']}** | {p1['weight_info']} |\n"
-                    f"| **{t['lbl_period']}** | {p1['period']} |"
-                )
-                st.markdown(table1_md)
-
-                st.markdown(f"#### ⚙️ {t['sec2_title']}")
-                p2 = data["part2"]
-                table2_rows = [
-                    f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |",
-                    f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |",
-                ]
-                for coeff in p2["coefficients"]:
-                    table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
-
-                st.markdown(
-                    f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
-                    + "\n".join(table2_rows)
-                )
-
-                st.markdown(f"#### 📐 {t['sec3_title']}")
-                p3 = data["part3"]
-                st.markdown(f"**{t['formula_title']}**")
-                st.code(p3["formula"], language="text")
-
-                st.markdown(f"**{t['rates_title']}**")
-                table3_rows = [
-                    f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |",
-                    f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |"
-                ]
-                st.markdown(
-                    f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
-                    + "\n".join(table3_rows)
-                )
-
-                if p3["notes"]:
-                    st.markdown(f"**{t['notes_title']}**")
-                    for idx, note in enumerate(p3["notes"], start=1):
-                        st.markdown(f"{idx}. *{note}*")
-
-                st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
-
-        except Exception as e:
-            train_holder.empty()
-            st.error(f"Error: {str(e)}")
-
-st.markdown("---")
-st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
+            "net_ady_rate": f
