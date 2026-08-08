@@ -1,339 +1,142 @@
 {
-  "_document_info": {
-    "title": "2026-cı fraxt ili üçün beynəlxalq yük daşımaları üzrə tariflər",
-    "publisher": "Azərbaycan Dəmir Yolları (ADY)",
-    "year": 2026
-  },
-  "border_stations": {
-    "_description_ru": "Пограничные станции и их языковые суффиксы",
-    "suffixes": {
-      "AZ": "-eksp.",
-      "RU": "-эксп.",
-      "EN": "-exp."
-    },
-    "list": [
-      "Yalama",
-      "Boyuk Kesik",
-      "Böyük Kəsik",
-      "Astara",
-      "Culfa",
-      "Alat",
-      "Ələt"
-    ]
-  },
-  "language_abbreviations": {
-    "_description_ru": "Языковые термины и аббревиатуры для типов парка вагонов",
-    "RU": {
-      "private_wagon": "СПС",
-      "inventory_wagon": "МПС",
-      "private_desc": "Собственный/Приватный вагон",
-      "inventory_desc": "Инвентарный парк"
-    },
-    "AZ": {
-      "private_wagon": "SPS",
-      "inventory_wagon": "MPS",
-      "private_desc": "Özəl vaqon",
-      "inventory_desc": "ADY vaqonu (İnventar parkı)"
-    },
-    "EN": {
-      "private_wagon": "SPS",
-      "inventory_wagon": "MPS",
-      "private_desc": "Private wagon",
-      "inventory_desc": "Railway inventory park"
-    }
-  },
-  "table_5_rules": {
-    "_description_ru": "Правила выбора колонок и единиц измерения для Таблицы 5 (Рефрижераторы, термосы, автовозы)",
-    "columns_mapping": {
-      "refrigerated": {
-        "keywords": ["ref", "реф", "arv", "refrigerated", "refrijerator"],
-        "under_weight_limit": {
-          "limit_tons": 25.0,
-          "column_index": 0,
-          "unit_type": "wagon"
-        },
-        "over_or_equal_limit": {
-          "column_index": 1,
-          "unit_type": "ton"
-        }
-      },
-      "thermos": {
-        "keywords": ["thermos", "термос", "lednik", "ледник"],
-        "under_weight_limit": {
-          "limit_tons": 25.0,
-          "column_index": 2,
-          "unit_type": "wagon"
-        },
-        "over_or_equal_limit": {
-          "column_index": 3,
-          "unit_type": "ton"
-        }
-      },
-      "autocarrier": {
-        "keywords": ["auto", "авто", "car", "avto"],
-        "default": {
-          "column_index": 4,
-          "unit_type": "ton"
-        }
-      }
-    },
-    "ref_section_composition": {
-      "_description_ru": "Коэффициенты состава рефсекции (1 дизель-генератор + N грузовых вагонов)",
-      "5_or_more_wagons": {
-        "min_wagons": 5,
-        "coefficient_value": 0.85,
-        "labels": {
-          "AZ": "Refseksiya tərkibi əmsalı (5+ vaqon)",
-          "RU": "Коэф. состава рефсекции (5+ ваг.)",
-          "EN": "Refrig. section composition coeff. (5+)"
-        }
-      },
-      "3_wagons": {
-        "wagons": 3,
-        "coefficient_value": 1.10,
-        "labels": {
-          "AZ": "Refseksiya tərkibi əmsalı (3 vaqon)",
-          "RU": "Коэф. состава рефсекции (3 ваг.)",
-          "EN": "Refrig. section composition coeff. (3)"
-        }
-      },
-      "2_wagons": {
-        "wagons": 2,
-        "coefficient_value": 1.40,
-        "labels": {
-          "AZ": "Refseksiya tərkibi əmsalı (2 vaqon)",
-          "RU": "Коэф. состава рефсекции (2 ваг.)",
-          "EN": "Refrig. section composition coeff. (2)"
-        }
-      },
-      "1_wagon": {
-        "wagons": 1,
-        "coefficient_value": 1.70,
-        "labels": {
-          "AZ": "Refseksiya tərkibi əmsalı (1 vaqon)",
-          "RU": "Коэф. состава рефсекции (1 ваг.)",
-          "EN": "Refrig. section composition coeff. (1)"
-        }
-      }
-    },
-    "fruit_veg_discount_0_60": {
-      "coefficient_value": 0.60,
-      "gng_prefixes": [
-        "04100", "04200", "04300", "04400", 
-        "05100", "05200", "05300", 
-        "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710", 
-        "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810", 
-        "12129100"
-      ]
-    }
-  },
   "general_additional_coefficient_1_015": {
-    "_description_ru": "Дополнительный коэффициент 1.015, применяемый с 1 марта 2026 года на все перевозки, кроме порожнего пробега",
     "coefficient_value": 1.015,
-    "effective_from": "2026-03-01",
     "labels": {
-      "AZ": "Əlavə əmsal",
-      "RU": "Дополнительный коэффициент",
-      "EN": "Additional coefficient"
-    },
-    "exclude_empty_wagons": true
+      "AZ": "Əlavə əmsal (1.015)",
+      "RU": "Дополнительный коэффициент (1.015)",
+      "EN": "Additional coefficient (1.015)"
+    }
   },
-  "currency_rates": {
-    "_description_ru": "Курсы швейцарского франка (CHF) к доллару США (USD) по кварталам",
-    "default_period": "Q3_2026",
-    "periods": [
-      {
-        "id": "Q1_2026",
-        "keywords": ["q1", "1-ci kvartal", "1-ci rüb", "1 квартал", "январь", "февраль", "март", "yanvar", "fevral", "mart", "01.", "02.", "03."],
-        "rate_usd_to_chf": 0.80,
-        "label_az": "01.01.2026 - 31.03.2026-cı il tarixləri üzrə",
-        "label_ru": "на период 01.01.2026г. - 31.03.2026г.",
-        "label_en": "for period 01.01.2026 - 31.03.2026"
-      },
-      {
-        "id": "Q2_2026",
-        "keywords": ["q2", "2-ci kvartal", "2-ci rüb", "2 квартал", "апрель", "май", "июнь", "aprel", "may", "iyun", "04.", "05.", "06."],
-        "rate_usd_to_chf": 0.80,
-        "label_az": "01.04.2026 - 30.06.2026-cı il tarixləri üzrə",
-        "label_ru": "на период 01.04.2026г. - 30.06.2026г.",
-        "label_en": "for period 01.04.2026 - 30.06.2026"
-      },
-      {
-        "id": "Q3_2026",
-        "keywords": ["q3", "3-cü kvartal", "3-cü rüb", "3 квартал", "июль", "август", "сентябрь", "iyul", "avgust", "sentyabr", "07.", "08.", "09."],
-        "rate_usd_to_chf": 0.79,
-        "label_az": "01.07.2026 - 30.09.2026-cı il tarixləri üzrə",
-        "label_ru": "на период 01.07.2026г. - 30.09.2026г.",
-        "label_en": "for period 01.07.2026 - 30.09.2026"
-      },
-      {
-        "id": "Q4_2026",
-        "keywords": ["q4", "4-cü kvartal", "4-cü rüb", "4 квартал", "октябрь", "ноябрь", "декабрь", "oktyabr", "noyabr", "dekabr", "10.", "11.", "12."],
-        "rate_usd_to_chf": 0.79,
-        "label_az": "01.10.2026 - 31.12.2026-cı il tarixləri üzrə",
-        "label_ru": "на период 01.10.2026г. - 31.12.2026г.",
-        "label_en": "for period 01.10.2026 - 31.12.2026"
-      }
-    ]
-  },
-  "weight_rounding_table_1": {
-    "_source": "Cədvəl 1",
-    "_page": 9,
-    "_description_az": "Göndərmələrin tona qədər yuvarlaqlaşdırılmış hesablama çəkiləri",
-    "_description_ru": "Округление фактического веса отправки до расчетной весовой категории (тонн)",
-    "rules": [
-      {"min": 0, "max": 12, "rounded": 10},
-      {"min": 13, "max": 16, "rounded": 15},
-      {"min": 17, "max": 23, "rounded": 20},
-      {"min": 24, "max": 26, "rounded": 25},
-      {"min": 27, "max": 31, "rounded": 30},
-      {"min": 32, "max": 36, "rounded": 35},
-      {"min": 37, "max": 40, "rounded": 40},
-      {"min": 41, "max": 46, "rounded": 45},
-      {"min": 47, "max": 51, "rounded": 50},
-      {"min": 52, "max": 55, "rounded": 55},
-      {"min": 56, "max": 999, "rounded": 60}
-    ]
-  },
-  "minimal_weight_norms_gng": {
-    "_source": "Vaqonların minimal yükləmə normasından asılı olan yüklər",
-    "_pages": "11-12",
-    "_description_az": "Yüklərin YHN kodlarına görə vaqonların minimal yükləmə normaları (tonla)",
-    "_description_ru": "Минимальные нормы загрузки вагонов по кодам ГНГ (YHN) в тоннах",
-    "rules": [
-      {
-        "norm_tons": 60,
-        "cargo_name_az": "Daş kömür",
-        "cargo_name_ru": "Каменный уголь",
-        "gng_prefixes": ["2701", "2702"]
-      },
-      {
-        "norm_tons": 60,
-        "cargo_name_az": "Bütün filizlər, alüminium meşə/oksid (2618-2621 başqa)",
-        "cargo_name_ru": "Все руды, оксид алюминия (кроме 2618-2621)",
-        "gng_prefixes": ["26", "7203", "7401", "7501", "81052", "28182000"],
-        "exceptions": ["2618", "2619", "2620", "2621"]
-      },
-      {
-        "norm_tons": 45,
-        "cargo_name_az": "Meşə materialları",
-        "cargo_name_ru": "Лесоматериалы",
-        "gng_prefixes": ["4403", "4404", "4407"]
-      },
-      {
-        "norm_tons": 60,
-        "cargo_name_az": "Çuqun",
-        "cargo_name_ru": "Чугун",
-        "gng_prefixes": ["7201"]
-      },
-      {
-        "norm_tons": 60,
-        "cargo_name_az": "Gübrələr (3101 başqa)",
-        "cargo_name_ru": "Удобрения (кроме 3101)",
-        "gng_prefixes": ["31"],
-        "exceptions": ["3101"]
-      },
-      {
-        "norm_tons": 60,
-        "cargo_name_az": "Qənd",
-        "cargo_name_ru": "Сахар",
-        "gng_prefixes": ["1701"]
-      },
-      {
-        "norm_tons": 60,
-        "cargo_name_az": "Un",
-        "cargo_name_ru": "Мука",
-        "gng_prefixes": ["1101", "1102", "1103"]
-      },
-      {
-        "norm_tons": 60,
-        "cargo_name_az": "Dənli bitkilər",
-        "cargo_name_ru": "Зерновые культуры",
-        "gng_prefixes": ["10", "1107"]
-      },
-      {
-        "norm_tons": 50,
-        "cargo_name_az": "Pambıq",
-        "cargo_name_ru": "Хлопок",
-        "gng_prefixes": ["14042", "5201", "5202", "5203"]
-      },
-      {
-        "norm_tons": 60,
-        "cargo_name_az": "Qara metallar (7204 başqa)",
-        "cargo_name_ru": "Черные металлы (кроме 7204)",
-        "gng_prefixes": ["72"],
-        "exceptions": ["7204"]
-      },
-      {
-        "norm_tons": 50,
-        "cargo_name_az": "Qara metalların lomu və qırıntıları (72045 başqa)",
-        "cargo_name_ru": "Лом и отходы черных металлов (кроме 72045)",
-        "gng_prefixes": ["7204"],
-        "exceptions": ["72045"]
-      }
-    ]
-  },
-  "import_timber_and_metals_coefficient_1_04": {
-    "_source": "Əlavə tətbiq edilən əmsallar və istiqamətlər üzrə xüsusi tariflər",
-    "_page": 14,
-    "_description_ru": "При импортных перевозках к базовым тарифам на лесоматериалы и черные металлы применяется коэффициент 1,04",
-    "_description_az": "İdxal daşımaları zamanı taxta və qara metalların baza tariflərinə əlavə 1,04 əmsalı tətbiq edilir",
-    "coefficient_value": 1.04,
-    "apply_for_modes": ["idxal", "import"],
-    "gng_prefixes": [
-      "4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413",
-      "72", "7301", "7302", "7303", "7304", "7305", "7306", "7307"
-    ]
-  },
-  "private_wagons_section_3_2": {
-    "_source": "3.2. Özəl (daşıyıcıya mənsub olmayan) yük vaqonlarında yüklü və boş halda daşımalar",
-    "_pages": "41-42",
-    "general_private_wagon_coefficient": {
+  "park_type_coefficients": {
+    "SPS": {
       "coefficient_value": 0.85,
-      "description_ru": "Основной понижающий коэффициент 0.85 при перевозке в приватных/арендованных вагонах (пп. 3.1 и 3.5)"
+      "labels": {
+        "AZ": "Özəl vaqon əmsalı (SPS)",
+        "RU": "Собственный вагон (СПС)",
+        "EN": "Private wagon coefficient (SPS)"
+      }
     }
   },
   "coefficients_updated_rules_2026": {
     "import_export_base_1_50": {
       "coefficient_value": 1.50,
-      "modes": ["idxal", "ixrac", "import", "export"],
+      "labels": {
+        "AZ": "İdxal/İxrac baza əmsalı (1.50)",
+        "RU": "Импорт/Экспорт базовый (1.50)",
+        "EN": "Import/Export base (1.50)"
+      },
       "exceptions": {
-        "tables": [3],
-        "wood_gng": ["4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"],
+        "tables": [5],
+        "wood_gng": ["44"],
         "wood_wagon_types": ["universal"],
-        "metal_gng_prefixes": ["72"],
-        "metal_gng_exact": ["7301", "7302", "7303", "7304", "7305", "7306", "7307"],
-        "metal_wagon_types": ["universal"],
-        "methanol_gng": ["290511"],
-        "methanol_wagon_types": ["tank", "bunker_semi"],
-        "oil_table6_col2": true,
-        "oil_wagon_types": ["tank"]
+        "metal_gng_prefixes": ["72", "73"],
+        "metal_wagon_types": ["universal"]
       }
     },
-    "transit_alyat_beyuk_kesik_1_20": {
-      "coefficient_value": 1.20,
-      "modes": ["tranzit", "transit"],
-      "routes": [
-        ["ƏLƏT EKSPORT", "BÖYÜK KƏSIK (EKSPORT)"],
-        ["BÖYÜK KƏSIK (EKSPORT)", "ƏLƏT EKSPORT"]
-      ]
-    },
-    "oil_tank_import_transit_1_20": {
-      "coefficient_value": 1.20,
-      "modes": ["idxal", "tranzit", "import", "transit"],
-      "wagon_types": ["tank"],
-      "apply_once": true
+    "import_metal_wood_1_04": {
+      "coefficient_value": 1.04,
+      "gng_prefixes": ["44", "72", "73"],
+      "labels": {
+        "AZ": "İdxal əmsalı (Meşə/Metal 1.04)",
+        "RU": "Импортный коэф. (Лес/Металл 1.04)",
+        "EN": "Import coeff. (Timber/Metal 1.04)"
+      }
     },
     "refrigerated_transit_1_20": {
       "coefficient_value": 1.20,
-      "modes": ["tranzit", "transit"],
-      "wagon_types": ["ref", "refrigerated", "thermos"],
-      "apply_once": true,
       "labels": {
-        "AZ": "Tranzit ref əmsalı",
-        "RU": "Транзитный коэф. (реф)",
-        "EN": "Transit ref coeff."
+        "AZ": "Tranzit ref əmsalı (1.20)",
+        "RU": "Транзитный реф. коэф. (1.20)",
+        "EN": "Transit refrig. coeff. (1.20)"
       }
+    }
+  },
+  "table_5_rules": {
+    "columns_mapping": {
+      "refrigerated": {
+        "keywords": ["ref", "реф"],
+        "under_weight_limit": { "limit_tons": 25.0, "column_index": 0 },
+        "over_or_equal_limit": { "column_index": 1 }
+      },
+      "thermos": {
+        "keywords": ["thermos", "термос"],
+        "under_weight_limit": { "limit_tons": 25.0, "column_index": 2 },
+        "over_or_equal_limit": { "column_index": 3 }
+      },
+      "autocarrier": {
+        "keywords": ["auto", "авто"],
+        "default": { "column_index": 4 }
+      }
+    },
+    "fruit_veg_discount_0_60": {
+      "coefficient_value": 0.60,
+      "gng_prefixes": ["04100", "04200", "04300", "04400", "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710", "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810", "12129100"],
+      "labels": {
+        "AZ": "Meyvə-tərəvəz güzəşt əmsalı (TR)",
+        "RU": "Плодоовощная скидка (ТР)",
+        "EN": "Fruit/veg discount (TA)"
+      }
+    },
+    "ref_section_composition": {
+      "5_or_more_wagons": {
+        "coefficient_value": 0.85,
+        "labels": { "AZ": "Refseksiya ≥5 vaqon (0.85)", "RU": "Состав рефсекции ≥5 вагонов (0.85)", "EN": "Refrig. section ≥5 wagons (0.85)" }
+      },
+      "3_wagons": {
+        "coefficient_value": 1.10,
+        "labels": { "AZ": "Refseksiya 3 vaqon (1.10)", "RU": "Состав рефсекции 3 вагона (1.10)", "EN": "Refrig. section 3 wagons (1.10)" }
+      },
+      "2_wagons": {
+        "coefficient_value": 1.40,
+        "labels": { "AZ": "Refseksiya 2 vaqon (1.40)", "RU": "Состав рефсекции 2 вагона (1.40)", "EN": "Refrig. section 2 wagons (1.40)" }
+      },
+      "1_wagon": {
+        "coefficient_value": 1.70,
+        "labels": { "AZ": "Refseksiya 1 vaqon (1.70)", "RU": "Состав рефсекции 1 вагон (1.70)", "EN": "Refrig. section 1 wagon (1.70)" }
+      }
+    }
+  },
+  "border_stations": {
+    "suffixes": {
+      "AZ": "-eksp.",
+      "RU": "-эксп.",
+      "EN": "-exp."
+    },
+    "list": ["Yalama", "Boyuk Kesik", "Astara", "Culfa", "Alat", "Ələt", "Беюк-Кесик", "Ялама", "Астара", "Алят"]
+  },
+  "minimal_weight_norms_gng": {
+    "rules": [
+      {
+        "gng_prefixes": ["72"],
+        "norm_tons": 60.0
+      }
+    ]
+  },
+  "currency_rates": {
+    "default_period": "Q3_2026",
+    "periods": [
+      {
+        "id": "Q3_2026",
+        "keywords": ["q3", "3-cü rüb", "3 кв", "3 квартал"],
+        "rate_usd_to_chf": 0.79,
+        "label_az": "01.07.2026 - 30.09.2026-cı il tarixləri üzrə",
+        "label_ru": "на период 01.07.2026г. - 30.09.2026г.",
+        "label_en": "for period 01.07.2026 - 30.09.2026"
+      }
+    ]
+  },
+  "language_abbreviations": {
+    "AZ": {
+      "private_wagon": "SPS",
+      "inventory_wagon": "MPS"
+    },
+    "RU": {
+      "private_wagon": "СПС",
+      "inventory_wagon": "МПС"
+    },
+    "EN": {
+      "private_wagon": "SPS",
+      "inventory_wagon": "MPS"
     }
   }
 }
