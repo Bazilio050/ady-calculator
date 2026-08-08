@@ -9,7 +9,8 @@ STATION_TRANSLATIONS = {
     "bileceri": {"AZ": "Biləcəri", "RU": "Баладжары", "EN": "Bilajary"},
     "astara": {"AZ": "Astara", "RU": "Астара", "EN": "Astara"},
     "culfa": {"AZ": "Culfa", "RU": "Джульфа", "EN": "Julfa"},
-    "alat": {"AZ": "Ələt", "RU": "Алят", "EN": "Alyat"}
+    "alat": {"AZ": "Ələt", "RU": "Алят", "EN": "Alyat"},
+    "xudat": {"AZ": "Xudat", "RU": "Худат", "EN": "Khudat"}
 }
 
 def load_table_rates(table_num):
@@ -85,7 +86,7 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
             val = vals[col_idx] if len(vals) == 11 else (vals[min(col_idx, len(vals) - 1)] if len(vals) > 1 else vals[0])
             return val, f"{tbl_name} {table_num}, {d_min}-{d_max} {km_unit}, {int(billable_weight_tons)} t", False
             
-    return None, f"{tbl_name} {table_num}, {distance_km} {km_unit}", is_per_wagon
+    return None, f"{tbl_name} {table_num}, {distance_km} {km_unit}", False
 
 def get_currency_rate(requested_period, lang="AZ"):
     config = load_rules_config()
@@ -308,9 +309,20 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
             shipment_type_code = "local"
             shipment_type_display = "Daxili daşınma" if lang == "AZ" else ("Внутренняя перевозка" if lang == "RU" else "Domestic shipment")
 
-    dist_km = find_distance_in_memory(c_from, c_to)
-    if dist_km is None:
+    actual_dist_km = find_distance_in_memory(c_from, c_to)
+    if actual_dist_km is None:
         raise ValueError(f"Məsafə tapılmadı: {st_from} - {st_to}")
+
+    # Учет минимального тарифного расстояния для Импорта (151 км) и Экспорта (101 км)
+    tariff_dist_km = actual_dist_km
+    if shipment_type_code == "import" and actual_dist_km < 151:
+        tariff_dist_km = 151
+        dist_display = f"{actual_dist_km} km (min. 151 km)"
+    elif shipment_type_code == "export" and actual_dist_km < 101:
+        tariff_dist_km = 101
+        dist_display = f"{actual_dist_km} km (min. 101 km)"
+    else:
+        dist_display = f"{actual_dist_km} km"
 
     billable_weight = act_weight
     min_norms = config.get("minimal_weight_norms_gng", {}).get("rules", [])
@@ -332,14 +344,14 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос"]) or (ref_wagons_cnt is not None)
     table_num = 5 if (is_ref_type and os.path.exists("Table_5_Tariffs.txt")) else (4 if shipment_type_code == "transit" else 3)
 
-    base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, dist_km, billable_weight, "ref" if is_ref_type else wagon_type, lang)
+    base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, tariff_dist_km, billable_weight, "ref" if is_ref_type else wagon_type, lang)
     unit_str = ui_t["unit_wagon"] if is_per_wagon else ui_t["unit_ton"]
     chf_unit = "CHF/вагон" if (is_per_wagon and lang == "RU") else ("CHF/vaqon" if is_per_wagon else ("CHF/т" if lang == "RU" else "CHF/t"))
         
     base_tariff_display = f"**{base_chf:.2f} {chf_unit}** ({table_details})"
     usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
 
-    coeffs, notes = apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_type, act_weight, billable_weight, dist_km, user_input_raw, config, lang, ui_t, ref_wagons_cnt)
+    coeffs, notes = apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_type, act_weight, billable_weight, actual_dist_km, user_input_raw, config, lang, ui_t, ref_wagons_cnt)
 
     final_rate = base_chf / usd_rate
     formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
@@ -361,7 +373,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
     return {
         "part1": {
-            "route": route_display, "shipment_type": shipment_type_display, "distance": f"{dist_km} km",
+            "route": route_display, "shipment_type": shipment_type_display, "distance": dist_display,
             "cargo_and_wagon": cargo_wagon_display, "weight_info": weight_display, "period": period_str
         },
         "part2": {
