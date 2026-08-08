@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Кастомные стили
+# Стили для верхнего баннера с логотипом
 st.markdown("""
     <style>
     .main-header {
@@ -38,29 +38,13 @@ st.markdown("""
         margin: 6px 0 0 0;
         font-size: 1.05rem;
     }
-    .agt-footer-left {
-        margin-top: 40px;
-        padding: 15px 20px;
-        background-color: #f8f9fa;
-        border-left: 5px solid #ff5500;
-        border-radius: 6px;
-        text-align: left;
-        display: flex;
-        align-items: center;
-        gap: 20px;
-    }
-    .agt-footer-info p {
-        margin: 0;
-        font-size: 0.95rem;
-        color: #333333;
-    }
-    .agt-slogan {
-        font-size: 0.8rem;
-        letter-spacing: 1.5px;
-        color: #666666;
+    .agt-brand-tag {
+        color: #ff7733;
+        font-weight: bold;
+        letter-spacing: 1px;
+        font-size: 0.85rem;
         text-transform: uppercase;
-        margin-top: 3px !important;
-        font-weight: 600;
+        margin-top: 8px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -118,7 +102,7 @@ UI_TEXT = {
         "unit_wagon": "USD/vaqon", 
         "table_name": "Cədvəl", 
         "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:",
-        "footer_owner": "Bu layihə <b>AGT Cargo</b> şirkətinə məxsusdur."
+        "footer_owner": "AGT Cargo layihəsi"
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
@@ -172,7 +156,7 @@ UI_TEXT = {
         "unit_wagon": "USD/вагон", 
         "table_name": "Таблица", 
         "missing_title": "⚠️ Для точного расчета не хватает следующих данных:",
-        "footer_owner": "Данный проект принадлежит компании <b>AGT Cargo</b>."
+        "footer_owner": "Проект компании AGT Cargo"
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
@@ -226,21 +210,31 @@ UI_TEXT = {
         "unit_wagon": "USD/wagon", 
         "table_name": "Table", 
         "missing_title": "⚠️ Required parameters missing:",
-        "footer_owner": "This project belongs to <b>AGT Cargo</b>."
+        "footer_owner": "Project of AGT Cargo"
     }
 }
 
-col_controls, _ = st.columns([4.0, 6.0])
-with col_controls:
-    selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
-    t = UI_TEXT[selected_lang]
-    selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
+logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
 
-# Баннер
+# Верхняя строка с логотипом слева и элементами управления справа
+top_col1, top_col2 = st.columns([2, 3])
+with top_col1:
+    if logo_path:
+        st.image(logo_path, width=220)
+with top_col2:
+    sub_col1, sub_col2 = st.columns(2)
+    with sub_col1:
+        selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
+        t = UI_TEXT[selected_lang]
+    with sub_col2:
+        selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
+
+# Баннер под логотипом
 st.markdown(f"""
     <div class="main-header">
         <h1>🚆 {t['title']}</h1>
         <p>{t['subtitle'].format(selected_year)}</p>
+        <p class="agt-brand-tag">AGT CARGO — BE GLOBAL CONNECTED</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -288,18 +282,3 @@ if st.button(t["calc_btn"], type="primary"):
                         st.markdown(f"{idx}. *{note}*")
         except Exception as e:
             st.error(f"Error: {str(e)}")
-
-# Левый нижний футер с выводом картинки и текста
-logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
-
-footer_col1, footer_col2 = st.columns([1, 4])
-with footer_col1:
-    if logo_path:
-        st.image(logo_path, width=160)
-with footer_col2:
-    st.markdown(f"""
-        <div style="padding-top: 10px;">
-            <p style="margin: 0; font-size: 0.95rem; color: #333333;">{t['footer_owner']}</p>
-            <p style="margin: 2px 0 0 0; font-size: 0.8rem; letter-spacing: 1.5px; color: #ff5500; font-weight: bold;">BE GLOBAL CONNECTED</p>
-        </div>
-    """, unsafe_allow_html=True)
