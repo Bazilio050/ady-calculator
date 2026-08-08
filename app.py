@@ -540,7 +540,3 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
     is_from_border = any(b.lower() in c_from for b in border_list)
     is_to_border = any(b.lower() in c_to for b in border_list)
-
-    if is_from_border and is_to_border:
-        display_from = f"{disp_from}{suffix}"
-        display_to = f"{disp_to}{suffix
