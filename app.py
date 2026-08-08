@@ -297,11 +297,11 @@ def normalize_st_name(name):
     n = name.lower().strip()
     # Очистка Markdown разметки (**Böyük Kəsik**)
     n = re.sub(r'[\*\_\#]', '', n)
-    # Очистка суффиксов (eksport, eksp, эксп, exp)
+    # Очистка суффиксов (eksport, eksp, эксп, exp, eks)
     n = re.sub(r'[\(\-–\s]*(eksport|eksp|эксп|exp|eks)[\)\.\s]*', '', n)
     # Транслитерация символов
     n = n.replace('ə', 'a').replace('ö', 'o').replace('ü', 'u').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
-    # Единый формат корня
+    # Единый формат написания корня
     n = n.replace('beyuk', 'boyuk').replace('elet', 'alat')
     return re.sub(r'[^a-z0-9]', '', n)
 
@@ -317,20 +317,20 @@ def load_distances_map():
 
         header_cols = []
         for line in lines:
-            # 1. Заголовок таблицы
-            if "|" in line and ("yalama" in line.lower() or "stansiyanın adı" in line.lower()):
+            # 1. Точно находим строку заголовка таблицы по разделителям и имени первой колонки
+            if "|" in line and "stansiyanın adı" in line.lower():
                 parts = [p.strip() for p in line.split("|") if p.strip()]
+                # Пропускаем первые 2 элементы ('Stansiyanın adı' и 'Stansiyanın kodu')
                 if len(parts) >= 3:
-                    # Пропускаем первые 2 колонки (Название и Код)
                     header_cols = [normalize_st_name(p) for p in parts[2:]]
                 continue
             
-            # 2. Данные по станциям
-            if "|" in line and header_cols and not line.startswith("| :---"):
+            # 2. Считываем строки со станциями и расстояниями
+            if "|" in line and header_cols and not line.startswith("| :---") and not line.startswith("#"):
                 parts = [p.strip() for p in line.split("|") if p.strip()]
                 if len(parts) >= 3:
-                    row_st = normalize_st_name(parts[0])
-                    val_parts = parts[2:]
+                    row_st = normalize_st_name(parts[0]) # Название станции в строке
+                    val_parts = parts[2:]                # Массив расстояний
                     
                     for i, val_str in enumerate(val_parts):
                         if i < len(header_cols):
