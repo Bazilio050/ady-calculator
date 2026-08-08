@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Стили для верхнего баннера с логотипом
+# Стили для баннера и нижнего подвала (футера)
 st.markdown("""
     <style>
     .main-header {
@@ -38,13 +38,26 @@ st.markdown("""
         margin: 6px 0 0 0;
         font-size: 1.05rem;
     }
-    .agt-brand-tag {
-        color: #ff7733;
-        font-weight: bold;
-        letter-spacing: 1px;
+    .agt-footer {
+        margin-top: 50px;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-top: 3px solid #ff5500;
+        border-radius: 8px;
+        text-align: center;
+        color: #333333;
+    }
+    .agt-footer p {
+        margin: 2px 0;
+        font-size: 0.95rem;
+    }
+    .agt-slogan {
         font-size: 0.85rem;
+        letter-spacing: 2px;
+        color: #555555;
         text-transform: uppercase;
-        margin-top: 8px !important;
+        margin-top: 5px !important;
+        font-weight: 600;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -102,7 +115,7 @@ UI_TEXT = {
         "unit_wagon": "USD/vaqon", 
         "table_name": "Cədvəl", 
         "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:",
-        "footer_owner": "AGT Cargo layihəsi"
+        "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur."
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
@@ -156,7 +169,7 @@ UI_TEXT = {
         "unit_wagon": "USD/вагон", 
         "table_name": "Таблица", 
         "missing_title": "⚠️ Для точного расчета не хватает следующих данных:",
-        "footer_owner": "Проект компании AGT Cargo"
+        "footer_owner": "Данный проект принадлежит компании **AGT Cargo**."
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
@@ -210,13 +223,13 @@ UI_TEXT = {
         "unit_wagon": "USD/wagon", 
         "table_name": "Table", 
         "missing_title": "⚠️ Required parameters missing:",
-        "footer_owner": "Project of AGT Cargo"
+        "footer_owner": "This project belongs to **AGT Cargo**."
     }
 }
 
 logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
 
-# Верхняя строка с логотипом слева и элементами управления справа
+# Верхняя строка с логотипом слева и настройками справа
 top_col1, top_col2 = st.columns([2, 3])
 with top_col1:
     if logo_path:
@@ -229,12 +242,11 @@ with top_col2:
     with sub_col2:
         selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
 
-# Баннер под логотипом
+# Баннер
 st.markdown(f"""
     <div class="main-header">
         <h1>🚆 {t['title']}</h1>
         <p>{t['subtitle'].format(selected_year)}</p>
-        <p class="agt-brand-tag">AGT CARGO — BE GLOBAL CONNECTED</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -282,3 +294,11 @@ if st.button(t["calc_btn"], type="primary"):
                         st.markdown(f"{idx}. *{note}*")
         except Exception as e:
             st.error(f"Error: {str(e)}")
+
+# Подвал с указанием компании AGT Cargo в самом конце сайта (по центру)
+st.markdown(f"""
+    <div class="agt-footer">
+        <p>{t['footer_owner']}</p>
+        <p class="agt-slogan">BE GLOBAL CONNECTED</p>
+    </div>
+""", unsafe_allow_html=True)
