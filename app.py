@@ -295,9 +295,13 @@ def normalize_st_name(name):
     if not name:
         return ""
     n = name.lower().strip()
+    # Очистка Markdown разметки (**Böyük Kəsik**)
     n = re.sub(r'[\*\_\#]', '', n)
+    # Очистка вариаций суффиксов
     n = re.sub(r'[\(\-–\s]*(eksport|eksp|эксп|exp|eks)[\)\.\s]*', '', n)
+    # Транслитерация символов
     n = n.replace('ə', 'a').replace('ö', 'o').replace('ü', 'u').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
+    # Единый формат написания корня
     n = n.replace('beyuk', 'boyuk').replace('elet', 'alat')
     return re.sub(r'[^a-z0-9]', '', n)
 
