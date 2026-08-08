@@ -93,6 +93,11 @@ if st.button(t["calc_btn"], type="primary"):
         client = genai.Client(api_key=user_api_key.strip())
         try:
             nlu_res = call_gemini_nlu(client, user_input, selected_lang)
+            
+            # Отладка
+            with st.expander("🔍 Gemini NLU JSON (Для проверки распознавания)"):
+                st.json(nlu_res)
+
             missing = validate_nlu_input(nlu_res, selected_lang)
             if missing:
                 st.warning(t["missing_title"])
