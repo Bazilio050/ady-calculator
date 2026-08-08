@@ -548,7 +548,6 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         notes.append(ui_t["note_sps"])
 
     # 2. Базовый коэффициент 1.50 для Импорта/Экспорта
-    applied_150 = False
     if shipment_type_code in ["import", "export"]:
         ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
         exceptions = ie_config.get("exceptions", {})
@@ -580,7 +579,6 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
             else:
                 lbl_ie = "Import/Export base"
             coeffs.append((lbl_ie, coeff_val))
-            applied_150 = True
             notes.append(ui_t["note_import_base_150"])
 
     # 3. Импортный коэффициент 1.04 для леса и металла
@@ -691,69 +689,4 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     st_to = nlu_data.get("route_to")
     gng = str(nlu_data.get("cargo_gng_code", "")).strip()
     cargo_name_nlu = str(nlu_data.get("cargo_name_raw", "")).strip()
-    act_weight = float(nlu_data.get("actual_weight_tons", 0.0))
-    park_type = str(nlu_data.get("park_type", "SPS")).upper()
-    wagon_type = str(nlu_data.get("wagon_type", "universal")).lower()
-    ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
-
-    border_info = config.get("border_stations", {})
-    suffixes = border_info.get("suffixes", {"AZ": "-eksp.", "RU": "-эксп.", "EN": "-exp."})
-    suffix = suffixes.get(lang, suffixes.get("AZ", "-eksp."))
-
-    border_list = border_info.get("list", ["Yalama", "Boyuk Kesik", "Astara", "Culfa", "Alat", "Ələt", "Беюк-Кесик", "Ялама", "Астара", "Алят"])
-
-    def clean_st(name):
-        return re.sub(r'-(eksp|эксп|exp)\.?', '', name, flags=re.IGNORECASE).strip()
-
-    c_from = clean_st(st_from).lower()
-    c_to = clean_st(st_to).lower()
-
-    disp_from = STATION_TRANSLATIONS.get(c_from, {}).get(lang, st_from.capitalize())
-    disp_to = STATION_TRANSLATIONS.get(c_to, {}).get(lang, st_to.capitalize())
-
-    is_from_border = any(b.lower() in c_from for b in border_list)
-    is_to_border = any(b.lower() in c_to for b in border_list)
-
-    if is_from_border and is_to_border:
-        display_from = f"{disp_from}{suffix}"
-        display_to = f"{disp_to}{suffix}"
-    else:
-        display_from = f"{disp_from}{suffix}" if is_from_border else disp_from
-        display_to = f"{disp_to}{suffix}" if is_to_border else disp_to
-
-    route_display = f"{display_from} - {display_to}"
-
-    if is_from_border and is_to_border:
-        shipment_type_code = "transit"
-        shipment_type_display = ui_t["type_transit"]
-    elif is_from_border and not is_to_border:
-        shipment_type_code = "import"
-        shipment_type_display = ui_t["type_import"]
-    elif not is_from_border and is_to_border:
-        shipment_type_code = "export"
-        shipment_type_display = ui_t["type_export"]
-    else:
-        shipment_type_code = "local"
-        if lang == "AZ":
-            shipment_type_display = "Daxili daşınma"
-        elif lang == "RU":
-            shipment_type_display = "Внутренняя перевозка"
-        else:
-            shipment_type_display = "Domestic shipment"
-
-    dist_km = find_distance_in_memory(c_from, c_to)
-    if dist_km is None:
-        raise ValueError(
-            f"Marşrut üzrə məsafə tapılmadı: {st_from} - {st_to}" if lang == "AZ" else (
-                f"Расстояние для маршрута не найдено в справочнике: {st_from} - {st_to}" if lang == "RU" else
-                f"Distance for route was not found in database: {st_from} - {st_to}"
-            )
-        )
-
-    billable_weight = act_weight
-
-    if gng.startswith("72"):
-        if billable_weight < 60.0:
-            billable_weight = 60.0
-    else:
-        min_norms = config.get("minimal_weight_norms_gng", {}).
+    act_weight = float(nlu_data
