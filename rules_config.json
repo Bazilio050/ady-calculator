@@ -77,6 +77,45 @@
         }
       }
     },
+    "ref_section_composition": {
+      "_description_ru": "Коэффициенты состава рефсекции (1 дизель-генератор + N грузовых вагонов)",
+      "5_or_more_wagons": {
+        "min_wagons": 5,
+        "coefficient_value": 0.85,
+        "labels": {
+          "AZ": "Refseksiya tərkibi əmsalı (5+ vaqon)",
+          "RU": "Коэф. состава рефсекции (5+ ваг.)",
+          "EN": "Refrig. section composition coeff. (5+)"
+        }
+      },
+      "3_wagons": {
+        "wagons": 3,
+        "coefficient_value": 1.10,
+        "labels": {
+          "AZ": "Refseksiya tərkibi əmsalı (3 vaqon)",
+          "RU": "Коэф. состава рефсекции (3 ваг.)",
+          "EN": "Refrig. section composition coeff. (3)"
+        }
+      },
+      "2_wagons": {
+        "wagons": 2,
+        "coefficient_value": 1.40,
+        "labels": {
+          "AZ": "Refseksiya tərkibi əmsalı (2 vaqon)",
+          "RU": "Коэф. состава рефсекции (2 ваг.)",
+          "EN": "Refrig. section composition coeff. (2)"
+        }
+      },
+      "1_wagon": {
+        "wagons": 1,
+        "coefficient_value": 1.70,
+        "labels": {
+          "AZ": "Refseksiya tərkibi əmsalı (1 vaqon)",
+          "RU": "Коэф. состава рефсекции (1 ваг.)",
+          "EN": "Refrig. section composition coeff. (1)"
+        }
+      }
+    },
     "fruit_veg_discount_0_60": {
       "coefficient_value": 0.60,
       "gng_prefixes": [
