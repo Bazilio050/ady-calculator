@@ -13,31 +13,31 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Стили
+# Стили для компактного баннера и футера
 st.markdown("""
     <style>
     .main-header {
         background: linear-gradient(135deg, #0e2a47 0%, #1a4a75 100%);
-        padding: 24px;
-        border-radius: 12px;
+        padding: 12px 20px; /* Уменьшен отступ, баннер стал ниже по высоте */
+        border-radius: 10px;
         color: white;
-        margin-top: 15px;
-        margin-bottom: 25px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin-top: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     .main-header h1 {
         color: #ffffff !important;
-        font-size: 2.2rem;
+        font-size: 1.8rem; /* Чуть более компактный заголовок */
         font-weight: 700;
         margin: 0;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
     }
     .main-header p {
         color: #b0c4de !important;
-        margin: 6px 0 0 0;
-        font-size: 1.05rem;
+        margin: 4px 0 0 0;
+        font-size: 0.95rem;
     }
     .agt-footer {
         margin-top: 50px;
@@ -191,7 +191,7 @@ UI_TEXT = {
         "rates_title": "Final Rates:",
         "notes_title": "Notes:", 
         "disclaimer": "Rates are quoted excluding station charges and additional fees.",
-        "col_param": "Parametr", 
+        "col_param": "Parameter", 
         "col_val": "Value / Volume", 
         "col_rate_type": "Rate Type", 
         "col_amount": "Amount",
@@ -230,20 +230,17 @@ UI_TEXT = {
 
 logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
 
-# --- ВЕРХНЯЯ ШАПКА (1-Я СТРОКА: ЛОГОТИП СЛЕВА, ВЫБОР ЯЗЫКА/ГОДА СПРАВА) ---
-top_col1, top_col2 = st.columns([2, 3])
+# --- ВЕРХНЯЯ ШАПКА: СЛЕВА ЛОГОТИП, СПРАВА В ОДНУ КОЛОНКУ ДРУГ ПОД ДРУГОМ (DIL, ZAMAY) ---
+top_col1, top_col2 = st.columns([3, 2])
 with top_col1:
     if logo_path:
         st.image(logo_path, width=220)
 with top_col2:
-    sub_col1, sub_col2 = st.columns(2)
-    with sub_col1:
-        selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
-        t = UI_TEXT[selected_lang]
-    with sub_col2:
-        selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
+    selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
+    t = UI_TEXT[selected_lang]
+    selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
 
-# --- СИНИЙ БАННЕР С ЗАГОЛОВКОМ (2-Я СТРОКА) ---
+# --- НИЗКИЙ И КОМПАКТНЫЙ СИНИЙ БАННЕР ---
 st.markdown(f"""
     <div class="main-header">
         <h1>🚆 {t['title']}</h1>
@@ -251,7 +248,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- ПОЛЕ ВВОДА (3-Я СТРОКА) ---
+# --- ПОЛЕ ВВОДА ---
 user_input = st.text_area(t["input_header"], height=130, placeholder=t["input_placeholder"])
 user_api_key = os.environ.get("GEMINI_API_KEY", "")
 
@@ -297,7 +294,7 @@ if st.button(t["calc_btn"], type="primary"):
         except Exception as e:
             st.error(f"Error: {str(e)}")
 
-# --- ПОДВАЛ (ФУТЕР В САМОМ КОНЦЕ СТАЙТА) ---
+# --- ПОДВАЛ ПО ЦЕНТРУ В САМОМ КОНЦЕ СТРАНИЦЫ ---
 st.markdown(f"""
     <div class="agt-footer">
         <p>{t['footer_owner']}</p>
