@@ -195,7 +195,12 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
 
             if c_val and c_val != 1.0:
                 coeffs.append((c_lbl, c_val))
-                notes.append(ui_t["note_ref_composition"])
+                note_ref_custom = {
+                    "AZ": f"Refseksiyanın vaqon tərkibinə uyğun {c_val} güzəşt əmsalı tətbiq edilmişdir." if c_val < 1.0 else f"Refseksiyanın vaqon tərkibinə uyğun {c_val} əmsalı tətbiq edilmişdir.",
+                    "RU": f"Применен скидочный коэффициент {c_val} согласно составу рефсекции." if c_val < 1.0 else f"Применен коэффициент {c_val} согласно составу рефсекции.",
+                    "EN": f"Discount coefficient {c_val} applied according to refrigerated section composition." if c_val < 1.0 else f"Coefficient {c_val} applied according to refrigerated section composition."
+                }
+                notes.append(note_ref_custom.get(lang, note_ref_custom["AZ"]))
         except (ValueError, TypeError):
             pass
 
