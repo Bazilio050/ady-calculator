@@ -9,8 +9,8 @@ def call_gemini_nlu(client, user_input_text, lang):
         "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
         "Extract shipment parameters from text into JSON. Return ONLY clean JSON:\n"
         "{\n"
-        '  "route_from": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron)",\n'
-        '  "route_to": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron)",\n'
+        '  "route_from": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron, Xudat)",\n'
+        '  "route_to": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron, Xudat)",\n'
         '  "cargo_gng_code": "string or null (extract 2-to-8 digit GNG/NHM code, e.g. 72, 4407, 0207)",\n'
         f'  "cargo_name": "string or null (Short official commodity name translated STRICTLY to {target_lang} in 1-3 words based on GNG code or input text)",\n'
         '  "actual_weight_tons": float or null,\n'
@@ -21,14 +21,10 @@ def call_gemini_nlu(client, user_input_text, lang):
         '  "requested_period": "string or null",\n'
         '  "explicit_mode": "string or null (import/export/transit)"\n'
         "}\n\n"
-        "STRICT STATION NORMALIZATION RULES:\n"
-        "- Convert ANY station name (Russian, Azerbaijani, typos, slang, missing letters) directly into official ADY station Latin names:\n"
-        "  * 'Баладжары' / 'Баладжар' / 'Baladjary' / 'Baladžary' -> 'Bileceri'\n"
-        "  * 'Беюк-Кесик' / 'Б.Касик' / 'Беюк Кесик' / 'Boyukkasik' -> 'Boyuk Kesik'\n"
-        "  * 'Ялама' -> 'Yalama'\n"
-        "  * 'Алят' / 'Элет' -> 'Alat'\n"
-        "  * 'Астара' -> 'Astara'\n"
-        "  * 'Абшерон' -> 'Absheron'\n\n"
+        "STRICT ROUTE RULES:\n"
+        "- NEVER set 'route_from' and 'route_to' to the same station if two distinct stations are mentioned.\n"
+        "- 'худат' / 'xudat' -> 'Xudat'\n"
+        "- 'ялама' / 'yalama' -> 'Yalama'\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
     
@@ -50,23 +46,3 @@ def call_gemini_nlu(client, user_input_text, lang):
         raw_text = raw_text[:-3]
 
     return json.loads(raw_text.strip())
-
-def validate_nlu_input(nlu_res, lang):
-    missing_items = []
-    
-    st_from = nlu_res.get("route_from")
-    st_to = nlu_res.get("route_to")
-    weight = nlu_res.get("actual_weight_tons")
-    gng = nlu_res.get("cargo_gng_code")
-    cargo_name = nlu_res.get("cargo_name")
-
-    if not st_from:
-        missing_items.append("📍 **Başlanğıc stansiyası** (Origin station)" if lang == "AZ" else ("📍 **Станция отправления**" if lang == "RU" else "📍 **Origin station**"))
-    if not st_to:
-        missing_items.append("📍 **Təyinat stansiyası** (Destination station)" if lang == "AZ" else ("📍 **Станция назначения**" if lang == "RU" else "📍 **Destination station**"))
-    if not weight or float(weight) <= 0:
-        missing_items.append("⚖️ **Faktiki çəki (tonla)** (Weight in tons)" if lang == "AZ" else ("⚖️ **Фактический вес (в тоннах)**" if lang == "RU" else "⚖️ **Actual weight in tons**"))
-    if not gng and not cargo_name:
-        missing_items.append("📦 **Yükün adı və ya GNG/NHM kodu** (Cargo code or name)" if lang == "AZ" else ("📦 **Наименование груза или код ГНГ/NHM**" if lang == "RU" else "📦 **Cargo name or GNG/NHM code**"))
-
-    return missing_items
