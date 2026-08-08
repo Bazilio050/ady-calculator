@@ -237,7 +237,7 @@ STATION_TRANSLATIONS = {
     "yalama": {"AZ": "Yalama", "RU": "Ялама", "EN": "Yalama"},
     "absheron": {"AZ": "Abşeron", "RU": "Абшерон", "EN": "Absheron"},
     "boyuk kesik": {"AZ": "Böyük Kəsik", "RU": "Беюк-Кесик", "EN": "Boyuk Kesik"},
-    "beyuk kesik": {"AZ": "Böyük Kəsik", "RU": "Беюк-Кесик", "EN": "Boyuk Kesik"},
+    "bileceri": {"AZ": "Biləcəri", "RU": "Баладжары", "EN": "Bilajary"},
     "astara": {"AZ": "Astara", "RU": "Астара", "EN": "Astara"},
     "culfa": {"AZ": "Culfa", "RU": "Джульфа", "EN": "Julfa"},
     "alat": {"AZ": "Ələt", "RU": "Алят", "EN": "Alyat"}
@@ -297,6 +297,9 @@ def normalize_st_name(name):
     n = name.lower().strip()
     n = re.sub(r'[\*\_\#]', '', n)
     n = re.sub(r'[\(\-–\s]*(eksport|eksp|эксп|exp|eks)[\)\.\s]*', '', n)
+    
+    # Резервный автоперевод ключевых станций
+    n = n.replace('баладжары', 'bileceri').replace('baladzary', 'bileceri').replace('baladzhary', 'bileceri').replace('baladžary', 'bileceri')
     n = n.replace('беюк', 'boyuk').replace('кесик', 'kesik').replace('касик', 'kesik')
     n = n.replace('ялама', 'yalama').replace('астара', 'astara').replace('алят', 'alat')
     n = n.replace('джульфа', 'culfa').replace('абшерон', 'absheron').replace('баку', 'baki')
@@ -375,7 +378,9 @@ def find_distance_in_memory(st_from, st_to):
         ("yalama", "alat"): 271,
         ("boyukkesik", "alat"): 429,
         ("absheron", "boyukkesik"): 476,
-        ("absheron", "yalama"): 204
+        ("absheron", "yalama"): 204,
+        ("yalama", "bileceri"): 192,
+        ("bileceri", "yalama"): 192
     }
 
     if (s1, s2) in fallback_map:
@@ -520,7 +525,7 @@ def get_currency_rate(requested_period, lang="AZ"):
 
 
 # ==============================================================================
-# 5. GEMINI NLU & INPUT VALIDATION (Максимально экономный промпт)
+# 5. GEMINI NLU & INPUT VALIDATION (Максимально экономный и умный промпт)
 # ==============================================================================
 def call_gemini_nlu(client, user_input_text, lang):
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
@@ -530,10 +535,10 @@ def call_gemini_nlu(client, user_input_text, lang):
         "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
         "Extract shipment parameters from text into JSON. Return ONLY clean JSON:\n"
         "{\n"
-        '  "route_from": "string or null",\n'
-        '  "route_to": "string or null",\n'
+        '  "route_from": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron)",\n'
+        '  "route_to": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron)",\n'
         '  "cargo_gng_code": "string or null (extract 2-to-8 digit GNG/NHM code, e.g. 72, 4407, 0207)",\n'
-        f'  "cargo_name": "string or null (Short official commodity name translated STRICTLY to {target_lang} in 1-3 words based on GNG or text)",\n'
+        f'  "cargo_name": "string or null (Short official commodity name translated STRICTLY to {target_lang} in 1-3 words based on GNG code or input text)",\n'
         '  "actual_weight_tons": float or null,\n'
         '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
@@ -542,6 +547,14 @@ def call_gemini_nlu(client, user_input_text, lang):
         '  "requested_period": "string or null",\n'
         '  "explicit_mode": "string or null (import/export/transit)"\n'
         "}\n\n"
+        "STRICT STATION NORMALIZATION RULES:\n"
+        "- Convert ANY station name (Russian, Azerbaijani, typos, slang, missing letters) directly into official ADY station Latin names:\n"
+        "  * 'Баладжары' / 'Баладжар' / 'Baladjary' / 'Baladžary' -> 'Bileceri'\n"
+        "  * 'Беюк-Кесик' / 'Б.Касик' / 'Беюк Кесик' -> 'Boyuk Kesik'\n"
+        "  * 'Ялама' -> 'Yalama'\n"
+        "  * 'Алят' / 'Элет' -> 'Alat'\n"
+        "  * 'Астара' -> 'Astara'\n"
+        "  * 'Абшерон' -> 'Absheron'\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
     
@@ -883,7 +896,6 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
     gng_label = "GNG" if lang != "EN" else "NHM"
     
-    # Прямое построение названия груза без лишних словарей
     if cargo_name_nlu and cargo_name_nlu != gng:
         cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})"
     elif gng:
