@@ -579,23 +579,35 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     if park_type == "SPS":
         coeffs.append(("Özəl vaqon əmsalı" if lang == "AZ" else ("Собственный вагон" if lang == "RU" else "Private wagon"), 0.85))
 
-    # Базовый 1.50 для Импорта/Экспорта
+    # Базовый 1.50 для Импорта/Экспорта (полностью читается из rules_config.json)
     if shipment_type_code in ["import", "export"]:
-        is_150_exception = False
-        if table_num in [3, 5]:
-            is_150_exception = True
+        ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
+        exceptions = ie_config.get("exceptions", {})
         
-        wood_codes = ["4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"]
-        metal_codes = ["72", "7301", "7302", "7303", "7304", "7305", "7306", "7307"]
-        if wagon_type in ["universal", "sps", "mps"] and (
-            any(gng.startswith(w) for w in wood_codes) or 
-            any(gng.startswith(m) for m in metal_codes)
+        is_150_exception = False
+        
+        # 1. Проверка исключений по таблицам (из конфига)
+        if table_num in exceptions.get("tables", []):
+            is_150_exception = True
+            
+        # 2. Проверка исключений по лесу и металлу в универсальных вагонах (из конфига)
+        wood_codes = exceptions.get("wood_gng", [])
+        metal_prefixes = exceptions.get("metal_gng_prefixes", [])
+        metal_exact = exceptions.get("metal_gng_exact", [])
+        wood_wagons = exceptions.get("wood_wagon_types", ["universal"])
+        metal_wagons = exceptions.get("metal_wagon_types", ["universal"])
+        
+        if wagon_type in wood_wagons and any(gng.startswith(w) for w in wood_codes):
+            is_150_exception = True
+            
+        if wagon_type in metal_wagons and (
+            any(gng.startswith(m) for m in metal_prefixes) or gng in metal_exact
         ):
             is_150_exception = True
 
         if not is_150_exception:
-            coeffs.append(("İdxal/İxrac baza əmsalı" if lang == "AZ" else ("Импорт/Экспорт базовый" if lang == "RU" else "Import/Export base"), 1.50))
-
+            coeff_val = ie_config.get("coefficient_value", 1.50)
+            coeffs.append(("İdxal/İxrac baza əmsalı" if lang == "AZ" else ("Импорт/Экспорт базовый" if lang == "RU" else "Import/Export base"), coeff_val))
     # Импорт Леса и Металла (1.04)
     if shipment_type_code == "import" and any(gng.startswith(p) for p in ["44", "72", "73"]):
         coeffs.append(("İdxal əmsalı (Meşə/Metal)" if lang == "AZ" else ("Импортный коэф. (Лес/Металл)" if lang == "RU" else "Import coeff."), 1.04))
