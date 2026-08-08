@@ -113,14 +113,13 @@ def get_currency_rate(requested_period, lang="AZ"):
 
     return rate, f"**{rate:.2f} CHF** ({label_text})"
 
-def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_type, act_weight, billable_weight, dist_km, user_input_raw, config, lang, ui_t):
+def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_type, act_weight, billable_weight, dist_km, user_input_raw, config, lang, ui_t, ref_wagons_cnt):
     coeffs = []
     notes = []
 
     park_type = str(nlu_data.get("park_type", "SPS")).upper()
     gng = str(nlu_data.get("cargo_gng_code", "") or "").strip()
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
-    ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
 
     # 1. Собственный вагон (СПС)
     if park_type == "SPS":
@@ -244,7 +243,14 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     act_weight = float(nlu_data.get("actual_weight_tons") or 0.0)
     park_type = str(nlu_data.get("park_type", "SPS") or "SPS").upper()
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
+    
+    # 100% Страховка состава рефсекции из текста (5+1, 1+5, 6+1 и т.д.)
     ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
+    if ref_wagons_cnt is None:
+        match_plus = re.search(r'(\d+)\s*\+\s*1|1\s*\+\s*(\d+)', user_input_raw)
+        if match_plus:
+            ref_wagons_cnt = int(match_plus.group(1) or match_plus.group(2))
+
     explicit_mode = nlu_data.get("explicit_mode")
 
     border_info = config.get("border_stations", {})
@@ -317,7 +323,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     base_tariff_display = f"**{base_chf:.2f} {chf_unit}** ({table_details})"
     usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
 
-    coeffs, notes = apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_type, act_weight, billable_weight, dist_km, user_input_raw, config, lang, ui_t)
+    coeffs, notes = apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_type, act_weight, billable_weight, dist_km, user_input_raw, config, lang, ui_t, ref_wagons_cnt)
 
     final_rate = base_chf / usd_rate
     formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
@@ -329,7 +335,9 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     express_rate_str = f"{final_rate * 1.02:.2f} {unit_str}"
 
     park_display = "SPS" if park_type == "SPS" else "MPS"
-    wagon_disp_name = "İzotermik vaqon" if (is_ref_type and lang == "AZ") else ("Изотермический вагон" if is_ref_type and lang == "RU" else ("Isothermal wagon" if is_ref_type else ("Universal vaqon" if lang == "AZ" else ("Универсальный вагон" if lang == "RU" else "Universal wagon"))))
+    
+    sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
+    wagon_disp_name = f"İzotermik vaqon{sec_info}" if (is_ref_type and lang == "AZ") else (f"Изотермический вагон{sec_info}" if is_ref_type and lang == "RU" else (f"Isothermal wagon{sec_info}" if is_ref_type else ("Universal vaqon" if lang == "AZ" else ("Универсальный вагон" if lang == "RU" else "Universal wagon"))))
     gng_label = "GNG" if lang != "EN" else "NHM"
     
     cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})" if (cargo_name_nlu and cargo_name_nlu != gng) else (f"{gng_label} {gng}, {wagon_disp_name} ({park_display})" if gng else f"{wagon_disp_name} ({park_display})")
