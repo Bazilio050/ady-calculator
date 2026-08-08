@@ -3,12 +3,9 @@ import streamlit as st
 from google import genai
 from utils import load_rules_config
 from nlu import call_gemini_nlu, validate_nlu_input
-from engine import process_full_calculation, UI_TEXT_IMPORT
+from engine import process_full_calculation
 
 st.set_page_config(page_title="ADY Tarif Kalkulyatoru", page_icon="🚂", layout="wide")
-
-# Загружаем UI тексты напрямую из словаря в engine.py или объявляем тут
-from engine import UI_TEXT if 'UI_TEXT' in globals() else None
 
 UI_TEXT = {
     "AZ": {
