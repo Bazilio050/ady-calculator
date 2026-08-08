@@ -295,19 +295,13 @@ def normalize_st_name(name):
     if not name:
         return ""
     n = name.lower().strip()
-    # 1. Очистка Markdown разметки
     n = re.sub(r'[\*\_\#]', '', n)
-    # 2. Очистка суффиксов экспорта
     n = re.sub(r'[\(\-–\s]*(eksport|eksp|эксп|exp|eks)[\)\.\s]*', '', n)
-    # 3. Транслитерация с кириллицы для популярных станций
     n = n.replace('беюк', 'boyuk').replace('кесик', 'kesik').replace('касик', 'kesik')
     n = n.replace('ялама', 'yalama').replace('астара', 'astara').replace('алят', 'alat')
     n = n.replace('джульфа', 'culfa').replace('абшерон', 'absheron').replace('баку', 'baki')
-    # 4. Транслитерация азербайджанских спецсимволов (ə -> e для сохранения kəsik/kesik)
     n = n.replace('ə', 'e').replace('ö', 'o').replace('ü', 'u').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
-    # 5. Приведение вариантов написания корней к единому каноническому виду
     n = n.replace('beyuk', 'boyuk').replace('kasik', 'kesik').replace('elet', 'alat')
-    # 6. Удаление всех не-буквенно-цифровых символов
     return re.sub(r'[^a-z0-9]', '', n)
 
 @st.cache_data(show_spinner=False)
@@ -322,14 +316,12 @@ def load_distances_map():
 
         header_cols = []
         for line in lines:
-            # Четкий поиск строки заголовка таблицы
             if "|" in line and "stansiyanın adı" in line.lower():
                 parts = [p.strip() for p in line.split("|") if p.strip()]
                 if len(parts) >= 3:
                     header_cols = [normalize_st_name(p) for p in parts[2:]]
                 continue
             
-            # Чтение строк с данными станций
             if "|" in line and header_cols and not line.startswith("| :---") and not line.startswith("#"):
                 parts = [p.strip() for p in line.split("|") if p.strip()]
                 if len(parts) >= 3:
@@ -362,20 +354,17 @@ def find_distance_in_memory(st_from, st_to):
     s1 = normalize_st_name(st_from)
     s2 = normalize_st_name(st_to)
 
-    # 1. Прямой поиск в карте, полученной из Distances.txt
     if (s1, s2) in dist_map:
         return dist_map[(s1, s2)]
     if (s2, s1) in dist_map:
         return dist_map[(s2, s1)]
 
-    # 2. Поиск по вхождению подстроки
     for (k1, k2), dist in dist_map.items():
         if (s1 in k1 or k1 in s1) and (s2 in k2 or k2 in s2):
             return dist
         if (s1 in k2 or k2 in s1) and (s2 in k1 or k1 in s2):
             return dist
 
-    # 3. Резервный предохранитель для главных узлов ADY
     fallback_map = {
         ("yalama", "boyukkesik"): 680,
         ("boyukkesik", "yalama"): 680,
@@ -425,7 +414,8 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
     config = load_rules_config()
     tbl_name = UI_TEXT.get(lang, {}).get("table_name", "Cədvəl")
     km_unit = "km"
-    
+
+    # --- Обработка Таблицы 5 (Изотермические / Автовозы) ---
     if table_num == 5:
         col_idx = 0
         is_per_wagon = False
@@ -458,9 +448,25 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
 
         return None, f"{tbl_name} 5, {distance_km} {km_unit}", is_per_wagon
 
+    # --- Обработка Таблиц 1-4 (Точная подгонка весовой шкалы 10t - 60t) ---
+    weight_steps = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
+
     for d_min, d_max, vals in rates:
         if d_min <= distance_km <= d_max:
-            val = vals[-1]
+            if len(vals) == 11:
+                col_idx = 0
+                for idx, w_limit in enumerate(weight_steps):
+                    if billable_weight_tons <= w_limit:
+                        col_idx = idx
+                        break
+                    col_idx = idx
+                val = vals[col_idx]
+            elif len(vals) > 1:
+                col_idx = min(int(billable_weight_tons // 10), len(vals) - 1)
+                val = vals[col_idx]
+            else:
+                val = vals[0]
+
             return val, f"{tbl_name} {table_num}, {d_min}-{d_max} {km_unit}, {int(billable_weight_tons)} t", False
             
     return None, f"{tbl_name} {table_num}, {distance_km} {km_unit}, {int(billable_weight_tons)} t", False
@@ -582,7 +588,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
     ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
 
-    # 1. Собственный вагон (СПС) из rules_config.json
+    # 1. Собственный вагон (СПС)
     park_cfg = config.get("park_type_coefficients", {}).get(park_type)
     if park_cfg:
         c_val = park_cfg.get("coefficient_value", 0.85)
@@ -590,7 +596,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         coeffs.append((c_lbl, c_val))
         notes.append(ui_t["note_sps"])
 
-    # 2. Базовый коэффициент 1.50 для Импорта/Экспорта из rules_config.json
+    # 2. Базовый коэффициент 1.50 для Импорта/Экспорта
     if shipment_type_code in ["import", "export"]:
         ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
         exceptions = ie_config.get("exceptions", {})
@@ -616,7 +622,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
             coeffs.append((lbl_ie, coeff_val))
             notes.append(ui_t["note_import_base_150"])
 
-    # 3. Импортный коэффициент 1.04 из rules_config.json
+    # 3. Импортный коэффициент 1.04
     imp_cfg = config.get("coefficients_updated_rules_2026", {}).get("import_metal_wood_1_04", {})
     imp_prefixes = imp_cfg.get("gng_prefixes", ["44", "72", "73"])
     if shipment_type_code == "import" and any(gng.startswith(p) for p in imp_prefixes if p):
@@ -625,7 +631,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         coeffs.append((lbl_imp, coeff_val))
         notes.append(ui_t["note_timber_metal"])
 
-    # 4. Коэффициенты состава рефсекции из rules_config.json
+    # 4. Коэффициенты состава рефсекции
     if is_ref_type and ref_wagons_cnt is not None:
         try:
             w_cnt = int(ref_wagons_cnt)
@@ -649,7 +655,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         except (ValueError, TypeError):
             pass
 
-    # 5. Транзит изотермических вагонов 1.20 из rules_config.json
+    # 5. Транзит изотермических вагонов 1.20
     if shipment_type_code == "transit" and is_ref_type:
         ref_tr_cfg = config.get("coefficients_updated_rules_2026", {}).get("refrigerated_transit_1_20", {})
         val_120 = ref_tr_cfg.get("coefficient_value", 1.20)
@@ -657,7 +663,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         coeffs.append((lbl_120, val_120))
         notes.append(ui_t["note_ref_transit_120"])
 
-    # 6. Плодоовощная скидка 0.60 из rules_config.json
+    # 6. Плодоовощная скидка 0.60
     fveg_rule = config.get("table_5_rules", {}).get("fruit_veg_discount_0_60", {})
     fruit_veg_codes = fveg_rule.get("gng_prefixes", [])
     if is_ref_type and any(gng.startswith(code) for code in fruit_veg_codes if code):
@@ -673,7 +679,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
             }
             notes.append(note_hints.get(lang, note_hints["AZ"]))
 
-    # 7. Дополнительный коэффициент 1.015 из rules_config.json
+    # 7. Дополнительный коэффициент 1.015
     input_lower = user_input_raw.lower()
     is_empty_run = any(k in input_lower for k in ["boş", "порожн", "empty"])
     if not is_empty_run:
