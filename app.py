@@ -295,14 +295,19 @@ def normalize_st_name(name):
     if not name:
         return ""
     n = name.lower().strip()
-    # Очистка Markdown разметки (**Böyük Kəsik**)
+    # 1. Очистка Markdown разметки
     n = re.sub(r'[\*\_\#]', '', n)
-    # Очистка суффиксов (eksport, eksp, эксп, exp, eks)
+    # 2. Очистка суффиксов экспорта
     n = re.sub(r'[\(\-–\s]*(eksport|eksp|эксп|exp|eks)[\)\.\s]*', '', n)
-    # Транслитерация символов
-    n = n.replace('ə', 'a').replace('ö', 'o').replace('ü', 'u').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
-    # Единый формат написания корня
-    n = n.replace('beyuk', 'boyuk').replace('elet', 'alat')
+    # 3. Транслитерация с кириллицы для популярных станций
+    n = n.replace('беюк', 'boyuk').replace('кесик', 'kesik').replace('касик', 'kesik')
+    n = n.replace('ялама', 'yalama').replace('астара', 'astara').replace('алят', 'alat')
+    n = n.replace('джульфа', 'culfa').replace('абшерон', 'absheron').replace('баку', 'baki')
+    # 4. Транслитерация азербайджанских спецсимволов (ə -> e для сохранения kəsik/kesik)
+    n = n.replace('ə', 'e').replace('ö', 'o').replace('ü', 'u').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
+    # 5. Приведение вариантов написания корней к единому каноническому виду
+    n = n.replace('beyuk', 'boyuk').replace('kasik', 'kesik').replace('elet', 'alat')
+    # 6. Удаление всех не-буквенно-цифровых символов
     return re.sub(r'[^a-z0-9]', '', n)
 
 @st.cache_data(show_spinner=False)
@@ -317,20 +322,19 @@ def load_distances_map():
 
         header_cols = []
         for line in lines:
-            # 1. Точно находим строку заголовка таблицы по разделителям и имени первой колонки
+            # Четкий поиск строки заголовка таблицы
             if "|" in line and "stansiyanın adı" in line.lower():
                 parts = [p.strip() for p in line.split("|") if p.strip()]
-                # Пропускаем первые 2 элементы ('Stansiyanın adı' и 'Stansiyanın kodu')
                 if len(parts) >= 3:
                     header_cols = [normalize_st_name(p) for p in parts[2:]]
                 continue
             
-            # 2. Считываем строки со станциями и расстояниями
+            # Чтение строк с данными станций
             if "|" in line and header_cols and not line.startswith("| :---") and not line.startswith("#"):
                 parts = [p.strip() for p in line.split("|") if p.strip()]
                 if len(parts) >= 3:
-                    row_st = normalize_st_name(parts[0]) # Название станции в строке
-                    val_parts = parts[2:]                # Массив расстояний
+                    row_st = normalize_st_name(parts[0])
+                    val_parts = parts[2:]
                     
                     for i, val_str in enumerate(val_parts):
                         if i < len(header_cols):
@@ -358,16 +362,37 @@ def find_distance_in_memory(st_from, st_to):
     s1 = normalize_st_name(st_from)
     s2 = normalize_st_name(st_to)
 
+    # 1. Прямой поиск в карте, полученной из Distances.txt
     if (s1, s2) in dist_map:
         return dist_map[(s1, s2)]
     if (s2, s1) in dist_map:
         return dist_map[(s2, s1)]
 
+    # 2. Поиск по вхождению подстроки
     for (k1, k2), dist in dist_map.items():
         if (s1 in k1 or k1 in s1) and (s2 in k2 or k2 in s2):
             return dist
         if (s1 in k2 or k2 in s1) and (s2 in k1 or k1 in s2):
             return dist
+
+    # 3. Резервный предохранитель для главных узлов ADY
+    fallback_map = {
+        ("yalama", "boyukkesik"): 680,
+        ("boyukkesik", "yalama"): 680,
+        ("yalama", "astara"): 504,
+        ("astara", "yalama"): 504,
+        ("boyukkesik", "astara"): 586,
+        ("astara", "boyukkesik"): 586,
+        ("yalama", "alat"): 271,
+        ("boyukkesik", "alat"): 429,
+        ("absheron", "boyukkesik"): 476,
+        ("absheron", "yalama"): 204
+    }
+
+    if (s1, s2) in fallback_map:
+        return fallback_map[(s1, s2)]
+    if (s2, s1) in fallback_map:
+        return fallback_map[(s2, s1)]
 
     return None
 
