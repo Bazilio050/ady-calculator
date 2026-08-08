@@ -6,7 +6,7 @@ from google import genai
 from google.genai import types
 
 # ==============================================================================
-# 1. PAGE CONFIG & STYLES (Строго первая команда)
+# 1. PAGE CONFIG & STYLES
 # ==============================================================================
 st.set_page_config(
     page_title="ADY Tarif Kalkulyatoru",
@@ -21,12 +21,6 @@ st.markdown(
     header {visibility: hidden;}
     .stAppHeader {display: none;}
     footer {visibility: hidden;}
-
-    div[data-testid="stVerticalBlock"]:has(div[data-testid="stSelectbox"]) {
-        max-width: 100% !important;
-        margin-left: 0 !important;
-        margin-right: auto !important;
-    }
 
     .custom-title {
         font-size: 24px !important;
@@ -112,7 +106,7 @@ UI_TEXT = {
         "lbl_net_rate": "Yekün ADY tarifi",
         "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
         "api_warning": "⚠️ Xahiş olunur, GEMINI_API_KEY daxil edin.",
-        "api_label": "Gemini API Key:",
+        "api_label": "Gemini API Key (daxil edilməyibsə):",
         "type_import": "İdxal daşınması",
         "type_export": "İxrac daşınması",
         "type_transit": "Tranzit daşınması",
@@ -163,8 +157,8 @@ UI_TEXT = {
         "lbl_base_rate": "Базовый тариф",
         "lbl_net_rate": "Итоговый тариф",
         "lbl_express_rate": "Итоговый тариф (включая ADY Express +2%)",
-        "api_warning": "⚠️ Пожалуйста, добавьте GEMINI_API_KEY.",
-        "api_label": "Введите Gemini API Key:",
+        "api_warning": "⚠️ Пожалуйста, укажите GEMINI_API_KEY.",
+        "api_label": "Gemini API Key (если не задан):",
         "type_import": "Импортная перевозка",
         "type_export": "Экспортная перевозка",
         "type_transit": "Транзитная перевозка",
@@ -216,7 +210,7 @@ UI_TEXT = {
         "lbl_net_rate": "Final Tariff",
         "lbl_express_rate": "Final Tariff (incl. ADY Express +2%)",
         "api_warning": "⚠️ Please provide GEMINI_API_KEY.",
-        "api_label": "Enter Gemini API Key:",
+        "api_label": "Gemini API Key (if not set):",
         "type_import": "Import shipment",
         "type_export": "Export shipment",
         "type_transit": "Transit shipment",
@@ -271,6 +265,18 @@ with col_controls:
 
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
+
+# Поле ввода текста
+user_input = st.text_area(
+    t["input_header"], height=150, placeholder=t["input_placeholder"]
+)
+
+# Проверка API ключа
+env_key = os.environ.get("GEMINI_API_KEY", "")
+if not env_key:
+    user_api_key = st.text_input(t["api_label"], type="password")
+else:
+    user_api_key = env_key
 
 
 # ==============================================================================
@@ -550,4 +556,178 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         shipment_type_code = "export"
         shipment_type_display = ui_t["type_export"]
     else:
-        shipment_type
+        shipment_type_code = "local"
+        shipment_type_display = "Daxili daşınma" if lang == "AZ" else ("Внутренняя перевозка" if lang == "RU" else "Domestic shipment")
+
+    dist_km = find_distance_in_memory(c_from, c_to)
+
+    billable_weight = act_weight
+
+    if gng.startswith("72"):
+        if billable_weight < 60.0:
+            billable_weight = 60.0
+    else:
+        min_norms = config.get("minimal_weight_norms_gng", {}).get("rules", [])
+        for rule in min_norms:
+            prefixes = rule.get("gng_prefixes", [])
+            if any(gng.startswith(p) for p in prefixes):
+                norm = rule.get("norm_tons", 0)
+                if billable_weight < norm:
+                    billable_weight = float(norm)
+                break
+
+    if act_weight < billable_weight:
+        weight_display = f"{int(act_weight) if act_weight.is_integer() else act_weight} t / {int(billable_weight) if billable_weight.is_integer() else billable_weight} t"
+    else:
+        weight_display = f"{int(act_weight) if act_weight.is_integer() else act_weight} t"
+
+    is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "auto", "авто"]) or (ref_wagons_cnt is not None)
+    if is_ref_type and os.path.exists("Table_5_Tariffs.txt"):
+        table_num = 5
+    elif shipment_type_code == "transit":
+        table_num = 4
+    else:
+        table_num = 3
+
+    base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, dist_km, billable_weight, "ref" if is_ref_type else wagon_type, lang)
+    unit_str = ui_t["unit_wagon"] if is_per_wagon else ui_t["unit_ton"]
+    chf_unit = "CHF/vaqon" if is_per_wagon else ("CHF/вагон" if (is_per_wagon and lang == "RU") else ("CHF/t" if lang != "RU" else "CHF/т"))
+    base_tariff_display = f"**{base_chf:.2f} {chf_unit}** ({table_details})"
+
+    usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
+
+    coeffs = []
+
+    if park_type == "SPS":
+        coeffs.append(("Özəl vaqon əmsalı" if lang == "AZ" else ("Собственный вагон" if lang == "RU" else "Private wagon"), 0.85))
+
+    applied_150_note = False
+    if shipment_type_code in ["import", "export"]:
+        ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
+        exceptions = ie_config.get("exceptions", {})
+        
+        is_150_exception = False
+        if table_num in exceptions.get("tables", []):
+            is_150_exception = True
+            
+        wood_codes = exceptions.get("wood_gng", [])
+        metal_prefixes = exceptions.get("metal_gng_prefixes", [])
+        metal_exact = exceptions.get("metal_gng_exact", [])
+        wood_wagons = exceptions.get("wood_wagon_types", ["universal"])
+        metal_wagons = exceptions.get("metal_wagon_types", ["universal"])
+        
+        if wagon_type in wood_wagons and any(gng.startswith(w) for w in wood_codes):
+            is_150_exception = True
+            
+        if wagon_type in metal_wagons and (
+            any(gng.startswith(m) for m in metal_prefixes) or gng in metal_exact
+        ):
+            is_150_exception = True
+
+        if not is_150_exception:
+            coeff_val = ie_config.get("coefficient_value", 1.50)
+            coeffs.append(("İdxal/İxrac baza əmsalı" if lang == "AZ" else ("Импорт/Экспорт базовый" if lang == "RU" else "Import/Export base"), coeff_val))
+            applied_150_note = True
+
+    if shipment_type_code == "import" and any(gng.startswith(p) for p in ["44", "72", "73"]):
+        coeffs.append(("İdxal əmsalı (Meşə/Metal)" if lang == "AZ" else ("Импортный коэф. (Лес/Металл)" if lang == "RU" else "Import coeff."), 1.04))
+
+    applied_ref_comp_note = False
+    if is_ref_type and ref_wagons_cnt is not None:
+        try:
+            w_cnt = int(ref_wagons_cnt)
+            ref_comp_cfg = config.get("table_5_rules", {}).get("ref_section_composition", {})
+            lbl_ref = "Refseksiya tərkibi əmsalı" if lang == "AZ" else ("Коэф. состава рефсекции" if lang == "RU" else "Refrig. section composition coeff.")
+            
+            if w_cnt >= 5:
+                item = ref_comp_cfg.get("5_or_more_wagons", {})
+                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 0.85)))
+                applied_ref_comp_note = True
+            elif w_cnt == 3:
+                item = ref_comp_cfg.get("3_wagons", {})
+                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 1.10)))
+                applied_ref_comp_note = True
+            elif w_cnt == 2:
+                item = ref_comp_cfg.get("2_wagons", {})
+                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 1.40)))
+                applied_ref_comp_note = True
+            elif w_cnt == 1:
+                item = ref_comp_cfg.get("1_wagon", {})
+                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 1.70)))
+                applied_ref_comp_note = True
+        except (ValueError, TypeError):
+            pass
+
+    applied_ref_transit_note = False
+    if shipment_type_code == "transit" and is_ref_type:
+        ref_tr_cfg = config.get("coefficients_updated_rules_2026", {}).get("refrigerated_transit_1_20", {})
+        val_120 = ref_tr_cfg.get("coefficient_value", 1.20)
+        lbl_120 = ref_tr_cfg.get("labels", {}).get(lang, "Tranzit ref əmsalı")
+        coeffs.append((lbl_120, val_120))
+        applied_ref_transit_note = True
+
+    fveg_rule = config.get("table_5_rules", {}).get("fruit_veg_discount_0_60", {})
+    fruit_veg_codes = fveg_rule.get("gng_prefixes", [])
+    if is_ta_origin and table_num == 5 and any(gng.startswith(code) for code in fruit_veg_codes):
+        val_060 = fveg_rule.get("coefficient_value", 0.60)
+        coeffs.append(("Meyvə-tərəvəz güzəşt əmsalı" if lang == "AZ" else ("Плодоовощная скидка" if lang == "RU" else "Fruit/veg discount"), val_060))
+
+    input_lower = user_input_raw.lower()
+    is_empty_run = any(k in input_lower for k in ["boş", "порожн", "empty"])
+    if not is_empty_run:
+        add_coeff_info = config.get("general_additional_coefficient_1_015", {})
+        val_1015 = add_coeff_info.get("coefficient_value", 1.015)
+        lbl_1015 = add_coeff_info.get("labels", {}).get(lang, "Əlavə əmsal")
+        coeffs.append((lbl_1015, val_1015))
+
+    final_rate = base_chf / usd_rate
+    formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
+
+    for _, c_val in coeffs:
+        final_rate *= c_val
+        formula_parts.append(f"{c_val}")
+
+    formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit_str}"
+    express_rate_str = f"{final_rate * 1.02:.2f} {unit_str}"
+
+    lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
+    park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
+
+    cargo_translations = {
+        "meat": {"AZ": "Ət", "RU": "Мясо", "EN": "Meat"},
+        "ferrous metals": {"AZ": "Qara metallar", "RU": "Черные metallar", "EN": "Ferrous metals"},
+        "timber": {"AZ": "Meşə materialları", "RU": "Лесоматериалы", "EN": "Timber"}
+    }
+    c_raw_lower = cargo_name_nlu.lower()
+    translated_cargo = cargo_translations.get(c_raw_lower, {}).get(lang, cargo_name_nlu)
+
+    if gng.startswith("72") and not translated_cargo:
+        translated_cargo = "Qara metallar" if lang == "AZ" else ("Черные metallar" if lang == "RU" else "Ferrous metals")
+
+    if is_ref_type:
+        wagon_disp_name = "İzotermik vaqon" if lang == "AZ" else ("Изотермический вагон" if lang == "RU" else "Isothermal wagon")
+    else:
+        wagon_disp_name = "Universal vaqon" if lang == "AZ" else ("Универсальный вагон" if lang == "RU" else "Universal wagon")
+
+    gng_label = "GNG" if lang != "EN" else "NHM"
+    if translated_cargo and not translated_cargo.isdigit() and translated_cargo != gng:
+        cargo_wagon_display = f"{gng_label} {gng} - {translated_cargo}, {wagon_disp_name} ({park_display})"
+    elif gng:
+        cargo_wagon_display = f"{gng_label} {gng}, {wagon_disp_name} ({park_display})"
+    else:
+        cargo_wagon_display = f"{wagon_disp_name} ({park_display})"
+
+    notes = []
+    if park_type == "SPS":
+        notes.append(ui_t["note_sps"])
+    
+    if shipment_type_code == "import" and dist_km < 151:
+        notes.append(ui_t["note_import"])
+    elif shipment_type_code == "export" and dist_km < 101:
+        notes.append(ui_t["note_export"])
+
+    if applied_150_note:
+        notes.append(ui_t["note_import_base_150"])
+    if act_weight < billable_weight:
+        notes.append(ui_t["note_min_weight"])
+    if any(c
