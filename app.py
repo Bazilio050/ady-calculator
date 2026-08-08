@@ -520,32 +520,28 @@ def get_currency_rate(requested_period, lang="AZ"):
 
 
 # ==============================================================================
-# 5. GEMINI NLU & INPUT VALIDATION
+# 5. GEMINI NLU & INPUT VALIDATION (Максимально экономный промпт)
 # ==============================================================================
-def call_gemini_nlu(client, user_input_text):
+def call_gemini_nlu(client, user_input_text, lang):
+    lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
+    target_lang = lang_map.get(lang, "Azerbaijani")
+
     prompt = (
         "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
         "Extract shipment parameters from text into JSON. Return ONLY clean JSON:\n"
         "{\n"
-        '  "route_from": "string or null (origin station name without -eksp)",\n'
-        '  "route_to": "string or null (destination station name without -eksp)",\n'
-        '  "cargo_gng_code": "string or null (MUST extract 2-digit to 8-digit GNG/NHM code, e.g. 72 or 4407 or 0207)",\n'
-        '  "cargo_name_raw": "string or null (commodity name ONLY translated to English, e.g. Meat, Timber, Ferrous metals. EXCLUDE wagon types)",\n'
+        '  "route_from": "string or null",\n'
+        '  "route_to": "string or null",\n'
+        '  "cargo_gng_code": "string or null (extract 2-to-8 digit GNG/NHM code, e.g. 72, 4407, 0207)",\n'
+        f'  "cargo_name": "string or null (Short official commodity name translated STRICTLY to {target_lang} in 1-3 words based on GNG or text)",\n'
         '  "actual_weight_tons": float or null,\n'
         '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
-        '  "ref_section_cargo_wagons": integer or null (number of cargo wagons in refrig section, e.g. for \"6+1\" or \"1+6\" or \"5+1\" return 5; for \"3+1\" return 3),\n'
+        '  "ref_section_cargo_wagons": integer or null,\n'
         '  "is_tariff_agreement_origin": boolean,\n'
         '  "requested_period": "string or null",\n'
-        '  "explicit_mode": "string or null (import/export/transit if explicitly specified by user)"\n'
+        '  "explicit_mode": "string or null (import/export/transit)"\n'
         "}\n\n"
-        "STRICT NLU RULES:\n"
-        "1. Search specifically for GNG / NHM / ГНГ codes (e.g., 72, 4407, 0207).\n"
-        "2. Extract cargo_name_raw ONLY as commodity name.\n"
-        "3. Detect refrigerated section combinations (e.g. 6+1, 1+6, 5+1, 3+1) and extract the CARGO wagon count into ref_section_cargo_wagons.\n"
-        "4. Set is_tariff_agreement_origin to true ONLY IF user explicitly mentions origin from Tariff Agreement country (Tarif Razılaşması, страна ТС, Узбекистан, Казахстан и т.д.) or fruit/vegetable discount 0.60.\n"
-        "5. If user explicitly writes 'импорт', 'ипморт', 'import', 'idxal', set explicit_mode to 'import'. If 'экспорт', 'export', 'ixrac', set to 'export'. If 'транзит', 'transit', 'tranzit', set to 'transit'.\n"
-        "6. Keep station names clean (e.g. 'Yalama', 'Absheron', 'Boyuk Kesik').\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
     
@@ -575,7 +571,7 @@ def validate_nlu_input(nlu_res, lang):
     st_to = nlu_res.get("route_to")
     weight = nlu_res.get("actual_weight_tons")
     gng = nlu_res.get("cargo_gng_code")
-    cargo_name = nlu_res.get("cargo_name_raw")
+    cargo_name = nlu_res.get("cargo_name")
 
     if not st_from:
         missing_items.append("📍 **Başlanğıc stansiyası** (Origin station)" if lang == "AZ" else ("📍 **Станция отправления**" if lang == "RU" else "📍 **Origin station**"))
@@ -731,7 +727,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     st_from = nlu_data.get("route_from", "")
     st_to = nlu_data.get("route_to", "")
     gng = str(nlu_data.get("cargo_gng_code", "") or "").strip()
-    cargo_name_nlu = str(nlu_data.get("cargo_name_raw", "") or "").strip()
+    cargo_name_nlu = str(nlu_data.get("cargo_name", "") or "").strip()
     
     raw_weight = nlu_data.get("actual_weight_tons")
     act_weight = float(raw_weight) if raw_weight is not None else 0.0
@@ -870,22 +866,6 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
     park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
 
-    cargo_translations = {
-        "meat": {"AZ": "Ət", "RU": "Мясо", "EN": "Meat"},
-        "ferrous metals": {"AZ": "Qara metallar", "RU": "Черные металлы", "EN": "Ferrous metals"},
-        "timber": {"AZ": "Meşə materialları", "RU": "Лесоматериалы", "EN": "Timber"}
-    }
-    c_raw_lower = cargo_name_nlu.lower()
-    translated_cargo = cargo_translations.get(c_raw_lower, {}).get(lang, cargo_name_nlu)
-
-    if gng.startswith("72") and not translated_cargo:
-        if lang == "AZ":
-            translated_cargo = "Qara metallar"
-        elif lang == "RU":
-            translated_cargo = "Черные металлы"
-        else:
-            translated_cargo = "Ferrous metals"
-
     if is_ref_type:
         if lang == "AZ":
             wagon_disp_name = "İzotermik vaqon"
@@ -902,8 +882,10 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
             wagon_disp_name = "Universal wagon"
 
     gng_label = "GNG" if lang != "EN" else "NHM"
-    if translated_cargo and not translated_cargo.isdigit() and translated_cargo != gng:
-        cargo_wagon_display = f"{gng_label} {gng} - {translated_cargo}, {wagon_disp_name} ({park_display})"
+    
+    # Прямое построение названия груза без лишних словарей
+    if cargo_name_nlu and cargo_name_nlu != gng:
+        cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})"
     elif gng:
         cargo_wagon_display = f"{gng_label} {gng}, {wagon_disp_name} ({park_display})"
     else:
@@ -966,7 +948,7 @@ if st.button(t["calc_btn"], type="primary"):
         )
 
         try:
-            nlu_res = call_gemini_nlu(client, user_input)
+            nlu_res = call_gemini_nlu(client, user_input, selected_lang)
             
             missing_fields = validate_nlu_input(nlu_res, selected_lang)
             
