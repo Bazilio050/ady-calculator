@@ -122,7 +122,8 @@ UI_TEXT = {
         "note_ref_composition": "Refseksiyanın vaqon tərkibinə uyğun müvafiq əmsal tətbiq edilmişdir.",
         "unit_ton": "USD/t",
         "unit_wagon": "USD/vaqon",
-        "table_name": "Cədvəl"
+        "table_name": "Cədvəl",
+        "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:"
     },
     "RU": {
         "title": "Тарифный калькулятор ADY",
@@ -174,7 +175,8 @@ UI_TEXT = {
         "note_ref_composition": "Применен соответствующий коэффициент согласно составу рефсекции.",
         "unit_ton": "USD/т",
         "unit_wagon": "USD/вагон",
-        "table_name": "Таблица"
+        "table_name": "Таблица",
+        "missing_title": "⚠️ Для точного расчета не хватает следующих данных:"
     },
     "EN": {
         "title": "ADY Tariff Calculator",
@@ -226,7 +228,8 @@ UI_TEXT = {
         "note_ref_composition": "Coefficient applied according to refrigerated section composition.",
         "unit_ton": "USD/t",
         "unit_wagon": "USD/wagon",
-        "table_name": "Table"
+        "table_name": "Table",
+        "missing_title": "⚠️ The following required parameters are missing for calculation:"
     }
 }
 
@@ -266,12 +269,10 @@ with col_controls:
 st.markdown(f'<div class="custom-title">{t["title"]}</div>', unsafe_allow_html=True)
 st.markdown(f'<div class="custom-subtitle">{t["subtitle"].format(selected_year)}</div>', unsafe_allow_html=True)
 
-# Поле ввода текста
 user_input = st.text_area(
     t["input_header"], height=150, placeholder=t["input_placeholder"]
 )
 
-# Проверка API ключа
 env_key = os.environ.get("GEMINI_API_KEY", "")
 if not env_key:
     user_api_key = st.text_input(t["api_label"], type="password")
@@ -280,7 +281,7 @@ else:
 
 
 # ==============================================================================
-# 4. CACHED DATA LOADERS
+# 4. CACHED DATA LOADERS & DISTANCE PARSER
 # ==============================================================================
 
 @st.cache_data(show_spinner=False)
@@ -349,7 +350,7 @@ def find_distance_in_memory(st_from, st_to):
         if (s1 in k1 or k1 in s1) and (s2 in k2 or k2 in s2):
             return dist
             
-    return 204
+    return None
 
 @st.cache_data(show_spinner=False)
 def load_table_rates(table_num):
@@ -411,14 +412,14 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
                 val = vals[col_idx] if col_idx < len(vals) else vals[0]
                 return val, f"{tbl_name} 5, {d_min}-{d_max} {km_unit}", is_per_wagon
 
-        return 500.0, f"{tbl_name} 5, {distance_km} {km_unit}", is_per_wagon
+        return None, f"{tbl_name} 5, {distance_km} {km_unit}", is_per_wagon
 
     for d_min, d_max, vals in rates:
         if d_min <= distance_km <= d_max:
             val = vals[-1]
             return val, f"{tbl_name} {table_num}, {d_min}-{d_max} {km_unit}, {int(billable_weight_tons)} t", False
             
-    return 12.93, f"{tbl_name} {table_num}, {distance_km} {km_unit}, {int(billable_weight_tons)} t", False
+    return None, f"{tbl_name} {table_num}, {distance_km} {km_unit}, {int(billable_weight_tons)} t", False
 
 def get_currency_rate(requested_period, lang="AZ"):
     config = load_rules_config()
@@ -456,18 +457,18 @@ def get_currency_rate(requested_period, lang="AZ"):
 
 
 # ==============================================================================
-# 5. GEMINI NLU CALL
+# 5. GEMINI NLU & INPUT VALIDATION
 # ==============================================================================
 def call_gemini_nlu(client, user_input_text):
     prompt = (
         "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
         "Extract shipment parameters from text into JSON. Return ONLY clean JSON:\n"
         "{\n"
-        '  "route_from": "string (origin station name without -eksp)",\n'
-        '  "route_to": "string (destination station name without -eksp)",\n'
-        '  "cargo_gng_code": "string (MUST extract 2-digit to 8-digit GNG/NHM code, e.g. 72 or 4407 or 0207)",\n'
-        '  "cargo_name_raw": "string (commodity name ONLY translated to English, e.g. Meat, Timber, Ferrous metals. EXCLUDE wagon types like covered/open/hopper/tank/gondola/SPS/MPS)",\n'
-        '  "actual_weight_tons": float,\n'
+        '  "route_from": "string or null (origin station name without -eksp)",\n'
+        '  "route_to": "string or null (destination station name without -eksp)",\n'
+        '  "cargo_gng_code": "string or null (MUST extract 2-digit to 8-digit GNG/NHM code, e.g. 72 or 4407 or 0207)",\n'
+        '  "cargo_name_raw": "string or null (commodity name ONLY translated to English, e.g. Meat, Timber, Ferrous metals. EXCLUDE wagon types)",\n'
+        '  "actual_weight_tons": float or null,\n'
         '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
         '  "ref_section_cargo_wagons": integer or null (number of cargo wagons in refrig section, e.g. for "6+1" or "1+6" or "5+1" return 5; for "3+1" return 3),\n'
@@ -478,7 +479,7 @@ def call_gemini_nlu(client, user_input_text):
         "1. Search specifically for GNG / NHM / ГНГ codes (e.g., 72, 4407, 0207).\n"
         "2. Extract cargo_name_raw ONLY as commodity name.\n"
         "3. Detect refrigerated section combinations (e.g. 6+1, 1+6, 5+1, 3+1) and extract the CARGO wagon count into ref_section_cargo_wagons.\n"
-        "4. Set is_tariff_agreement_origin to true ONLY IF user explicitly mentions origin from Tariff Agreement country or fruit/vegetable discount 0.60.\n"
+        "4. Set is_tariff_agreement_origin to true ONLY IF user explicitly mentions origin from Tariff Agreement country (Tarif Razılaşması, страна ТС, Узбекистан, Казахстан и т.д.) or fruit/vegetable discount 0.60.\n"
         "5. Keep station names clean (e.g. 'Yalama', 'Absheron', 'Boyuk Kesik').\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
@@ -502,21 +503,197 @@ def call_gemini_nlu(client, user_input_text):
 
     return json.loads(raw_text.strip())
 
+def validate_nlu_input(nlu_res, lang):
+    missing_items = []
+    
+    st_from = nlu_res.get("route_from")
+    st_to = nlu_res.get("route_to")
+    weight = nlu_res.get("actual_weight_tons")
+    gng = nlu_res.get("cargo_gng_code")
+    cargo_name = nlu_res.get("cargo_name_raw")
+
+    if not st_from:
+        missing_items.append("📍 **Başlanğıc stansiyası** (Origin station)" if lang == "AZ" else ("📍 **Станция отправления**" if lang == "RU" else "📍 **Origin station**"))
+    if not st_to:
+        missing_items.append("📍 **Təyinat stansiyası** (Destination station)" if lang == "AZ" else ("📍 **Станция назначения**" if lang == "RU" else "📍 **Destination station**"))
+    if not weight or float(weight) <= 0:
+        missing_items.append("⚖️ **Faktiki çəki (tonla)** (Weight in tons)" if lang == "AZ" else ("⚖️ **Фактический вес (в тоннах)**" if lang == "RU" else "⚖️ **Actual weight in tons**"))
+    if not gng and not cargo_name:
+        missing_items.append("📦 **Yükün adı və ya GNG/NHM kodu** (Cargo code or name)" if lang == "AZ" else ("📦 **Наименование груза или код ГНГ/NHM**" if lang == "RU" else "📦 **Cargo name or GNG/NHM code**"))
+
+    return missing_items
+
 
 # ==============================================================================
-# 6. PYTHON CALCULATION ENGINE
+# 6. ЦЕНТРАЛЬНЫЙ РЕЕСТР ИСКЛЮЧЕНИЙ И РАСЧЕТНЫЙ ДВИЖОК
 # ==============================================================================
+def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_type, act_weight, billable_weight, dist_km, user_input_raw, config, lang, ui_t):
+    coeffs = []
+    notes = []
+
+    park_type = str(nlu_data.get("park_type", "SPS")).upper()
+    gng = str(nlu_data.get("cargo_gng_code", "")).strip()
+    wagon_type = str(nlu_data.get("wagon_type", "universal")).lower()
+    ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
+
+    # 1. Собственный вагон (СПС)
+    if park_type == "SPS":
+        if lang == "AZ":
+            lbl_sps = "Özəl vaqon əmsalı"
+        elif lang == "RU":
+            lbl_sps = "Собственный вагон"
+        else:
+            lbl_sps = "Private wagon"
+        coeffs.append((lbl_sps, 0.85))
+        notes.append(ui_t["note_sps"])
+
+    # 2. Базовый коэффициент 1.50 для Импорта/Экспорта
+    applied_150 = False
+    if shipment_type_code in ["import", "export"]:
+        ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
+        exceptions = ie_config.get("exceptions", {})
+        is_150_exception = False
+
+        if table_num in exceptions.get("tables", []):
+            is_150_exception = True
+
+        wood_codes = exceptions.get("wood_gng", [])
+        metal_prefixes = exceptions.get("metal_gng_prefixes", [])
+        metal_exact = exceptions.get("metal_gng_exact", [])
+        wood_wagons = exceptions.get("wood_wagon_types", ["universal"])
+        metal_wagons = exceptions.get("metal_wagon_types", ["universal"])
+
+        if wagon_type in wood_wagons and any(gng.startswith(w) for w in wood_codes):
+            is_150_exception = True
+
+        if wagon_type in metal_wagons and (
+            any(gng.startswith(m) for m in metal_prefixes) or gng in metal_exact
+        ):
+            is_150_exception = True
+
+        if not is_150_exception:
+            coeff_val = ie_config.get("coefficient_value", 1.50)
+            if lang == "AZ":
+                lbl_ie = "İdxal/İxrac baza əmsalı"
+            elif lang == "RU":
+                lbl_ie = "Импорт/Экспорт базовый"
+            else:
+                lbl_ie = "Import/Export base"
+            coeffs.append((lbl_ie, coeff_val))
+            applied_150 = True
+            notes.append(ui_t["note_import_base_150"])
+
+    # 3. Импортный коэффициент 1.04 для леса и металла
+    if shipment_type_code == "import" and any(gng.startswith(p) for p in ["44", "72", "73"]):
+        if lang == "AZ":
+            lbl_imp = "İdxal əmsalı (Meşə/Metal)"
+        elif lang == "RU":
+            lbl_imp = "Импортный коэф. (Лес/Металл)"
+        else:
+            lbl_imp = "Import coeff."
+        coeffs.append((lbl_imp, 1.04))
+        notes.append(ui_t["note_timber_metal"])
+
+    # 4. Коэффициент состава рефсекции
+    applied_ref_comp = False
+    if is_ref_type and ref_wagons_cnt is not None:
+        try:
+            w_cnt = int(ref_wagons_cnt)
+            ref_comp_cfg = config.get("table_5_rules", {}).get("ref_section_composition", {})
+            if lang == "AZ":
+                lbl_ref = "Refseksiya tərkibi əmsalı"
+            elif lang == "RU":
+                lbl_ref = "Коэф. состава рефсекции"
+            else:
+                lbl_ref = "Refrig. section composition coeff."
+
+            if w_cnt >= 5:
+                item = ref_comp_cfg.get("5_or_more_wagons", {})
+                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 0.85)))
+                applied_ref_comp = True
+            elif w_cnt == 3:
+                item = ref_comp_cfg.get("3_wagons", {})
+                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 1.10)))
+                applied_ref_comp = True
+            elif w_cnt == 2:
+                item = ref_comp_cfg.get("2_wagons", {})
+                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 1.40)))
+                applied_ref_comp = True
+            elif w_cnt == 1:
+                item = ref_comp_cfg.get("1_wagon", {})
+                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 1.70)))
+                applied_ref_comp = True
+
+            if applied_ref_comp:
+                notes.append(ui_t["note_ref_composition"])
+        except (ValueError, TypeError):
+            pass
+
+    # 5. Транзит изотермических вагонов 1.20
+    if shipment_type_code == "transit" and is_ref_type:
+        ref_tr_cfg = config.get("coefficients_updated_rules_2026", {}).get("refrigerated_transit_1_20", {})
+        val_120 = ref_tr_cfg.get("coefficient_value", 1.20)
+        lbl_120 = ref_tr_cfg.get("labels", {}).get(lang, "Tranzit ref əmsalı")
+        coeffs.append((lbl_120, val_120))
+        notes.append(ui_t["note_ref_transit_120"])
+
+    # 6. Плодоовощная продукция из стран Тарифного Соглашения (коэф. 0.60)
+    fveg_rule = config.get("table_5_rules", {}).get("fruit_veg_discount_0_60", {})
+    fruit_veg_codes = fveg_rule.get("gng_prefixes", ["04100", "04200", "04300", "04400", "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710", "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810", "12129100"])
+    is_fruit_veg = any(gng.startswith(code) for code in fruit_veg_codes)
+
+    if is_ref_type and is_fruit_veg:
+        if bool(nlu_data.get("is_tariff_agreement_origin", False)):
+            val_060 = fveg_rule.get("coefficient_value", 0.60)
+            if lang == "AZ":
+                lbl_fv = "Meyvə-tərəvəz güzəşt əmsalı (TR)"
+            elif lang == "RU":
+                lbl_fv = "Плодоовощная скидка (ТР)"
+            else:
+                lbl_fv = "Fruit/veg discount (TA)"
+            coeffs.append((lbl_fv, val_060))
+        else:
+            if lang == "AZ":
+                note_hint = "💡 Qeyd: Yük Tarif Razılaşması iştirakçısı olan ölkələrdə istehsal olunubsa, 0.60 güzəşt əmsalı tətbiq edilə bilər."
+            elif lang == "RU":
+                note_hint = "💡 Примечание: Если груз произведен в стране Тарифного Соглашения, может применяться скидочный коэффициент 0.60."
+            else:
+                note_hint = "💡 Note: If cargo is originating from a Tariff Agreement country, a 0.60 discount coefficient may apply."
+            notes.append(note_hint)
+
+    # 7. Дополнительный коэффициент 1.015
+    input_lower = user_input_raw.lower()
+    is_empty_run = any(k in input_lower for k in ["boş", "порожн", "empty"])
+    if not is_empty_run:
+        add_coeff_info = config.get("general_additional_coefficient_1_015", {})
+        val_1015 = add_coeff_info.get("coefficient_value", 1.015)
+        lbl_1015 = add_coeff_info.get("labels", {}).get(lang, "Əlavə əmsal")
+        coeffs.append((lbl_1015, val_1015))
+        notes.append(ui_t["note_coef_1015"])
+
+    # 8. Примечания по минимальному расстоянию и весу
+    if shipment_type_code == "import" and dist_km < 151:
+        notes.append(ui_t["note_import"])
+    elif shipment_type_code == "export" and dist_km < 101:
+        notes.append(ui_t["note_export"])
+
+    if act_weight < billable_weight:
+        notes.append(ui_t["note_min_weight"])
+
+    notes.append(ui_t["note_express"])
+
+    return coeffs, notes
+
 def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     config = load_rules_config()
 
-    st_from = nlu_data.get("route_from", "Yalama")
-    st_to = nlu_data.get("route_to", "Beyuk kasik")
-    gng = str(nlu_data.get("cargo_gng_code", "72")).strip()
+    st_from = nlu_data.get("route_from")
+    st_to = nlu_data.get("route_to")
+    gng = str(nlu_data.get("cargo_gng_code", "")).strip()
     cargo_name_nlu = str(nlu_data.get("cargo_name_raw", "")).strip()
-    act_weight = float(nlu_data.get("actual_weight_tons", 35.0))
+    act_weight = float(nlu_data.get("actual_weight_tons", 0.0))
     park_type = str(nlu_data.get("park_type", "SPS")).upper()
     wagon_type = str(nlu_data.get("wagon_type", "universal")).lower()
-    is_ta_origin = bool(nlu_data.get("is_tariff_agreement_origin", False))
     ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
 
     border_info = config.get("border_stations", {})
@@ -565,6 +742,13 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
             shipment_type_display = "Domestic shipment"
 
     dist_km = find_distance_in_memory(c_from, c_to)
+    if dist_km is None:
+        raise ValueError(
+            f"Marşrut üzrə məsafə tapılmadı: {st_from} - {st_to}" if lang == "AZ" else (
+                f"Расстояние для маршрута не найдено в справочнике: {st_from} - {st_to}" if lang == "RU" else
+                f"Distance for route was not found in database: {st_from} - {st_to}"
+            )
+        )
 
     billable_weight = act_weight
 
@@ -572,352 +756,4 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         if billable_weight < 60.0:
             billable_weight = 60.0
     else:
-        min_norms = config.get("minimal_weight_norms_gng", {}).get("rules", [])
-        for rule in min_norms:
-            prefixes = rule.get("gng_prefixes", [])
-            if any(gng.startswith(p) for p in prefixes):
-                norm = rule.get("norm_tons", 0)
-                if billable_weight < norm:
-                    billable_weight = float(norm)
-                break
-
-    if act_weight < billable_weight:
-        weight_display = f"{int(act_weight) if act_weight.is_integer() else act_weight} t / {int(billable_weight) if billable_weight.is_integer() else billable_weight} t"
-    else:
-        weight_display = f"{int(act_weight) if act_weight.is_integer() else act_weight} t"
-
-    is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "auto", "авто"]) or (ref_wagons_cnt is not None)
-    if is_ref_type and os.path.exists("Table_5_Tariffs.txt"):
-        table_num = 5
-    elif shipment_type_code == "transit":
-        table_num = 4
-    else:
-        table_num = 3
-
-    base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, dist_km, billable_weight, "ref" if is_ref_type else wagon_type, lang)
-    unit_str = ui_t["unit_wagon"] if is_per_wagon else ui_t["unit_ton"]
-    
-    if is_per_wagon:
-        chf_unit = "CHF/вагон" if lang == "RU" else "CHF/vaqon"
-    else:
-        chf_unit = "CHF/т" if lang == "RU" else "CHF/t"
-        
-    base_tariff_display = f"**{base_chf:.2f} {chf_unit}** ({table_details})"
-
-    usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
-
-    coeffs = []
-
-    if park_type == "SPS":
-        if lang == "AZ":
-            lbl_sps = "Özəl vaqon əmsalı"
-        elif lang == "RU":
-            lbl_sps = "Собственный вагон"
-        else:
-            lbl_sps = "Private wagon"
-        coeffs.append((lbl_sps, 0.85))
-
-    applied_150_note = False
-    if shipment_type_code in ["import", "export"]:
-        ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
-        exceptions = ie_config.get("exceptions", {})
-        
-        is_150_exception = False
-        if table_num in exceptions.get("tables", []):
-            is_150_exception = True
-            
-        wood_codes = exceptions.get("wood_gng", [])
-        metal_prefixes = exceptions.get("metal_gng_prefixes", [])
-        metal_exact = exceptions.get("metal_gng_exact", [])
-        wood_wagons = exceptions.get("wood_wagon_types", ["universal"])
-        metal_wagons = exceptions.get("metal_wagon_types", ["universal"])
-        
-        if wagon_type in wood_wagons and any(gng.startswith(w) for w in wood_codes):
-            is_150_exception = True
-            
-        if wagon_type in metal_wagons and (
-            any(gng.startswith(m) for m in metal_prefixes) or gng in metal_exact
-        ):
-            is_150_exception = True
-
-        if not is_150_exception:
-            coeff_val = ie_config.get("coefficient_value", 1.50)
-            if lang == "AZ":
-                lbl_ie = "İdxal/İxrac baza əmsalı"
-            elif lang == "RU":
-                lbl_ie = "Импорт/Экспорт базовый"
-            else:
-                lbl_ie = "Import/Export base"
-            coeffs.append((lbl_ie, coeff_val))
-            applied_150_note = True
-
-    if shipment_type_code == "import" and any(gng.startswith(p) for p in ["44", "72", "73"]):
-        if lang == "AZ":
-            lbl_imp = "İdxal əmsalı (Meşə/Metal)"
-        elif lang == "RU":
-            lbl_imp = "Импортный коэф. (Лес/Металл)"
-        else:
-            lbl_imp = "Import coeff."
-        coeffs.append((lbl_imp, 1.04))
-
-    applied_ref_comp_note = False
-    if is_ref_type and ref_wagons_cnt is not None:
-        try:
-            w_cnt = int(ref_wagons_cnt)
-            ref_comp_cfg = config.get("table_5_rules", {}).get("ref_section_composition", {})
-            if lang == "AZ":
-                lbl_ref = "Refseksiya tərkibi əmsalı"
-            elif lang == "RU":
-                lbl_ref = "Коэф. состава рефсекции"
-            else:
-                lbl_ref = "Refrig. section composition coeff."
-            
-            if w_cnt >= 5:
-                item = ref_comp_cfg.get("5_or_more_wagons", {})
-                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 0.85)))
-                applied_ref_comp_note = True
-            elif w_cnt == 3:
-                item = ref_comp_cfg.get("3_wagons", {})
-                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 1.10)))
-                applied_ref_comp_note = True
-            elif w_cnt == 2:
-                item = ref_comp_cfg.get("2_wagons", {})
-                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 1.40)))
-                applied_ref_comp_note = True
-            elif w_cnt == 1:
-                item = ref_comp_cfg.get("1_wagon", {})
-                coeffs.append((item.get("labels", {}).get(lang, lbl_ref), item.get("coefficient_value", 1.70)))
-                applied_ref_comp_note = True
-        except (ValueError, TypeError):
-            pass
-
-    applied_ref_transit_note = False
-    if shipment_type_code == "transit" and is_ref_type:
-        ref_tr_cfg = config.get("coefficients_updated_rules_2026", {}).get("refrigerated_transit_1_20", {})
-        val_120 = ref_tr_cfg.get("coefficient_value", 1.20)
-        lbl_120 = ref_tr_cfg.get("labels", {}).get(lang, "Tranzit ref əmsalı")
-        coeffs.append((lbl_120, val_120))
-        applied_ref_transit_note = True
-
-    fveg_rule = config.get("table_5_rules", {}).get("fruit_veg_discount_0_60", {})
-    fruit_veg_codes = fveg_rule.get("gng_prefixes", [])
-    if is_ta_origin and table_num == 5 and any(gng.startswith(code) for code in fruit_veg_codes):
-        val_060 = fveg_rule.get("coefficient_value", 0.60)
-        if lang == "AZ":
-            lbl_fv = "Meyvə-tərəvəz güzəşt əmsalı"
-        elif lang == "RU":
-            lbl_fv = "Плодоовощная скидка"
-        else:
-            lbl_fv = "Fruit/veg discount"
-        coeffs.append((lbl_fv, val_060))
-
-    input_lower = user_input_raw.lower()
-    is_empty_run = any(k in input_lower for k in ["boş", "порожн", "empty"])
-    if not is_empty_run:
-        add_coeff_info = config.get("general_additional_coefficient_1_015", {})
-        val_1015 = add_coeff_info.get("coefficient_value", 1.015)
-        lbl_1015 = add_coeff_info.get("labels", {}).get(lang, "Əlavə əmsal")
-        coeffs.append((lbl_1015, val_1015))
-
-    final_rate = base_chf / usd_rate
-    formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
-
-    for item_lbl, c_val in coeffs:
-        final_rate *= c_val
-        formula_parts.append(f"{c_val}")
-
-    formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit_str}"
-    express_rate_str = f"{final_rate * 1.02:.2f} {unit_str}"
-
-    lang_abbr = config.get("language_abbreviations", {}).get(lang, {})
-    park_display = lang_abbr.get("private_wagon", "SPS") if park_type == "SPS" else lang_abbr.get("inventory_wagon", "MPS")
-
-    cargo_translations = {
-        "meat": {"AZ": "Ət", "RU": "Мясо", "EN": "Meat"},
-        "ferrous metals": {"AZ": "Qara metallar", "RU": "Черные металлы", "EN": "Ferrous metals"},
-        "timber": {"AZ": "Meşə materialları", "RU": "Лесоматериалы", "EN": "Timber"}
-    }
-    c_raw_lower = cargo_name_nlu.lower()
-    translated_cargo = cargo_translations.get(c_raw_lower, {}).get(lang, cargo_name_nlu)
-
-    if gng.startswith("72") and not translated_cargo:
-        if lang == "AZ":
-            translated_cargo = "Qara metallar"
-        elif lang == "RU":
-            translated_cargo = "Черные металлы"
-        else:
-            translated_cargo = "Ferrous metals"
-
-    if is_ref_type:
-        if lang == "AZ":
-            wagon_disp_name = "İzotermik vaqon"
-        elif lang == "RU":
-            wagon_disp_name = "Изотермический вагон"
-        else:
-            wagon_disp_name = "Isothermal wagon"
-    else:
-        if lang == "AZ":
-            wagon_disp_name = "Universal vaqon"
-        elif lang == "RU":
-            wagon_disp_name = "Универсальный вагон"
-        else:
-            wagon_disp_name = "Universal wagon"
-
-    gng_label = "GNG" if lang != "EN" else "NHM"
-    if translated_cargo and not translated_cargo.isdigit() and translated_cargo != gng:
-        cargo_wagon_display = f"{gng_label} {gng} - {translated_cargo}, {wagon_disp_name} ({park_display})"
-    elif gng:
-        cargo_wagon_display = f"{gng_label} {gng}, {wagon_disp_name} ({park_display})"
-    else:
-        cargo_wagon_display = f"{wagon_disp_name} ({park_display})"
-
-    notes = []
-    if park_type == "SPS":
-        notes.append(ui_t["note_sps"])
-    
-    if shipment_type_code == "import" and dist_km < 151:
-        notes.append(ui_t["note_import"])
-    elif shipment_type_code == "export" and dist_km < 101:
-        notes.append(ui_t["note_export"])
-
-    if applied_150_note:
-        notes.append(ui_t["note_import_base_150"])
-    if act_weight < billable_weight:
-        notes.append(ui_t["note_min_weight"])
-
-    has_104 = False
-    has_1015 = False
-    for c_tuple in coeffs:
-        if len(c_tuple) >= 2:
-            if c_tuple[1] == 1.04:
-                has_104 = True
-            if c_tuple[1] == 1.015:
-                has_1015 = True
-
-    if has_104:
-        notes.append(ui_t["note_timber_metal"])
-    if applied_ref_comp_note:
-        notes.append(ui_t["note_ref_composition"])
-    if applied_ref_transit_note:
-        notes.append(ui_t["note_ref_transit_120"])
-    if has_1015:
-        notes.append(ui_t["note_coef_1015"])
-    notes.append(ui_t["note_express"])
-
-    if lang == "AZ":
-        period_str = f"{year}-cı fraxt ili"
-    elif lang == "RU":
-        period_str = f"{year} фрахтовый год"
-    else:
-        period_str = f"{year} freight year"
-
-    return {
-        "part1": {
-            "route": route_display,
-            "shipment_type": shipment_type_display,
-            "distance": f"{dist_km} km" if lang != "RU" else f"{dist_km} км",
-            "cargo_and_wagon": cargo_wagon_display,
-            "weight_info": weight_display,
-            "period": period_str
-        },
-        "part2": {
-            "exchange_rate": exchange_display,
-            "base_tariff": base_tariff_display,
-            "coefficients": [{"name": c_name, "value": f"{c_val}"} for c_name, c_val in coeffs]
-        },
-        "part3": {
-            "formula": formula_str,
-            "net_ady_rate": f"{final_rate:.2f} {unit_str}",
-            "express_rate": express_rate_str,
-            "notes": notes
-        }
-    }
-
-
-# ==============================================================================
-# 7. STREAMLIT INTERFACE RENDERING
-# ==============================================================================
-
-if st.button(t["calc_btn"], type="primary"):
-    if not user_input.strip():
-        st.warning(t["warning_empty"])
-    elif not user_api_key.strip():
-        st.error(t["api_warning"])
-    else:
-        client = genai.Client(api_key=user_api_key.strip())
-        train_holder = st.empty()
-        train_holder.markdown(
-            f"""
-            <div class="train-track">
-                <div class="train-animation">═══ 🚃 🚃 🚃 🚃 🚃 🚃 🚂</div>
-            </div>
-            <center><span class="train-text"><b>{t["spinner_text"].format(selected_year)}</b></span></center>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        try:
-            nlu_res = call_gemini_nlu(client, user_input)
-            data = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
-
-            train_holder.empty()
-
-            st.success(t["success"].format(selected_year))
-            st.markdown(f"### {t['result_title']}")
-
-            st.markdown(f"#### 📍 {t['sec1_title']}")
-            p1 = data["part1"]
-            table1_md = (
-                f"| {t['col_param']} | {t['col_val']} |\n"
-                f"| :--- | :--- |\n"
-                f"| **{t['lbl_route']}** | {p1['route']} |\n"
-                f"| **{t['lbl_type']}** | {p1['shipment_type']} |\n"
-                f"| **{t['lbl_dist']}** | {p1['distance']} |\n"
-                f"| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n"
-                f"| **{t['lbl_weight']}** | {p1['weight_info']} |\n"
-                f"| **{t['lbl_period']}** | {p1['period']} |"
-            )
-            st.markdown(table1_md)
-
-            st.markdown(f"#### ⚙️ {t['sec2_title']}")
-            p2 = data["part2"]
-            table2_rows = [
-                f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |",
-                f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |",
-            ]
-            for coeff in p2["coefficients"]:
-                table2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
-
-            st.markdown(
-                f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n"
-                + "\n".join(table2_rows)
-            )
-
-            st.markdown(f"#### 📐 {t['sec3_title']}")
-            p3 = data["part3"]
-            st.markdown(f"**{t['formula_title']}**")
-            st.code(p3["formula"], language="text")
-
-            st.markdown(f"**{t['rates_title']}**")
-            table3_rows = [
-                f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |",
-                f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |"
-            ]
-            st.markdown(
-                f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n"
-                + "\n".join(table3_rows)
-            )
-
-            if p3["notes"]:
-                st.markdown(f"**{t['notes_title']}**")
-                for idx, note in enumerate(p3["notes"], start=1):
-                    st.markdown(f"{idx}. *{note}*")
-
-            st.markdown(f"**Qeyd:** *{t['disclaimer']}*")
-
-        except Exception as e:
-            train_holder.empty()
-            st.error(f"Error: {str(e)}")
-
-st.markdown("---")
-st.caption(f"ADY Tarif Kalkulyatoru | AGT CARGO | ({selected_year}) [{selected_lang}]")
+        min_norms = config.get("minimal_weight_norms_gng", {}).
