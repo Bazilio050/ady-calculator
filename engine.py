@@ -122,7 +122,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
     ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
 
-    # 1. Собственный вагон (СПС) - Коэффициент МПС (1.0) ИГНОРИРУЕТСЯ
+    # 1. Собственный вагон (СПС)
     if park_type == "SPS":
         park_cfg = config.get("park_type_coefficients", {}).get("SPS")
         c_val = park_cfg.get("coefficient_value", 0.85) if park_cfg else 0.85
@@ -181,7 +181,6 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
 
             if item:
                 c_val = item.get("coefficient_value")
-                # Значение 1.00 (стандарт 4+1) пропускаем, чтобы не засорять формулу
                 if c_val and c_val != 1.0:
                     c_lbl = item.get("labels", {}).get(lang, "Ref Section Coeff")
                     coeffs.append((c_lbl, c_val))
