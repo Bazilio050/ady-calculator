@@ -123,6 +123,7 @@ UI_TEXT = {
         "note_timber_metal": "İdxal rejimində meşə materialları və qara metallar üçün 1.04 əmsalı tətbiq edilmişdir.",
         "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
         "note_min_weight": "Faktiki çəki minimal tarif normasından aşağı olduğu üçün hesablama minimal norma üzrə aparılmışdır.",
+        "note_ref_composition": "Refseksiyanın vaqon tərkibinə uyğun müvafiq əmsal tətbiq edilmişdir.",
         "unit_ton": "USD/t",
         "unit_wagon": "USD/vaqon"
     },
@@ -171,6 +172,7 @@ UI_TEXT = {
         "note_timber_metal": "В режиме импорта применен коэффициент 1.04 для лесных грузов и черных металлов.",
         "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
         "note_min_weight": "Так как фактический вес ниже минимальной нормы, расчет произведен по минимальной весовой норме.",
+        "note_ref_composition": "Применен соответствующий коэффициент согласно составу рефсекции.",
         "unit_ton": "USD/т",
         "unit_wagon": "USD/вагон"
     },
@@ -219,6 +221,7 @@ UI_TEXT = {
         "note_timber_metal": "Coefficient 1.04 applied for import of timber and ferrous metals.",
         "note_coef_1015": "Additional coefficient applied: 1.015.",
         "note_min_weight": "Since actual weight is below minimum billable weight, calculation is based on minimum weight.",
+        "note_ref_composition": "Coefficient applied according to refrigerated section composition.",
         "unit_ton": "USD/t",
         "unit_wagon": "USD/wagon"
     }
@@ -338,14 +341,12 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
     rates = load_table_rates(table_num)
     config = load_rules_config()
     
-    # Специфическая обработка Таблицы 5 (на базе rules_config.json)
     if table_num == 5:
         col_idx = 0
         is_per_wagon = False
         w_type = wagon_type.lower()
         t5_cfg = config.get("table_5_rules", {}).get("columns_mapping", {})
         
-        # Рефрижераторы
         ref_cfg = t5_cfg.get("refrigerated", {})
         if any(k in w_type for k in ref_cfg.get("keywords", ["ref", "реф"])):
             limit = ref_cfg.get("under_weight_limit", {}).get("limit_tons", 25.0)
@@ -354,7 +355,6 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
                 is_per_wagon = True
             else:
                 col_idx = ref_cfg.get("over_or_equal_limit", {}).get("column_index", 1)
-        # Термосы / Ледники
         elif any(k in w_type for k in t5_cfg.get("thermos", {}).get("keywords", ["thermos", "термос"])):
             thermo_cfg = t5_cfg.get("thermos", {})
             limit = thermo_cfg.get("under_weight_limit", {}).get("limit_tons", 25.0)
@@ -363,7 +363,6 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
                 is_per_wagon = True
             else:
                 col_idx = thermo_cfg.get("over_or_equal_limit", {}).get("column_index", 3)
-        # Автовозы
         elif any(k in w_type for k in t5_cfg.get("autocarrier", {}).get("keywords", ["auto", "авто"])):
             col_idx = t5_cfg.get("autocarrier", {}).get("default", {}).get("column_index", 4)
 
@@ -375,7 +374,6 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
 
         return 500.0, f"Cədvəl 5, {distance_km} km", is_per_wagon
 
-    # Таблицы 3 и 4 (Стандарт)
     for d_min, d_max, vals in rates:
         if d_min <= distance_km <= d_max:
             val = vals[-1]
@@ -428,19 +426,21 @@ def call_gemini_nlu(client, user_input_text):
         "{\n"
         '  "route_from": "string (origin station name without -eksp)",\n'
         '  "route_to": "string (destination station name without -eksp)",\n'
-        '  "cargo_gng_code": "string (MUST extract 2-digit to 8-digit GNG/NHM code, e.g. 72 or 4407)",\n'
-        '  "cargo_name_raw": "string (commodity name ONLY, e.g. Ferrous metals/Qara metallar/Timber/Meşə materialları. EXCLUDE wagon types like covered/open/hopper/tank/gondola/крытый/полувагон/цистерна/SPS/MPS)",\n'
+        '  "cargo_gng_code": "string (MUST extract 2-digit to 8-digit GNG/NHM code, e.g. 72 or 4407 or 0207)",\n'
+        '  "cargo_name_raw": "string (commodity name ONLY, e.g. Ferrous metals/Qara metallar/Timber/Meat. EXCLUDE wagon types like covered/open/hopper/tank/gondola/крытый/полувагон/цистерна/SPS/MPS)",\n'
         '  "actual_weight_tons": float,\n'
         '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
+        '  "ref_section_cargo_wagons": integer or null (number of cargo/freight wagons in refrig section, e.g. for "6+1" or "1+6" or "6 vaqon 1 dizel" return 6; for "5+1" return 5; for "3+1" return 3),\n'
         '  "is_tariff_agreement_origin": boolean,\n'
         '  "requested_period": "string or null"\n'
         "}\n\n"
         "STRICT NLU RULES:\n"
-        "1. Search specifically for GNG / NHM / ГНГ codes (e.g., 72, 4407).\n"
+        "1. Search specifically for GNG / NHM / ГНГ codes (e.g., 72, 4407, 0207).\n"
         "2. Extract cargo_name_raw ONLY as the commodity name. Words like 'крытый', 'открытый', 'вагон', 'SPS', 'MPS', 'gondola' belong to wagon properties, NEVER cargo_name_raw!\n"
-        "3. Set is_tariff_agreement_origin to true ONLY IF user explicitly mentions origin from Tariff Agreement country or fruit/vegetable discount 0.60.\n"
-        "4. Keep station names clean (e.g. 'Yalama', 'Absheron', 'Boyuk Kesik').\n\n"
+        "3. Detect refrigerated section combinations (e.g. 6+1, 1+6, 5+1, 3+1, 4+1) and extract the CARGO wagon count into ref_section_cargo_wagons.\n"
+        "4. Set is_tariff_agreement_origin to true ONLY IF user explicitly mentions origin from Tariff Agreement country or fruit/vegetable discount 0.60.\n"
+        "5. Keep station names clean (e.g. 'Yalama', 'Absheron', 'Boyuk Kesik').\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
     
@@ -478,6 +478,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     park_type = str(nlu_data.get("park_type", "SPS")).upper()
     wagon_type = str(nlu_data.get("wagon_type", "universal")).lower()
     is_ta_origin = bool(nlu_data.get("is_tariff_agreement_origin", False))
+    ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
 
     # 1. Станции и погранобозначения (-eksp.)
     border_info = config.get("border_stations", {})
@@ -554,7 +555,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         weight_display = f"{int(act_weight) if act_weight.is_integer() else act_weight} t"
 
     # 5. Выбор таблицы
-    is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "auto", "авто"])
+    is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "auto", "авто"]) or (ref_wagons_cnt is not None)
     if is_ref_type and os.path.exists("Table_5_Tariffs.txt"):
         table_num = 5
     elif shipment_type_code == "transit":
@@ -563,7 +564,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         table_num = 3
 
     # 6. Базовая ставка CHF
-    base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, dist_km, billable_weight, wagon_type)
+    base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, dist_km, billable_weight, "ref" if is_ref_type else wagon_type)
     unit_str = ui_t["unit_wagon"] if is_per_wagon else ui_t["unit_ton"]
     chf_unit = "CHF/vaqon" if is_per_wagon else "CHF/ton"
     base_tariff_display = f"{base_chf:.2f} {chf_unit} ({table_details})"
@@ -599,7 +600,33 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     if shipment_type_code == "import" and any(gng.startswith(p) for p in ["44", "72", "73"]):
         coeffs.append(("İdxal əmsalı (Meşə/Metal)" if lang == "AZ" else ("Импортный коэф. (Лес/Металл)" if lang == "RU" else "Import coeff."), 1.04))
 
-    # Специальный коэффициент 0.60 для плодоовощной продукции (чтение из rules_config)
+    # Коэффициент состава рефсекции (6+1, 5+1, 3+1 и т.д.)
+    applied_ref_comp_note = False
+    if is_ref_type and ref_wagons_cnt is not None:
+        try:
+            w_cnt = int(ref_wagons_cnt)
+            ref_comp_cfg = config.get("table_5_rules", {}).get("ref_section_composition", {})
+            
+            if w_cnt >= 5:
+                item = ref_comp_cfg.get("5_or_more_wagons", {})
+                coeffs.append((item.get("labels", {}).get(lang, "Refseksiya tərkibi əmsalı"), item.get("coefficient_value", 0.85)))
+                applied_ref_comp_note = True
+            elif w_cnt == 3:
+                item = ref_comp_cfg.get("3_wagons", {})
+                coeffs.append((item.get("labels", {}).get(lang, "Refseksiya tərkibi əmsalı"), item.get("coefficient_value", 1.10)))
+                applied_ref_comp_note = True
+            elif w_cnt == 2:
+                item = ref_comp_cfg.get("2_wagons", {})
+                coeffs.append((item.get("labels", {}).get(lang, "Refseksiya tərkibi əmsalı"), item.get("coefficient_value", 1.40)))
+                applied_ref_comp_note = True
+            elif w_cnt == 1:
+                item = ref_comp_cfg.get("1_wagon", {})
+                coeffs.append((item.get("labels", {}).get(lang, "Refseksiya tərkibi əmsalı"), item.get("coefficient_value", 1.70)))
+                applied_ref_comp_note = True
+        except (ValueError, TypeError):
+            pass
+
+    # Специальный коэффициент 0.60 для плодоовощной продукции
     fveg_rule = config.get("table_5_rules", {}).get("fruit_veg_discount_0_60", {})
     fruit_veg_codes = fveg_rule.get("gng_prefixes", [])
     if is_ta_origin and table_num == 5 and any(gng.startswith(code) for code in fruit_veg_codes):
@@ -661,6 +688,8 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         notes.append(ui_t["note_min_weight"])
     if any(c[1] == 1.04 for c in coeffs):
         notes.append(ui_t["note_timber_metal"])
+    if applied_ref_comp_note:
+        notes.append(ui_t["note_ref_composition"])
     if any(c[1] == 1.015 for c in coeffs):
         notes.append(ui_t["note_coef_1015"])
     notes.append(ui_t["note_express"])
