@@ -3,7 +3,7 @@ import os
 import re
 import streamlit as st
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=60)
 def load_rules_config():
     if os.path.exists("rules_config.json"):
         with open("rules_config.json", "r", encoding="utf-8") as f:
@@ -25,7 +25,7 @@ def normalize_st_name(name):
     n = n.replace('beyuk', 'boyuk').replace('kasik', 'kesik').replace('elet', 'alat')
     return re.sub(r'[^a-z0-9]', '', n)
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, ttl=60)
 def load_distances_map():
     dist_map = {}
     dist_files = ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]
