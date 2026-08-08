@@ -46,3 +46,23 @@ def call_gemini_nlu(client, user_input_text, lang):
         raw_text = raw_text[:-3]
 
     return json.loads(raw_text.strip())
+
+def validate_nlu_input(nlu_res, lang):
+    missing_items = []
+    
+    st_from = nlu_res.get("route_from")
+    st_to = nlu_res.get("route_to")
+    weight = nlu_res.get("actual_weight_tons")
+    gng = nlu_res.get("cargo_gng_code")
+    cargo_name = nlu_res.get("cargo_name")
+
+    if not st_from:
+        missing_items.append("📍 **Başlanğıc stansiyası** (Origin station)" if lang == "AZ" else ("📍 **Станция отправления**" if lang == "RU" else "📍 **Origin station**"))
+    if not st_to:
+        missing_items.append("📍 **Təyinat stansiyası** (Destination station)" if lang == "AZ" else ("📍 **Станция назначения**" if lang == "RU" else "📍 **Destination station**"))
+    if not weight or float(weight) <= 0:
+        missing_items.append("⚖️ **Faktiki çəki (tonla)** (Weight in tons)" if lang == "AZ" else ("⚖️ **Фактический вес (в тоннах)**" if lang == "RU" else "⚖️ **Actual weight in tons**"))
+    if not gng and not cargo_name:
+        missing_items.append("📦 **Yükün adı və ya GNG/NHM kodu** (Cargo code or name)" if lang == "AZ" else ("📦 **Наименование груза или код ГНГ/NHM**" if lang == "RU" else "📦 **Cargo name or GNG/NHM code**"))
+
+    return missing_items
