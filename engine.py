@@ -85,7 +85,7 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
             val = vals[col_idx] if len(vals) == 11 else (vals[min(col_idx, len(vals) - 1)] if len(vals) > 1 else vals[0])
             return val, f"{tbl_name} {table_num}, {d_min}-{d_max} {km_unit}, {int(billable_weight_tons)} t", False
             
-    return None, f"{tbl_name} {table_num}, {distance_km} {km_unit}, {int(billable_weight_tons)} t", False
+    return None, f"{tbl_name} {table_num}, {distance_km} {km_unit}", is_per_wagon
 
 def get_currency_rate(requested_period, lang="AZ"):
     config = load_rules_config()
@@ -122,13 +122,15 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
     ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
 
-    park_cfg = config.get("park_type_coefficients", {}).get(park_type)
-    if park_cfg:
-        c_val = park_cfg.get("coefficient_value", 0.85)
-        c_lbl = park_cfg.get("labels", {}).get(lang, f"{park_type} Coeff")
+    # 1. Собственный вагон (СПС) - Коэффициент МПС (1.0) ИГНОРИРУЕТСЯ и не выводится!
+    if park_type == "SPS":
+        park_cfg = config.get("park_type_coefficients", {}).get("SPS")
+        c_val = park_cfg.get("coefficient_value", 0.85) if park_cfg else 0.85
+        c_lbl = park_cfg.get("labels", {}).get(lang, "SPS Coeff") if park_cfg else "SPS Coeff"
         coeffs.append((c_lbl, c_val))
         notes.append(ui_t["note_sps"])
 
+    # 2. Базовый коэффициент 1.50 для Импорта/Экспорта и его 5 ИСКЛЮЧЕНИЙ
     if shipment_type_code in ["import", "export"]:
         ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
         exceptions = ie_config.get("exceptions", {})
@@ -245,7 +247,14 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
                 billable_weight = float(norm)
             break
 
-    weight_display = f"{int(act_weight) if act_weight.is_integer() else act_weight} t / {int(billable_weight) if billable_weight.is_integer() else billable_weight} t" if act_weight < billable_weight else f"{int(act_weight) if act_weight.is_integer() else act_weight} t"
+    act_w_str = f"{int(act_weight) if act_weight.is_integer() else act_weight}"
+    bill_w_str = f"{int(billable_weight) if billable_weight.is_integer() else billable_weight}"
+    
+    # Новый понятный формат веса: 35 t (min. 45 t)
+    if act_weight < billable_weight:
+        weight_display = f"{act_w_str} t (min. {bill_w_str} t)"
+    else:
+        weight_display = f"{act_w_str} t"
 
     is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос"]) or (ref_wagons_cnt is not None)
     table_num = 5 if (is_ref_type and os.path.exists("Table_5_Tariffs.txt")) else (4 if shipment_type_code == "transit" else 3)
