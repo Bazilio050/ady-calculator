@@ -42,6 +42,9 @@ def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type
     tbl_name = "Cədvəl" if lang == "AZ" else ("Таблица" if lang == "RU" else "Table")
     km_unit = "km"
 
+    if not rates:
+        return None, f"{tbl_name} {table_num} faylı tapılmadı", False
+
     if table_num == 5:
         col_idx = 0
         is_per_wagon = False
@@ -342,9 +345,13 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         weight_display = f"{act_w_str} t"
 
     is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос"]) or (ref_wagons_cnt is not None)
-    table_num = 5 if (is_ref_type and os.path.exists("Table_5_Tariffs.txt")) else (4 if shipment_type_code == "transit" else 3)
+    table_num = 5 if (is_ref_type and (os.path.exists("Table_5_Tariffs.txt") or os.path.exists("Table5.txt"))) else (4 if shipment_type_code == "transit" else 3)
 
     base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, tariff_dist_km, billable_weight, "ref" if is_ref_type else wagon_type, lang)
+    
+    if base_chf is None:
+        raise ValueError(f"Baza tarifi tapılmadı. (Cədvəl {table_num}, məsafə: {tariff_dist_km} km)")
+
     unit_str = ui_t["unit_wagon"] if is_per_wagon else ui_t["unit_ton"]
     chf_unit = "CHF/вагон" if (is_per_wagon and lang == "RU") else ("CHF/vaqon" if is_per_wagon else ("CHF/т" if lang == "RU" else "CHF/t"))
         
