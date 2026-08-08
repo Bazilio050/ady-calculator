@@ -42,6 +42,52 @@
       "inventory_desc": "Railway inventory park"
     }
   },
+  "table_5_rules": {
+    "_description_ru": "Правила выбора колонок и единиц измерения для Таблицы 5 (Рефрижераторы, термосы, автовозы)",
+    "columns_mapping": {
+      "refrigerated": {
+        "keywords": ["ref", "реф", "arv", "refrigerated", "refrijerator"],
+        "under_weight_limit": {
+          "limit_tons": 25.0,
+          "column_index": 0,
+          "unit_type": "wagon"
+        },
+        "over_or_equal_limit": {
+          "column_index": 1,
+          "unit_type": "ton"
+        }
+      },
+      "thermos": {
+        "keywords": ["thermos", "термос", "lednik", "ледник"],
+        "under_weight_limit": {
+          "limit_tons": 25.0,
+          "column_index": 2,
+          "unit_type": "wagon"
+        },
+        "over_or_equal_limit": {
+          "column_index": 3,
+          "unit_type": "ton"
+        }
+      },
+      "autocarrier": {
+        "keywords": ["auto", "авто", "car", "avto"],
+        "default": {
+          "column_index": 4,
+          "unit_type": "ton"
+        }
+      }
+    },
+    "fruit_veg_discount_0_60": {
+      "coefficient_value": 0.60,
+      "gng_prefixes": [
+        "04100", "04200", "04300", "04400", 
+        "05100", "05200", "05300", 
+        "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710", 
+        "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810", 
+        "12129100"
+      ]
+    }
+  },
   "general_additional_coefficient_1_015": {
     "_description_ru": "Дополнительный коэффициент 1.015, применяемый с 1 марта 2026 года на все перевозки, кроме порожнего пробега",
     "coefficient_value": 1.015,
