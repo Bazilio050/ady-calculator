@@ -23,7 +23,13 @@
   },
   "border_stations": {
     "suffixes": { "AZ": "-eksp.", "RU": "-эксп.", "EN": "-exp." },
-    "list": ["Yalama", "Boyuk Kesik", "Astara", "Culfa", "Alat"]
+    "list": [
+      "Yalama", 
+      "Böyük Kəsik", "Boyuk Kesik", 
+      "Astara", 
+      "Culfa", 
+      "Ələt", "Alat"
+    ]
   },
   "minimal_weight_norms_gng": {
     "rules": [
