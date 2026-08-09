@@ -51,8 +51,8 @@ def normalize_st_name(name):
 
 def find_distance_in_memory(st_from, st_to):
     """
-    Поиск расстояния в Markdown-таблице Distances.txt.
-    Учитывает наличие кода станции в столбце 1 и символы **.
+    Поиск расстояния СТРОГО по файлу Distances.txt.
+    Никаких угадываний или дефолтных значений.
     """
     if not st_from or not st_to:
         return None
