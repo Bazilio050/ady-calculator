@@ -5,6 +5,7 @@ from utils import load_rules_config, find_distance_in_memory, normalize_st_name
 from tables.table_3 import calculate_table_3_base, get_table_3_coefficients
 from tables.table_4 import calculate_table_4_base, get_table_4_coefficients
 from tables.table_5 import calculate_table_5_base, get_table_5_coefficients
+from tables.table_6 import calculate_table_6_base, get_table_6_coefficients
 
 
 def get_currency_rate(requested_period, lang="AZ"):
@@ -40,7 +41,7 @@ def get_currency_rate(requested_period, lang="AZ"):
 def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_type, act_weight, billable_weight, dist_km, user_input_raw, config, lang, ui_t, ref_wagons_cnt):
     """
     Чистый координатор коэффициентов:
-    - Запрашивает специфичные правила у модулей соответствующих таблиц (3, 4 или 5).
+    - Запрашивает специфичные правила у модулей соответствующих таблиц (3, 4, 5 или 6).
     - Применяет только сквозные глобальные правила (СПС, 1.015, минимальные плечи).
     """
     coeffs = []
@@ -64,9 +65,14 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         tbl_coeffs, tbl_notes = get_table_5_coefficients(shipment_type_code, wagon_type, gng, is_tariff_agreement, ref_wagons_cnt, lang=lang, ui_t=ui_t)
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
+    elif table_num == 6:
+        tbl_coeffs, tbl_notes = get_table_6_coefficients(shipment_type_code, wagon_type, gng, park_type=park_type, lang=lang, ui_t=ui_t)
+        coeffs.extend(tbl_coeffs)
+        notes.extend(tbl_notes)
 
-    # 2. Глобальный коэффициент СПС (скидка 15% - относится ко всем таблицам)
-    if park_type == "SPS":
+    # 2. Глобальный коэффициент СПС (скидка 15% - относится к универсальным/ИЗО вагонам)
+    # Для Таблицы 6 ставка в столбце 8 уже рассчитана с учетом типа цистерны.
+    if park_type == "SPS" and table_num != 6:
         park_cfg = config.get("park_type_coefficients", {}).get("SPS")
         c_val = park_cfg.get("coefficient_value", 0.85) if isinstance(park_cfg, dict) else 0.85
         c_lbl = park_cfg.get("labels", {}).get(lang, "SPS Coeff") if isinstance(park_cfg, dict) and "labels" in park_cfg else "SPS Coeff"
@@ -220,9 +226,14 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         weight_display = f"{act_w_str} t"
 
     is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос"]) or (ref_wagons_cnt is not None)
+    is_tanker_type = any(k in wagon_type for k in ["cistern", "цистерн", "tank", "çənd", "bunker", "бункер"])
 
     # 4. Выбор исполнительного модуля таблицы
-    if is_ref_type and (os.path.exists("Table_5_Tariffs.txt") or os.path.exists("Table5.txt") or os.path.exists("tables/Table_5_Tariffs.txt")):
+    if is_tanker_type and (os.path.exists("Table_6_Tariffs.txt") or os.path.exists("Table6.txt") or os.path.exists("tables/Table_6_Tariffs.txt")):
+        table_num = 6
+        is_per_wagon = False
+        base_chf, table_details = calculate_table_6_base(tariff_dist_km, billable_weight, gng, park_type, config, lang)
+    elif is_ref_type and (os.path.exists("Table_5_Tariffs.txt") or os.path.exists("Table5.txt") or os.path.exists("tables/Table_5_Tariffs.txt")):
         table_num = 5
         base_chf, table_details, is_per_wagon = calculate_table_5_base(tariff_dist_km, billable_weight, wagon_type, config, lang)
     elif shipment_type_code == "transit":
@@ -259,7 +270,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     park_display = "SPS" if park_type == "SPS" else "MPS"
 
     sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
-    wagon_disp_name = f"İzotermik vaqon{sec_info}" if (is_ref_type and lang == "AZ") else (f"Изотермический вагон{sec_info}" if is_ref_type and lang == "RU" else (f"Isothermal wagon{sec_info}" if is_ref_type else ("Universal vaqon" if lang == "AZ" else ("Универсальный вагон" if lang == "RU" else "Universal wagon"))))
+    wagon_disp_name = f"Çən vaqonu" if (is_tanker_type and lang == "AZ") else (f"Вагон-цистерна" if is_tanker_type and lang == "RU" else (f"Tank wagon" if is_tanker_type else (f"İzotermik vaqon{sec_info}" if (is_ref_type and lang == "AZ") else (f"Изотермический вагон{sec_info}" if is_ref_type and lang == "RU" else (f"Isothermal wagon{sec_info}" if is_ref_type else ("Universal vaqon" if lang == "AZ" else ("Универсальный вагон" if lang == "RU" else "Universal wagon")))))))
     gng_label = "GNG" if lang != "EN" else "NHM"
 
     cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})" if (cargo_name_nlu and cargo_name_nlu != gng) else (f"{gng_label} {gng}, {wagon_disp_name} ({park_display})" if gng else f"{wagon_disp_name} ({park_display})")
