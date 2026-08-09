@@ -65,6 +65,7 @@ STATION_EXACT_MAP = {
     "абшерон": "Abşeron",
     "abşeron": "Abşeron",
     "absheron": "Abşeron",
+    "abseron": "Abşeron",
     "сумгаит": "Sumqayıt",
     "sumqayıt": "Sumqayıt",
     "биляджары": "Biləcəri",
@@ -78,12 +79,23 @@ STATION_EXACT_MAP = {
 
 def norm_str(s: str) -> str:
     """
-    Очистка и приведение строки к нижнему регистру для корректного сравнения.
+    Приводит строку к единому виду с заменой специфических букв (латиница/кириллица),
+    чтобы убрать чувствительность к написанию (например, ş -> s, ə -> e).
     """
     if not s:
         return ""
     cleaned = s.strip().lower()
-    cleaned = re.sub(r'\s+', ' ', cleaned)
+
+    # Замены символов для гарантии 100% совпадения
+    replacements = {
+        'ə': 'e', 'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
+        'ё': 'е', 'sh': 's', 'ch': 'c', 'kh': 'h'
+    }
+    for old, new in replacements.items():
+        cleaned = cleaned.replace(old, new)
+
+    # Оставляем только буквенно-цифровые символы
+    cleaned = re.sub(r'[^a-z0-9]', '', cleaned)
     return cleaned
 
 
@@ -95,8 +107,9 @@ def normalize_st_name(st_name: str) -> str:
         return ""
 
     key = norm_str(st_name)
-    if key in STATION_EXACT_MAP:
-        return STATION_EXACT_MAP[key]
+    for map_key, official_name in STATION_EXACT_MAP.items():
+        if norm_str(map_key) == key:
+            return official_name
 
     return st_name.strip()
 
@@ -158,16 +171,22 @@ def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
                 if not line_str or line_str.startswith("#") or line_str.startswith("="):
                     continue
 
+                # Разделяем станционную пару и расстояние (по |, ; или :)
                 parts = re.split(r'\||;|\:', line_str)
                 if len(parts) >= 2:
                     st_pair = parts[0].strip()
                     dist_val_str = parts[-1].strip()
 
-                    pair_match = re.split(r'\s+[-–—]\s+|\s*;\s*', st_pair, maxsplit=1)
+                    # Разделяем пару станций по разделителю
+                    pair_match = re.split(r'\s+[-–—]\s+|\s*;\s*|\t+', st_pair, maxsplit=1)
                     if len(pair_match) == 2:
-                        s1 = norm_str(pair_match[0])
-                        s2 = norm_str(pair_match[1])
+                        s1_norm = normalize_st_name(pair_match[0])
+                        s2_norm = normalize_st_name(pair_match[1])
 
+                        s1 = norm_str(s1_norm)
+                        s2 = norm_str(s2_norm)
+
+                        # Прямой и обратный порядок
                         if (clean_from == s1 and clean_to == s2) or (clean_from == s2 and clean_to == s1):
                             dist_match = re.search(r'\d+', dist_val_str)
                             if dist_match:
