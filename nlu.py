@@ -9,8 +9,8 @@ def call_gemini_nlu(client, user_input_text, lang):
         "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
         "Extract shipment parameters from text into JSON. Return ONLY clean JSON:\n"
         "{\n"
-        '  "route_from": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Sumqayit, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron, Xudat)",\n'
-        '  "route_to": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Sumqayit, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron, Xudat)",\n'
+        f'  "route_from": "string or null (Official station name strictly in {target_lang}. If Azerbaijani, use correct Latin characters like Gəncə, Sumqayıt, Böyük Kəsik, Biləcəri, Xudat, Yalama)",\n'
+        f'  "route_to": "string or null (Official station name strictly in {target_lang}. If Azerbaijani, use correct Latin characters like Gəncə, Sumqayıt, Böyük Kəsik, Biləcəri, Xudat, Yalama)",\n'
         '  "cargo_gng_code": "string or null (Extract ANY 2-digit, 4-digit, or 6-to-8 digit numeric code representing GNG/NHM, e.g. 72, 28, 2815, 4407, 0207)",\n'
         f'  "cargo_name": "string or null (Short official commodity name translated STRICTLY to {target_lang} in 1-3 words based on GNG code or input text. If only GNG code like 2815 or 72 is provided, provide generic name for this GNG category)",\n'
         '  "actual_weight_tons": float or null,\n'
@@ -26,19 +26,17 @@ def call_gemini_nlu(client, user_input_text, lang):
         "- If user enters '2815', set 'cargo_gng_code' to '2815'.\n\n"
         "STRICT ROUTE RULES:\n"
         "- NEVER set 'route_from' and 'route_to' to the same station if two distinct stations are mentioned.\n"
-        "- 'сумгаит' / 'sumqait' / 'sumgayit' -> 'Sumqayit'\n"
-        "- 'худат' / 'xudat' -> 'Xudat'\n"
-        "- 'ялама' / 'yalama' -> 'Yalama'\n\n"
+        "- Standardize station names properly with correct local alphabet characters.\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
     
     response = client.models.generate_content(
         model="gemini-3.5-flash-lite",
-        contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.0,
             response_mime_type="application/json",
         ),
+        contents=prompt,
     )
 
     raw_text = response.text.strip()
