@@ -42,7 +42,7 @@ TEST_SUITE = [
             "ref_section_cargo_wagons": 5,
             "explicit_mode": "import"
         },
-        "expected_rate": 33,53
+        "expected_rate": 33.53
     },
     {
         "name": "3. Ялама -> Беюк-Кясик (78, крытый, 60т, СПС)",
