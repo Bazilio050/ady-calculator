@@ -1,841 +1,133 @@
-Yalama | Abşeron | 204
-Yalama-eksp. | Abşeron | 204
-Astara | Abşeron | 300
-Böyük Kəsik | Abşeron | 476
-Culfa | Abşeron | 466
-Ələt | Abşeron | 67
-
-Yalama | Ağdam | 548
-Yalama-eksp. | Ağdam | 548
-Astara | Ağdam | 454
-Böyük Kəsik | Ağdam | 286
-Culfa | Ağdam | 620
-Ələt | Ağdam | 297
-
-Yalama | Ağstafa | 633
-Yalama-eksp. | Ağstafa | 633
-Astara | Ağstafa | 539
-Böyük Kəsik | Ağstafa | 47
-Culfa | Ağstafa | 705
-Ələt | Ağstafa | 382
-
-Yalama | Alabaşlı | 551
-Yalama-eksp. | Alabaşlı | 551
-Astara | Alabaşlı | 457
-Böyük Kəsik | Alabaşlı | 129
-Culfa | Alabaşlı | 623
-Ələt | Alabaşlı | 300
-
-Yalama | Astara | 504
-Yalama-eksp. | Astara | 504
-Böyük Kəsik | Astara | 586
-Culfa | Astara | 532
-Ələt | Astara | 253
-
-Yalama | Atbulaq | 274
-Yalama-eksp. | Atbulaq | 274
-Astara | Atbulaq | 240
-Böyük Kəsik | Atbulaq | 406
-Culfa | Atbulaq | 406
-Ələt | Atbulaq | 23
-
-Yalama | Bakı yük | 207
-Yalama-eksp. | Bakı yük | 207
-Astara | Bakı yük | 327
-Böyük Kəsik | Bakı yük | 503
-Culfa | Bakı yük | 493
-Ələt | Bakı yük | 94
-
-Yalama | Bakı yük terminal | 212
-Yalama-eksp. | Bakı yük terminal | 212
-Astara | Bakı yük terminal | 332
-Böyük Kəsik | Bakı yük terminal | 508
-Culfa | Bakı yük terminal | 498
-Ələt | Bakı yük terminal | 99
-
-Yalama | Balakən | 634
-Yalama-eksp. | Balakən | 634
-Astara | Balakən | 540
-Böyük Kəsik | Balakən | 372
-Culfa | Balakən | 706
-Ələt | Balakən | 383
-
-Yalama | Bartaz | 556
-Yalama-eksp. | Bartaz | 556
-Astara | Bartaz | 418
-Böyük Kəsik | Bartaz | 638
-Culfa | Bartaz | 114
-Ələt | Bartaz | 305
-
-Yalama | Barxudarlı | 663
-Yalama-eksp. | Barxudarlı | 663
-Astara | Barxudarlı | 569
-Böyük Kəsik | Barxudarlı | 77
-Culfa | Barxudarlı | 735
-Ələt | Barxudarlı | 412
-
-Yalama | Başbaşı | 727
-Yalama-eksp. | Başbaşı | 727
-Astara | Başbaşı | 589
-Böyük Kəsik | Başbaşı | 809
-Culfa | Başbaşı | 57
-Ələt | Başbaşı | 476
-
-Yalama | Bərdə | 503
-Yalama-eksp. | Bərdə | 503
-Astara | Bərdə | 409
-Böyük Kəsik | Bərdə | 241
-Culfa | Bərdə | 575
-Ələt | Bərdə | 252
-
-Yalama | Bərguşad | 414
-Yalama-eksp. | Bərguşad | 414
-Astara | Bərguşad | 320
-Böyük Kəsik | Bərguşad | 266
-Culfa | Bərguşad | 486
-Ələt | Bərguşad | 163
-
-Yalama | Biləcəri | 192
-Yalama-eksp. | Biləcəri | 192
-Astara | Biləcəri | 312
-Böyük Kəsik | Biləcəri | 488
-Culfa | Biləcəri | 478
-Ələt | Biləcəri | 79
-
-Yalama | Binə | 227
-Yalama-eksp. | Binə | 227
-Astara | Binə | 347
-Böyük Kəsik | Binə | 523
-Culfa | Binə | 513
-Ələt | Binə | 114
-
-Yalama | Böyük Kəsik | 676
-Yalama-eksp. | Böyük Kəsik | 676
-Böyük Kəsik-eksp. | Böyük Kəsik | 0
-Astara | Böyük Kəsik | 582
-Culfa | Böyük Kəsik | 748
-Ələt | Böyük Kəsik | 425
-
-Yalama | Çarxı | 52
-Yalama-eksp. | Çarxı | 52
-Astara | Çarxı | 452
-Böyük Kəsik | Çarxı | 628
-Culfa | Çarxı | 618
-Ələt | Çarxı | 219
-
-Yalama | Cəlilabad | 414
-Yalama-eksp. | Cəlilabad | 414
-Astara | Cəlilabad | 90
-Böyük Kəsik | Cəlilabad | 496
-Culfa | Cəlilabad | 442
-Ələt | Cəlilabad | 163
-
-Yalama | Culfa | 670
-Yalama-eksp. | Culfa | 670
-Culfa-eksp. | Culfa | 0
-Astara | Culfa | 532
-Böyük Kəsik | Culfa | 752
-Ələt | Culfa | 419
-
-Yalama | Daşburun | 426
-Yalama-eksp. | Daşburun | 426
-Astara | Daşburun | 288
-Böyük Kəsik | Daşburun | 508
-Culfa | Daşburun | 244
-Ələt | Daşburun | 175
-
-Yalama | Dəllər | 572
-Yalama-eksp. | Dəllər | 572
-Astara | Dəllər | 478
-Böyük Kəsik | Dəllər | 108
-Culfa | Dəllər | 644
-Ələt | Dəllər | 321
-
-Yalama | Dəlməmmədli | 521
-Yalama-eksp. | Dəlməmmədli | 521
-Astara | Dəlməmmədli | 427
-Böyük Kəsik | Dəlməmmədli | 159
-Culfa | Dəlməmmədli | 593
-Ələt | Dəlməmmədli | 270
-
-Yalama | Dübəndi | 242
-Yalama-eksp. | Dübəndi | 242
-Astara | Dübəndi | 362
-Böyük Kəsik | Dübəndi | 538
-Culfa | Dübəndi | 528
-Ələt | Dübəndi | 129
-
-Yalama | Ələt | 261
-Yalama-eksp. | Ələt | 261
-Ələt-eksp. | Ələt | 10
-Astara | Ələt | 243
-Böyük Kəsik | Ələt | 419
-Culfa | Ələt | 409
-
-Yalama | Ələt eksport Aktau | 271
-Yalama-eksp. | Ələt eksport Aktau | 271
-Ələt-eksp. | Ələt eksport Aktau | 0
-
-Yalama | Ələt eksport Kurik | 271
-Yalama-eksp. | Ələt eksport Kurik | 271
-Ələt-eksp. | Ələt eksport Kurik | 0
-
-Yalama | Ələt eksport-Türk. | 271
-Yalama-eksp. | Ələt eksport-Türk. | 271
-Ələt-eksp. | Ələt eksport-Türk. | 0
-
-Yalama | Bakı ticarət liman | 271
-Yalama-eksp. | Bakı ticarət liman | 271
-Ələt-eksp. | Bakı ticarət liman | 0
-
-Yalama | Bakı ticarət limanı (eks) | 271
-Yalama-eksp. | Bakı ticarət limanı (eks) | 271
-Ələt-eksp. | Bakı ticarət limanı (eks) | 0
-
-Yalama | Bakı ticarət limanı (aşır) | 271
-Yalama-eksp. | Bakı ticarət limanı (aşır) | 271
-Ələt-eksp. | Bakı ticarət limanı (aşır) | 0
-
-Yalama | Ələt yeni | 266
-Yalama-eksp. | Ələt yeni | 266
-Astara | Ələt yeni | 238
-Böyük Kəsik | Ələt yeni | 424
-Culfa | Ələt yeni | 404
-Ələt | Ələt yeni | 15
-
-Yalama | Əsgəran | 563
-Yalama-eksp. | Əsgəran | 563
-Astara | Əsgəran | 469
-Böyük Kəsik | Əsgəran | 301
-Culfa | Əsgəran | 635
-Ələt | Əsgəran | 312
-
-Yalama | Gəncə | 539
-Yalama-eksp. | Gəncə | 539
-Astara | Gəncə | 445
-Böyük Kəsik | Gəncə | 141
-Culfa | Gəncə | 611
-Ələt | Gəncə | 288
-
-Yalama | Giləzi | 125
-Yalama-eksp. | Giləzi | 125
-Astara | Giləzi | 379
-Böyük Kəsik | Giləzi | 555
-Culfa | Giləzi | 545
-Ələt | Giləzi | 146
-
-Yalama | Goran | 496
-Yalama-eksp. | Goran | 496
-Astara | Goran | 402
-Böyük Kəsik | Goran | 184
-Culfa | Goran | 568
-Ələt | Goran | 245
-
-Yalama | Göylərçöl | 366
-Yalama-eksp. | Göylərçöl | 366
-Astara | Göylərçöl | 272
-Böyük Kəsik | Göylərçöl | 362
-Culfa | Göylərçöl | 438
-Ələt | Göylərçöl | 115
-
-Yalama | Göyşaban | 469
-Yalama-eksp. | Göyşaban | 469
-Astara | Göyşaban | 35
-Böyük Kəsik | Göyşaban | 551
-Culfa | Göyşaban | 497
-Ələt | Göyşaban | 218
-
-Yalama | Güzdək | 177
-Yalama-eksp. | Güzdək | 177
-Astara | Güzdək | 327
-Böyük Kəsik | Güzdək | 503
-Culfa | Güzdək | 493
-Ələt | Güzdək | 94
-
-Yalama | Hacıqabul | 304
-Yalama-eksp. | Hacıqabul | 304
-Astara | Hacıqabul | 210
-Böyük Kəsik | Hacıqabul | 376
-Culfa | Hacıqabul | 376
-Ələt | Hacıqabul | 53
-
-Yalama | Həkəri | 530
-Yalama-eksp. | Həkəri | 530
-Astara | Həkəri | 392
-Böyük Kəsik | Həkəri | 612
-Culfa | Həkəri | 140
-Ələt | Həkəri | 279
-
-Yalama | Horadiz | 464
-Yalama-eksp. | Horadiz | 464
-Astara | Horadiz | 326
-Böyük Kəsik | Horadiz | 546
-Culfa | Horadiz | 206
-Ələt | Horadiz | 213
-
-Yalama | Hövsan | 232
-Yalama-eksp. | Hövsan | 232
-Astara | Hövsan | 352
-Böyük Kəsik | Hövsan | 528
-Culfa | Hövsan | 527
-Ələt | Hövsan | 119
-
-Yalama | İmişli | 386
-Yalama-eksp. | İmişli | 386
-Astara | İmişli | 248
-Böyük Kəsik | İmişli | 468
-Culfa | İmişli | 284
-Ələt | İmişli | 135
-
-Yalama | Karçevan | 608
-Yalama-eksp. | Karçevan | 608
-Astara | Karçevan | 470
-Böyük Kəsik | Karçevan | 690
-Culfa | Karçevan | 62
-Ələt | Karçevan | 357
-
-Yalama | Keşlə | 200
-Yalama-eksp. | Keşlə | 200
-Astara | Keşlə | 320
-Böyük Kəsik | Keşlə | 496
-Culfa | Keşlə | 486
-Ələt | Keşlə | 87
-
-Yalama | Köçərli | 515
-Yalama-eksp. | Köçərli | 515
-Astara | Köçərli | 421
-Böyük Kəsik | Köçərli | 253
-Culfa | Köçərli | 587
-Ələt | Köçərli | 264
-
-Yalama | Kürdəmir | 380
-Yalama-eksp. | Kürdəmir | 380
-Astara | Kürdəmir | 286
-Böyük Kəsik | Kürdəmir | 300
-Culfa | Kürdəmir | 452
-Ələt | Kürdəmir | 129
-
-Yalama | Kürəkçay | 508
-Yalama-eksp. | Kürəkçay | 508
-Astara | Kürəkçay | 414
-Böyük Kəsik | Kürəkçay | 172
-Culfa | Kürəkçay | 580
-Ələt | Kürəkçay | 257
-
-Yalama | Ləcət | 13
-Yalama-eksp. | Ləcət | 13
-Astara | Ləcət | 491
-Böyük Kəsik | Ləcət | 667
-Culfa | Ləcət | 657
-Ələt | Ləcət | 258
-
-Yalama | Ləki | 446
-Yalama-eksp. | Ləki | 446
-Astara | Ləki | 352
-Böyük Kəsik | Ləki | 234
-Culfa | Ləki | 518
-Ələt | Ləki | 195
-
-Yalama | Lənkəran | 474
-Yalama-eksp. | Lənkəran | 474
-Astara | Lənkəran | 30
-Böyük Kəsik | Lənkəran | 556
-Culfa | Lənkəran | 502
-Ələt | Lənkəran | 223
-
-Yalama | Liman | 462
-Yalama-eksp. | Liman | 462
-Astara | Liman | 42
-Böyük Kəsik | Liman | 544
-Culfa | Liman | 490
-Ələt | Liman | 211
-
-Yalama | Mahmudlu | 486
-Yalama-eksp. | Mahmudlu | 486
-Astara | Mahmudlu | 348
-Böyük Kəsik | Mahmudlu | 568
-Culfa | Mahmudlu | 184
-Ələt | Mahmudlu | 235
-
-Yalama | Masallı | 428
-Yalama-eksp. | Masallı | 428
-Astara | Masallı | 76
-Böyük Kəsik | Masallı | 510
-Culfa | Masallı | 456
-Ələt | Masallı | 177
-
-Yalama | Maştağa | 226
-Yalama-eksp. | Maştağa | 226
-Astara | Maştağa | 346
-Böyük Kəsik | Maştağa | 522
-Culfa | Maştağa | 512
-Ələt | Maştağa | 113
-
-Yalama | Mehri | 599
-Yalama-eksp. | Mehri | 599
-Astara | Mehri | 461
-Böyük Kəsik | Mehri | 681
-Culfa | Mehri | 71
-Ələt | Mehri | 348
-
-Yalama | Mincivan | 544
-Yalama-eksp. | Mincivan | 544
-Astara | Mincivan | 406
-Böyük Kəsik | Mincivan | 626
-Culfa | Mincivan | 126
-Ələt | Mincivan | 293
-
-Yalama | Mingəçevir | 483
-Yalama-eksp. | Mingəçevir | 483
-Astara | Mingəçevir | 389
-Böyük Kəsik | Mingəçevir | 197
-Culfa | Mingəçevir | 555
-Ələt | Mingəçevir | 232
-
-Yalama | Mingəçevir şəhər | 501
-Yalama-eksp. | Mingəçevir şəhər | 501
-Astara | Mingəçevir şəhər | 407
-Böyük Kəsik | Mingəçevir şəhər | 215
-Culfa | Mingəçevir şəhər | 573
-Ələt | Mingəçevir şəhər | 250
-
-Yalama | Muğan | 316
-Yalama-eksp. | Muğan | 316
-Astara | Muğan | 222
-Böyük Kəsik | Muğan | 364
-Culfa | Muğan | 388
-Ələt | Muğan | 65
-
-Yalama | Mürsəlli | 335
-Yalama-eksp. | Mürsəlli | 335
-Astara | Mürsəlli | 197
-Böyük Kəsik | Mürsəlli | 417
-Culfa | Mürsəlli | 335
-Ələt | Mürsəlli | 84
-
-Yalama | Müsüslü | 400
-Yalama-eksp. | Müsüslü | 400
-Astara | Müsüslü | 306
-Böyük Kəsik | Müsüslü | 280
-Culfa | Müsüslü | 472
-Ələt | Müsüslü | 149
-
-Yalama | Naxçıvan | 715
-Yalama-eksp. | Naxçıvan | 715
-Astara | Naxçıvan | 577
-Böyük Kəsik | Naxçıvan | 797
-Culfa | Naxçıvan | 45
-Ələt | Naxçıvan | 464
-
-Yalama | Neftçala | 403
-Yalama-eksp. | Neftçala | 403
-Astara | Neftçala | 171
-Böyük Kəsik | Neftçala | 485
-Culfa | Neftçala | 431
-Ələt | Neftçala | 152
-
-Yalama | Nəvahi | 286
-Yalama-eksp. | Nəvahi | 286
-Astara | Nəvahi | 228
-Böyük Kəsik | Nəvahi | 394
-Culfa | Nəvahi | 394
-Ələt | Nəvahi | 35
-
-Yalama | Ordubad | 631
-Yalama-eksp. | Ordubad | 631
-Astara | Ordubad | 493
-Böyük Kəsik | Ordubad | 713
-Culfa | Ordubad | 39
-Ələt | Ordubad | 380
-
-Yalama | Pirsaat | 294
-Yalama-eksp. | Pirsaat | 294
-Astara | Pirsaat | 220
-Böyük Kəsik | Pirsaat | 386
-Culfa | Pirsaat | 386
-Ələt | Pirsaat | 43
-
-Yalama | Pirşağı | 238
-Yalama-eksp. | Pirşağı | 238
-Astara | Pirşağı | 358
-Böyük Kəsik | Pirşağı | 534
-Culfa | Pirşağı | 524
-Ələt | Pirşağı | 125
-
-Yalama | Poylu | 647
-Yalama-eksp. | Poylu | 647
-Astara | Poylu | 553
-Böyük Kəsik | Poylu | 33
-Culfa | Poylu | 719
-Ələt | Poylu | 396
-
-Yalama | Puta | 211
-Yalama-eksp. | Puta | 211
-Astara | Puta | 293
-Böyük Kəsik | Puta | 469
-Culfa | Puta | 459
-Ələt | Puta | 60
-
-Yalama | Qafan | 583
-Yalama-eksp. | Qafan | 583
-Astara | Qafan | 445
-Böyük Kəsik | Qafan | 665
-Culfa | Qafan | 165
-Ələt | Qafan | 332
-
-Yalama | Qamışlıq | 489
-Yalama-eksp. | Qamışlıq | 489
-Astara | Qamışlıq | 15
-Böyük Kəsik | Qamışlıq | 571
-Culfa | Qamışlıq | 517
-Ələt | Qamışlıq | 238
-
-Yalama | Qaradağ | 223
-Yalama-eksp. | Qaradağ | 223
-Astara | Qaradağ | 281
-Böyük Kəsik | Qaradağ | 457
-Culfa | Qaradağ | 447
-Ələt | Qaradağ | 48
-
-Yalama | Qaradağ terminal | 230
-Yalama-eksp. | Qaradağ terminal | 230
-Astara | Qaradağ terminal | 288
-Böyük Kəsik | Qaradağ terminal | 464
-Culfa | Qaradağ terminal | 454
-Ələt | Qaradağ terminal | 55
-
-Yalama | Qasımlı | 444
-Yalama-eksp. | Qasımlı | 444
-Astara | Qasımlı | 60
-Böyük Kəsik | Qasımlı | 526
-Culfa | Qasımlı | 472
-Ələt | Qasımlı | 193
-
-Yalama | Qax | 577
-Yalama-eksp. | Qax | 577
-Astara | Qax | 483
-Böyük Kəsik | Qax | 315
-Culfa | Qax | 649
-Ələt | Qax | 326
-
-Yalama | Qazax | 645
-Yalama-eksp. | Qazax | 645
-Astara | Qazax | 551
-Böyük Kəsik | Qazax | 59
-Culfa | Qazax | 717
-Ələt | Qazax | 394
-
-Yalama | Qırıxlı | 560
-Yalama-eksp. | Qırıxlı | 560
-Astara | Qırıxlı | 466
-Böyük Kəsik | Qırıxlı | 138
-Culfa | Qırıxlı | 632
-Ələt | Qırıxlı | 309
-
-Yalama | Qızılburun | 94
-Yalama-eksp. | Qızılburun | 94
-Astara | Qızılburun | 410
-Böyük Kəsik | Qızılburun | 586
-Culfa | Qızılburun | 576
-Ələt | Qızılburun | 177
-
-Yalama | Qızılca | 570
-Yalama-eksp. | Qızılca | 570
-Astara | Qızılca | 476
-Böyük Kəsik | Qızılca | 148
-Culfa | Qızılca | 642
-Ələt | Qızılca | 319
-
-Yalama | Qobustan | 247
-Yalama-eksp. | Qobustan | 247
-Astara | Qobustan | 257
-Böyük Kəsik | Qobustan | 433
-Culfa | Qobustan | 423
-Ələt | Qobustan | 24
-
-Yalama | Qovlar | 599
-Yalama-eksp. | Qovlar | 599
-Astara | Qovlar | 505
-Böyük Kəsik | Qovlar | 81
-Culfa | Qovlar | 671
-Ələt | Qovlar | 348
-
-Yalama | Quşçu körpü | 586
-Yalama-eksp. | Quşçu körpü | 586
-Astara | Quşçu körpü | 492
-Böyük Kəsik | Quşçu körpü | 164
-Culfa | Quşçu körpü | 658
-Ələt | Quşçu körpü | 335
-
-Yalama | Saatlı | 357
-Yalama-eksp. | Saatlı | 357
-Astara | Saatlı | 219
-Böyük Kəsik | Saatlı | 439
-Culfa | Saatlı | 313
-Ələt | Saatlı | 106
-
-Yalama | Sabir | 352
-Yalama-eksp. | Sabir | 352
-Astara | Sabir | 214
-Böyük Kəsik | Sabir | 434
-Culfa | Sabir | 330
-Ələt | Sabir | 101
-
-Yalama | Şabran | 75
-Yalama-eksp. | Şabran | 75
-Astara | Şabran | 429
-Böyük Kəsik | Şabran | 605
-Culfa | Şabran | 595
-Ələt | Şabran | 196
-
-Yalama | Salahlı | 657
-Yalama-eksp. | Salahlı | 657
-Astara | Salahlı | 563
-Böyük Kəsik | Salahlı | 23
-Culfa | Salahlı | 729
-Ələt | Salahlı | 406
-
-Yalama | Salyan | 368
-Yalama-eksp. | Salyan | 368
-Astara | Salyan | 136
-Böyük Kəsik | Salyan | 450
-Culfa | Salyan | 396
-Ələt | Salyan | 117
-
-Yalama | Saracalar | 346
-Yalama-eksp. | Saracalar | 346
-Astara | Saracalar | 208
-Böyük Kəsik | Saracalar | 428
-Culfa | Saracalar | 324
-Ələt | Saracalar | 95
-
-Yalama | Şaxtaxtı | 755
-Yalama-eksp. | Şaxtaxtı | 755
-Astara | Şaxtaxtı | 617
-Böyük Kəsik | Şaxtaxtı | 837
-Culfa | Şaxtaxtı | 85
-Ələt | Şaxtaxtı | 504
-
-Yalama | Şəki | 539
-Yalama-eksp. | Şəki | 539
-Astara | Şəki | 445
-Böyük Kəsik | Şəki | 277
-Culfa | Şəki | 611
-Ələt | Şəki | 288
-
-Yalama | Şəmkir | 562
-Yalama-eksp. | Şəmkir | 562
-Astara | Şəmkir | 468
-Böyük Kəsik | Şəmkir | 118
-Culfa | Şəmkir | 634
-Ələt | Şəmkir | 311
-
-Yalama | Sanqaçal | 238
-Yalama-eksp. | Sanqaçal | 238
-Astara | Sanqaçal | 266
-Böyük Kəsik | Sanqaçal | 442
-Culfa | Sanqaçal | 432
-Ələt | Sanqaçal | 33
-
-Yalama | Sanqaçal ter.(aşırma) | 240
-Yalama-eksp. | Sanqaçal ter.(aşırma) | 240
-Astara | Sanqaçal ter.(aşırma) | 268
-Böyük Kəsik | Sanqaçal ter.(aşırma) | 444
-Culfa | Sanqaçal ter.(aşırma) | 434
-Ələt | Sanqaçal ter.(aşırma) | 35
-
-Yalama | Şərur | 781
-Yalama-eksp. | Şərur | 781
-Astara | Şərur | 643
-Böyük Kəsik | Şərur | 863
-Culfa | Şərur | 111
-Ələt | Şərur | 530
-
-Yalama | Şirvan | 309
-Yalama-eksp. | Şirvan | 309
-Astara | Şirvan | 195
-Böyük Kəsik | Şirvan | 391
-Culfa | Şirvan | 361
-Ələt | Şirvan | 58
-
-Yalama | Sitalçay | 135
-Yalama-eksp. | Sitalçay | 135
-Astara | Sitalçay | 369
-Böyük Kəsik | Sitalçay | 545
-Culfa | Sitalçay | 535
-Ələt | Sitalçay | 136
-
-Yalama | Siyəzən | 105
-Yalama-eksp. | Siyəzən | 105
-Astara | Siyəzən | 399
-Böyük Kəsik | Siyəzən | 575
-Culfa | Siyəzən | 565
-Ələt | Siyəzən | 166
-
-Yalama | Soltanlı | 497
-Yalama-eksp. | Soltanlı | 497
-Astara | Soltanlı | 359
-Böyük Kəsik | Soltanlı | 579
-Culfa | Soltanlı | 173
-Ələt | Soltanlı | 246
-
-Yalama | Soyuq-Bulaq | 666
-Yalama-eksp. | Soyuq-Bulaq | 666
-Astara | Soyuq-Bulaq | 572
-Böyük Kəsik | Soyuq-Bulaq | 14
-Culfa | Soyuq-Bulaq | 738
-Ələt | Soyuq-Bulaq | 415
-
-Yalama | Sumqayıt | 167
-Yalama-eksp. | Sumqayıt | 167
-Astara | Sumqayıt | 337
-Böyük Kəsik | Sumqayıt | 513
-Culfa | Sumqayıt | 503
-Ələt | Sumqayıt | 104
-
-Yalama | Suraxanı | 218
-Yalama-eksp. | Suraxanı | 218
-Astara | Suraxanı | 338
-Böyük Kəsik | Suraxanı | 514
-Culfa | Suraxanı | 504
-Ələt | Suraxanı | 105
-
-Yalama | Təzəkənd | 522
-Yalama-eksp. | Təzəkənd | 522
-Astara | Təzəkənd | 428
-Böyük Kəsik | Təzəkənd | 260
-Culfa | Təzəkənd | 594
-Ələt | Təzəkənd | 271
-
-Yalama | Tovuz | 612
-Yalama-eksp. | Tovuz | 612
-Astara | Tovuz | 518
-Böyük Kəsik | Tovuz | 68
-Culfa | Tovuz | 684
-Ələt | Tovuz | 361
-
-Yalama | Ucar | 426
-Yalama-eksp. | Ucar | 426
-Astara | Ucar | 332
-Böyük Kəsik | Ucar | 254
-Culfa | Ucar | 498
-Ələt | Ucar | 175
-
-Yalama | Vətəqə | 400
-Yalama-eksp. | Vətəqə | 400
-Astara | Vətəqə | 262
-Böyük Kəsik | Vətəqə | 482
-Culfa | Vətəqə | 270
-Ələt | Vətəqə | 149
-
-Yalama | Xaçmaz | 42
-Yalama-eksp. | Xaçmaz | 42
-Astara | Xaçmaz | 462
-Böyük Kəsik | Xaçmaz | 638
-Culfa | Xaçmaz | 628
-Ələt | Xaçmaz | 229
-
-Yalama | Xanabad | 498
-Yalama-eksp. | Xanabad | 498
-Astara | Xanabad | 404
-Böyük Kəsik | Xanabad | 236
-Culfa | Xanabad | 570
-Ələt | Xanabad | 247
-
-Yalama | Xankəndi | 576
-Yalama-eksp. | Xankəndi | 576
-Astara | Xankəndi | 482
-Böyük Kəsik | Xankəndi | 314
-Culfa | Xankəndi | 648
-Ələt | Xankəndi | 325
-
-Yalama | Xələc | 412
-Yalama-eksp. | Xələc | 412
-Astara | Xələc | 274
-Böyük Kəsik | Xələc | 494
-Culfa | Xələc | 258
-Ələt | Xələc | 161
-
-Yalama | Xələfli | 508
-Yalama-eksp. | Xələfli | 508
-Astara | Xələfli | 370
-Böyük Kəsik | Xələfli | 590
-Culfa | Xələfli | 162
-Ələt | Xələfli | 257
-
-Yalama | Xırdalan | 186
-Yalama-eksp. | Xırdalan | 186
-Astara | Xırdalan | 318
-Böyük Kəsik | Xırdalan | 494
-Culfa | Xırdalan | 484
-Ələt | Xırdalan | 85
-
-Yalama | Xudat | 21
-Yalama-eksp. | Xudat | 21
-Astara | Xudat | 483
-Böyük Kəsik | Xudat | 659
-Culfa | Xudat | 649
-Ələt | Xudat | 250
-
-Yalama | Yevlax | 471
-Yalama-eksp. | Yevlax | 471
-Astara | Yevlax | 377
-Böyük Kəsik | Yevlax | 209
-Culfa | Yevlax | 543
-Ələt | Yevlax | 220
-
-Yalama | Z.Tağıyev | 156
-Yalama-eksp. | Z.Tağıyev | 156
-Astara | Z.Tağıyev | 348
-Böyük Kəsik | Z.Tağıyev | 524
-Culfa | Z.Tağıyev | 514
-Ələt | Z.Tağıyev | 115
-
-Yalama | Z.Tağıyev çeşidləmə | 151
-Yalama-eksp. | Z.Tağıyev çeşidləmə | 151
-Astara | Z.Tağıyev çeşidləmə | 353
-Böyük Kəsik | Z.Tağıyev çeşidləmə | 529
-Culfa | Z.Tağıyev çeşidləmə | 519
-Ələt | Z.Tağıyev çeşidləmə | 120
-
-Yalama | Zabrat II | 219
-Yalama-eksp. | Zabrat II | 219
-Astara | Zabrat II | 339
-Böyük Kəsik | Zabrat II | 515
-Culfa | Zabrat II | 505
-Ələt | Zabrat II | 106
-
-Yalama | Zaqatala | 616
-Yalama-eksp. | Zaqatala | 616
-Astara | Zaqatala | 522
-Böyük Kəsik | Zaqatala | 354
-Culfa | Zaqatala | 688
-Ələt | Zaqatala | 365
-
-Yalama | Zazalı | 528
-Yalama-eksp. | Zazalı | 528
-Astara | Zazalı | 434
-Böyük Kəsik | Zazalı | 152
-Culfa | Zazalı | 600
-Ələt | Zazalı | 277
-
-Yalama | Zəyəm | 585
-Yalama-eksp. | Zəyəm | 585
-Astara | Zəyəm | 491
-Böyük Kəsik | Zəyəm | 95
-Culfa | Zəyəm | 657
-Ələt | Zəyəm | 334
-
-Yalama | Zirə | 248
-Yalama-eksp. | Zirə | 248
-Astara | Zirə | 368
-Böyük Kəsik | Zirə | 544
-Culfa | Zirə | 534
-Ələt | Zirə | 135
-
-Yalama | Zorat | 115
-Yalama-eksp. | Zorat | 115
-Astara | Zorat | 389
-Böyük Kəsik | Zorat | 565
-Culfa | Zorat | 555
-Ələt | Zorat | 156
+### ADY MƏSAFƏ VƏ STANSİYA KODLARI CƏDVALİ (Железнодорожные расстояния и коды станций)
+
+| Stansiyanın adı | Stansiyanın kodu | Yalama (eksport) | Astara (eksport) | Böyük Kəsik (eksport) | Culfa (eksport) | Ələt eksp / Bakı liman |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Abşeron** | 548004 | 204 | 300 | 476 | 466 | 67 |
+| **Ağdam** | 555506 | 548 | 454 | 286 | 620 | 297 |
+| **Ağstafa** | 557200 | 633 | 539 | 47 | 705 | 382 |
+| **Alabaşlı** | 556602 | 551 | 457 | 129 | 623 | 300 |
+| **Astara** | 554109 | 504 | 0 | 586 | 532 | 253 |
+| **Astara (eks.aşır)** | 554503 | 504 | 0 | 586 | 532 | 253 |
+| **Atbulaq** | 548907 | 274 | 240 | 406 | 406 | 23 |
+| **Bakı yük** | 547105 | 207 | 327 | 503 | 493 | 94 |
+| **Bakı yük terminal** | 547603 | 212 | 332 | 508 | 498 | 99 |
+| **Balakən** | 559704 | 634 | 540 | 372 | 706 | 383 |
+| **Bartaz** | 551308 | 556 | 418 | 638 | 114 | 305 |
+| **Barxudarlı** | 557501 | 663 | 569 | 77 | 735 | 412 |
+| **Başbaşı** | 550700 | 727 | 589 | 809 | 57 | 476 |
+| **Bərdə** | 555309 | 503 | 409 | 241 | 575 | 252 |
+| **Bərguşad** | 554804 | 414 | 320 | 266 | 486 | 163 |
+| **Biləcəri** | 546808 | 192 | 312 | 488 | 478 | 79 |
+| **Binə** | 547707 | 227 | 347 | 523 | 513 | 114 |
+| **Böyük Kəsik** | 558631 | 676 | 582 | 4 | 748 | 425 |
+| **Böyük Kəsik (eksport)** | 558701 | 680 | 586 | 0 | 752 | 429 |
+| **Çarxı** | 545400 | 52 | 452 | 628 | 618 | 219 |
+| **Cəlilabad** | 553303 | 414 | 90 | 496 | 442 | 163 |
+| **Culfa** | 550004 | 670 | 532 | 752 | 0 | 419 |
+| **Culfa (eksport)** | 550108 | 670 | 532 | 752 | 0 | 419 |
+| **Daşburun** | 551906 | 426 | 288 | 508 | 244 | 175 |
+| **Dəllər** | 556803 | 572 | 478 | 108 | 644 | 321 |
+| **Dəlməmmədli** | 556000 | 521 | 427 | 159 | 593 | 270 |
+| **Dübəndi** | 547904 | 242 | 362 | 538 | 528 | 129 |
+| **Ələt** | 548502 | 261 | 243 | 419 | 409 | 10 |
+| **Ələt eksport Aktau** | 549204 | 271 | 253 | 429 | 419 | 0 |
+| **Ələt eksport Kurik** | 553002 | 271 | 253 | 429 | 419 | 0 |
+| **Ələt eksport-Türk.** | 548803 | 271 | 253 | 429 | 419 | 0 |
+| **Bakı ticarət liman** | 547302 | 271 | 253 | 429 | 419 | 0 |
+| **Bakı ticarət limanı (eks)** | 547406 | 271 | 253 | 429 | 419 | 0 |
+| **Bakı ticarət limanı (aşır)** | 547209 | 271 | 253 | 429 | 419 | 0 |
+| **Ələt yeni** | 548703 | 266 | 238 | 424 | 404 | 15 |
+| **Əsgəran** | 557304 | 563 | 469 | 301 | 635 | 312 |
+| **Gəncə** | 556208 | 539 | 445 | 141 | 611 | 288 |
+| **Giləzi** | 546009 | 125 | 379 | 555 | 545 | 146 |
+| **Goran** | 555900 | 496 | 402 | 184 | 568 | 245 |
+| **Göylərçöl** | 554402 | 366 | 272 | 362 | 438 | 115 |
+| **Göyşaban** | 553801 | 469 | 35 | 551 | 497 | 218 |
+| **Güzdək** | 546600 | 177 | 327 | 503 | 493 | 94 |
+| **Hacıqabul** | 554202 | 304 | 210 | 376 | 376 | 53 |
+| **Həkəri** | 551505 | 530 | 392 | 612 | 140 | 279 |
+| **Horadiz** | 551806 | 464 | 326 | 546 | 206 | 213 |
+| **Hövsan** | 547800 | 232 | 352 | 528 | 527 | 119 |
+| **İmişli** | 552207 | 386 | 248 | 468 | 284 | 135 |
+| **Karçevan** | 551007 | 608 | 470 | 690 | 62 | 357 |
+| **Keşlə** | 547001 | 200 | 320 | 496 | 486 | 87 |
+| **Köçərli** | 555205 | 515 | 421 | 253 | 587 | 264 |
+| **Kürdəmir** | 554607 | 380 | 286 | 300 | 452 | 129 |
+| **Kürəkçay** | 557605 | 508 | 414 | 172 | 580 | 257 |
+| **Ləcət** | 549505 | 13 | 491 | 667 | 657 | 258 |
+| **Ləki** | 555008 | 446 | 352 | 234 | 518 | 195 |
+| **Lənkəran** | 553905 | 474 | 30 | 556 | 502 | 223 |
+| **Liman** | 553604 | 462 | 42 | 544 | 490 | 211 |
+| **Mahmudlu** | 551702 | 486 | 348 | 568 | 184 | 235 |
+| **Masallı** | 553407 | 428 | 76 | 510 | 456 | 177 |
+| **Maştağa** | 549609 | 226 | 346 | 522 | 512 | 113 |
+| **Mehri** | 551100 | 599 | 461 | 681 | 71 | 348 |
+| **Mincivan** | 551204 | 544 | 406 | 626 | 126 | 293 |
+| **Mingəçevir** | 555703 | 483 | 389 | 197 | 555 | 232 |
+| **Mingəçevir şəhər** | 555807 | 501 | 407 | 215 | 573 | 250 |
+| **Muğan** | 554306 | 316 | 222 | 364 | 388 | 65 |
+| **Mürsəlli** | 552601 | 335 | 197 | 417 | 335 | 84 |
+| **Müsüslü** | 554700 | 400 | 306 | 280 | 472 | 149 |
+| **Naxçıvan** | 550803 | 715 | 577 | 797 | 45 | 464 |
+| **Neftçala** | 553207 | 403 | 171 | 485 | 431 | 152 |
+| **Nəvahi** | 549007 | 286 | 228 | 394 | 394 | 35 |
+| **Ordubad** | 550907 | 631 | 493 | 713 | 39 | 380 |
+| **Pirsaat** | 549100 | 294 | 220 | 386 | 386 | 43 |
+| **Pirşağı** | 546507 | 238 | 358 | 534 | 524 | 125 |
+| **Poylu** | 558400 | 647 | 553 | 33 | 719 | 396 |
+| **Puta** | 548108 | 211 | 293 | 469 | 459 | 60 |
+| **Qafan** | 551401 | 583 | 445 | 665 | 165 | 332 |
+| **Qamışlıq** | 554005 | 489 | 15 | 571 | 517 | 238 |
+| **Qaradağ** | 548201 | 223 | 281 | 457 | 447 | 48 |
+| **Qaradağ terminal** | 549702 | 230 | 288 | 464 | 454 | 55 |
+| **Qasımlı** | 553500 | 444 | 60 | 526 | 472 | 193 |
+| **Qax** | 559507 | 577 | 483 | 315 | 649 | 326 |
+| **Qazax** | 557408 | 645 | 551 | 59 | 717 | 394 |
+| **Qırıxlı** | 556509 | 560 | 466 | 138 | 632 | 309 |
+| **Qızılburun** | 545805 | 94 | 410 | 586 | 576 | 177 |
+| **Qızılca** | 556405 | 570 | 476 | 148 | 642 | 319 |
+| **Qobustan** | 548409 | 247 | 257 | 433 | 423 | 24 |
+| **Qovlar** | 557003 | 599 | 505 | 81 | 671 | 348 |
+| **Quşçu körpü** | 556301 | 586 | 492 | 164 | 658 | 335 |
+| **Saatlı** | 552300 | 357 | 219 | 439 | 313 | 106 |
+| **Sabir** | 552508 | 352 | 214 | 434 | 330 | 101 |
+| **Şabran** | 545608 | 75 | 429 | 605 | 595 | 196 |
+| **Salahlı** | 558504 | 657 | 563 | 23 | 729 | 406 |
+| **Salyan** | 553106 | 368 | 136 | 450 | 396 | 117 |
+| **Saracalar** | 552404 | 346 | 208 | 428 | 324 | 95 |
+| **Şaxtaxtı** | 550606 | 755 | 617 | 837 | 85 | 504 |
+| **Şəki** | 559403 | 539 | 445 | 277 | 611 | 288 |
+| **Şəmkir** | 556706 | 562 | 468 | 118 | 634 | 311 |
+| **Sanqaçal** | 548305 | 238 | 266 | 442 | 432 | 33 |
+| **Sanqaçal ter.(aşırma)** | 548606 | 240 | 268 | 444 | 434 | 35 |
+| **Şərur** | 550502 | 781 | 643 | 863 | 111 | 530 |
+| **Şərur (eksport)** | 550409 | 807 | 669 | 889 | 137 | 556 |
+| **Şirvan** | 552705 | 309 | 195 | 391 | 361 | 58 |
+| **Sitalçay** | 546102 | 135 | 369 | 545 | 535 | 136 |
+| **Siyəzən** | 545909 | 105 | 399 | 575 | 565 | 166 |
+| **Soltanlı** | 552902 | 497 | 359 | 579 | 173 | 246 |
+| **Soyuq-Bulaq** | 558608 | 666 | 572 | 14 | 738 | 415 |
+| **Sumqayıt** | 546403 | 167 | 337 | 513 | 503 | 104 |
+| **Suraxanı** | 549401 | 218 | 338 | 514 | 504 | 105 |
+| **Təzəkənd** | 555402 | 522 | 428 | 260 | 594 | 271 |
+| **Tovuz** | 557107 | 612 | 518 | 68 | 684 | 361 |
+| **Ucar** | 554908 | 426 | 332 | 254 | 498 | 175 |
+| **Vətəqə** | 552103 | 400 | 262 | 482 | 270 | 149 |
+| **Xaçmaz** | 545307 | 42 | 462 | 638 | 628 | 229 |
+| **Xanabad** | 559300 | 498 | 404 | 236 | 570 | 247 |
+| **Xankəndi** | 555608 | 576 | 482 | 314 | 648 | 325 |
+| **Xələc** | 552001 | 412 | 274 | 494 | 258 | 161 |
+| **Xələfli** | 551609 | 508 | 370 | 590 | 162 | 257 |
+| **Xırdalan** | 546704 | 186 | 318 | 494 | 484 | 85 |
+| **Xudat** | 545107 | 21 | 483 | 659 | 649 | 250 |
+| **Yalama** | 545006 | 4 | 500 | 676 | 666 | 267 |
+| **Yalama (eksport)** | 547508 | 0 | 504 | 680 | 670 | 271 |
+| **Yevlax** | 555101 | 471 | 377 | 209 | 543 | 220 |
+| **Z.Tağıyev** | 546302 | 156 | 348 | 524 | 514 | 115 |
+| **Z.Tağıyev çeşidləmə** | 546901 | 151 | 353 | 529 | 519 | 120 |
+| **Zabrat II** | 557802 | 219 | 339 | 515 | 505 | 106 |
+| **Zaqatala** | 559600 | 616 | 522 | 354 | 688 | 365 |
+| **Zazalı** | 556104 | 528 | 434 | 152 | 600 | 277 |
+| **Zəyəm** | 556903 | 585 | 491 | 95 | 657 | 334 |
+| **Zirə** | 549308 | 248 | 368 | 544 | 534 | 135 |
+| **Zorat** | 549806 | 115 | 389 | 565 | 555 | 156 |
