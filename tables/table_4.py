@@ -51,8 +51,6 @@ def get_table_4_column_index(billable_weight_tons):
     elif w <= 15: return 1
     elif w <= 20: return 2
     elif w <= 25: return 3
-    elif w <= 30: return 4
-    elif w <= 35: return 5
     elif w <= 40: return 6
     elif w <= 45: return 7
     elif w <= 50: return 8
@@ -63,6 +61,7 @@ def get_table_4_column_index(billable_weight_tons):
 def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", **kwargs):
     """
     Расчет базовой ставки Таблицы 4 (Универсальные вагоны, Транзит).
+    Возвращает 3 значения: (base_chf, details_str, is_per_wagon).
     """
     rates = load_table_4_rates()
     col_idx = get_table_4_column_index(billable_weight_tons)
@@ -91,8 +90,8 @@ def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", 
 
 def get_table_4_coefficients(*args, **kwargs):
     """
-    Возвращает коэффициенты, примечания и флаг для engine.py
+    Возвращает строго 2 значения: (coeffs, notes)
     """
     coeffs = []
     notes = []
-    return coeffs, notes, None
+    return coeffs, notes
