@@ -13,35 +13,40 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Стили для узкого баннера и подвала
+# Стили для сверхкомпактного баннера и узкого поля фрахтового года
 st.markdown("""
     <style>
     .main-header {
         background: linear-gradient(135deg, #0e2a47 0%, #1a4a75 100%);
-        padding: 8px 18px; /* Узкая плашка по высоте */
-        border-radius: 8px;
+        padding: 4px 14px; /* Максимально узкая плашка по высоте */
+        border-radius: 6px;
         color: white;
-        margin-top: 10px;
-        margin-bottom: 20px;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        margin-top: 8px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     .main-header h1 {
         color: #ffffff !important;
-        font-size: 1.5rem; /* Компактный аккуратный текст */
+        font-size: 1.25rem; /* Компактный заголовок */
         font-weight: 700;
         margin: 0;
+        line-height: 1.2;
         display: flex;
         align-items: center;
         gap: 8px;
     }
     .main-header p {
         color: #b0c4de !important;
-        margin: 2px 0 0 0;
-        font-size: 0.88rem;
+        margin: 1px 0 0 0;
+        font-size: 0.82rem;
+        line-height: 1.2;
+    }
+    .year-container {
+        max-width: 160px; /* Сужение ширины выборки фрахтового года */
     }
     .agt-footer {
-        margin-top: 50px;
-        padding: 20px;
+        margin-top: 40px;
+        padding: 16px;
         background-color: #f8f9fa;
         border-top: 3px solid #ff5500;
         border-radius: 8px;
@@ -50,14 +55,14 @@ st.markdown("""
     }
     .agt-footer p {
         margin: 2px 0;
-        font-size: 0.95rem;
+        font-size: 0.92rem;
     }
     .agt-slogan {
-        font-size: 0.85rem;
+        font-size: 0.82rem;
         letter-spacing: 2px;
         color: #555555;
         text-transform: uppercase;
-        margin-top: 5px !important;
+        margin-top: 4px !important;
         font-weight: 600;
     }
     </style>
@@ -230,20 +235,23 @@ UI_TEXT = {
 
 logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
 
-# --- ЛОГОТИП СЛЕВА ВМЕСТЕ С FRAXT ILI ПОД НИМ, ЯЗЫК СПРАВА ---
+# --- ВЕРХНЯЯ СТРОКА: ЛОГОТИП СЛЕВА ВМЕСТЕ С УЗКИМ ВЫБОРОМ ГОДА, ЯЗЫК СПРАВА ---
 top_col1, top_col2 = st.columns([3, 2])
 with top_col1:
     if logo_path:
-        st.image(logo_path, width=220)
-    # Перенос выбора фрахтового года под логотип
+        st.image(logo_path, width=200)
+    
+    # Компактное и узкое поле выбора фрахтового года под логотипом
+    st.markdown('<div class="year-container">', unsafe_allow_html=True)
     temp_lang = "AZ"
     selected_year = st.selectbox(f"⚙️ {UI_TEXT[temp_lang]['year_select']}", options=["2026", "2027"], index=0)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with top_col2:
     selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
     t = UI_TEXT[selected_lang]
 
-# --- УЗКИЙ СИНИЙ БАННЕР ---
+# --- СВЕРХКОМПАКТНЫЙ СИНИЙ БАННЕР ---
 st.markdown(f"""
     <div class="main-header">
         <h1>🚆 {t['title']}</h1>
@@ -252,7 +260,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- ПОЛЕ ВВОДА ---
-user_input = st.text_area(t["input_header"], height=130, placeholder=t["input_placeholder"])
+user_input = st.text_area(t["input_header"], height=120, placeholder=t["input_placeholder"])
 user_api_key = os.environ.get("GEMINI_API_KEY", "")
 
 if st.button(t["calc_btn"], type="primary"):
@@ -297,7 +305,7 @@ if st.button(t["calc_btn"], type="primary"):
         except Exception as e:
             st.error(f"Error: {str(e)}")
 
-# --- ПОДВАЛ (ФУТЕР) В САМОМ КОНЦЕ СТРАНИЦЫ ---
+# --- ПОДВАЛ В КОНЦЕ СТРАНИЦЫ ---
 st.markdown(f"""
     <div class="agt-footer">
         <p>{t['footer_owner']}</p>
