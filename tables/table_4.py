@@ -63,7 +63,6 @@ def get_table_4_column_index(billable_weight_tons):
 def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", **kwargs):
     """
     Расчет базовой ставки Таблицы 4 (Универсальные вагоны, Транзит).
-    Универсальные аргументы *args/**kwargs позволяют принимать от engine.py 3, 4 или больше параметров без ошибок.
     """
     rates = load_table_4_rates()
     col_idx = get_table_4_column_index(billable_weight_tons)
@@ -92,8 +91,8 @@ def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", 
 
 def get_table_4_coefficients(*args, **kwargs):
     """
-    Универсальная функция для дополнительных коэффициентов Таблицы 4.
+    Возвращает коэффициенты, примечания и флаг для engine.py
     """
     coeffs = []
     notes = []
-    return coeffs, notes
+    return coeffs, notes, None
