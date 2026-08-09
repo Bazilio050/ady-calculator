@@ -129,10 +129,7 @@ def get_table_4_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
     coeffs = []
     notes = []
 
-    st_code = str(shipment_type_code or "").lower()
-    if "transit" in st_code or "tranzit" in st_code or True:
-        coeffs.append(("Tranzit əmsalı 1.20", 1.20))
-
+    # Только реальный коэффициент на цветные металлы по п. 3.1.1
     if is_non_ferrous_metal_gng(gng_code):
         lbl = "Əlvan metal 1.20" if lang == "AZ" else ("Цветной металл 1.20" if lang == "RU" else "Non-ferrous metal 1.20")
         coeffs.append((lbl, 1.20))
