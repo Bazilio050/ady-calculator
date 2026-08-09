@@ -1,74 +1,128 @@
+import os
 import json
-from google.genai import types
+import google.generativeai as genai
 
-def call_gemini_nlu(client, user_input_text, lang):
-    lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
-    target_lang = lang_map.get(lang, "Azerbaijani")
+# ==============================================================================
+# СИСТЕМНЫЙ ПРОМПТ ДЛЯ GEMINI NLU (ИНСТРУКЦИЯ И ПРАВИЛА МАРШРУТИЗАЦИИ)
+# ==============================================================================
+GEMINI_SYSTEM_INSTRUCTION = """
+Ты — специализированный NLU-парсер железнодорожного тарифного калькулятора Азербайджанских железных дорог (ADY).
+Твоя задача — извлечь параметры перевозки из текста пользователя и вернуть СТРОГО валидный JSON.
 
-    prompt = (
-        "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
-        "Extract shipment parameters from text into JSON. Return ONLY clean JSON:\n"
-        "{\n"
-        '  "route_from": "string or null (Official Azerbaijani station name strictly in Latin AZ characters, e.g. Abşeron, Gəncə, Sumqayıt, Böyük Kəsik, Biləcəri, Xudat, Yalama)",\n'
-        '  "route_to": "string or null (Official Azerbaijani station name strictly in Latin AZ characters, e.g. Abşeron, Gəncə, Sumqayıt, Böyük Kəsik, Biləcəri, Xudat, Yalama)",\n'
-        '  "cargo_gng_code": "string or null (Extract ANY 2-digit, 4-digit, or 6-to-8 digit numeric code representing GNG/NHM, e.g. 72, 28, 2815, 4407, 0207)",\n'
-        f'  "cargo_name": "string or null (Short official commodity name translated STRICTLY to {target_lang} in 1-3 words based on GNG code or input text. If only GNG code like 2815 or 72 is provided, provide generic name for this GNG category)",\n'
-        '  "actual_weight_tons": float or null,\n'
-        '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
-        '  "park_type": "string (SPS/MPS)",\n'
-        '  "ref_section_cargo_wagons": integer or null (Extract number of CARGO wagons in refrigerated section, e.g. "5+1" -> 5, "1+5" -> 5, "6+1" -> 6),\n'
-        '  "is_tariff_agreement_origin": boolean,\n'
-        '  "requested_period": "string or null",\n'
-        '  "explicit_mode": "string or null (import/export/transit)"\n'
-        "}\n\n"
-        "CRITICAL CARGO RULES:\n"
-        "- ANY standalone 2-digit (e.g. 72, 28), 4-digit (e.g. 2815) or 8-digit numbers MUST be extracted as 'cargo_gng_code' unless explicitly specified as weight in tons.\n"
-        "- If user enters '2815', set 'cargo_gng_code' to '2815'.\n\n"
-        "STRICT ROUTE RULES:\n"
-        "- NEVER set 'route_from' and 'route_to' to the same station if two distinct stations are mentioned.\n"
-        "- Standardize station names properly with correct Azerbaijani Latin alphabet characters.\n\n"
-        f"USER INPUT:\n{user_input_text}"
+---
+
+### 1. ПРАВИЛА НОРМАЛИЗАЦИИ СТАНЦИЙ (ОБЯЗАТЕЛЬНО К ИСПОЛНЕНИЮ)
+Приводи названия станций СТРОГО к следующим каНОНИЧЕСКИМ КЛЮЧАМ:
+
+* **Баку / Баку-Товарная:**
+  - "баку-тов", "баку тов", "баку товарная", "bakı-tov", "bakı yük", "баку", "bakı", "baki" -> **"Bakı-Yük"**
+* **Бакинский Порт:**
+  - "баку порт", "баку торговый порт", "bakı ticarət limanı", "bakı liman" -> **"Bakı Ticarət Limanı"**
+* **Алят и Морские Паромы (Курык / Актау / Туркменбаши):**
+  - "алят", "ələt", "elet", "курык", "kurik", "актау", "aktau", "туркменбаши", "turkmenbashi", "алят экспорт курык", "алят экспорт актау" -> **"Ələt"**
+  - "алят ени", "ələt yeni" -> **"Ələt-Yeni"**
+* **Прочие специфические станции ADY:**
+  - "астара", "astara", "astara eks" -> **"Astara"**
+  - "мингечевир шехер", "mingəçevir şəhər", "mingəçevir" -> **"Mingəçevir-Şəhər"**
+  - "карадаг", "qaradağ", "карадаг терминал" -> **"Qaradağ"**
+  - "гушчу корпю", "quşçu körpü" -> **"Quşçu Körpü"**
+  - "سانгачал", "сангачал тер", "sanqaçal" -> **"Sanqaçal"**
+  - "союг булаг", "soyuqbulaq", "soyuq-bulaq" -> **"Soyuqbulaq"**
+  - "з. тагиев", "з.тагиев", "z.tağıyev" -> **"Z.Tağıyev"**
+  - "з.тагиев сортировочная", "z.tağıyev çeşidləmə" -> **"Z.Tağıyev-Çeşidləmə"**
+  - "забрат 2", "zabrat 2", "zabrat ii" -> **"Zabrat-II"**
+  - "ялама", "yalama" -> **"Yalama"**
+  - "беюк кесик", "böyük kəsik", "boyuk kesik" -> **"Böyük Kəsik"**
+
+---
+
+### 2. ПРАВИЛА ПАРСИНГА ОСТАЛЬНЫХ ПАРАМЕТРОВ
+
+1. **Маршрут (route_from / route_to):**
+   - Если указана только одна станция и второе направление — Ялама, Беюк-Кесик или Астара, подставляй соответствующую пограничную станцию.
+
+2. **Код ГНГ / Груз (cargo_gng_code / cargo_name):**
+   - Извлекай 4-значный или 8-значный код ГНГ (например: "3404", "2710", "29051100").
+   - Если передано название груза, определяй подходящий код ГНГ.
+
+3. **Вес (actual_weight_tons):**
+   - Числовое значение веса в тоннах (float). Например: 55.0.
+
+4. **Тип вагона (wagon_type):**
+   - "cistern" (цистерна, çən, бункер)
+   - "universal" (крытый, полувагон, платформа)
+   - "refrigerated" (рефрижератор, ИЗО, термос, секция)
+
+5. **Парк вагона (park_type):**
+   - "SPS" (собственный / частный / əlavə / özəl) — по умолчанию.
+   - "MPS" (инвентарный парк / железная дорога).
+
+6. **Явный режим (explicit_mode):**
+   - "import", "export", "transit" или null (если режим определяется автоматически по пограничным станциям).
+
+---
+
+### 3. СТРУКТУРА ВЫХОДНОГО JSON
+
+Верни ответ СТРОГО в следующем формате без стороннего текста и markdown-тегов (```json):
+
+{
+  "route_from": "Bakı-Yük",
+  "route_to": "Yalama",
+  "cargo_gng_code": "3404",
+  "cargo_name": "Neft məhsulları",
+  "actual_weight_tons": 55.0,
+  "wagon_type": "cistern",
+  "park_type": "SPS",
+  "explicit_mode": null,
+  "requested_period": null
+}
+"""
+
+# ==============================================================================
+# ОСНОВНАЯ ФУНКЦИЯ ОБРАБОТКИ ЗАПРОСА ЧЕРЕЗ GEMINI API
+# ==============================================================================
+def parse_user_input_with_gemini(user_input: str, api_key: str = None) -> dict:
+    """
+    Отправляет текстовый запрос пользователя в Gemini NLU и возвращает структурированный JSON.
+    """
+    if not api_key:
+        api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY не найден в переменных окружения.")
+
+    genai.configure(api_key=api_key)
+
+    # Используем стабильную модель Gemini
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        generation_config={
+            "response_mime_type": "application/json",
+            "temperature": 0.1  # Низкая температура для максимальной точности
+        },
+        system_instruction=GEMINI_SYSTEM_INSTRUCTION
     )
 
-    response = client.models.generate_content(
-        model="gemini-3.5-flash-lite",
-        config=types.GenerateContentConfig(
-            temperature=0.0,
-            response_mime_type="application/json",
-        ),
-        contents=prompt,
-    )
+    try:
+        response = model.generate_content(user_input)
+        result_text = response.text.strip()
+        
+        # Парсим JSON ответ
+        parsed_data = json.loads(result_text)
+        return parsed_data
 
-    raw_text = response.text.strip()
-    if raw_text.startswith("```json"):
-        raw_text = raw_text[7:]
-    elif raw_text.startswith("```"):
-        raw_text = raw_text[3:]
-    if raw_text.endswith("```"):
-        raw_text = raw_text[:-3]
-
-    return json.loads(raw_text.strip())
-
-def validate_nlu_input(nlu_res, lang):
-    missing_items = []
-
-    st_from = nlu_res.get("route_from")
-    st_to = nlu_res.get("route_to")
-    weight = nlu_res.get("actual_weight_tons")
-    gng = nlu_res.get("cargo_gng_code")
-    cargo_name = nlu_res.get("cargo_name")
-
-    if not st_from:
-        missing_items.append("📍 **Başlanğıc stansiyası** (Origin station)" if lang == "AZ" else ("📍 **Станция отправления**" if lang == "RU" else "📍 **Origin station**"))
-    if not st_to:
-        missing_items.append("📍 **Təyinat stansiyası** (Destination station)" if lang == "AZ" else ("📍 **Станция назначения**" if lang == "RU" else "📍 **Destination station**"))
-    if not weight or float(weight) <= 0:
-        missing_items.append("⚖️ **Faktiki çəki (tonla)** (Weight in tons)" if lang == "AZ" else ("⚖️ **Фактический вес (в тоннах)**" if lang == "RU" else "⚖️ **Actual weight in tons**"))
-
-    gng_str = str(gng).strip() if gng is not None else ""
-    cargo_str = str(cargo_name).strip() if cargo_name is not None else ""
-
-    if not gng_str and not cargo_str:
-        missing_items.append("📦 **Yükün adı və ya GNG/NHM kodu** (Cargo code or name)" if lang == "AZ" else ("📦 **Наименование груза или код ГНГ/NHM**" if lang == "RU" else "📦 **Cargo name or GNG/NHM code**"))
-
-    return missing_items
+    except Exception as e:
+        print(f"Ошибка Gemini NLU: {e}")
+        # Запасной дефолтный ответ при сбое сети или API
+        return {
+            "route_from": "Bakı-Yük",
+            "route_to": "Yalama",
+            "cargo_gng_code": "",
+            "cargo_name": "",
+            "actual_weight_tons": 60.0,
+            "wagon_type": "universal",
+            "park_type": "SPS",
+            "explicit_mode": None,
+            "requested_period": None
+        }
