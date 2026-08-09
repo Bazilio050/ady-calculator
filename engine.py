@@ -42,7 +42,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
     """
     Чистый координатор коэффициентов:
     - Запрашивает специфичные правила у модулей соответствующих таблиц (3, 4, 5 или 6).
-    - Применяет только сквозные глобальные правила (СПС, 1.015, минимальные плечи).
+    - Применяет сквозные глобальные правила (СПС, 1.015, Транзит Алят - Беюк-Кесик 1.20, минимальные плечи).
     """
     coeffs = []
     notes = []
@@ -73,7 +73,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
     # 2. Глобальный коэффициент СПС (скидка 15% - относится к универсальным/ИЗО вагонам)
     # Для Таблицы 6 ставка в столбце 8 уже рассчитана с учетом типа цистерны.
     if park_type == "SPS" and table_num != 6:
-        park_cfg = config.get("park_type_coefficients", {}).get("SPS")
+        park_cfg = config.get("park_type_coefficients", {}).get("SPS") if isinstance(config, dict) else {}
         c_val = park_cfg.get("coefficient_value", 0.85) if isinstance(park_cfg, dict) else 0.85
         c_lbl = park_cfg.get("labels", {}).get(lang, "SPS Coeff") if isinstance(park_cfg, dict) and "labels" in park_cfg else "SPS Coeff"
         coeffs.append((c_lbl, c_val))
@@ -83,12 +83,38 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
     # 3. Общий дополнительный коэффициент 1.015 (для всех груженых вагонов)
     input_lower = user_input_raw.lower()
     if not any(k in input_lower for k in ["boş", "порожн", "empty"]):
-        add_coeff_info = config.get("general_additional_coefficient_1_015", {})
+        add_coeff_info = config.get("general_additional_coefficient_1_015", {}) if isinstance(config, dict) else {}
         val_1015 = add_coeff_info.get("coefficient_value", 1.015) if isinstance(add_coeff_info, dict) else 1.015
         lbl_1015 = add_coeff_info.get("labels", {}).get(lang, "Additional Coeff") if isinstance(add_coeff_info, dict) and "labels" in add_coeff_info else "Additional Coeff"
         coeffs.append((lbl_1015, val_1015))
         if "note_coef_1015" in ui_t:
             notes.append(ui_t["note_coef_1015"])
+
+    # 4. Транзитный коэффициент 1.20 для маршрута Алят - Беюк-Кесик (в обоих направлениях)
+    if shipment_type_code == "transit":
+        st_from_clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(nlu_data.get("route_from", "") or ""), flags=re.IGNORECASE).strip().lower()
+        st_to_clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(nlu_data.get("route_to", "") or ""), flags=re.IGNORECASE).strip().lower()
+
+        alat_kw = ["ələt", "alat", "elat"]
+        bk_kw = ["böyük kəsik", "boyuk kesik", "boyuk-kesik"]
+
+        is_from_alat = any(k in st_from_clean for k in alat_kw)
+        is_to_alat = any(k in st_to_clean for k in alat_kw)
+        is_from_bk = any(k in st_from_clean for k in bk_kw)
+        is_to_bk = any(k in st_to_clean for k in bk_kw)
+
+        if (is_from_alat and is_to_bk) or (is_from_bk and is_to_alat):
+            abk_cfg = config.get("transit_alat_boyuk_kesik_1_20", {}) if isinstance(config, dict) else {}
+            c_val_abk = abk_cfg.get("coefficient_value", 1.20) if isinstance(abk_cfg, dict) else 1.20
+            c_lbl_abk = abk_cfg.get("labels", {}).get(lang, "Ələt - Böyük Kəsik tranzit 1.20") if isinstance(abk_cfg, dict) and "labels" in abk_cfg else "Ələt - Böyük Kəsik tranzit 1.20"
+            coeffs.append((c_lbl_abk, c_val_abk))
+
+            note_abk = {
+                "AZ": "Ələt - Böyük Kəsik - Ələt marşrutu üzrə tranzit daşımalarına 1.20 artırma əmsalı tətbiq olunmuşdur.",
+                "RU": "Применен повышающий коэффициент 1.20 для транзитных перевозок по маршруту Алят - Беюк-Кесик - Алят.",
+                "EN": "A 1.20 markup coefficient applied for transit shipments on the Alat - Boyuk Kesik - Alat route."
+            }
+            notes.append(note_abk.get(lang, note_abk["AZ"]))
 
     # Примечания по минимальным плечам и весовым нормам
     if shipment_type_code == "import" and dist_km < 151 and "note_import" in ui_t:
@@ -109,7 +135,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     """
     Главный исполнительный процесс калькулятора.
     """
-    config = load_rules_config()
+    config = load_rules_config() or {}
 
     st_from = str(nlu_data.get("route_from", "") or "").strip()
     st_to = str(nlu_data.get("route_to", "") or "").strip()
@@ -129,7 +155,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
     explicit_mode = nlu_data.get("explicit_mode")
 
-    border_info = config.get("border_stations", {})
+    border_info = config.get("border_stations", {}) if isinstance(config, dict) else {}
     suffixes = border_info.get("suffixes", {"AZ": "-eksp.", "RU": "-эксп.", "EN": "-exp."})
     suffix = suffixes.get(lang, suffixes.get("AZ", "-eksp."))
     border_list = border_info.get("list", ["Yalama", "Böyük Kəsik", "Boyuk Kesik", "Astara", "Culfa", "Ələt", "Alat"])
@@ -209,7 +235,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
     # 3. Расчет расчетного веса по минимальным нормам ГНГ
     billable_weight = act_weight
-    min_norms = config.get("minimal_weight_norms_gng", {}).get("rules", [])
+    min_norms = config.get("minimal_weight_norms_gng", {}).get("rules", []) if isinstance(config, dict) else []
     for rule in min_norms:
         if any(gng.startswith(p) for p in rule.get("gng_prefixes", []) if p):
             norm = rule.get("norm_tons", 0)
