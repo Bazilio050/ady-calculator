@@ -13,21 +13,21 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Стили для сверхкомпактного баннера и узкого поля фрахтового года
+# Стили
 st.markdown("""
     <style>
     .main-header {
         background: linear-gradient(135deg, #0e2a47 0%, #1a4a75 100%);
-        padding: 4px 14px; /* Максимально узкая плашка по высоте */
+        padding: 6px 16px;
         border-radius: 6px;
         color: white;
-        margin-top: 8px;
+        margin-top: 6px;
         margin-bottom: 16px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     .main-header h1 {
         color: #ffffff !important;
-        font-size: 1.25rem; /* Компактный заголовок */
+        font-size: 1.2rem;
         font-weight: 700;
         margin: 0;
         line-height: 1.2;
@@ -38,11 +38,8 @@ st.markdown("""
     .main-header p {
         color: #b0c4de !important;
         margin: 1px 0 0 0;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         line-height: 1.2;
-    }
-    .year-container {
-        max-width: 160px; /* Сужение ширины выборки фрахтового года */
     }
     .agt-footer {
         margin-top: 40px;
@@ -235,23 +232,24 @@ UI_TEXT = {
 
 logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
 
-# --- ВЕРХНЯЯ СТРОКА: ЛОГОТИП СЛЕВА ВМЕСТЕ С УЗКИМ ВЫБОРОМ ГОДА, ЯЗЫК СПРАВА ---
+# --- ВЕРХНЯЯ СТРОКА С УЗКИМ И КОМПАКТНЫМ ВЫБОРОМ ФРАХТОВОГО ГОДА ---
 top_col1, top_col2 = st.columns([3, 2])
+
 with top_col1:
     if logo_path:
         st.image(logo_path, width=200)
     
-    # Компактное и узкое поле выбора фрахтового года под логотипом
-    st.markdown('<div class="year-container">', unsafe_allow_html=True)
-    temp_lang = "AZ"
-    selected_year = st.selectbox(f"⚙️ {UI_TEXT[temp_lang]['year_select']}", options=["2026", "2027"], index=0)
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Разбиваем левую часть еще на подколонки, чтобы Fraxt ili занял строго узкую ширину (например, 120px)
+    year_col, _ = st.columns([1.2, 2.8])
+    with year_col:
+        temp_lang = "AZ"
+        selected_year = st.selectbox(f"⚙️ {UI_TEXT[temp_lang]['year_select']}", options=["2026", "2027"], index=0)
 
 with top_col2:
     selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
     t = UI_TEXT[selected_lang]
 
-# --- СВЕРХКОМПАКТНЫЙ СИНИЙ БАННЕР ---
+# --- КОМПАКТНЫЙ СИНИЙ БАННЕР ---
 st.markdown(f"""
     <div class="main-header">
         <h1>🚆 {t['title']}</h1>
