@@ -199,12 +199,8 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     is_from_border = any(b.lower() in c_from.lower() for b in border_list if b)
     is_to_border = any(b.lower() in c_to.lower() for b in border_list if b)
 
-    if is_from_border and is_to_border:
-        display_from, display_to = f"{c_from}{suffix}", f"{c_to}{suffix}"
-    else:
-        display_from = f"{c_from}{suffix}" if is_from_border else c_from
-        display_to = f"{c_to}{suffix}" if is_to_border else c_to
-
+    display_from = f"{c_from}{suffix}" if is_from_border else c_from
+    display_to = f"{c_to}{suffix}" if is_to_border else c_to
     route_display = f"{display_from} - {display_to}"
 
     if explicit_mode in ["import", "export", "transit"]:
@@ -221,9 +217,13 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
             shipment_type_code = "local"
             shipment_type_display = "Daxili daşınma" if lang == "AZ" else ("Внутренняя перевозка" if lang == "RU" else "Domestic shipment")
 
+    # Поиск расстояния СТРОГО из Distances.txt без заглушек
     actual_dist_km = find_distance_in_memory(c_from, c_to)
     if actual_dist_km is None or actual_dist_km == 0:
-        actual_dist_km = 21
+        err_msg = f"Məsafə tapılmadı: {c_from} - {c_to}" if lang == "AZ" else (
+            f"Расстояние не найдено для маршрута: {c_from} - {c_to}" if lang == "RU" else f"Distance not found for route: {c_from} - {c_to}"
+        )
+        raise ValueError(err_msg)
 
     tariff_dist_km = actual_dist_km
     if shipment_type_code == "import" and actual_dist_km < 151:
@@ -253,8 +253,8 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         weight_display = f"{act_w_str} t"
 
     is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос"]) or (ref_wagons_cnt is not None)
-    
-    # Диспетчер выбора модулей таблиц
+
+    # Диспетчер выбора таблиц
     if is_ref_type and (os.path.exists("Table_5_Tariffs.txt") or os.path.exists("Table5.txt")):
         table_num = 5
         base_chf, table_details, is_per_wagon = calculate_table_5_base(tariff_dist_km, billable_weight, wagon_type, config, lang)
