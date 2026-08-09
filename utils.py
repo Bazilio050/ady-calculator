@@ -1,5 +1,9 @@
+import os
+import json
+import re
+
 # ==============================================================================
-# СЛОВАРЬ ТОЧНЫХ СООТВЕТСТВИЙ И СПЕЦИАЛЬНЫХ УЗЛОВ ADY (С ДЕФОЛТНЫМИ ПРАВИЛАМИ)
+# СЛОВАРЬ ТОЧНЫХ СООТВЕТСТВИЙ И СПЕЦИАЛЬНЫХ УЗЛОВ ADY
 # ==============================================================================
 STATION_EXACT_MAP = {
     # 1. Астара
@@ -126,3 +130,83 @@ def normalize_st_name(raw_name: str) -> str:
         return STATION_EXACT_MAP[clean]
 
     return raw_name.strip()
+
+
+def norm_str(s: str) -> str:
+    """
+    Вспомогательная функция нормализации символов для нечувствительного к регистру сравнения.
+    """
+    if not s:
+        return ""
+    return str(s).lower().replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g').replace('-', ' ').strip()
+
+
+def load_rules_config() -> dict:
+    """
+    Загрузка конфигурационных файлов из папки tables/ или корневой директории.
+    """
+    possible_paths = [
+        "tables/global_config.json",
+        "tables/table_3_config.json",
+        "rules_config.json"
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Ошибка чтения {path}: {e}")
+    return {}
+
+
+def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
+    """
+    Поиск тарифного расстояния в километрах между двумя станциями в файле Distances.txt.
+    """
+    st_from_norm = normalize_st_name(st_from)
+    st_to_norm = normalize_st_name(st_to)
+
+    clean_from = norm_str(st_from_norm)
+    clean_to = norm_str(st_to_norm)
+
+    possible_files = [
+        "Distances.txt",
+        "data/Distances.txt",
+        "tables/Distances.txt"
+    ]
+
+    dist_file = None
+    for pf in possible_files:
+        if os.path.exists(pf):
+            dist_file = pf
+            break
+
+    if not dist_file:
+        return None
+
+    try:
+        with open(dist_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line_str = line.strip()
+                if not line_str or line_str.startswith("#") or line_str.startswith("="):
+                    continue
+
+                parts = re.split(r'\||;', line_str)
+                if len(parts) >= 2:
+                    st_pair = parts[0].strip()
+                    dist_val_str = parts[-1].strip()
+
+                    pair_match = re.split(r'\s*[-–]\s*', st_pair, maxsplit=1)
+                    if len(pair_match) == 2:
+                        s1 = norm_str(pair_match[0])
+                        s2 = norm_str(pair_match[1])
+
+                        if (clean_from == s1 and clean_to == s2) or (clean_from == s2 and clean_to == s1):
+                            dist_match = re.search(r'\d+', dist_val_str)
+                            if dist_match:
+                                return int(dist_match.group(0))
+    except Exception as e:
+        print(f"Ошибка при поиске расстояния в {dist_file}: {e}")
+
+    return None
