@@ -1,0 +1,131 @@
+import os
+import json
+import re
+
+
+def load_table_6_config():
+    """Загрузка конфигурации и правил Таблицы 6 из table_6_config.json."""
+    config_path = "tables/table_6_config.json"
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Ошибка загрузки {config_path}: {e}")
+    return {}
+
+
+def load_table_6_rates():
+    """Чтение тарифных ставок из Table_6_Tariffs.txt / Table6.txt."""
+    possible_files = [
+        "Table_6_Tariffs.txt",
+        "Table6.txt",
+        "tables/Table_6_Tariffs.txt",
+        "tables/Table6.txt"
+    ]
+
+    t_file = None
+    for pf in possible_files:
+        if os.path.exists(pf):
+            t_file = pf
+            break
+
+    rates = []
+    if t_file and os.path.exists(t_file):
+        with open(t_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line_str = line.strip()
+                if not line_str or line_str.startswith("#") or line_str.startswith("=") or "Məsafə" in line_str or "Col" in line_str:
+                    continue
+
+                r_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", line_str)
+                if r_match:
+                    d_min, d_max = int(r_match.group(1)), int(r_match.group(2))
+                    parts = line_str.split("|")
+                    if len(parts) > 1:
+                        vals = [float(p.strip().replace(",", ".")) for p in parts[1:] if p.strip()]
+                        rates.append((d_min, d_max, vals))
+                    else:
+                        numbers = re.findall(r"(\d+[\.,]\d+|\d+)", line_str)
+                        if len(numbers) >= 2:
+                            val = float(numbers[-1].replace(",", "."))
+                            rates.append((d_min, d_max, [val]))
+    return rates
+
+
+def determine_table_6_column(gng_code, park_type="SPS"):
+    """
+    Определяет индекс колонки (0..6) на основе ГНГ и типа парка (MPS или SPS).
+    """
+    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
+    park_type = str(park_type or "SPS").upper()
+
+    t6_cfg = load_table_6_config()
+    mapping = t6_cfg.get("table_6_rules", {}).get("columns_mapping", {})
+
+    # 1. Проверка для частных цистерн (Özəl çənlər / SPS)
+    if park_type == "SPS":
+        sps_rules = mapping.get("sps_private", [])
+        for rule in sps_rules:
+            prefixes = rule.get("gng_prefixes", [])
+            if any(clean_gng.startswith(p) for p in prefixes if p):
+                return rule.get("column_index", 6)
+
+    # 2. Проверка для инвентарных цистерн (İnventar parka məxsus / MPS) или запасной вариант
+    mps_rules = mapping.get("mps_inventory", [])
+    default_col = 5  # "Digər yüklər" (Col 7)
+
+    for rule in mps_rules:
+        if rule.get("is_default"):
+            default_col = rule.get("column_index", 5)
+            continue
+
+        prefixes = rule.get("gng_prefixes", [])
+        excludes = rule.get("exclude_prefixes", [])
+
+        if any(clean_gng.startswith(p) for p in prefixes if p) and not any(clean_gng.startswith(ex) for ex in excludes if ex):
+            return rule.get("column_index", 5)
+
+    return default_col
+
+
+def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_type, config, lang="AZ"):
+    """
+    Рассчитывает базовую тарифную ставку по Таблице 6 (Наливные грузы в цистернах).
+    Возвращает 2 значения: (rate_per_ton, details_str).
+    """
+    col_idx = determine_table_6_column(gng_code, park_type)
+    rates = load_table_6_rates()
+    tbl_name = "Cədvəl 6" if lang == "AZ" else ("Таблица 6" if lang == "RU" else "Table 6")
+
+    if not rates:
+        return None, f"{tbl_name} faylı tapılmadı"
+
+    rate_per_ton = None
+    for d_min, d_max, vals in rates:
+        if d_min <= distance_km <= d_max:
+            if col_idx < len(vals):
+                rate_per_ton = vals[col_idx]
+            elif len(vals) > 0:
+                rate_per_ton = vals[-1]
+            break
+
+    if rate_per_ton is None:
+        return None, f"{tbl_name}, {distance_km} km"
+
+    details_str = f"{tbl_name} ({distance_km} km, sütun {col_idx + 2})"
+    return rate_per_ton, details_str
+
+
+def get_table_6_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ", ui_t=None):
+    """
+    Проверяет и возвращает коэффициенты, относящиеся к Таблице 6.
+    """
+    if ui_t is None:
+        ui_t = {}
+
+    coeffs = []
+    notes = []
+
+    # Дополнительные коэффициенты Таблицы 6 (при наличии специфичных правил)
+    return coeffs, notes
