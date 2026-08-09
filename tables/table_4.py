@@ -60,10 +60,10 @@ def get_table_4_column_index(billable_weight_tons):
     else: return 10  # Для 60 тонн и более -> колонка №10 (28.53 CHF/т на 680 км)
 
 
-def calculate_table_4_base(distance_km, billable_weight_tons, lang="AZ"):
+def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", **kwargs):
     """
     Расчет базовой ставки Таблицы 4 (Универсальные вагоны, Транзит).
-    Возвращает (base_chf_per_ton, details_str, is_per_wagon).
+    Универсальные аргументы *args/**kwargs позволяют принимать от engine.py 3, 4 или больше параметров без ошибок.
     """
     rates = load_table_4_rates()
     col_idx = get_table_4_column_index(billable_weight_tons)
@@ -90,12 +90,10 @@ def calculate_table_4_base(distance_km, billable_weight_tons, lang="AZ"):
     return base_chf, details_str, False
 
 
-def get_table_4_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ", ui_t=None):
+def get_table_4_coefficients(*args, **kwargs):
     """
-    Дополнительные коэффициенты для Таблицы 4.
+    Универсальная функция для дополнительных коэффициентов Таблицы 4.
     """
-    if ui_t is None:
-        ui_t = {}
     coeffs = []
     notes = []
     return coeffs, notes
