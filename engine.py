@@ -186,7 +186,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     border_info = config.get("border_stations", {})
     suffixes = border_info.get("suffixes", {"AZ": "-eksp.", "RU": "-эксп.", "EN": "-exp."})
     suffix = suffixes.get(lang, suffixes.get("AZ", "-eksp."))
-    border_list = border_info.get("list", ["Yalama", "Boyuk Kesik", "Astara", "Culfa", "Alat"])
+    border_list = border_info.get("list", ["Yalama", "Böyük Kəsik", "Boyuk Kesik", "Astara", "Culfa", "Ələt", "Alat"])
 
     def clean_st(name):
         if not name:
@@ -196,8 +196,11 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     c_from = clean_st(st_from)
     c_to = clean_st(st_to)
 
-    is_from_border = any(b.lower() in c_from.lower() for b in border_list if b)
-    is_to_border = any(b.lower() in c_to.lower() for b in border_list if b)
+    def norm_b(s):
+        return str(s).lower().replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
+
+    is_from_border = any(norm_b(b) in norm_b(c_from) for b in border_list if b)
+    is_to_border = any(norm_b(b) in norm_b(c_to) for b in border_list if b)
 
     display_from = f"{c_from}{suffix}" if is_from_border else c_from
     display_to = f"{c_to}{suffix}" if is_to_border else c_to
@@ -217,7 +220,7 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
             shipment_type_code = "local"
             shipment_type_display = "Daxili daşınma" if lang == "AZ" else ("Внутренняя перевозка" if lang == "RU" else "Domestic shipment")
 
-    # Поиск расстояния СТРОГО из Distances.txt без заглушек
+    # Поиск расстояния СТРОГО из Distances.txt без угадываний
     actual_dist_km = find_distance_in_memory(c_from, c_to)
     if actual_dist_km is None or actual_dist_km == 0:
         err_msg = f"Məsafə tapılmadı: {c_from} - {c_to}" if lang == "AZ" else (
