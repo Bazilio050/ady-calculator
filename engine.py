@@ -2,85 +2,9 @@ import os
 import re
 from utils import load_rules_config, find_distance_in_memory, normalize_st_name
 
-
-def load_table_rates(table_num):
-    t_file = f"Table_{table_num}_Tariffs.txt"
-    if not os.path.exists(t_file):
-        t_file = f"Table{table_num}.txt"
-
-    rates = []
-    if os.path.exists(t_file):
-        with open(t_file, "r", encoding="utf-8") as f:
-            for line in f:
-                r_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", line)
-                if r_match:
-                    d_min, d_max = int(r_match.group(1)), int(r_match.group(2))
-                    parts = line.split("|")
-                    if len(parts) > 1:
-                        vals = [float(p.strip().replace(",", ".")) for p in parts[1:] if p.strip()]
-                        rates.append((d_min, d_max, vals))
-                    else:
-                        numbers = re.findall(r"(\d+[\.,]\d+|\d+)", line)
-                        if len(numbers) >= 2:
-                            val = float(numbers[-1].replace(",", "."))
-                            rates.append((d_min, d_max, [val]))
-    return rates
-
-
-def get_base_tariff_chf(table_num, distance_km, billable_weight_tons, wagon_type="universal", lang="AZ"):
-    rates = load_table_rates(table_num)
-    config = load_rules_config()
-    tbl_name = "Cədvəl" if lang == "AZ" else ("Таблица" if lang == "RU" else "Table")
-    km_unit = "km"
-
-    if not rates:
-        return None, f"{tbl_name} {table_num} faylı tapılmadı", False
-
-    if table_num == 5:
-        col_idx = 0
-        is_per_wagon = False
-        w_type = wagon_type.lower()
-        t5_cfg = config.get("table_5_rules", {}).get("columns_mapping", {})
-
-        ref_cfg = t5_cfg.get("refrigerated", {})
-        if any(k in w_type for k in ref_cfg.get("keywords", ["ref", "реф"])):
-            limit = ref_cfg.get("under_weight_limit", {}).get("limit_tons", 25.0)
-            if billable_weight_tons < limit:
-                col_idx = ref_cfg.get("under_weight_limit", {}).get("column_index", 0)
-                is_per_wagon = True
-            else:
-                col_idx = ref_cfg.get("over_or_equal_limit", {}).get("column_index", 1)
-        elif any(k in w_type for k in t5_cfg.get("thermos", {}).get("keywords", ["thermos", "термос"])):
-            thermo_cfg = t5_cfg.get("thermos", {})
-            limit = thermo_cfg.get("under_weight_limit", {}).get("limit_tons", 25.0)
-            if billable_weight_tons < limit:
-                col_idx = thermo_cfg.get("under_weight_limit", {}).get("column_index", 2)
-                is_per_wagon = True
-            else:
-                col_idx = thermo_cfg.get("over_or_equal_limit", {}).get("column_index", 3)
-        elif any(k in w_type for k in t5_cfg.get("autocarrier", {}).get("keywords", ["auto", "авто"])):
-            col_idx = t5_cfg.get("autocarrier", {}).get("default", {}).get("column_index", 4)
-
-        for d_min, d_max, vals in rates:
-            if d_min <= distance_km <= d_max:
-                val = vals[col_idx] if col_idx < len(vals) else vals[0]
-                return val, f"{tbl_name} 5, {d_min}-{d_max} {km_unit}", is_per_wagon
-
-        return None, f"{tbl_name} 5, {distance_km} {km_unit}", is_per_wagon
-
-    weight_intervals = config.get("tables_1_4_weight_intervals", [])
-    col_idx = 7
-    for item in weight_intervals:
-        if item.get("min_weight", 0) <= billable_weight_tons <= item.get("max_weight", 999):
-            col_idx = item.get("column_index", 7)
-            break
-
-    for d_min, d_max, vals in rates:
-        if d_min <= distance_km <= d_max:
-            val = vals[col_idx] if len(vals) == 11 else (vals[min(col_idx, len(vals) - 1)] if len(vals) > 1 else vals[0])
-            return val, f"{tbl_name} {table_num}, {d_min}-{d_max} {km_unit}, {int(billable_weight_tons)} t", False
-
-    return None, f"{tbl_name} {table_num}, {distance_km} {km_unit}", False
+from tables.table_3 import calculate_table_3_base
+from tables.table_4 import calculate_table_4_base
+from tables.table_5 import calculate_table_5_base
 
 
 def get_currency_rate(requested_period, lang="AZ"):
@@ -175,17 +99,10 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
                 c_lbl = f"Ref {w_cnt}+1 vaqon ({c_val} güzəşt)" if lang == "AZ" else (
                     f"Реф {w_cnt}+1 вагон (скидка {c_val})" if lang == "RU" else f"Ref {w_cnt}+1 wagon ({c_val} discount)"
                 )
-            elif w_cnt == 3:
-                item = ref_comp_cfg.get("3_wagons", {})
-                c_val = item.get("coefficient_value", 1.10)
-                c_lbl = f"Ref {w_cnt}+1 vaqon" if lang == "AZ" else (f"Реф {w_cnt}+1 вагон" if lang == "RU" else f"Ref {w_cnt}+1 wagon")
-            elif w_cnt == 2:
-                item = ref_comp_cfg.get("2_wagons", {})
-                c_val = item.get("coefficient_value", 1.40)
-                c_lbl = f"Ref {w_cnt}+1 vaqon" if lang == "AZ" else (f"Реф {w_cnt}+1 вагон" if lang == "RU" else f"Ref {w_cnt}+1 wagon")
-            elif w_cnt == 1:
-                item = ref_comp_cfg.get("1_wagon", {})
-                c_val = item.get("coefficient_value", 1.70)
+            elif w_cnt in [1, 2, 3]:
+                item = ref_comp_cfg.get(f"{w_cnt}_wagon" if w_cnt == 1 else f"{w_cnt}_wagons", {})
+                default_val = 1.10 if w_cnt == 3 else (1.40 if w_cnt == 2 else 1.70)
+                c_val = item.get("coefficient_value", default_val)
                 c_lbl = f"Ref {w_cnt}+1 vaqon" if lang == "AZ" else (f"Реф {w_cnt}+1 вагон" if lang == "RU" else f"Ref {w_cnt}+1 wagon")
 
             if c_val and c_val != 1.0:
@@ -336,9 +253,19 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
         weight_display = f"{act_w_str} t"
 
     is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос"]) or (ref_wagons_cnt is not None)
-    table_num = 5 if (is_ref_type and (os.path.exists("Table_5_Tariffs.txt") or os.path.exists("Table5.txt"))) else (4 if shipment_type_code == "transit" else 3)
-
-    base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, tariff_dist_km, billable_weight, "ref" if is_ref_type else wagon_type, lang)
+    
+    # Диспетчер выбора модулей таблиц
+    if is_ref_type and (os.path.exists("Table_5_Tariffs.txt") or os.path.exists("Table5.txt")):
+        table_num = 5
+        base_chf, table_details, is_per_wagon = calculate_table_5_base(tariff_dist_km, billable_weight, wagon_type, config, lang)
+    elif shipment_type_code == "transit":
+        table_num = 4
+        is_per_wagon = False
+        base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, config, lang)
+    else:
+        table_num = 3
+        is_per_wagon = False
+        base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, config, lang)
 
     if base_chf is None:
         raise ValueError(f"Baza tarifi tapılmadı. (Cədvəl {table_num}, məsafə: {tariff_dist_km} km)")
