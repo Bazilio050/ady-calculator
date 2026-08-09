@@ -57,12 +57,12 @@ def get_table_4_column_index(billable_weight_tons):
     elif w <= 45: return 7
     elif w <= 50: return 8
     elif w <= 55: return 9
-    else: return 10  # Для 60 тонн -> колонка №10 (28.53 CHF/т на 680 км)
+    else: return 10
 
 
 def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", **kwargs):
     """
-    Расчет базовой ставки Таблицы 4 (Универсальные вагоны, Транзит).
+    Расчет базовой ставки Таблицы 4.
     """
     rates = load_table_4_rates()
     col_idx = get_table_4_column_index(billable_weight_tons)
@@ -89,17 +89,53 @@ def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", 
     return base_chf, details_str
 
 
-def get_table_4_coefficients(*args, **kwargs):
+def is_non_ferrous_metal_gng(gng_code):
     """
-    Коэффициенты Таблицы 4: начисляет 1.20 для транзитных перевозок.
+    Проверка кода ГНГ по правилам п. 3.1.1 (коэффициент 1.20)
+    """
+    g = str(gng_code or "").strip().lstrip("0")
+    if not g:
+        return False
+
+    exact_prefixes = ["28045090", "28049", "28054", "32121", "7115", "8302", "83079", "8309", "8311", "85481"]
+    if any(g.startswith(p) for p in exact_prefixes):
+        return True
+
+    if any(g.startswith(str(p)) for p in range(7106, 7113)):
+        return True
+
+    if g.startswith("74"):
+        return not (g.startswith("7401") or g.startswith("7418"))
+
+    if g.startswith("75"):
+        return not g.startswith("7501")
+
+    if g.startswith("76"):
+        return not g.startswith("7615")
+
+    if g.startswith("78") or g.startswith("79") or g.startswith("80"):
+        return True
+
+    if g.startswith("81"):
+        return not g.startswith("81052")
+
+    return False
+
+
+def get_table_4_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, lang="AZ", ui_t=None, *args, **kwargs):
+    """
+    Коэффициенты Таблицы 4 (Транзит)
     """
     coeffs = []
     notes = []
-    
-    # Проверяем аргументы на наличие режима транзита
-    args_str = str(args).lower() + str(kwargs).lower()
-    if "transit" in args_str or "tranzit" in args_str or True:
+
+    st_code = str(shipment_type_code or "").lower()
+    if "transit" in st_code or "tranzit" in st_code or True:
         coeffs.append(("Tranzit əmsalı 1.20", 1.20))
-        notes.append("Cədvəl 4: Tranzit daşımaları üzrə 1.20 əmsalı tətbiq olunmuşdur.")
+
+    if is_non_ferrous_metal_gng(gng_code):
+        lbl = "Əlvan metal 1.20" if lang == "AZ" else ("Цветной металл 1.20" if lang == "RU" else "Non-ferrous metal 1.20")
+        coeffs.append((lbl, 1.20))
+        notes.append("Cədvəl 4: Əlvan metal / spesifik yüklərə (1,20) artırma əmsalı tətbiq olunmuşdur.")
 
     return coeffs, notes
