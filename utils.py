@@ -1,163 +1,103 @@
 import os
-import json
 import re
 
 # ==============================================================================
-# СЛОВАРЬ ТОЧНЫХ СООТВЕТСТВИЙ И СПЕЦИАЛЬНЫХ УЗЛОВ ADY
+# СЛОВАРЬ ТОЧНОГО СООТВЕТСТВИЯ СТАНЦИЙ ADY
 # ==============================================================================
 STATION_EXACT_MAP = {
-    # 1. Астара
-    "astara (eks.aşır)": "Astara",
-    "astara eks asir": "Astara",
-    "astara": "Astara",
-
-    # 2. Баку Yük / Терминалы / Дефолт для "Баку"
+    # Баку и порты
+    "баку": "Bakı-Yük",
+    "баку-тов": "Bakı-Yük",
+    "баку тов": "Bakı-Yük",
+    "баку товарная": "Bakı-Yük",
     "bakı": "Bakı-Yük",
     "baki": "Bakı-Yük",
-    "баку": "Bakı-Yük",
+    "bakı-tov": "Bakı-Yük",
     "bakı yük": "Bakı-Yük",
     "baki yuk": "Bakı-Yük",
-    "баку yük": "Bakı-Yük",
-    "баку-юк": "Bakı-Yük",
-    "баку юк": "Bakı-Yük",
-    "баку товарная": "Bakı-Yük",
-    "баку-тов": "Bakı-Yük",
-    "bakı yük terminal": "Bakı-Yük",
-    "baki yuk terminal": "Bakı-Yük",
-
-    # 3. Бакинский морской порт
-    "bakı ticarət liman": "Bakı Ticarət Limanı",
+    "баку порт": "Bakı Ticarət Limanı",
     "bakı ticarət limanı": "Bakı Ticarət Limanı",
-    "bakı ticarət limanı (eks)": "Bakı Ticarət Limanı",
-    "bakı ticarət limanı (aşır)": "Bakı Ticarət Limanı",
-    "baki ticaret limani": "Bakı Ticarət Limanı",
-
-    # 4. Алят и Экспортные Паромные направления
+    "bakı ticarət limani": "Bakı Ticarət Limanı",
+    "bakı liman": "Bakı Ticarət Limanı",
+    # Алят и Паромы
+    "алят": "Ələt",
     "ələt": "Ələt",
     "elet": "Ələt",
-    "алят": "Ələt",
-    "ələt eksport aktau": "Ələt",
-    "elet eksport aktau": "Ələt",
-    "eksport aktau": "Ələt",
-    "aktau": "Ələt",
-    "ələt eksport kurik": "Ələt",
-    "elet eksport kurik": "Ələt",
-    "eksport kurik": "Ələt",
-    "kurik": "Ələt",
+    "alat": "Ələt",
     "курык": "Ələt",
-    "ələt eksport-türk.": "Ələt",
-    "elet eksport-turk": "Ələt",
-    "eksport turk": "Ələt",
+    "kurik": "Ələt",
+    "актау": "Ələt",
+    "aktau": "Ələt",
     "туркменбаши": "Ələt",
     "turkmenbashi": "Ələt",
-
-    # 5. Алят-Ени
-    "ələt yeni": "Ələt-Yeni",
-    "elet yeni": "Ələt-Yeni",
     "алят ени": "Ələt-Yeni",
-
-    # 6. Мингечевир
-    "mingəçevir şəhər": "Mingəçevir-Şəhər",
-    "mingacevir seher": "Mingəçevir-Şəhər",
+    "ələt yeni": "Ələt-Yeni",
+    # Погранпереходы и спец. станции ADY
+    "ялама": "Yalama",
+    "yalama": "Yalama",
+    "беюк кесик": "Böyük Kəsik",
+    "беюк-кесик": "Böyük Kəsik",
+    "böyük kəsik": "Böyük Kəsik",
+    "boyuk kesik": "Böyük Kəsik",
+    "астара": "Astara",
+    "astara": "Astara",
     "мингечевир шехер": "Mingəçevir-Şəhər",
-    "mingəçevir": "Mingəçevir-Şəhər",
-
-    # 7. Карадаг
-    "qaradağ terminal": "Qaradağ",
-    "qaradag terminal": "Qaradağ",
-    "карадаг терминал": "Qaradağ",
+    "mingəçevir şəhər": "Mingəçevir-Şəhər",
+    "мингечевир": "Mingəçevir-Şəhər",
+    "карадаг": "Qaradağ",
     "qaradağ": "Qaradağ",
-
-    # 8. Гушчу Керпю
     "quşçu körpü": "Quşçu Körpü",
-    "quscu korpu": "Quşçu Körpü",
     "гушчу корпю": "Quşçu Körpü",
-
-    # 9. Сангачал
-    "sanqaçal ter.(aşırma)": "Sanqaçal",
-    "sanqacal ter.(asirma)": "Sanqaçal",
-    "sanqaçal ter": "Sanqaçal",
-    "sanqacal ter": "Sanqaçal",
-    "сангачал тер": "Sanqaçal",
+    "сангачал": "Sanqaçal",
     "sanqaçal": "Sanqaçal",
-
-    # 10. Союг-Булаг
-    "soyuq-bulaq": "Soyuqbulaq",
-    "soyuq bulaq": "Soyuqbulaq",
     "союг булаг": "Soyuqbulaq",
     "soyuqbulaq": "Soyuqbulaq",
-
-    # 11. З. Тагиев и Чобанлы/Чешидлеме
+    "з. тагиев": "Z.Tağıyev",
+    "з.тагиев": "Z.Tağıyev",
     "z.tağıyev": "Z.Tağıyev",
     "z.tagiyev": "Z.Tağıyev",
-    "з.тагиев": "Z.Tağıyev",
-    "z.tağıyev çeşidləmə": "Z.Tağıyev-Çeşidləmə",
-    "z.tagiyev cesidleme": "Z.Tağıyev-Çeşidləmə",
     "з.тагиев сортировочная": "Z.Tağıyev-Çeşidləmə",
-
-    # 12. Забрат II
-    "zabrat ii": "Zabrat-II",
-    "zabrat 2": "Zabrat-II",
+    "z.tağıyev çeşidləmə": "Z.Tağıyev-Çeşidləmə",
     "забрат 2": "Zabrat-II",
-    "забрат ii": "Zabrat-II"
+    "zabrat 2": "Zabrat-II",
+    "zabrat ii": "Zabrat-II",
+    "абшерон": "Abşeron",
+    "abşeron": "Abşeron",
+    "absheron": "Abşeron",
+    "сумгаит": "Sumqayıt",
+    "sumqayıt": "Sumqayıt",
+    "биляджары": "Biləcəri",
+    "biləcəri": "Biləcəri",
+    "худат": "Xudat",
+    "xudat": "Xudat",
+    "гянджа": "Gəncə",
+    "gəncə": "Gəncə",
 }
-
-
-def normalize_st_name(raw_name: str) -> str:
-    """
-    Универсальная очистка и приведение названия станции к каноническому виду из Distances.txt.
-    """
-    if not raw_name:
-        return ""
-
-    # 1. Приведение к нижнему регистру, замена переносов строк на пробелы
-    clean = str(raw_name).replace('\n', ' ').strip().lower()
-    clean = re.sub(r'\s+', ' ', clean)
-
-    # 2. Прямая проверка по точной карте соответствий
-    if clean in STATION_EXACT_MAP:
-        return STATION_EXACT_MAP[clean]
-
-    # 3. Автоматическое срезание скобок и суффиксов
-    clean = re.sub(r'\((eks|aşır|aşırma|eks\.aşır)\)', '', clean, flags=re.IGNORECASE)
-    clean = re.sub(r'\b(ter\.|terminal|aşırma|aşır)\b', '', clean, flags=re.IGNORECASE)
-    clean = re.sub(r'-(eksp|эксп|exp)\b', '', clean, flags=re.IGNORECASE)
-    clean = re.sub(r'-(тов|tov|tovarlı|товарная)\b', '', clean, flags=re.IGNORECASE)
-    clean = re.sub(r'\s+', ' ', clean).strip()
-
-    # 4. Повторная проверка после очистки
-    if clean in STATION_EXACT_MAP:
-        return STATION_EXACT_MAP[clean]
-
-    return raw_name.strip()
 
 
 def norm_str(s: str) -> str:
     """
-    Вспомогательная функция нормализации символов для нечувствительного к регистру сравнения.
+    Очистка и приведение строки к нижнему регистру для корректного сравнения.
     """
     if not s:
         return ""
-    return str(s).lower().replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g').replace('-', ' ').strip()
+    cleaned = s.strip().lower()
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    return cleaned
 
 
-def load_rules_config() -> dict:
+def normalize_st_name(st_name: str) -> str:
     """
-    Загрузка конфигурационных файлов из папки tables/ или корневой директории.
+    Нормализует название станции по словарю STATION_EXACT_MAP.
     """
-    possible_paths = [
-        "tables/global_config.json",
-        "tables/table_3_config.json",
-        "rules_config.json"
-    ]
-    for path in possible_paths:
-        if os.path.exists(path):
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"Ошибка чтения {path}: {e}")
-    return {}
+    if not st_name:
+        return ""
+
+    key = norm_str(st_name)
+    if key in STATION_EXACT_MAP:
+        return STATION_EXACT_MAP[key]
+
+    return st_name.strip()
 
 
 def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
@@ -192,16 +132,20 @@ def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
                 if not line_str or line_str.startswith("#") or line_str.startswith("="):
                     continue
 
-                parts = re.split(r'\||;', line_str)
+                # Разделяем станционную пару и расстояние (по |, ; или :)
+                parts = re.split(r'\||;|\:', line_str)
                 if len(parts) >= 2:
                     st_pair = parts[0].strip()
                     dist_val_str = parts[-1].strip()
 
-                    pair_match = re.split(r'\s*[-–]\s*', st_pair, maxsplit=1)
+                    # Делим пару станций строго по дефису/тире С ПРОБЕЛАМИ (` - `),
+                    # чтобы не разбивать составные названия станций вроде "Bakı-Yük" или "Z.Tağıyev-Çeşidləmə".
+                    pair_match = re.split(r'\s+[-–—]\s+|\s*;\s*', st_pair, maxsplit=1)
                     if len(pair_match) == 2:
                         s1 = norm_str(pair_match[0])
                         s2 = norm_str(pair_match[1])
 
+                        # Прямой и обратный порядок
                         if (clean_from == s1 and clean_to == s2) or (clean_from == s2 and clean_to == s1):
                             dist_match = re.search(r'\d+', dist_val_str)
                             if dist_match:
