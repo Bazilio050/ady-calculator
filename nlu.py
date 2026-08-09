@@ -9,10 +9,10 @@ def call_gemini_nlu(client, user_input_text, lang):
         "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
         "Extract shipment parameters from text into JSON. Return ONLY clean JSON:\n"
         "{\n"
-        '  "route_from": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron, Xudat)",\n'
-        '  "route_to": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron, Xudat)",\n'
-        '  "cargo_gng_code": "string or null (extract 2-to-8 digit GNG/NHM code, e.g. 72, 4407, 0207)",\n'
-        f'  "cargo_name": "string or null (Short official commodity name translated STRICTLY to {target_lang} in 1-3 words based on GNG code or input text)",\n'
+        '  "route_from": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Sumqayit, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron, Xudat)",\n'
+        '  "route_to": "string or null (OFFICIAL ADY station name normalized to Latin, e.g. Yalama, Sumqayit, Bileceri, Boyuk Kesik, Alat, Astara, Culfa, Absheron, Xudat)",\n'
+        '  "cargo_gng_code": "string or null (Extract ANY 2-digit, 4-digit, or 6-to-8 digit numeric code representing GNG/NHM, e.g. 72, 28, 2815, 4407, 0207)",\n'
+        f'  "cargo_name": "string or null (Short official commodity name translated STRICTLY to {target_lang} in 1-3 words based on GNG code or input text. If only GNG code like 2815 or 72 is provided, provide generic name for this GNG category)",\n'
         '  "actual_weight_tons": float or null,\n'
         '  "wagon_type": "string (universal/tank/ref/thermos/autocarrier/container)",\n'
         '  "park_type": "string (SPS/MPS)",\n'
@@ -21,8 +21,12 @@ def call_gemini_nlu(client, user_input_text, lang):
         '  "requested_period": "string or null",\n'
         '  "explicit_mode": "string or null (import/export/transit)"\n'
         "}\n\n"
+        "CRITICAL CARGO RULES:\n"
+        "- ANY standalone 2-digit (e.g. 72, 28), 4-digit (e.g. 2815) or 8-digit numbers MUST be extracted as 'cargo_gng_code' unless explicitly specified as weight in tons.\n"
+        "- If user enters '2815', set 'cargo_gng_code' to '2815'.\n\n"
         "STRICT ROUTE RULES:\n"
         "- NEVER set 'route_from' and 'route_to' to the same station if two distinct stations are mentioned.\n"
+        "- 'сумгаит' / 'sumqait' / 'sumgayit' -> 'Sumqayit'\n"
         "- 'худат' / 'xudat' -> 'Xudat'\n"
         "- 'ялама' / 'yalama' -> 'Yalama'\n\n"
         f"USER INPUT:\n{user_input_text}"
@@ -62,7 +66,11 @@ def validate_nlu_input(nlu_res, lang):
         missing_items.append("📍 **Təyinat stansiyası** (Destination station)" if lang == "AZ" else ("📍 **Станция назначения**" if lang == "RU" else "📍 **Destination station**"))
     if not weight or float(weight) <= 0:
         missing_items.append("⚖️ **Faktiki çəki (tonla)** (Weight in tons)" if lang == "AZ" else ("⚖️ **Фактический вес (в тоннах)**" if lang == "RU" else "⚖️ **Actual weight in tons**"))
-    if not gng and not cargo_name:
+    
+    gng_str = str(gng).strip() if gng is not None else ""
+    cargo_str = str(cargo_name).strip() if cargo_name is not None else ""
+    
+    if not gng_str and not cargo_str:
         missing_items.append("📦 **Yükün adı və ya GNG/NHM kodu** (Cargo code or name)" if lang == "AZ" else ("📦 **Наименование груза или код ГНГ/NHM**" if lang == "RU" else "📦 **Cargo name or GNG/NHM code**"))
 
     return missing_items
