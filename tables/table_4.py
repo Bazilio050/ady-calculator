@@ -51,6 +51,8 @@ def get_table_4_column_index(billable_weight_tons):
     elif w <= 15: return 1
     elif w <= 20: return 2
     elif w <= 25: return 3
+    elif w <= 30: return 4
+    elif w <= 35: return 5
     elif w <= 40: return 6
     elif w <= 45: return 7
     elif w <= 50: return 8
@@ -60,15 +62,15 @@ def get_table_4_column_index(billable_weight_tons):
 
 def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", **kwargs):
     """
-    Расчет базовой ставки Таблицы 4 (Универсальные вагоны, Транзит).
-    Возвращает 3 значения: (base_chf, details_str, is_per_wagon).
+    Расчет базовой ставки Таблицы 4.
+    Возвращает СТРОГО 2 значения: (base_chf, details_str)
     """
     rates = load_table_4_rates()
     col_idx = get_table_4_column_index(billable_weight_tons)
     tbl_name = "Cədvəl 4" if lang == "AZ" else ("Таблица 4" if lang == "RU" else "Table 4")
 
     if not rates:
-        return None, f"{tbl_name} faylı tapılmadı", False
+        return None, f"{tbl_name} faylı tapılmadı"
 
     base_chf = None
     for d_min, d_max, vals in rates:
@@ -80,17 +82,17 @@ def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", 
             break
 
     if base_chf is None:
-        return None, f"{tbl_name}, {distance_km} km", False
+        return None, f"{tbl_name}, {distance_km} km"
 
     weight_label = f"{int(billable_weight_tons)} t" if billable_weight_tons else ""
     details_str = f"{tbl_name} ({distance_km} km, {weight_label})"
     
-    return base_chf, details_str, False
+    return base_chf, details_str
 
 
 def get_table_4_coefficients(*args, **kwargs):
     """
-    Возвращает строго 2 значения: (coeffs, notes)
+    Возвращает СТРОГО 2 значения: (coeffs, notes)
     """
     coeffs = []
     notes = []
