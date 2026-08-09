@@ -82,7 +82,7 @@ GEMINI_SYSTEM_INSTRUCTION = """
 """
 
 
-def parse_user_input_with_gemini(user_input: str, api_key: str = None) -> dict:
+def parse_user_input_with_gemini(user_input: str, api_key: str = None, *args, **kwargs) -> dict:
     """
     Отправляет текстовый запрос пользователя в Gemini NLU через новый SDK google-genai.
     """
@@ -93,7 +93,9 @@ def parse_user_input_with_gemini(user_input: str, api_key: str = None) -> dict:
         raise ValueError("GEMINI_API_KEY не найден в переменных окружения.")
 
     client = genai.Client(api_key=api_key)
-    model_name = "gemini-2.0-flash-lite"
+    
+    # Жестко зафиксированная модель по твоему требованию
+    model_name = "gemini-3.5-flash-lite"
 
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
@@ -131,17 +133,14 @@ def validate_nlu_input(parsed_data: dict) -> dict:
     if not isinstance(parsed_data, dict):
         parsed_data = {}
 
-    # Страховочная нормализация станций через utils.py
     parsed_data["route_from"] = normalize_st_name(parsed_data.get("route_from", "Bakı-Yük"))
     parsed_data["route_to"] = normalize_st_name(parsed_data.get("route_to", "Yalama"))
 
-    # Приведение веса к float
     try:
         parsed_data["actual_weight_tons"] = float(parsed_data.get("actual_weight_tons") or 60.0)
     except (ValueError, TypeError):
         parsed_data["actual_weight_tons"] = 60.0
 
-    # Проверка обязательных полей
     if not parsed_data.get("wagon_type"):
         parsed_data["wagon_type"] = "universal"
 
@@ -151,9 +150,12 @@ def validate_nlu_input(parsed_data: dict) -> dict:
     return parsed_data
 
 
-def call_gemini_nlu(user_input: str, api_key: str = None) -> dict:
+def call_gemini_nlu(user_input: str, api_key: str = None, *args, **kwargs) -> dict:
     """
-    Главная внешняя функция, вызываемая из app.py.
+    Главная внешняя функция, поддерживающая гибкое количество аргументов от app.py.
     """
-    raw_parsed_data = parse_user_input_with_gemini(user_input, api_key)
+    if not api_key and args:
+        api_key = args[0]
+
+    raw_parsed_data = parse_user_input_with_gemini(user_input, api_key, *args, **kwargs)
     return validate_nlu_input(raw_parsed_data)
