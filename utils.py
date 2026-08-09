@@ -1,4 +1,5 @@
 import os
+import json
 import re
 
 # ==============================================================================
@@ -100,6 +101,31 @@ def normalize_st_name(st_name: str) -> str:
     return st_name.strip()
 
 
+def load_rules_config(filepath: str = "rules_config.json") -> dict:
+    """
+    Загружает конфигурацию тарифных правил и коэффициентов из JSON.
+    """
+    possible_paths = [
+        filepath,
+        os.path.join("data", filepath),
+        os.path.join("config", filepath),
+        "rules_config.json",
+        "rules.json",
+        "data/rules_config.json",
+        "data/rules.json"
+    ]
+
+    for path in possible_paths:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Ошибка при чтении конфигурации {path}: {e}")
+
+    return {}
+
+
 def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
     """
     Поиск тарифного расстояния в километрах между двумя станциями в файле Distances.txt.
@@ -132,20 +158,16 @@ def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
                 if not line_str or line_str.startswith("#") or line_str.startswith("="):
                     continue
 
-                # Разделяем станционную пару и расстояние (по |, ; или :)
                 parts = re.split(r'\||;|\:', line_str)
                 if len(parts) >= 2:
                     st_pair = parts[0].strip()
                     dist_val_str = parts[-1].strip()
 
-                    # Делим пару станций строго по дефису/тире С ПРОБЕЛАМИ (` - `),
-                    # чтобы не разбивать составные названия станций вроде "Bakı-Yük" или "Z.Tağıyev-Çeşidləmə".
                     pair_match = re.split(r'\s+[-–—]\s+|\s*;\s*', st_pair, maxsplit=1)
                     if len(pair_match) == 2:
                         s1 = norm_str(pair_match[0])
                         s2 = norm_str(pair_match[1])
 
-                        # Прямой и обратный порядок
                         if (clean_from == s1 and clean_to == s2) or (clean_from == s2 and clean_to == s1):
                             dist_match = re.search(r'\d+', dist_val_str)
                             if dist_match:
