@@ -54,7 +54,8 @@ def normalize_st_name(name):
 
 def find_distance_in_memory(st_from, st_to):
     """
-    Находит тарифное расстояние между станциями из файла Distances.txt.
+    Умный поиск расстояния в матричном формате Distances.txt.
+    Ищет пересечение строки станции и столбца погранперехода.
     """
     if not st_from or not st_to:
         return None
@@ -63,24 +64,58 @@ def find_distance_in_memory(st_from, st_to):
     norm_to = normalize_st_name(st_to)
 
     dist_file = "Distances.txt"
-    if os.path.exists(dist_file):
-        try:
-            with open(dist_file, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line or "|" not in line:
-                        continue
-                    parts = [p.strip() for p in line.split("|")]
-                    if len(parts) >= 3:
-                        s1 = normalize_st_name(parts[0])
-                        s2 = normalize_st_name(parts[1])
-                        
-                        if (s1 == norm_from and s2 == norm_to) or (s1 == norm_to and s2 == norm_from):
-                            try:
-                                return int(parts[2])
-                            except ValueError:
-                                pass
-        except Exception as e:
-            print(f"Ошибка при чтении {dist_file}: {e}")
+    if not os.path.exists(dist_file):
+        return None
+
+    try:
+        with open(dist_file, "r", encoding="utf-8") as f:
+            lines = [line.strip() for line in f if line.strip()]
+
+        if not lines:
+            return None
+
+        # 1. Находим строку заголовка с пограничными станциями
+        header_col_names = []
+        header_line_idx = -1
+        for idx, line in enumerate(lines):
+            if "|" in line and any(k in line.lower() for k in ["yalama", "astara", "kəsik", "kesik", "culfa", "ələt", "alat"]):
+                parts = [p.strip() for p in line.split("|")]
+                header_col_names = [normalize_st_name(p) for p in parts]
+                header_line_idx = idx
+                break
+
+        if header_line_idx == -1:
+            return None
+
+        # 2. Ищем совпадение в строках станций
+        for line in lines[header_line_idx + 1:]:
+            if "|" not in line or "---" in line:
+                continue
+
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) < 3:
+                continue
+
+            row_st_name = normalize_st_name(parts[0])
+
+            # Определяем, какая из станций находится в строке, а какая — в заголовке столбца
+            target_border_st = None
+            if norm_from == row_st_name or norm_from in row_st_name or row_st_name in norm_from:
+                target_border_st = norm_to
+            elif norm_to == row_st_name or norm_to in row_st_name or row_st_name in norm_to:
+                target_border_st = norm_from
+
+            if target_border_st:
+                # Ищем заголовок нужного столбца
+                for col_idx, border_hdr in enumerate(header_col_names):
+                    if border_hdr and (target_border_st in border_hdr or border_hdr in target_border_st):
+                        if col_idx < len(parts):
+                            val_str = parts[col_idx].strip()
+                            digits = re.sub(r'\D', '', val_str)
+                            if digits:
+                                return int(digits)
+
+    except Exception as e:
+        print(f"Ошибка при чтении матричного {dist_file}: {e}")
 
     return None
