@@ -9,8 +9,8 @@ def call_gemini_nlu(client, user_input_text, lang):
         "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
         "Extract shipment parameters from text into JSON. Return ONLY clean JSON:\n"
         "{\n"
-        f'  "route_from": "string or null (Official station name strictly in {target_lang}. If Azerbaijani, use correct Latin characters like Gəncə, Sumqayıt, Böyük Kəsik, Biləcəri, Xudat, Yalama)",\n'
-        f'  "route_to": "string or null (Official station name strictly in {target_lang}. If Azerbaijani, use correct Latin characters like Gəncə, Sumqayıt, Böyük Kəsik, Biləcəri, Xudat, Yalama)",\n'
+        '  "route_from": "string or null (Official Azerbaijani station name strictly in Latin AZ characters, e.g. Abşeron, Gəncə, Sumqayıt, Böyük Kəsik, Biləcəri, Xudat, Yalama)",\n'
+        '  "route_to": "string or null (Official Azerbaijani station name strictly in Latin AZ characters, e.g. Abşeron, Gəncə, Sumqayıt, Böyük Kəsik, Biləcəri, Xudat, Yalama)",\n'
         '  "cargo_gng_code": "string or null (Extract ANY 2-digit, 4-digit, or 6-to-8 digit numeric code representing GNG/NHM, e.g. 72, 28, 2815, 4407, 0207)",\n'
         f'  "cargo_name": "string or null (Short official commodity name translated STRICTLY to {target_lang} in 1-3 words based on GNG code or input text. If only GNG code like 2815 or 72 is provided, provide generic name for this GNG category)",\n'
         '  "actual_weight_tons": float or null,\n'
@@ -26,10 +26,10 @@ def call_gemini_nlu(client, user_input_text, lang):
         "- If user enters '2815', set 'cargo_gng_code' to '2815'.\n\n"
         "STRICT ROUTE RULES:\n"
         "- NEVER set 'route_from' and 'route_to' to the same station if two distinct stations are mentioned.\n"
-        "- Standardize station names properly with correct local alphabet characters.\n\n"
+        "- Standardize station names properly with correct Azerbaijani Latin alphabet characters.\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
-    
+
     response = client.models.generate_content(
         model="gemini-3.5-flash-lite",
         config=types.GenerateContentConfig(
@@ -51,7 +51,7 @@ def call_gemini_nlu(client, user_input_text, lang):
 
 def validate_nlu_input(nlu_res, lang):
     missing_items = []
-    
+
     st_from = nlu_res.get("route_from")
     st_to = nlu_res.get("route_to")
     weight = nlu_res.get("actual_weight_tons")
@@ -64,10 +64,10 @@ def validate_nlu_input(nlu_res, lang):
         missing_items.append("📍 **Təyinat stansiyası** (Destination station)" if lang == "AZ" else ("📍 **Станция назначения**" if lang == "RU" else "📍 **Destination station**"))
     if not weight or float(weight) <= 0:
         missing_items.append("⚖️ **Faktiki çəki (tonla)** (Weight in tons)" if lang == "AZ" else ("⚖️ **Фактический вес (в тоннах)**" if lang == "RU" else "⚖️ **Actual weight in tons**"))
-    
+
     gng_str = str(gng).strip() if gng is not None else ""
     cargo_str = str(cargo_name).strip() if cargo_name is not None else ""
-    
+
     if not gng_str and not cargo_str:
         missing_items.append("📦 **Yükün adı və ya GNG/NHM kodu** (Cargo code or name)" if lang == "AZ" else ("📦 **Наименование груза или код ГНГ/NHM**" if lang == "RU" else "📦 **Cargo name or GNG/NHM code**"))
 
