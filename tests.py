@@ -1,4 +1,5 @@
 import sys
+import re
 from utils import load_rules_config
 from engine import process_full_calculation
 
@@ -11,7 +12,6 @@ UI_T = {
     "note_coef_1015": "Add coeff 1.015", "note_min_weight": "Min weight"
 }
 
-# 4 ТВОИХ ПРОВЕРОЧНЫХ МАРШРУТА
 TEST_SUITE = [
     {
         "name": "1. Ялама -> Апшерон (4407, 35т, крытый, СПС)",
@@ -76,6 +76,17 @@ TEST_SUITE = [
     }
 ]
 
+def parse_float(val):
+    """Безопасно переводит текстовую ставку в число"""
+    if val is None:
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val)
+    match = re.search(r'[-+]?\d*\.\d+|\d+', str(val).replace(',', '.'))
+    if match:
+        return float(match.group(0))
+    return 0.0
+
 def run_tests():
     print("🧪 ПРОВЕРКА 4 ОСНОВНЫХ МАРШРУТОВ...\n" + "="*50)
     passed, failed = 0, 0
@@ -83,10 +94,11 @@ def run_tests():
     for test in TEST_SUITE:
         try:
             res = process_full_calculation(test["nlu"], test["raw_text"], "AZ", "2026", UI_T)
-            calc_rate = res['part3'].get('express_rate') or res['part3'].get('net_ady_rate')
+            
+            raw_rate = res['part3'].get('express_rate') or res['part3'].get('net_ady_rate')
+            calc_rate = parse_float(raw_rate)
             exp_rate = test["expected_rate"]
 
-            # Если разница меньше 5 копеек (погрешность округления) — считаем верным
             if abs(calc_rate - exp_rate) <= 0.05:
                 print(f"✅ {test['name']} -> Совпало: {calc_rate}$")
                 passed += 1
@@ -96,6 +108,9 @@ def run_tests():
         except Exception as e:
             print(f"❌ {test['name']} -> Ошибка кода: {e}")
             failed += 1
+
+    print("\n" + "="*50)
+    print(f"📊 ИТОГ: Успешно: {passed} | Ошибок: {failed}")
 
     if failed > 0:
         sys.exit(1)
