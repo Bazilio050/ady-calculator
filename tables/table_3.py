@@ -17,131 +17,70 @@ def load_table_3_config():
     return {}
 
 
-def get_rate_from_txt_file(distance_km, col_idx):
+def load_table_3_rates():
     """
-    Ищет базовую ставку в текстовых файлах Таблицы 3 (Table_3_Tariffs.txt / Table3.txt).
+    Оригинальный рабочая функция чтения тарифных ставок из текстового файла.
     """
-    possible_paths = [
-        "tables/Table_3_Tariffs.txt",
+    possible_files = [
         "Table_3_Tariffs.txt",
-        "tables/Table3.txt",
         "Table3.txt",
-        "tables/table_3.txt"
+        "tables/Table_3_Tariffs.txt",
+        "tables/Table3.txt"
     ]
-
-    txt_path = None
-    for p in possible_paths:
-        if os.path.exists(p):
-            txt_path = p
+    
+    t_file = None
+    for pf in possible_files:
+        if os.path.exists(pf):
+            t_file = pf
             break
 
-    if not txt_path:
-        return None
-
-    try:
-        with open(txt_path, "r", encoding="utf-8") as f:
-            lines = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
-
-        for line in lines:
-            parts = [p.strip() for p in line.split("|") if p.strip()]
-            if len(parts) < 2:
-                parts = line.split()
-
-            if not parts:
-                continue
-
-            # Пытаемся распарсить диапазон расстояний (например, 181|200|...)
-            try:
-                min_d = int(re.sub(r'\D', '', parts[0]))
-                max_d = int(re.sub(r'\D', '', parts[1])) if len(parts) > 1 and parts[1].isdigit() else min_d
-
-                if min_d <= distance_km <= max_d:
-                    # Выбираем ставку по весовому столбцу
-                    rates_part = parts[2:] if len(parts) > 2 else parts[1:]
-                    if col_idx < len(rates_part):
-                        val_str = rates_part[col_idx].replace(',', '.')
-                        return float(re.findall(r'\d+\.?\d*', val_str)[0])
-                    elif len(rates_part) > 0:
-                        val_str = rates_part[-1].replace(',', '.')
-                        return float(re.findall(r'\d+\.?\d*', val_str)[0])
-            except (ValueError, IndexError):
-                continue
-    except Exception as e:
-        print(f"Ошибка чтение файла тарифов {txt_path}: {e}")
-
-    return None
+    rates = []
+    if t_file and os.path.exists(t_file):
+        with open(t_file, "r", encoding="utf-8") as f:
+            for line in f:
+                r_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", line)
+                if r_match:
+                    d_min, d_max = int(r_match.group(1)), int(r_match.group(2))
+                    parts = line.split("|")
+                    if len(parts) > 1:
+                        vals = [float(p.strip().replace(",", ".")) for p in parts[1:] if p.strip()]
+                        rates.append((d_min, d_max, vals))
+                    else:
+                        numbers = re.findall(r"(\d+[\.,]\d+|\d+)", line)
+                        if len(numbers) >= 2:
+                            val = float(numbers[-1].replace(",", "."))
+                            rates.append((d_min, d_max, [val]))
+    return rates
 
 
 def calculate_table_3_base(distance_km, billable_weight_tons, config, lang="AZ"):
     """
-    Рассчитывает базовую тарифную ставку по Таблице 3 для расстояния distance_km и веса billable_weight_tons.
-    Возвращает ровно 2 значения: (rate_per_ton, details_str).
+    Оригинальная рабочая функция расчета базовой ставки.
     """
-    t3_cfg = load_table_3_config()
+    rates = load_table_3_rates()
+    tbl_name = "Cədvəl 3" if lang == "AZ" else ("Таблица 3" if lang == "RU" else "Table 3")
 
-    # 1. Определяем индекс весового столбца
-    weight_intervals = t3_cfg.get("tables_1_4_weight_intervals", [])
-    col_idx = 0
-    if weight_intervals:
-        for interval in weight_intervals:
-            w_min = interval.get("min_weight", 0)
-            w_max = interval.get("max_weight", 999)
-            if w_min <= billable_weight_tons <= w_max:
-                col_idx = interval.get("column_index", 0)
-                break
+    if not rates:
+        return None, f"{tbl_name} faylı tapılmadı"
 
-    rate_per_ton = None
+    weight_intervals = config.get("tables_1_4_weight_intervals", [])
+    col_idx = 7
+    for item in weight_intervals:
+        if item.get("min_weight", 0) <= billable_weight_tons <= item.get("max_weight", 999):
+            col_idx = item.get("column_index", 7)
+            break
 
-    # 2. Пробуем найти ставку в текстовом файле тарифов (Table_3_Tariffs.txt)
-    rate_per_ton = get_rate_from_txt_file(distance_km, col_idx)
+    for d_min, d_max, vals in rates:
+        if d_min <= distance_km <= d_max:
+            val = vals[col_idx] if len(vals) == 11 else (vals[min(col_idx, len(vals) - 1)] if len(vals) > 1 else vals[0])
+            return val, f"{tbl_name}, {d_min}-{d_max} km, {int(billable_weight_tons)} t"
 
-    # 3. Если в TXT не нашли, ищем в JSON-конфигах
-    if rate_per_ton is None:
-        rates = (
-            t3_cfg.get("distance_rates")
-            or t3_cfg.get("rates")
-            or t3_cfg.get("distance_matrix")
-            or (config.get("table_3_rates") if isinstance(config, dict) else None)
-            or (config.get("distance_rates") if isinstance(config, dict) else None)
-            or []
-        )
-
-        if isinstance(rates, list) and len(rates) > 0:
-            selected_item = None
-            for item in rates:
-                if isinstance(item, dict):
-                    min_d = item.get("min_km", item.get("min_dist", 0))
-                    max_d = item.get("max_km", item.get("max_dist", 9999))
-                    if min_d <= distance_km <= max_d:
-                        selected_item = item
-                        break
-
-            if not selected_item and rates:
-                selected_item = rates[-1]
-
-            if selected_item:
-                if "rate_chf_per_ton" in selected_item:
-                    rate_per_ton = float(selected_item["rate_chf_per_ton"])
-                elif "rates" in selected_item and isinstance(selected_item["rates"], list):
-                    r_list = selected_item["rates"]
-                    rate_per_ton = float(r_list[col_idx if col_idx < len(r_list) else -1])
-
-    if rate_per_ton is None:
-        return None, "Таблица 3 не найдена"
-
-    details_str = f"Cədvəl 3 ({distance_km} km)" if lang == "AZ" else (
-        f"Таблица 3 ({distance_km} км)" if lang == "RU" else f"Table 3 ({distance_km} km)"
-    )
-
-    return rate_per_ton, details_str
+    return None, f"{tbl_name}, {distance_km} km"
 
 
 def get_table_3_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ", ui_t=None):
     """
-    Проверяет и возвращает коэффициенты, относящиеся к Таблице 3:
-    1. Повышающий 1.20 для цветных металлов и спецхимии (п. 3.1.1).
-    2. Базовый 1.50 для Импорта/Экспорта (и исключения для него).
-    3. Специальный 1.04 для импорта леса и черных металлов.
+    Проверяет и возвращает специфичные коэффициенты Таблицы 3.
     """
     if ui_t is None:
         ui_t = {}
