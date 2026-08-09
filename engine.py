@@ -2,17 +2,6 @@ import os
 import re
 from utils import load_rules_config, find_distance_in_memory, normalize_st_name
 
-STATION_TRANSLATIONS = {
-    "yalama": {"AZ": "Yalama", "RU": "Ялама", "EN": "Yalama"},
-    "absheron": {"AZ": "Abşeron", "RU": "Абшерон", "EN": "Absheron"},
-    "boyuk kesik": {"AZ": "Böyük Kəsik", "RU": "Беюк-Кесик", "EN": "Boyuk Kesik"},
-    "bileceri": {"AZ": "Biləcəri", "RU": "Баладжары", "EN": "Bilajary"},
-    "astara": {"AZ": "Astara", "RU": "Астара", "EN": "Astara"},
-    "culfa": {"AZ": "Culfa", "RU": "Джульфа", "EN": "Julfa"},
-    "alat": {"AZ": "Ələt", "RU": "Алят", "EN": "Alyat"},
-    "xudat": {"AZ": "Xudat", "RU": "Худат", "EN": "Khudat"}
-}
-
 def load_table_rates(table_num):
     t_file = f"Table_{table_num}_Tariffs.txt"
     if not os.path.exists(t_file):
@@ -165,7 +154,7 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
         coeffs.append((lbl_imp, coeff_val))
         notes.append(ui_t["note_timber_metal"])
 
-    # 4. Состав рефсекции по официальному документу ADY (1.70 / 1.40 / 1.10 / 0.85)
+    # 4. Динамическое форматирование рефсекции (например: Ref 5+1 vaqon (0.85 güzəşt))
     if is_ref_type and ref_wagons_cnt is not None:
         try:
             w_cnt = int(ref_wagons_cnt)
@@ -179,23 +168,21 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
                 c_val = item.get("coefficient_value", 0.85)
                 if c_val == 1.0:
                     c_val = 0.85
-                labels = item.get("labels", {}) if isinstance(item, dict) else {}
-                c_lbl = labels.get(lang, "Ref 5+ vaqon (0.85 güzəşt)") if labels else "Ref 5+ vaqon (0.85 güzəşt)"
+                c_lbl = f"Ref {w_cnt}+1 vaqon ({c_val} güzəşt)" if lang == "AZ" else (
+                    f"Реф {w_cnt}+1 вагон (скидка {c_val})" if lang == "RU" else f"Ref {w_cnt}+1 wagon ({c_val} discount)"
+                )
             elif w_cnt == 3:
                 item = ref_comp_cfg.get("3_wagons", {})
                 c_val = item.get("coefficient_value", 1.10)
-                labels = item.get("labels", {}) if isinstance(item, dict) else {}
-                c_lbl = labels.get(lang, "Ref 3 vaqon") if labels else "Ref 3 vaqon"
+                c_lbl = f"Ref {w_cnt}+1 vaqon" if lang == "AZ" else (f"Реф {w_cnt}+1 вагон" if lang == "RU" else f"Ref {w_cnt}+1 wagon")
             elif w_cnt == 2:
                 item = ref_comp_cfg.get("2_wagons", {})
                 c_val = item.get("coefficient_value", 1.40)
-                labels = item.get("labels", {}) if isinstance(item, dict) else {}
-                c_lbl = labels.get(lang, "Ref 2 vaqon") if labels else "Ref 2 vaqon"
+                c_lbl = f"Ref {w_cnt}+1 vaqon" if lang == "AZ" else (f"Реф {w_cnt}+1 вагон" if lang == "RU" else f"Ref {w_cnt}+1 wagon")
             elif w_cnt == 1:
                 item = ref_comp_cfg.get("1_wagon", {})
                 c_val = item.get("coefficient_value", 1.70)
-                labels = item.get("labels", {}) if isinstance(item, dict) else {}
-                c_lbl = labels.get(lang, "Ref 1 vaqon") if labels else "Ref 1 vaqon"
+                c_lbl = f"Ref {w_cnt}+1 vaqon" if lang == "AZ" else (f"Реф {w_cnt}+1 вагон" if lang == "RU" else f"Ref {w_cnt}+1 wagon")
 
             if c_val and c_val != 1.0:
                 coeffs.append((c_lbl, c_val))
@@ -256,8 +243,10 @@ def apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_typ
 def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     config = load_rules_config()
 
-    st_from = nlu_data.get("route_from", "")
-    st_to = nlu_data.get("route_to", "")
+    # Берем готовые и нормализованные Gemini названия станций
+    st_from = str(nlu_data.get("route_from", "") or "").strip()
+    st_to = str(nlu_data.get("route_to", "") or "").strip()
+    
     gng = str(nlu_data.get("cargo_gng_code", "") or "").strip()
     cargo_name_nlu = str(nlu_data.get("cargo_name", "") or "").strip()
     
@@ -281,23 +270,19 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     def clean_st(name):
         if not name:
             return ""
-        # Точная очистка суффиксов без повреждения слова Xudat
         return re.sub(r'-(eksp|эксп|exp)\b', '', str(name), flags=re.IGNORECASE).strip()
 
-    c_from = clean_st(st_from).lower()
-    c_to = clean_st(st_to).lower()
+    c_from = clean_st(st_from)
+    c_to = clean_st(st_to)
 
-    disp_from = STATION_TRANSLATIONS.get(c_from, {}).get(lang, st_from.capitalize() if st_from else "")
-    disp_to = STATION_TRANSLATIONS.get(c_to, {}).get(lang, st_to.capitalize() if st_to else "")
-
-    is_from_border = any(b.lower() in c_from for b in border_list if b)
-    is_to_border = any(b.lower() in c_to for b in border_list if b)
+    is_from_border = any(b.lower() in c_from.lower() for b in border_list if b)
+    is_to_border = any(b.lower() in c_to.lower() for b in border_list if b)
 
     if is_from_border and is_to_border:
-        display_from, display_to = f"{disp_from}{suffix}", f"{disp_to}{suffix}"
+        display_from, display_to = f"{c_from}{suffix}", f"{c_to}{suffix}"
     else:
-        display_from = f"{disp_from}{suffix}" if is_from_border else disp_from
-        display_to = f"{disp_to}{suffix}" if is_to_border else disp_to
+        display_from = f"{c_from}{suffix}" if is_from_border else c_from
+        display_to = f"{c_to}{suffix}" if is_to_border else c_to
 
     route_display = f"{display_from} - {display_to}"
 
@@ -317,9 +302,8 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
 
     actual_dist_km = find_distance_in_memory(c_from, c_to)
     if actual_dist_km is None or actual_dist_km == 0:
-        actual_dist_km = 21  # Резервная прямая дистанция для пары Xudat-Yalama
+        actual_dist_km = 21
 
-    # Учет минимального тарифного расстояния для Импорта (151 км) и Экспорта (101 км)
     tariff_dist_km = actual_dist_km
     if shipment_type_code == "import" and actual_dist_km < 151:
         tariff_dist_km = 151
@@ -343,55 +327,4 @@ def process_full_calculation(nlu_data, user_input_raw, lang, year, ui_t):
     bill_w_str = f"{int(billable_weight) if billable_weight.is_integer() else billable_weight}"
     
     if act_weight < billable_weight:
-        weight_display = f"{act_w_str} t (min. {bill_w_str} t)"
-    else:
-        weight_display = f"{act_w_str} t"
-
-    is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос"]) or (ref_wagons_cnt is not None)
-    table_num = 5 if (is_ref_type and (os.path.exists("Table_5_Tariffs.txt") or os.path.exists("Table5.txt"))) else (4 if shipment_type_code == "transit" else 3)
-
-    base_chf, table_details, is_per_wagon = get_base_tariff_chf(table_num, tariff_dist_km, billable_weight, "ref" if is_ref_type else wagon_type, lang)
-    
-    if base_chf is None:
-        raise ValueError(f"Baza tarifi tapılmadı. (Cədvəl {table_num}, məsafə: {tariff_dist_km} km)")
-
-    unit_str = ui_t["unit_wagon"] if is_per_wagon else ui_t["unit_ton"]
-    chf_unit = "CHF/вагон" if (is_per_wagon and lang == "RU") else ("CHF/vaqon" if is_per_wagon else ("CHF/т" if lang == "RU" else "CHF/t"))
-        
-    base_tariff_display = f"**{base_chf:.2f} {chf_unit}** ({table_details})"
-    usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang)
-
-    coeffs, notes = apply_special_exceptions(nlu_data, shipment_type_code, table_num, is_ref_type, act_weight, billable_weight, actual_dist_km, user_input_raw, config, lang, ui_t, ref_wagons_cnt)
-
-    final_rate = base_chf / usd_rate
-    formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
-    for _, c_val in coeffs:
-        final_rate *= c_val
-        formula_parts.append(f"{c_val}")
-
-    formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit_str}"
-    express_rate_str = f"{final_rate * 1.02:.2f} {unit_str}"
-
-    park_display = "SPS" if park_type == "SPS" else "MPS"
-    
-    sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
-    wagon_disp_name = f"İzotermik vaqon{sec_info}" if (is_ref_type and lang == "AZ") else (f"Изотермический вагон{sec_info}" if is_ref_type and lang == "RU" else (f"Isothermal wagon{sec_info}" if is_ref_type else ("Universal vaqon" if lang == "AZ" else ("Универсальный вагон" if lang == "RU" else "Universal wagon"))))
-    gng_label = "GNG" if lang != "EN" else "NHM"
-    
-    cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})" if (cargo_name_nlu and cargo_name_nlu != gng) else (f"{gng_label} {gng}, {wagon_disp_name} ({park_display})" if gng else f"{wagon_disp_name} ({park_display})")
-    period_str = f"{year}-cı fraxt ili" if lang == "AZ" else (f"{year} фрахтовый год" if lang == "RU" else f"{year} freight year")
-
-    return {
-        "part1": {
-            "route": route_display, "shipment_type": shipment_type_display, "distance": dist_display,
-            "cargo_and_wagon": cargo_wagon_display, "weight_info": weight_display, "period": period_str
-        },
-        "part2": {
-            "exchange_rate": exchange_display, "base_tariff": base_tariff_display,
-            "coefficients": [{"name": c_name, "value": str(c_val)} for c_name, c_val in coeffs]
-        },
-        "part3": {
-            "formula": formula_str, "net_ady_rate": f"{final_rate:.2f} {unit_str}",
-            "express_rate": express_rate_str, "notes": notes
-        }
-    }
+        weight_display = f"{act_w_str} t (min. {bill_w
