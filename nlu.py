@@ -84,7 +84,7 @@ GEMINI_SYSTEM_INSTRUCTION = """
 
 def parse_user_input_with_gemini(user_input: str, api_key: str = None, *args, **kwargs) -> dict:
     """
-    Отправляет текстовый запрос пользователя в Gemini NLU через новый SDK google-genai.
+    Отправляет текстовый запрос пользователя в Gemini NLU через SDK google-genai.
     """
     if not api_key:
         api_key = os.getenv("GEMINI_API_KEY")
@@ -93,8 +93,6 @@ def parse_user_input_with_gemini(user_input: str, api_key: str = None, *args, **
         raise ValueError("GEMINI_API_KEY не найден в переменных окружения.")
 
     client = genai.Client(api_key=api_key)
-    
-    # Жестко зафиксированная модель по твоему требованию
     model_name = "gemini-3.5-flash-lite"
 
     config = types.GenerateContentConfig(
@@ -126,9 +124,10 @@ def parse_user_input_with_gemini(user_input: str, api_key: str = None, *args, **
         }
 
 
-def validate_nlu_input(parsed_data: dict) -> dict:
+def validate_nlu_input(parsed_data: dict, *args, **kwargs) -> dict:
     """
     Валидирует и нормализует извлеченные данные перед передачей в расчетный движок engine.py.
+    Принимает любое число позиционных и именованных аргументов.
     """
     if not isinstance(parsed_data, dict):
         parsed_data = {}
@@ -158,4 +157,4 @@ def call_gemini_nlu(user_input: str, api_key: str = None, *args, **kwargs) -> di
         api_key = args[0]
 
     raw_parsed_data = parse_user_input_with_gemini(user_input, api_key, *args, **kwargs)
-    return validate_nlu_input(raw_parsed_data)
+    return validate_nlu_input(raw_parsed_data, *args, **kwargs)
