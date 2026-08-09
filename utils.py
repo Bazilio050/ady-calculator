@@ -51,8 +51,8 @@ def normalize_st_name(name):
 
 def find_distance_in_memory(st_from, st_to):
     """
-    Поиск расстояния СТРОГО по файлу Distances.txt.
-    Никаких угадываний или дефолтных значений.
+    Точный поиск расстояния в Distances.txt.
+    Учитывает приоритет экспортных станций (например, Böyük Kəsik (eksport) = 680 km).
     """
     if not st_from or not st_to:
         return None
@@ -86,6 +86,8 @@ def find_distance_in_memory(st_from, st_to):
         if header_idx == -1:
             return None
 
+        matched_distance = None
+
         for line in lines[header_idx + 1:]:
             if "|" not in line or ":---" in line:
                 continue
@@ -94,7 +96,8 @@ def find_distance_in_memory(st_from, st_to):
             if len(parts) < 3:
                 continue
 
-            row_st_name = parts[0]
+            raw_row_st = line.split("|")[1].replace('*', '').strip() if line.split("|")[1].strip() != "" else ""
+            row_st_name = clean_name(raw_row_st)
 
             target_border_st = None
             if norm_from == row_st_name or norm_from in row_st_name or row_st_name in norm_from:
@@ -108,7 +111,14 @@ def find_distance_in_memory(st_from, st_to):
                         if col_idx < len(parts):
                             val_str = re.sub(r'\D', '', parts[col_idx])
                             if val_str:
-                                return int(val_str)
+                                dist_val = int(val_str)
+                                # Если в названии строки есть (eksport), это экспортный переход — высший приоритет
+                                if "eksport" in raw_row_st.lower() or "eks" in raw_row_st.lower():
+                                    return dist_val
+                                matched_distance = dist_val
+
+        return matched_distance
+
     except Exception as e:
         print(f"Ошибка при чтении {dist_file}: {e}")
 
