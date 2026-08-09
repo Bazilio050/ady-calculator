@@ -13,31 +13,31 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Стили для компактного баннера и футера
+# Стили для узкого баннера и подвала
 st.markdown("""
     <style>
     .main-header {
         background: linear-gradient(135deg, #0e2a47 0%, #1a4a75 100%);
-        padding: 12px 20px; /* Уменьшен отступ, баннер стал ниже по высоте */
-        border-radius: 10px;
+        padding: 8px 18px; /* Узкая плашка по высоте */
+        border-radius: 8px;
         color: white;
         margin-top: 10px;
         margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
     }
     .main-header h1 {
         color: #ffffff !important;
-        font-size: 1.8rem; /* Чуть более компактный заголовок */
+        font-size: 1.5rem; /* Компактный аккуратный текст */
         font-weight: 700;
         margin: 0;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
     }
     .main-header p {
         color: #b0c4de !important;
-        margin: 4px 0 0 0;
-        font-size: 0.95rem;
+        margin: 2px 0 0 0;
+        font-size: 0.88rem;
     }
     .agt-footer {
         margin-top: 50px;
@@ -230,17 +230,20 @@ UI_TEXT = {
 
 logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
 
-# --- ВЕРХНЯЯ ШАПКА: СЛЕВА ЛОГОТИП, СПРАВА В ОДНУ КОЛОНКУ ДРУГ ПОД ДРУГОМ (DIL, ZAMAY) ---
+# --- ЛОГОТИП СЛЕВА ВМЕСТЕ С FRAXT ILI ПОД НИМ, ЯЗЫК СПРАВА ---
 top_col1, top_col2 = st.columns([3, 2])
 with top_col1:
     if logo_path:
         st.image(logo_path, width=220)
+    # Перенос выбора фрахтового года под логотип
+    temp_lang = "AZ"
+    selected_year = st.selectbox(f"⚙️ {UI_TEXT[temp_lang]['year_select']}", options=["2026", "2027"], index=0)
+
 with top_col2:
     selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
     t = UI_TEXT[selected_lang]
-    selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
 
-# --- НИЗКИЙ И КОМПАКТНЫЙ СИНИЙ БАННЕР ---
+# --- УЗКИЙ СИНИЙ БАННЕР ---
 st.markdown(f"""
     <div class="main-header">
         <h1>🚆 {t['title']}</h1>
@@ -294,7 +297,7 @@ if st.button(t["calc_btn"], type="primary"):
         except Exception as e:
             st.error(f"Error: {str(e)}")
 
-# --- ПОДВАЛ ПО ЦЕНТРУ В САМОМ КОНЦЕ СТРАНИЦЫ ---
+# --- ПОДВАЛ (ФУТЕР) В САМОМ КОНЦЕ СТРАНИЦЫ ---
 st.markdown(f"""
     <div class="agt-footer">
         <p>{t['footer_owner']}</p>
