@@ -79,7 +79,7 @@ def _get_api_key(api_key: str = None, *args) -> str:
 
 def parse_user_input_with_gemini(user_input: str, api_key: str = None, *args, **kwargs) -> dict:
     """
-    Парсит запрос пользователя СТРОГО через gemini-3.5-flash-lite без переключения на другие модели.
+    Отправляет запрос строго в gemini-3.5-flash-lite через google-genai SDK.
     """
     final_key = _get_api_key(api_key, *args)
     if not final_key:
@@ -107,7 +107,7 @@ def parse_user_input_with_gemini(user_input: str, api_key: str = None, *args, **
             text = re.sub(r'\s*```$', '', text)
 
         data = json.loads(text)
-        if isinstance(data, dict) and len(data) > 0:
+        if isinstance(data, dict):
             return data
 
     except Exception as e:
@@ -118,7 +118,7 @@ def parse_user_input_with_gemini(user_input: str, api_key: str = None, *args, **
 
 def validate_nlu_input(parsed_data: dict, *args, **kwargs) -> dict:
     """
-    Гарантирует заполнение всех обязательных ключей дефолтными значениями.
+    Нормализует полученные данные и передает их в app.py.
     """
     if not isinstance(parsed_data, dict):
         parsed_data = {}
