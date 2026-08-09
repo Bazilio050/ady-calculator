@@ -115,7 +115,8 @@ def get_table_5_coefficients(shipment_type_code, wagon_type, gng_code, is_tariff
     Проверяет и возвращает коэффициенты и скидки, относящиеся к Таблице 5:
     1. Состав рефсекции (0.85 / 1.10 / 1.40 / 1.70).
     2. Повышающий коэффициент транзита изотермы 1.20.
-    3. Плодоовощная скидка 0.60.
+    3. Повышающий коэффициент 1.50 для Импорта / Экспорта.
+    4. Плодоовощная скидка 0.60.
     """
     if ui_t is None:
         ui_t = {}
@@ -157,7 +158,7 @@ def get_table_5_coefficients(shipment_type_code, wagon_type, gng_code, is_tariff
             pass
 
     # 2. Повышающий коэффициент 1.20 для транзита изотермических вагонов
-    if shipment_type_code == "transit":
+    if str(shipment_type_code).lower() == "transit":
         tr_cfg = t5_cfg.get("refrigerated_transit_1_20", {})
         c_val_120 = tr_cfg.get("coefficient_value", 1.20)
         c_lbl_120 = tr_cfg.get("labels", {}).get(lang, "Tranzit izotermik 1.20") if isinstance(tr_cfg.get("labels"), dict) else "Tranzit izotermik 1.20"
@@ -166,7 +167,17 @@ def get_table_5_coefficients(shipment_type_code, wagon_type, gng_code, is_tariff
         if "note_ref_transit_120" in ui_t:
             notes.append(ui_t["note_ref_transit_120"])
 
-    # 3. Плодоовощная скидка 0.60
+    # 3. Коэффициент 1.50 для Импорта и Экспорта
+    st_code_lower = str(shipment_type_code or "").lower()
+    if st_code_lower in ["import", "export", "idxal", "ixrac"]:
+        c_val_150 = 1.50
+        c_lbl_150 = "İdxal/İxrac 1.50" if lang == "AZ" else ("Импорт/Экспорт 1.50" if lang == "RU" else "Import/Export 1.50")
+        coeffs.append((c_lbl_150, c_val_150))
+
+        if "note_import_base_150" in ui_t:
+            notes.append(ui_t["note_import_base_150"])
+
+    # 4. Плодоовощная скидка 0.60
     fveg_rule = t5_rules.get("fruit_veg_discount_0_60", {})
     fveg_prefixes = fveg_rule.get("gng_prefixes", ["07", "08"])
     if any(gng.startswith(code) for code in fveg_prefixes if code):
