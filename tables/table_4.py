@@ -88,3 +88,14 @@ def calculate_table_4_base(distance_km, billable_weight_tons, lang="AZ"):
     details_str = f"{tbl_name} ({distance_km} km, {weight_label})"
     
     return base_chf, details_str, False
+
+
+def get_table_4_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ", ui_t=None):
+    """
+    Дополнительные коэффициенты для Таблицы 4.
+    """
+    if ui_t is None:
+        ui_t = {}
+    coeffs = []
+    notes = []
+    return coeffs, notes
