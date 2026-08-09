@@ -4,9 +4,7 @@ import re
 
 
 def load_table_3_config():
-    """
-    Загружает конфигурацию и правила Таблицы 3 из справочника table_3_config.json.
-    """
+    """Загрузка конфигурации и правил Таблицы 3."""
     config_path = "tables/table_3_config.json"
     if os.path.exists(config_path):
         try:
@@ -18,9 +16,7 @@ def load_table_3_config():
 
 
 def load_table_3_rates():
-    """
-    Оригинальный рабочая функция чтения тарифных ставок из текстового файла.
-    """
+    """Чтение тарифных ставок из текстового файла."""
     possible_files = [
         "Table_3_Tariffs.txt",
         "Table3.txt",
@@ -54,9 +50,7 @@ def load_table_3_rates():
 
 
 def calculate_table_3_base(distance_km, billable_weight_tons, config, lang="AZ"):
-    """
-    Оригинальная рабочая функция расчета базовой ставки.
-    """
+    """Расчет базовой тарифной ставки по Таблице 3."""
     rates = load_table_3_rates()
     tbl_name = "Cədvəl 3" if lang == "AZ" else ("Таблица 3" if lang == "RU" else "Table 3")
 
@@ -80,30 +74,40 @@ def calculate_table_3_base(distance_km, billable_weight_tons, config, lang="AZ")
 
 def get_table_3_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ", ui_t=None):
     """
-    Проверяет и возвращает специфичные коэффициенты Таблицы 3.
+    Проверяет и возвращает коэффициенты Таблицы 3.
     """
     if ui_t is None:
         ui_t = {}
 
     coeffs = []
     notes = []
-    gng = str(gng_code or "").strip()
+
+    # Очистка кода ГНГ (оставляем только цифры)
+    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
     w_type = str(wagon_type or "universal").lower()
 
     t3_cfg = load_table_3_config()
     rules = t3_cfg.get("coefficients_updated_rules_2026", {})
 
     # 1. Повышающий коэффициент 1.20 (Цветные металлы, спецхимия - п. 3.1.1)
-    nf_cfg = rules.get("non_ferrous_metals_1_20", {})
-    if nf_cfg and gng:
-        nf_prefixes = nf_cfg.get("gng_prefixes", [])
-        nf_excludes = nf_cfg.get("exclude_prefixes", [])
+    default_nf_prefixes = [
+        "28045090", "28049", "28054", "32121",
+        "7106", "7107", "7108", "7109", "7110", "7111", "7112", "7115",
+        "74", "75", "76", "78", "79", "80", "81",
+        "8302", "83079", "8309", "8311", "85481"
+    ]
+    default_nf_excludes = ["7401", "7418", "7501", "7615", "81052"]
 
-        is_non_ferrous = any(gng.startswith(p) for p in nf_prefixes if p) and not any(gng.startswith(ex) for ex in nf_excludes if ex)
+    nf_cfg = rules.get("non_ferrous_metals_1_20", {})
+    nf_prefixes = nf_cfg.get("gng_prefixes", default_nf_prefixes)
+    nf_excludes = nf_cfg.get("exclude_prefixes", default_nf_excludes)
+
+    if clean_gng:
+        is_non_ferrous = any(clean_gng.startswith(p) for p in nf_prefixes if p) and not any(clean_gng.startswith(ex) for ex in nf_excludes if ex)
 
         if is_non_ferrous:
             c_val = nf_cfg.get("coefficient_value", 1.20)
-            c_lbl = nf_cfg.get("labels", {}).get(lang, "Əlvan metallar 1.20")
+            c_lbl = nf_cfg.get("labels", {}).get(lang, "Əlvan metallar 1.20") if isinstance(nf_cfg.get("labels"), dict) else "Əlvan metallar 1.20"
             coeffs.append((c_lbl, c_val))
 
             note_nf = {
@@ -121,16 +125,16 @@ def get_table_3_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ"
             is_150_exception = False
 
             wood_codes = exceptions.get("wood_gng_prefixes", ["4403", "4404", "4407"])
-            if w_type == "universal" and any(gng.startswith(w) for w in wood_codes if w):
+            if w_type == "universal" and any(clean_gng.startswith(w) for w in wood_codes if w):
                 is_150_exception = True
 
             metal_codes = exceptions.get("metal_gng_prefixes", ["72", "73"])
-            if w_type == "universal" and any(gng.startswith(m) for m in metal_codes if m):
+            if w_type == "universal" and any(clean_gng.startswith(m) for m in metal_codes if m):
                 is_150_exception = True
 
             if not is_150_exception:
                 c_val = ie_cfg.get("coefficient_value", 1.50)
-                c_lbl = ie_cfg.get("labels", {}).get(lang, "İdxal/İxrac baza 1.50")
+                c_lbl = ie_cfg.get("labels", {}).get(lang, "İdxal/İxrac baza 1.50") if isinstance(ie_cfg.get("labels"), dict) else "İdxal/İxrac baza 1.50"
                 coeffs.append((c_lbl, c_val))
                 if "note_import_base_150" in ui_t:
                     notes.append(ui_t["note_import_base_150"])
@@ -138,9 +142,9 @@ def get_table_3_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ"
         imp_cfg = rules.get("import_metal_wood_1_04", {})
         if imp_cfg and shipment_type_code == "import":
             imp_prefixes = imp_cfg.get("gng_prefixes", ["44", "72", "73"])
-            if any(gng.startswith(p) for p in imp_prefixes if p):
+            if any(clean_gng.startswith(p) for p in imp_prefixes if p):
                 c_val = imp_cfg.get("coefficient_value", 1.04)
-                c_lbl = imp_cfg.get("labels", {}).get(lang, "İdxal meşə/metal 1.04")
+                c_lbl = imp_cfg.get("labels", {}).get(lang, "İdxal meşə/metal 1.04") if isinstance(imp_cfg.get("labels"), dict) else "İdxal meşə/metal 1.04"
                 coeffs.append((c_lbl, c_val))
                 if "note_timber_metal" in ui_t:
                     notes.append(ui_t["note_timber_metal"])
