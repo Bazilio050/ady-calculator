@@ -1,92 +1,86 @@
-import json
 import os
+import json
 import re
-import streamlit as st
 
-@st.cache_data(show_spinner=False, ttl=60)
+
 def load_rules_config():
-    if os.path.exists("rules_config.json"):
+    """
+    Автоматически собирает глобальный конфиг и специфичные правила таблиц 
+    из отдельных JSON-файлов в единый словарь в памяти.
+    """
+    config = {}
+
+    # Пути к нашим файлам конфигураций
+    config_files = [
+        "config/global_config.json",
+        "tables/table_3_config.json",
+        "tables/table_4_config.json",
+        "tables/table_5_config.json"
+    ]
+
+    for file_path in config_files:
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        # Глубокое обновление/объединение ключей
+                        for key, val in data.items():
+                            if key in config and isinstance(config[key], dict) and isinstance(val, dict):
+                                config[key].update(val)
+                            else:
+                                config[key] = val
+            except Exception as e:
+                print(f"Ошибка загрузки файла {file_path}: {e}")
+
+    # Резервный вариант: если новые файлы еще не найдены, читаем старый файл
+    if not config and os.path.exists("rules_config.json"):
         with open("rules_config.json", "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+            config = json.load(f)
+
+    return config
+
 
 def normalize_st_name(name):
+    """
+    Нормализует название станции для точного сопоставления.
+    """
     if not name:
         return ""
-    n = name.lower().strip()
-    n = re.sub(r'[\*\_\#]', '', n)
-    n = re.sub(r'[\(\-–\s]*(eksport|eksp|эксп|exp|eks)[\)\.\s]*', '', n)
-    
-    n = n.replace('баладжары', 'bileceri').replace('baladzary', 'bileceri').replace('baladzhary', 'bileceri').replace('baladžary', 'bileceri')
-    n = n.replace('беюк', 'boyuk').replace('кесик', 'kesik').replace('касик', 'kesik')
-    n = n.replace('ялама', 'yalama').replace('астара', 'astara').replace('алят', 'alat')
-    n = n.replace('джульфа', 'culfa').replace('абшерон', 'absheron').replace('баку', 'baki')
-    n = n.replace('ə', 'e').replace('ö', 'o').replace('ü', 'u').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
-    n = n.replace('beyuk', 'boyuk').replace('kasik', 'kesik').replace('elet', 'alat')
-    return re.sub(r'[^a-z0-9]', '', n)
+    cleaned = re.sub(r'-(eksp|эксп|exp)\b', '', str(name), flags=re.IGNORECASE)
+    cleaned = re.sub(r'[^\w\s]', '', cleaned)
+    return cleaned.strip().lower()
 
-@st.cache_data(show_spinner=False, ttl=60)
-def load_distances_map():
-    dist_map = {}
-    dist_files = ["Distances.txt", "Məsafə.txt", "Masafe.txt", "Distance.txt"]
-    target_file = next((df for df in dist_files if os.path.exists(df)), None)
-    
-    if target_file:
-        with open(target_file, "r", encoding="utf-8") as f:
-            lines = [l.strip() for l in f if l.strip()]
-
-        header_cols = []
-        for line in lines:
-            if "|" in line and "stansiyanın adı" in line.lower():
-                parts = [p.strip() for p in line.split("|") if p.strip()]
-                if len(parts) >= 3:
-                    header_cols = [normalize_st_name(p) for p in parts[2:]]
-                continue
-            
-            if "|" in line and header_cols and not line.startswith("| :---") and not line.startswith("#"):
-                parts = [p.strip() for p in line.split("|") if p.strip()]
-                if len(parts) >= 3:
-                    row_st = normalize_st_name(parts[0])
-                    val_parts = parts[2:]
-                    for i, val_str in enumerate(val_parts):
-                        if i < len(header_cols):
-                            digits = re.sub(r'[^\d]', '', val_str)
-                            if digits:
-                                km = int(digits)
-                                col_st = header_cols[i]
-                                if row_st and col_st:
-                                    dist_map[(row_st, col_st)] = km
-                                    dist_map[(col_st, row_st)] = km
-    return dist_map
 
 def find_distance_in_memory(st_from, st_to):
-    dist_map = load_distances_map()
-    s1 = normalize_st_name(st_from)
-    s2 = normalize_st_name(st_to)
+    """
+    Находит тарифное расстояние между станциями из файла Distances.txt.
+    """
+    if not st_from or not st_to:
+        return None
 
-    if (s1, s2) in dist_map:
-        return dist_map[(s1, s2)]
-    if (s2, s1) in dist_map:
-        return dist_map[(s2, s1)]
+    norm_from = normalize_st_name(st_from)
+    norm_to = normalize_st_name(st_to)
 
-    fallback_map = {
-        ("yalama", "boyukkesik"): 680,
-        ("boyukkesik", "yalama"): 680,
-        ("yalama", "astara"): 504,
-        ("astara", "yalama"): 504,
-        ("boyukkesik", "astara"): 586,
-        ("astara", "boyukkesik"): 586,
-        ("yalama", "alat"): 271,
-        ("boyukkesik", "alat"): 429,
-        ("absheron", "boyukkesik"): 476,
-        ("absheron", "yalama"): 204,
-        ("yalama", "bileceri"): 192,
-        ("bileceri", "yalama"): 192
-    }
-
-    if (s1, s2) in fallback_map:
-        return fallback_map[(s1, s2)]
-    if (s2, s1) in fallback_map:
-        return fallback_map[(s2, s1)]
+    dist_file = "Distances.txt"
+    if os.path.exists(dist_file):
+        try:
+            with open(dist_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or "|" not in line:
+                        continue
+                    parts = [p.strip() for p in line.split("|")]
+                    if len(parts) >= 3:
+                        s1 = normalize_st_name(parts[0])
+                        s2 = normalize_st_name(parts[1])
+                        
+                        if (s1 == norm_from and s2 == norm_to) or (s1 == norm_to and s2 == norm_from):
+                            try:
+                                return int(parts[2])
+                            except ValueError:
+                                pass
+        except Exception as e:
+            print(f"Ошибка при чтении {dist_file}: {e}")
 
     return None
