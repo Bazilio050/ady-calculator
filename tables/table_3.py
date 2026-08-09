@@ -156,7 +156,7 @@ def is_import_shipment(shipment_type_code, kwargs):
             st = str(c).lower()
             if "idxal" in st or "import" in st:
                 return True
-    return True  # По умолчанию для Таблицы 3 в случае сомнений считаем Импортом
+    return True
 
 
 def is_104_import_eligible_gng(gng_code, kwargs):
@@ -199,7 +199,7 @@ def get_table_3_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
 
     # 2. Лесоматериалы (4403, 4404, 4407-4413) и Чёрные металлы (72, 7301-7307) при ИМПОРТЕ -> 1.04
     if is_import_shipment(shipment_type_code, kwargs) and is_104_import_eligible_gng(gng_code, kwargs):
-        lbl = "İdxal yükləri (1.04)" if lang == "AZ" else ("Импортные грузы (1.04)" if lang == "RU" else "Import cargo (1.04)")
+        lbl = "İdxal yükləri" if lang == "AZ" else ("Импортные грузы" if lang == "RU" else "Import cargo")
         coeffs.append((lbl, 1.04))
         notes.append("Cədvəl 3: İdxal daşımaları zamanı taxta (4403, 4404, 4407-4413) və qara metallara (72, 7301-7307) 1.04 əmsalı tətbiq olunmuşdur.")
 
