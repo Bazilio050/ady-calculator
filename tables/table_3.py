@@ -43,7 +43,8 @@ def load_table_3_rates():
 
 def get_table_3_column_index(billable_weight_tons):
     """
-    Сопоставление веса с колонками Таблицы 3.
+    Сопоставление веса с колонками Таблицы 3:
+    0: 10t, 1: 15t, 2: 20t, 3: 25t, 4: 30t, 5: 35t, 6: 40t, 7: 45t, 8: 50t, 9: 55t, 10: 60t+
     """
     w = float(billable_weight_tons or 0)
     if w <= 10: return 0
@@ -62,6 +63,7 @@ def get_table_3_column_index(billable_weight_tons):
 def calculate_table_3_base(distance_km, billable_weight_tons, *args, lang="AZ", **kwargs):
     """
     Расчет базовой ставки Таблицы 3 (Импорт / Экспорт универсальные вагоны).
+    Возвращает строго 2 значения: (base_chf, details_str)
     """
     rates = load_table_3_rates()
     col_idx = get_table_3_column_index(billable_weight_tons)
@@ -90,7 +92,7 @@ def calculate_table_3_base(distance_km, billable_weight_tons, *args, lang="AZ", 
 
 def is_non_ferrous_metal_gng(gng_code):
     """
-    Проверка кода ГНГ по правилам п. 3.1.1 (коэффициент 1.20)
+    Проверка п. 3.1.1 (1.20) — Цветные металлы, драгметаллы и специфика
     """
     g = str(gng_code or "").strip().lstrip("0")
     if not g:
@@ -121,16 +123,33 @@ def is_non_ferrous_metal_gng(gng_code):
     return False
 
 
+def is_timber_wood_gng(gng_code):
+    """
+    Проверка древесины и лесных грузов (1.04) — Группа ГНГ 44
+    """
+    g = str(gng_code or "").strip().lstrip("0")
+    return g.startswith("44")
+
+
 def get_table_3_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, lang="AZ", ui_t=None, *args, **kwargs):
     """
-    Коэффициенты Таблицы 3 (Импорт/Экспорт)
+    Коэффициенты Таблицы 3 (Импорт / Экспорт).
+    ВНИМАНИЕ: Коэффициент 1.50 к Таблице 3 НЕ применяем вообще.
+    Возвращает строго 2 значения: (coeffs, notes)
     """
     coeffs = []
     notes = []
 
+    # 1. Цветные металлы и специфика (1.20)
     if is_non_ferrous_metal_gng(gng_code):
         lbl = "Əlvan metal 1.20" if lang == "AZ" else ("Цветной металл 1.20" if lang == "RU" else "Non-ferrous metal 1.20")
         coeffs.append((lbl, 1.20))
         notes.append("Cədvəl 3: Əlvan metal / spesifik yüklərə (1,20) artırma əmsalı tətbiq olunmuşdur.")
+
+    # 2. Лесоматериалы и древесина (1.04)
+    if is_timber_wood_gng(gng_code):
+        lbl = "Meşə yükləri 1.04" if lang == "AZ" else ("Лесные грузы 1.04" if lang == "RU" else "Timber/Wood 1.04")
+        coeffs.append((lbl, 1.04))
+        notes.append("Cədvəl 3: Ağac və meşə məhsullarına (GNG 44) 1.04 artırma əmsalı tətbiq olunmuşdur.")
 
     return coeffs, notes
