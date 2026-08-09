@@ -2,124 +2,169 @@ import os
 import json
 import re
 
+# ==============================================================================
+# СЛОВАРЬ ТОЧНЫХ СООТВЕТСТВИЙ И СПЕЦИАЛЬНЫХ УЗЛОВ ADY
+# ==============================================================================
+STATION_EXACT_MAP = {
+    # Астара
+    "astara (eks.aşır)": "Astara",
+    "astara eks asir": "Astara",
+    
+    # Баку Yük / Терминалы
+    "bakı yük": "Bakı-Yük",
+    "baki yuk": "Bakı-Yük",
+    "баку yük": "Bakı-Yük",
+    "баку-юк": "Bakı-Yük",
+    "баку юк": "Bakı-Yük",
+    "баку товарная": "Bakı-Yük",
+    "баку-тов": "Bakı-Yük",
+    "bakı yük terminal": "Bakı-Yük",
+    "baki yuk terminal": "Bakı-Yük",
+    
+    # Бакинский морской порт
+    "bakı ticarət liman": "Bakı Ticarət Limanı",
+    "bakı ticarət limanı (eks)": "Bakı Ticarət Limanı",
+    "bakı ticarət limanı (aşır)": "Bakı Ticarət Limanı",
+    "baki ticaret limani": "Bakı Ticarət Limanı",
+    
+    # Алят и Порт Алят (Экспортные направления)
+    "ələt yeni": "Ələt-Yeni",
+    "elet yeni": "Ələt-Yeni",
+    "ələt eksport aktau": "Ələt",
+    "ələt eksport kurik": "Ələt",
+    "eksport kurik": "Ələt",
+    "ələt eksport-türk.": "Ələt",
+    "elet eksport-turk": "Ələt",
+    
+    # Прочие специфические станции и узлы
+    "mingəçevir şəhər": "Mingəçevir-Şəhər",
+    "mingacevir seher": "Mingəçevir-Şəhər",
+    "qaradağ terminal": "Qaradağ",
+    "qaradag terminal": "Qaradağ",
+    "quşçu körpü": "Quşçu Körpü",
+    "quscu korpu": "Quşçu Körpü",
+    "sanqaçal ter.(aşırma)": "Sanqaçal",
+    "sanqacal ter": "Sanqaçal",
+    "soyuq-bulaq": "Soyuqbulaq",
+    "soyuq bulaq": "Soyuqbulaq",
+    "z.tağıyev": "Z.Tağıyev",
+    "z.tagiyev": "Z.Tağıyev",
+    "з.тагиев": "Z.Tağıyev",
+    "z.tağıyev çeşidləmə": "Z.Tağıyev-Çeşidləmə",
+    "z.tagiyev cesidleme": "Z.Tağıyev-Çeşidləmə",
+    "zabrat ii": "Zabrat-II",
+    "zabrat 2": "Zabrat-II"
+}
 
-def load_rules_config():
-    """
-    Автоматически собирает глобальный конфиг и специфичные правила таблиц 
-    из отдельных JSON-файлов в единый словарь в памяти.
-    """
-    config = {}
 
-    config_files = [
-        "config/global_config.json",
+def normalize_st_name(raw_name: str) -> str:
+    """
+    Универсальная очистка и приведение названия станции к каноническому виду из Distances.txt.
+    """
+    if not raw_name:
+        return ""
+
+    # 1. Приведение к нижнему регистру и очистка лишних пробелов
+    clean = str(raw_name).strip().lower()
+    
+    # 2. Быстрая проверка по прямому словарю сложных станций
+    if clean in STATION_EXACT_MAP:
+        return STATION_EXACT_MAP[clean]
+
+    # 3. Автоматическая очистка служебных пометок в скобках и суффиксов
+    clean = re.sub(r'\((eks|aşır|aşırma|eks\.aşır)\)', '', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'\b(ter\.|terminal|aşırma|aşır)\b', '', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'-(eksp|эксп|exp)\b', '', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'-(тов|tov|tovarlı|товарная)\b', '', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'\s+', ' ', clean).strip()
+
+    # 4. Повторная проверка после среза мусорных слов
+    if clean in STATION_EXACT_MAP:
+        return STATION_EXACT_MAP[clean]
+
+    return raw_name.strip()
+
+
+def norm_str(s: str) -> str:
+    """
+    Вспомогательная функция нормализации символов для нечувствительного к регистру сравнения.
+    """
+    if not s:
+        return ""
+    return str(s).lower().replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g').replace('-', ' ').strip()
+
+
+def load_rules_config() -> dict:
+    """
+    Безопасная загрузка конфигурационных файлов.
+    Проверяет доступные JSON в папке tables/ или использует встроенные дефолтные значения.
+    """
+    possible_paths = [
+        "tables/global_config.json",
         "tables/table_3_config.json",
-        "tables/table_4_config.json",
-        "tables/table_5_config.json"
+        "rules_config.json"
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Ошибка чтения {path}: {e}")
+    return {}
+
+
+def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
+    """
+    Поиск тарифного расстояния в километрах между двумя станциями в файле Distances.txt.
+    Поддерживает поиск в обоих направлениях (А -> Б и Б -> А).
+    """
+    st_from_norm = normalize_st_name(st_from)
+    st_to_norm = normalize_st_name(st_to)
+
+    clean_from = norm_str(st_from_norm)
+    clean_to = norm_str(st_to_norm)
+
+    possible_files = [
+        "Distances.txt",
+        "data/Distances.txt",
+        "tables/Distances.txt"
     ]
 
-    for file_path in config_files:
-        if os.path.exists(file_path):
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    if isinstance(data, dict):
-                        for key, val in data.items():
-                            if key in config and isinstance(config[key], dict) and isinstance(val, dict):
-                                config[key].update(val)
-                            else:
-                                config[key] = val
-            except Exception as e:
-                print(f"Ошибка загрузки файла {file_path}: {e}")
+    dist_file = None
+    for pf in possible_files:
+        if os.path.exists(pf):
+            dist_file = pf
+            break
 
-    if not config and os.path.exists("rules_config.json"):
-        with open("rules_config.json", "r", encoding="utf-8") as f:
-            config = json.load(f)
-
-    return config
-
-
-def normalize_st_name(name):
-    """
-    Нормализует название станции для точного сопоставления.
-    """
-    if not name:
-        return ""
-    cleaned = re.sub(r'-(eksp|эксп|exp)\b', '', str(name), flags=re.IGNORECASE)
-    cleaned = re.sub(r'[^\w\s]', '', cleaned)
-    return cleaned.strip().lower()
-
-
-def find_distance_in_memory(st_from, st_to):
-    """
-    Точный поиск расстояния в Distances.txt.
-    Учитывает приоритет экспортных станций (например, Böyük Kəsik (eksport) = 680 km).
-    """
-    if not st_from or not st_to:
-        return None
-
-    def clean_name(s):
-        s = str(s).replace('*', '')
-        s = re.sub(r'-(eksp|эксп|exp)\b', '', s, flags=re.IGNORECASE)
-        s = re.sub(r'\b(eksport|aşırma|terminal|şəhər)\b', '', s, flags=re.IGNORECASE)
-        return s.strip().lower()
-
-    norm_from = clean_name(st_from)
-    norm_to = clean_name(st_to)
-
-    dist_file = "Distances.txt"
-    if not os.path.exists(dist_file):
+    if not dist_file:
         return None
 
     try:
         with open(dist_file, "r", encoding="utf-8") as f:
-            lines = [line.strip() for line in f if line.strip()]
+            for line in f:
+                line_str = line.strip()
+                if not line_str or line_str.startswith("#") or line_str.startswith("="):
+                    continue
 
-        header_cols = []
-        header_idx = -1
-        for idx, line in enumerate(lines):
-            if "|" in line and any(k in line.lower() for k in ["yalama", "astara", "kəsik", "kesik", "culfa", "ələt", "alat"]):
-                parts = [clean_name(p) for p in line.split("|")]
-                header_cols = [p for p in parts if p]
-                header_idx = idx
-                break
+                # Поддерживаемый формат: "Станция1 - Станция2 | Расстояние" или "Станция1 ; Станция2 ; Расстояние"
+                parts = re.split(r'\||;', line_str)
+                if len(parts) >= 2:
+                    st_pair = parts[0].strip()
+                    dist_val_str = parts[-1].strip()
 
-        if header_idx == -1:
-            return None
+                    # Парсинг пары станций (разделитель '-' или '–')
+                    pair_match = re.split(r'\s*[-–]\s*', st_pair, maxsplit=1)
+                    if len(pair_match) == 2:
+                        s1 = norm_str(pair_match[0])
+                        s2 = norm_str(pair_match[1])
 
-        matched_distance = None
-
-        for line in lines[header_idx + 1:]:
-            if "|" not in line or ":---" in line:
-                continue
-
-            parts = [clean_name(p) for p in line.split("|") if p.strip() != ""]
-            if len(parts) < 3:
-                continue
-
-            raw_row_st = line.split("|")[1].replace('*', '').strip() if line.split("|")[1].strip() != "" else ""
-            row_st_name = clean_name(raw_row_st)
-
-            target_border_st = None
-            if norm_from == row_st_name or norm_from in row_st_name or row_st_name in norm_from:
-                target_border_st = norm_to
-            elif norm_to == row_st_name or norm_to in row_st_name or row_st_name in norm_to:
-                target_border_st = norm_from
-
-            if target_border_st:
-                for col_idx, hdr in enumerate(header_cols):
-                    if hdr and (target_border_st in hdr or hdr in target_border_st):
-                        if col_idx < len(parts):
-                            val_str = re.sub(r'\D', '', parts[col_idx])
-                            if val_str:
-                                dist_val = int(val_str)
-                                # Если в названии строки есть (eksport), это экспортный переход — высший приоритет
-                                if "eksport" in raw_row_st.lower() or "eks" in raw_row_st.lower():
-                                    return dist_val
-                                matched_distance = dist_val
-
-        return matched_distance
-
+                        # Прямой и обратный порядок
+                        if (clean_from == s1 and clean_to == s2) or (clean_from == s2 and clean_to == s1):
+                            dist_match = re.search(r'\d+', dist_val_str)
+                            if dist_match:
+                                return int(dist_match.group(0))
     except Exception as e:
-        print(f"Ошибка при чтении {dist_file}: {e}")
+        print(f"Ошибка при поиске расстояния в {dist_file}: {e}")
 
     return None
