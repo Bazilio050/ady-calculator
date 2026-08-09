@@ -1,9 +1,11 @@
 import os
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
+from utils import normalize_st_name
 
 # ==============================================================================
-# СИСТЕМНЫЙ ПРОМПТ ДЛЯ GEMINI NLU (ИНСТРУКЦИЯ И ПРАВИЛА МАРШРУТИЗАЦИИ)
+# СИСТЕМНЫЙ ПРОМПТ ДЛЯ GEMINI NLU
 # ==============================================================================
 GEMINI_SYSTEM_INSTRUCTION = """
 Ты — специализированный NLU-парсер железнодорожного тарифного калькулятора Азербайджанских железных дорог (ADY).
@@ -11,7 +13,7 @@ GEMINI_SYSTEM_INSTRUCTION = """
 
 ---
 
-### 1. ПРАВИЛА НОРМАЛИЗАЦИИ СТАНЦИЙ (ОБЯЗАТЕЛЬНО К ИСПОЛНЕНИЮ)
+### 1. ПРАВИЛА НОРМАЛИЗАЦИИ СТАНЦИЙ
 Приводи названия станций СТРОГО к следующим каНОНИЧЕСКИМ КЛЮЧАМ:
 
 * **Баку / Баку-Товарная:**
@@ -26,7 +28,7 @@ GEMINI_SYSTEM_INSTRUCTION = """
   - "мингечевир шехер", "mingəçevir şəhər", "mingəçevir" -> **"Mingəçevir-Şəhər"**
   - "карадаг", "qaradağ", "карадаг терминал" -> **"Qaradağ"**
   - "гушчу корпю", "quşçu körpü" -> **"Quşçu Körpü"**
-  - "سانгачал", "сангачал тер", "sanqaçal" -> **"Sanqaçal"**
+  - "сангачал", "сангачал тер", "sanqaçal" -> **"Sanqaçal"**
   - "союг булаг", "soyuqbulaq", "soyuq-bulaq" -> **"Soyuqbulaq"**
   - "з. тагиев", "з.тагиев", "z.tağıyev" -> **"Z.Tağıyev"**
   - "з.тагиев сортировочная", "z.tağıyev çeşidləmə" -> **"Z.Tağıyev-Çeşidləmə"**
@@ -58,13 +60,13 @@ GEMINI_SYSTEM_INSTRUCTION = """
    - "MPS" (инвентарный парк / железная дорога).
 
 6. **Явный режим (explicit_mode):**
-   - "import", "export", "transit" или null (если режим определяется автоматически по пограничным станциям).
+   - "import", "export", "transit" или null.
 
 ---
 
 ### 3. СТРУКТУРА ВЫХОДНОГО JSON
 
-Верни ответ СТРОГО в следующем формате без стороннего текста и markdown-тегов (```json):
+Верни ответ СТРОГО в следующем формате без markdown-тегов:
 
 {
   "route_from": "Bakı-Yük",
@@ -79,12 +81,10 @@ GEMINI_SYSTEM_INSTRUCTION = """
 }
 """
 
-# ==============================================================================
-# ОСНОВНАЯ ФУНКЦИЯ ОБРАБОТКИ ЗАПРОСА ЧЕРЕЗ GEMINI API
-# ==============================================================================
+
 def parse_user_input_with_gemini(user_input: str, api_key: str = None) -> dict:
     """
-    Отправляет текстовый запрос пользователя в Gemini NLU и возвращает структурированный JSON.
+    Отправляет текстовый запрос пользователя в Gemini NLU через новый SDK google-genai.
     """
     if not api_key:
         api_key = os.getenv("GEMINI_API_KEY")
@@ -92,29 +92,25 @@ def parse_user_input_with_gemini(user_input: str, api_key: str = None) -> dict:
     if not api_key:
         raise ValueError("GEMINI_API_KEY не найден в переменных окружения.")
 
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
+    model_name = "gemini-2.0-flash-lite"
 
-    # Используем стабильную модель Gemini
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        generation_config={
-            "response_mime_type": "application/json",
-            "temperature": 0.1  # Низкая температура для максимальной точности
-        },
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        temperature=0.1,
         system_instruction=GEMINI_SYSTEM_INSTRUCTION
     )
 
     try:
-        response = model.generate_content(user_input)
-        result_text = response.text.strip()
-        
-        # Парсим JSON ответ
-        parsed_data = json.loads(result_text)
-        return parsed_data
+        response = client.models.generate_content(
+            model=model_name,
+            contents=user_input,
+            config=config
+        )
+        return json.loads(response.text.strip())
 
     except Exception as e:
-        print(f"Ошибка Gemini NLU: {e}")
-        # Запасной дефолтный ответ при сбое сети или API
+        print(f"Ошибка Gemini NLU ({model_name}): {e}")
         return {
             "route_from": "Bakı-Yük",
             "route_to": "Yalama",
@@ -126,3 +122,38 @@ def parse_user_input_with_gemini(user_input: str, api_key: str = None) -> dict:
             "explicit_mode": None,
             "requested_period": None
         }
+
+
+def validate_nlu_input(parsed_data: dict) -> dict:
+    """
+    Валидирует и нормализует извлеченные данные перед передачей в расчетный движок engine.py.
+    """
+    if not isinstance(parsed_data, dict):
+        parsed_data = {}
+
+    # Страховочная нормализация станций через utils.py
+    parsed_data["route_from"] = normalize_st_name(parsed_data.get("route_from", "Bakı-Yük"))
+    parsed_data["route_to"] = normalize_st_name(parsed_data.get("route_to", "Yalama"))
+
+    # Приведение веса к float
+    try:
+        parsed_data["actual_weight_tons"] = float(parsed_data.get("actual_weight_tons") or 60.0)
+    except (ValueError, TypeError):
+        parsed_data["actual_weight_tons"] = 60.0
+
+    # Проверка обязательных полей
+    if not parsed_data.get("wagon_type"):
+        parsed_data["wagon_type"] = "universal"
+
+    if not parsed_data.get("park_type"):
+        parsed_data["park_type"] = "SPS"
+
+    return parsed_data
+
+
+def call_gemini_nlu(user_input: str, api_key: str = None) -> dict:
+    """
+    Главная внешняя функция, вызываемая из app.py.
+    """
+    raw_parsed_data = parse_user_input_with_gemini(user_input, api_key)
+    return validate_nlu_input(raw_parsed_data)
