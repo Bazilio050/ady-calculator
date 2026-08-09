@@ -158,7 +158,8 @@ def get_table_5_coefficients(shipment_type_code, wagon_type, gng_code, is_tariff
             pass
 
     # 2. Повышающий коэффициент 1.20 для транзита изотермических вагонов
-    if str(shipment_type_code).lower() == "transit":
+    st_code_lower = str(shipment_type_code or "").lower()
+    if any(k in st_code_lower for k in ["transit", "tranzit"]):
         tr_cfg = t5_cfg.get("refrigerated_transit_1_20", {})
         c_val_120 = tr_cfg.get("coefficient_value", 1.20)
         c_lbl_120 = tr_cfg.get("labels", {}).get(lang, "Tranzit izotermik 1.20") if isinstance(tr_cfg.get("labels"), dict) else "Tranzit izotermik 1.20"
@@ -167,9 +168,8 @@ def get_table_5_coefficients(shipment_type_code, wagon_type, gng_code, is_tariff
         if "note_ref_transit_120" in ui_t:
             notes.append(ui_t["note_ref_transit_120"])
 
-    # 3. Коэффициент 1.50 для Импорта и Экспорта
-    st_code_lower = str(shipment_type_code or "").lower()
-    if st_code_lower in ["import", "export", "idxal", "ixrac"]:
+    # 3. Коэффициент 1.50 для Импорта и Экспорта (находит 'idxal' внутри 'İdxal daşınması')
+    if any(k in st_code_lower for k in ["import", "export", "idxal", "ixrac"]):
         c_val_150 = 1.50
         c_lbl_150 = "İdxal/İxrac 1.50" if lang == "AZ" else ("Импорт/Экспорт 1.50" if lang == "RU" else "Import/Export 1.50")
         coeffs.append((c_lbl_150, c_val_150))
