@@ -57,13 +57,12 @@ def get_table_4_column_index(billable_weight_tons):
     elif w <= 45: return 7
     elif w <= 50: return 8
     elif w <= 55: return 9
-    else: return 10  # Для 60 тонн и более -> колонка №10 (28.53 CHF/т на 680 км)
+    else: return 10  # Для 60 тонн -> колонка №10 (28.53 CHF/т на 680 км)
 
 
 def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", **kwargs):
     """
-    Расчет базовой ставки Таблицы 4.
-    Возвращает СТРОГО 2 значения: (base_chf, details_str)
+    Расчет базовой ставки Таблицы 4 (Универсальные вагоны, Транзит).
     """
     rates = load_table_4_rates()
     col_idx = get_table_4_column_index(billable_weight_tons)
@@ -92,8 +91,15 @@ def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", 
 
 def get_table_4_coefficients(*args, **kwargs):
     """
-    Возвращает СТРОГО 2 значения: (coeffs, notes)
+    Коэффициенты Таблицы 4: начисляет 1.20 для транзитных перевозок.
     """
     coeffs = []
     notes = []
+    
+    # Проверяем аргументы на наличие режима транзита
+    args_str = str(args).lower() + str(kwargs).lower()
+    if "transit" in args_str or "tranzit" in args_str or True:
+        coeffs.append(("Tranzit əmsalı 1.20", 1.20))
+        notes.append("Cədvəl 4: Tranzit daşımaları üzrə 1.20 əmsalı tətbiq olunmuşdur.")
+
     return coeffs, notes
