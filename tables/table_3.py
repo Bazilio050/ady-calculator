@@ -1,29 +1,17 @@
 import os
-import json
 import re
 
-
-def load_table_3_config():
-    """Загрузка конфигурации и правил Таблицы 3."""
-    config_path = "tables/table_3_config.json"
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Ошибка загрузки {config_path}: {e}")
-    return {}
-
-
 def load_table_3_rates():
-    """Чтение тарифных ставок из текстового файла."""
+    """
+    Чтение тарифных ставок Таблицы 3 из файла Table_3_Tariffs.txt / Table3.txt.
+    """
     possible_files = [
         "Table_3_Tariffs.txt",
         "Table3.txt",
         "tables/Table_3_Tariffs.txt",
         "tables/Table3.txt"
     ]
-    
+
     t_file = None
     for pf in possible_files:
         if os.path.exists(pf):
@@ -34,119 +22,115 @@ def load_table_3_rates():
     if t_file and os.path.exists(t_file):
         with open(t_file, "r", encoding="utf-8") as f:
             for line in f:
-                r_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", line)
+                line_str = line.strip()
+                if not line_str or line_str.startswith("#") or line_str.startswith("="):
+                    continue
+
+                r_match = re.search(r"^(\d+)\s*[-–]\s*(\d+)", line_str)
                 if r_match:
                     d_min, d_max = int(r_match.group(1)), int(r_match.group(2))
-                    parts = line.split("|")
+                    parts = line_str.split("|")
                     if len(parts) > 1:
                         vals = [float(p.strip().replace(",", ".")) for p in parts[1:] if p.strip()]
                         rates.append((d_min, d_max, vals))
                     else:
-                        numbers = re.findall(r"(\d+[\.,]\d+|\d+)", line)
-                        if len(numbers) >= 2:
-                            val = float(numbers[-1].replace(",", "."))
-                            rates.append((d_min, d_max, [val]))
+                        numbers = re.findall(r"(\d+[\.,]\d+|\d+)", line_str)
+                        if len(numbers) >= 3:
+                            vals = [float(x.replace(",", ".")) for x in numbers[2:]]
+                            rates.append((d_min, d_max, vals))
     return rates
 
 
-def calculate_table_3_base(distance_km, billable_weight_tons, config, lang="AZ"):
-    """Расчет базовой тарифной ставки по Таблице 3."""
+def get_table_3_column_index(billable_weight_tons):
+    """
+    Сопоставление веса с колонками Таблицы 3.
+    """
+    w = float(billable_weight_tons or 0)
+    if w <= 10: return 0
+    elif w <= 15: return 1
+    elif w <= 20: return 2
+    elif w <= 25: return 3
+    elif w <= 30: return 4
+    elif w <= 35: return 5
+    elif w <= 40: return 6
+    elif w <= 45: return 7
+    elif w <= 50: return 8
+    elif w <= 55: return 9
+    else: return 10
+
+
+def calculate_table_3_base(distance_km, billable_weight_tons, *args, lang="AZ", **kwargs):
+    """
+    Расчет базовой ставки Таблицы 3 (Импорт / Экспорт универсальные вагоны).
+    """
     rates = load_table_3_rates()
+    col_idx = get_table_3_column_index(billable_weight_tons)
     tbl_name = "Cədvəl 3" if lang == "AZ" else ("Таблица 3" if lang == "RU" else "Table 3")
 
     if not rates:
         return None, f"{tbl_name} faylı tapılmadı"
 
-    weight_intervals = config.get("tables_1_4_weight_intervals", [])
-    col_idx = 7
-    for item in weight_intervals:
-        if item.get("min_weight", 0) <= billable_weight_tons <= item.get("max_weight", 999):
-            col_idx = item.get("column_index", 7)
-            break
-
+    base_chf = None
     for d_min, d_max, vals in rates:
         if d_min <= distance_km <= d_max:
-            val = vals[col_idx] if len(vals) == 11 else (vals[min(col_idx, len(vals) - 1)] if len(vals) > 1 else vals[0])
-            return val, f"{tbl_name}, {d_min}-{d_max} km, {int(billable_weight_tons)} t"
+            if col_idx < len(vals):
+                base_chf = vals[col_idx]
+            elif len(vals) > 0:
+                base_chf = vals[-1]
+            break
 
-    return None, f"{tbl_name}, {distance_km} km"
+    if base_chf is None:
+        return None, f"{tbl_name}, {distance_km} km"
+
+    weight_label = f"{int(billable_weight_tons)} t" if billable_weight_tons else ""
+    details_str = f"{tbl_name} ({distance_km} km, {weight_label})"
+    
+    return base_chf, details_str
 
 
-def get_table_3_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ", ui_t=None):
+def is_non_ferrous_metal_gng(gng_code):
     """
-    Проверяет и возвращает коэффициенты Таблицы 3.
+    Проверка кода ГНГ по правилам п. 3.1.1 (коэффициент 1.20)
     """
-    if ui_t is None:
-        ui_t = {}
+    g = str(gng_code or "").strip().lstrip("0")
+    if not g:
+        return False
 
+    exact_prefixes = ["28045090", "28049", "28054", "32121", "7115", "8302", "83079", "8309", "8311", "85481"]
+    if any(g.startswith(p) for p in exact_prefixes):
+        return True
+
+    if any(g.startswith(str(p)) for p in range(7106, 7113)):
+        return True
+
+    if g.startswith("74"):
+        return not (g.startswith("7401") or g.startswith("7418"))
+
+    if g.startswith("75"):
+        return not g.startswith("7501")
+
+    if g.startswith("76"):
+        return not g.startswith("7615")
+
+    if g.startswith("78") or g.startswith("79") or g.startswith("80"):
+        return True
+
+    if g.startswith("81"):
+        return not g.startswith("81052")
+
+    return False
+
+
+def get_table_3_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, lang="AZ", ui_t=None, *args, **kwargs):
+    """
+    Коэффициенты Таблицы 3 (Импорт/Экспорт)
+    """
     coeffs = []
     notes = []
 
-    # Очистка кода ГНГ (оставляем только цифры)
-    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
-    w_type = str(wagon_type or "universal").lower()
-
-    t3_cfg = load_table_3_config()
-    rules = t3_cfg.get("coefficients_updated_rules_2026", {})
-
-    # 1. Повышающий коэффициент 1.20 (Цветные металлы, спецхимия - п. 3.1.1)
-    default_nf_prefixes = [
-        "28045090", "28049", "28054", "32121",
-        "7106", "7107", "7108", "7109", "7110", "7111", "7112", "7115",
-        "74", "75", "76", "78", "79", "80", "81",
-        "8302", "83079", "8309", "8311", "85481"
-    ]
-    default_nf_excludes = ["7401", "7418", "7501", "7615", "81052"]
-
-    nf_cfg = rules.get("non_ferrous_metals_1_20", {})
-    nf_prefixes = nf_cfg.get("gng_prefixes", default_nf_prefixes)
-    nf_excludes = nf_cfg.get("exclude_prefixes", default_nf_excludes)
-
-    if clean_gng:
-        is_non_ferrous = any(clean_gng.startswith(p) for p in nf_prefixes if p) and not any(clean_gng.startswith(ex) for ex in nf_excludes if ex)
-
-        if is_non_ferrous:
-            c_val = nf_cfg.get("coefficient_value", 1.20)
-            c_lbl = nf_cfg.get("labels", {}).get(lang, "Əlvan metallar 1.20") if isinstance(nf_cfg.get("labels"), dict) else "Əlvan metallar 1.20"
-            coeffs.append((c_lbl, c_val))
-
-            note_nf = {
-                "AZ": "Cədvəl 3 (bənd 3.1.1): Əlvan metallar, qiymətli metallar və xüsusi kimyəvi yüklər üzrə 1.20 artırma əmsalı tətbiq olunmuşdur.",
-                "RU": "Таблица 3 (п. 3.1.1): Применен повышающий коэффициент 1.20 для цветных/драгоценных металлов и спецхимии.",
-                "EN": "Table 3 (cl. 3.1.1): A 1.20 markup coefficient applied for non-ferrous/precious metals and special chemicals."
-            }
-            notes.append(note_nf.get(lang, note_nf["AZ"]))
-
-    # 2. Коэффициенты Импорта и Экспорта (1.50 и 1.04)
-    if shipment_type_code in ["import", "export"]:
-        ie_cfg = rules.get("import_export_base_1_50", {})
-        if ie_cfg:
-            exceptions = ie_cfg.get("exceptions", {})
-            is_150_exception = False
-
-            wood_codes = exceptions.get("wood_gng_prefixes", ["4403", "4404", "4407"])
-            if w_type == "universal" and any(clean_gng.startswith(w) for w in wood_codes if w):
-                is_150_exception = True
-
-            metal_codes = exceptions.get("metal_gng_prefixes", ["72", "73"])
-            if w_type == "universal" and any(clean_gng.startswith(m) for m in metal_codes if m):
-                is_150_exception = True
-
-            if not is_150_exception:
-                c_val = ie_cfg.get("coefficient_value", 1.50)
-                c_lbl = ie_cfg.get("labels", {}).get(lang, "İdxal/İxrac baza 1.50") if isinstance(ie_cfg.get("labels"), dict) else "İdxal/İxrac baza 1.50"
-                coeffs.append((c_lbl, c_val))
-                if "note_import_base_150" in ui_t:
-                    notes.append(ui_t["note_import_base_150"])
-
-        imp_cfg = rules.get("import_metal_wood_1_04", {})
-        if imp_cfg and shipment_type_code == "import":
-            imp_prefixes = imp_cfg.get("gng_prefixes", ["44", "72", "73"])
-            if any(clean_gng.startswith(p) for p in imp_prefixes if p):
-                c_val = imp_cfg.get("coefficient_value", 1.04)
-                c_lbl = imp_cfg.get("labels", {}).get(lang, "İdxal meşə/metal 1.04") if isinstance(imp_cfg.get("labels"), dict) else "İdxal meşə/metal 1.04"
-                coeffs.append((c_lbl, c_val))
-                if "note_timber_metal" in ui_t:
-                    notes.append(ui_t["note_timber_metal"])
+    if is_non_ferrous_metal_gng(gng_code):
+        lbl = "Əlvan metal 1.20" if lang == "AZ" else ("Цветной металл 1.20" if lang == "RU" else "Non-ferrous metal 1.20")
+        coeffs.append((lbl, 1.20))
+        notes.append("Cədvəl 3: Əlvan metal / spesifik yüklərə (1,20) artırma əmsalı tətbiq olunmuşdur.")
 
     return coeffs, notes
