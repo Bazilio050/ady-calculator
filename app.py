@@ -232,22 +232,25 @@ UI_TEXT = {
 
 logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
 
-# --- ВЕРХНЯЯ СТРОКА С УЗКИМ И КОМПАКТНЫМ ВЫБОРОМ ФРАХТОВОГО ГОДА ---
-top_col1, top_col2 = st.columns([3, 2])
+# --- ВЕРХНЯЯ СТРОКА: ДВЕ ОДИНАКОВО КРАСИВЫЕ И УЗКИЕ КОЛОНКИ ДЛЯ FRAXT ILI И DIL ---
+top_col1, top_col2 = st.columns([1, 1])
 
 with top_col1:
     if logo_path:
         st.image(logo_path, width=200)
     
-    # Разбиваем левую часть еще на подколонки, чтобы Fraxt ili занял строго узкую ширину (например, 120px)
+    # Узкий блок для выбора фрахтового года
     year_col, _ = st.columns([1.2, 2.8])
     with year_col:
         temp_lang = "AZ"
         selected_year = st.selectbox(f"⚙️ {UI_TEXT[temp_lang]['year_select']}", options=["2026", "2027"], index=0)
 
 with top_col2:
-    selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
-    t = UI_TEXT[selected_lang]
+    # Узкий блок для выбора языка точно такой же ширины
+    lang_col, _ = st.columns([1.2, 2.8])
+    with lang_col:
+        selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
+        t = UI_TEXT[selected_lang]
 
 # --- КОМПАКТНЫЙ СИНИЙ БАННЕР ---
 st.markdown(f"""
