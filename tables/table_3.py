@@ -19,11 +19,11 @@ def load_table_3_config():
 def calculate_table_3_base(distance_km, billable_weight_tons, config, lang="AZ"):
     """
     Находит базовую ставку за тонну по Таблице 3 в зависимости от расстояния.
+    Возвращает ровно 2 значения: (rate_per_ton, details_str).
     """
     t3_cfg = load_table_3_config()
     rates = t3_cfg.get("distance_rates", [])
 
-    # Если в t3_cfg сетка ставок не найдена, смотрим в общем конфиге (страховка)
     if not rates:
         rates = config.get("table_3_rates", [])
 
@@ -39,7 +39,7 @@ def calculate_table_3_base(distance_km, billable_weight_tons, config, lang="AZ")
         selected_rate = rates[-1]
 
     if not selected_rate:
-        return None, "Таблица 3 не найдена", False
+        return None, "Таблица 3 не найдена"
 
     rate_per_ton = selected_rate.get("rate_chf_per_ton", 0.0)
 
@@ -47,7 +47,7 @@ def calculate_table_3_base(distance_km, billable_weight_tons, config, lang="AZ")
         f"Таблица 3 ({distance_km} км)" if lang == "RU" else f"Table 3 ({distance_km} km)"
     )
 
-    return rate_per_ton, details_str, False
+    return rate_per_ton, details_str
 
 
 def get_table_3_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ", ui_t=None):
@@ -65,19 +65,15 @@ def get_table_3_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ"
     gng = str(gng_code or "").strip()
     w_type = str(wagon_type or "universal").lower()
 
-    # Загружаем правила из нашего справочника table_3_config.json
     t3_cfg = load_table_3_config()
     rules = t3_cfg.get("coefficients_updated_rules_2026", {})
 
-    # -------------------------------------------------------------------
-    # Правило 1: Коэффициент 1.20 (Цветные металлы, спецхимия - п. 3.1.1)
-    # -------------------------------------------------------------------
+    # 1. Повышающий коэффициент 1.20 (Цветные металлы, спецхимия - п. 3.1.1)
     nf_cfg = rules.get("non_ferrous_metals_1_20", {})
     if nf_cfg and gng:
         nf_prefixes = nf_cfg.get("gng_prefixes", [])
         nf_excludes = nf_cfg.get("exclude_prefixes", [])
 
-        # Проверяем совпадение кода ГНГ со списком цветных металлов
         is_non_ferrous = any(gng.startswith(p) for p in nf_prefixes if p) and not any(gng.startswith(ex) for ex in nf_excludes if ex)
 
         if is_non_ferrous:
@@ -92,9 +88,7 @@ def get_table_3_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ"
             }
             notes.append(note_nf.get(lang, note_nf["AZ"]))
 
-    # -------------------------------------------------------------------
-    # Правило 2: Коэффициенты Импорта и Экспорта (1.50 и 1.04)
-    # -------------------------------------------------------------------
+    # 2. Коэффициенты Импорта и Экспорта (1.50 и 1.04)
     if shipment_type_code in ["import", "export"]:
         # Базовый коэффициент 1.50
         ie_cfg = rules.get("import_export_base_1_50", {})
