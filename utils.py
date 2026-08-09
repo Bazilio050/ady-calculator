@@ -86,7 +86,6 @@ def norm_str(s: str) -> str:
         return ""
     cleaned = s.strip().lower()
 
-    # Замены символов для гарантии 100% совпадения
     replacements = {
         'ə': 'e', 'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
         'ё': 'е', 'sh': 's', 'ch': 'c', 'kh': 'h'
@@ -94,7 +93,6 @@ def norm_str(s: str) -> str:
     for old, new in replacements.items():
         cleaned = cleaned.replace(old, new)
 
-    # Оставляем только буквенно-цифровые символы
     cleaned = re.sub(r'[^a-z0-9]', '', cleaned)
     return cleaned
 
@@ -141,7 +139,7 @@ def load_rules_config(filepath: str = "rules_config.json") -> dict:
 
 def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
     """
-    Поиск тарифного расстояния в километрах между двумя станциями в файле Distances.txt.
+    Безотказный поиск расстояния между двумя станциями в файле Distances.txt.
     """
     st_from_norm = normalize_st_name(st_from)
     st_to_norm = normalize_st_name(st_to)
@@ -171,26 +169,31 @@ def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
                 if not line_str or line_str.startswith("#") or line_str.startswith("="):
                     continue
 
-                # Разделяем станционную пару и расстояние (по |, ; или :)
-                parts = re.split(r'\||;|\:', line_str)
-                if len(parts) >= 2:
-                    st_pair = parts[0].strip()
-                    dist_val_str = parts[-1].strip()
+                # 1. Извлекаем числовое значение расстояния
+                dist_match = re.search(r'(\d+)\s*$', line_str)
+                if not dist_match:
+                    dist_match = re.search(r'[:|;\t]\s*(\d+)', line_str)
 
-                    # Разделяем пару станций по разделителю
-                    pair_match = re.split(r'\s+[-–—]\s+|\s*;\s*|\t+', st_pair, maxsplit=1)
-                    if len(pair_match) == 2:
-                        s1_norm = normalize_st_name(pair_match[0])
-                        s2_norm = normalize_st_name(pair_match[1])
+                if not dist_match:
+                    continue
 
-                        s1 = norm_str(s1_norm)
-                        s2 = norm_str(s2_norm)
+                dist_value = int(dist_match.group(1))
 
-                        # Прямой и обратный порядок
-                        if (clean_from == s1 and clean_to == s2) or (clean_from == s2 and clean_to == s1):
-                            dist_match = re.search(r'\d+', dist_val_str)
-                            if dist_match:
-                                return int(dist_match.group(0))
+                # 2. Берем текстовую часть строки со станциями
+                st_part = line_str[:dist_match.start()].strip()
+                clean_st_part = norm_str(st_part)
+
+                # 3. Прямое совпадение: обе станции присутствуют в этой строке
+                if clean_from in clean_st_part and clean_to in clean_st_part:
+                    return dist_value
+
+                # 4. Резервная проверка через разделение по токенам
+                tokens = re.split(r'\s+[-–—]\s+|\s*[-–—]\s*|\s*;\s*|\s*\|\s*|\t+', st_part)
+                if len(tokens) >= 2:
+                    s1 = norm_str(normalize_st_name(tokens[0]))
+                    s2 = norm_str(normalize_st_name(tokens[1]))
+                    if (clean_from == s1 and clean_to == s2) or (clean_from == s2 and clean_to == s1):
+                        return dist_value
     except Exception as e:
         print(f"Ошибка при поиске расстояния в {dist_file}: {e}")
 
