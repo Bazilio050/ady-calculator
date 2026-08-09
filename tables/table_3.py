@@ -18,30 +18,61 @@ def load_table_3_config():
 
 def calculate_table_3_base(distance_km, billable_weight_tons, config, lang="AZ"):
     """
-    Находит базовую ставку за тонну по Таблице 3 в зависимости от расстояния.
+    Универсальный поиск базовой ставки по Таблице 3 для расстояния distance_km и веса billable_weight_tons.
     Возвращает ровно 2 значения: (rate_per_ton, details_str).
     """
     t3_cfg = load_table_3_config()
-    rates = t3_cfg.get("distance_rates", [])
 
-    if not rates:
-        rates = config.get("table_3_rates", [])
+    # 1. Поиск массива ставок во всех возможных источниках
+    rates = (
+        t3_cfg.get("distance_rates")
+        or t3_cfg.get("rates")
+        or t3_cfg.get("distance_matrix")
+        or (config.get("table_3_rates") if isinstance(config, dict) else None)
+        or (config.get("distance_rates") if isinstance(config, dict) else None)
+        or []
+    )
 
-    selected_rate = None
-    for item in rates:
-        min_d = item.get("min_km", 0)
-        max_d = item.get("max_km", 9999)
-        if min_d <= distance_km <= max_d:
-            selected_rate = item
-            break
+    # 2. Определение индекса весовой колонки (если используется матрица весов)
+    weight_intervals = t3_cfg.get("tables_1_4_weight_intervals", [])
+    col_idx = 0
+    if weight_intervals:
+        for interval in weight_intervals:
+            w_min = interval.get("min_weight", 0)
+            w_max = interval.get("max_weight", 999)
+            if w_min <= billable_weight_tons <= w_max:
+                col_idx = interval.get("column_index", 0)
+                break
 
-    if not selected_rate and rates:
-        selected_rate = rates[-1]
+    selected_rate_item = None
+    if isinstance(rates, list) and len(rates) > 0:
+        for item in rates:
+            if isinstance(item, dict):
+                min_d = item.get("min_km", item.get("min_dist", 0))
+                max_d = item.get("max_km", item.get("max_dist", 9999))
+                if min_d <= distance_km <= max_d:
+                    selected_rate_item = item
+                    break
 
-    if not selected_rate:
+        if not selected_rate_item and rates:
+            selected_rate_item = rates[-1]
+
+    # 3. Извлечение значения ставки из найденного элемента
+    rate_per_ton = None
+    if selected_rate_item:
+        if "rate_chf_per_ton" in selected_rate_item:
+            rate_per_ton = float(selected_rate_item["rate_chf_per_ton"])
+        elif "rate" in selected_rate_item:
+            rate_per_ton = float(selected_rate_item["rate"])
+        elif "rates" in selected_rate_item and isinstance(selected_rate_item["rates"], list):
+            r_list = selected_rate_item["rates"]
+            if col_idx < len(r_list):
+                rate_per_ton = float(r_list[col_idx])
+            elif len(r_list) > 0:
+                rate_per_ton = float(r_list[-1])
+
+    if rate_per_ton is None:
         return None, "Таблица 3 не найдена"
-
-    rate_per_ton = selected_rate.get("rate_chf_per_ton", 0.0)
 
     details_str = f"Cədvəl 3 ({distance_km} km)" if lang == "AZ" else (
         f"Таблица 3 ({distance_km} км)" if lang == "RU" else f"Table 3 ({distance_km} km)"
@@ -90,7 +121,6 @@ def get_table_3_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ"
 
     # 2. Коэффициенты Импорта и Экспорта (1.50 и 1.04)
     if shipment_type_code in ["import", "export"]:
-        # Базовый коэффициент 1.50
         ie_cfg = rules.get("import_export_base_1_50", {})
         if ie_cfg:
             exceptions = ie_cfg.get("exceptions", {})
@@ -111,7 +141,6 @@ def get_table_3_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ"
                 if "note_import_base_150" in ui_t:
                     notes.append(ui_t["note_import_base_150"])
 
-        # Импортный коэффициент 1.04 (для леса и черных металлов)
         imp_cfg = rules.get("import_metal_wood_1_04", {})
         if imp_cfg and shipment_type_code == "import":
             imp_prefixes = imp_cfg.get("gng_prefixes", ["44", "72", "73"])
