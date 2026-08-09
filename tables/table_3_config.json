@@ -1,1 +1,28 @@
-{}
+{
+  "tables_1_4_weight_intervals": [
+    { "min_weight": 0, "max_weight": 10, "column_index": 0 },
+    { "min_weight": 11, "max_weight": 15, "column_index": 1 },
+    { "min_weight": 16, "max_weight": 20, "column_index": 2 },
+    { "min_weight": 21, "max_weight": 25, "column_index": 3 },
+    { "min_weight": 26, "max_weight": 30, "column_index": 4 },
+    { "min_weight": 31, "max_weight": 35, "column_index": 5 },
+    { "min_weight": 36, "max_weight": 40, "column_index": 6 },
+    { "min_weight": 41, "max_weight": 999, "column_index": 7 }
+  ],
+  "coefficients_updated_rules_2026": {
+    "import_export_base_1_50": {
+      "coefficient_value": 1.50,
+      "exceptions": {
+        "tables": [3],
+        "wood_gng_prefixes": ["4403", "4404", "4407"],
+        "metal_gng_prefixes": ["72", "73"]
+      },
+      "labels": { "AZ": "İdxal/İxrac baza əmsalı 1.50", "RU": "Импорт/Экспорт база 1.50" }
+    },
+    "import_metal_wood_1_04": {
+      "coefficient_value": 1.04,
+      "gng_prefixes": ["44", "72", "73"],
+      "labels": { "AZ": "İdxal meşə/metal 1.04", "RU": "Импорт лес/металл 1.04" }
+    }
+  }
+}
