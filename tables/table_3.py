@@ -1,46 +1,93 @@
 import os
-import re
+import json
 
-def load_table_3_rates():
-    t_file = "Table_3_Tariffs.txt"
-    if not os.path.exists(t_file):
-        t_file = "Table3.txt"
-    
-    rates = []
-    if os.path.exists(t_file):
-        with open(t_file, "r", encoding="utf-8") as f:
-            for line in f:
-                r_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", line)
-                if r_match:
-                    d_min, d_max = int(r_match.group(1)), int(r_match.group(2))
-                    parts = line.split("|")
-                    if len(parts) > 1:
-                        vals = [float(p.strip().replace(",", ".")) for p in parts[1:] if p.strip()]
-                        rates.append((d_min, d_max, vals))
-                    else:
-                        numbers = re.findall(r"(\d+[\.,]\d+|\d+)", line)
-                        if len(numbers) >= 2:
-                            val = float(numbers[-1].replace(",", "."))
-                            rates.append((d_min, d_max, [val]))
-    return rates
+
+def load_table_3_config():
+    """Загрузка конфигурации ставок и правил Таблицы 3."""
+    config_path = "tables/table_3_config.json"
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Ошибка загрузки {config_path}: {e}")
+    return {}
+
 
 def calculate_table_3_base(distance_km, billable_weight_tons, config, lang="AZ"):
-    rates = load_table_3_rates()
-    tbl_name = "Cədvəl 3" if lang == "AZ" else ("Таблица 3" if lang == "RU" else "Table 3")
-    
-    if not rates:
-        return None, f"{tbl_name} faylı tapılmadı"
+    """
+    Рассчитывает базовую тарифную ставку по Таблице 3 (Повагонные отправки в универсальных вагонах).
+    """
+    t3_cfg = load_table_3_config()
+    rates = t3_cfg.get("distance_rates", [])
 
-    weight_intervals = config.get("tables_1_4_weight_intervals", [])
-    col_idx = 7
-    for item in weight_intervals:
-        if item.get("min_weight", 0) <= billable_weight_tons <= item.get("max_weight", 999):
-            col_idx = item.get("column_index", 7)
+    if not rates:
+        rates = config.get("table_3_rates", [])
+
+    selected_rate = None
+    for item in rates:
+        min_d = item.get("min_km", 0)
+        max_d = item.get("max_km", 9999)
+        if min_d <= distance_km <= max_d:
+            selected_rate = item
             break
 
-    for d_min, d_max, vals in rates:
-        if d_min <= distance_km <= d_max:
-            val = vals[col_idx] if len(vals) == 11 else (vals[min(col_idx, len(vals) - 1)] if len(vals) > 1 else vals[0])
-            return val, f"{tbl_name}, {d_min}-{d_max} km, {int(billable_weight_tons)} t"
+    if not selected_rate and rates:
+        selected_rate = rates[-1]
 
-    return None, f"{tbl_name}, {distance_km} km"
+    if not selected_rate:
+        return None, "Таблица 3 не найдена", False
+
+    rate_per_ton = selected_rate.get("rate_chf_per_ton", 0.0)
+    
+    details_str = f"Cədvəl 3 ({distance_km} km)" if lang == "AZ" else (
+        f"Таблица 3 ({distance_km} км)" if lang == "RU" else f"Table 3 ({distance_km} km)"
+    )
+
+    return rate_per_ton, details_str, False
+
+
+def get_table_3_coefficients(shipment_type_code, wagon_type, gng_code, config, lang, ui_t):
+    """
+    Возвращает специфичные коэффициенты Таблицы 3 (Импорт и Экспорт).
+    Перенесено из engine.py для соблюдения модульной структуры.
+    """
+    coeffs = []
+    notes = []
+    gng = str(gng_code or "").strip()
+    w_type = str(wagon_type or "universal").lower()
+
+    if shipment_type_code not in ["import", "export"]:
+        return coeffs, notes
+
+    # 1. Базовый коэффициент 1.50 для Импорта/Экспорта и его исключения
+    ie_config = config.get("coefficients_updated_rules_2026", {}).get("import_export_base_1_50", {})
+    exceptions = ie_config.get("exceptions", {})
+    is_150_exception = False
+
+    wood_codes = exceptions.get("wood_gng_prefixes", ["4403", "4404", "4407"])
+    if w_type == "universal" and any(gng.startswith(w) for w in wood_codes if w):
+        is_150_exception = True
+
+    metal_codes = exceptions.get("metal_gng_prefixes", ["72", "73"])
+    if w_type == "universal" and any(gng.startswith(m) for m in metal_codes if m):
+        is_150_exception = True
+
+    if not is_150_exception:
+        coeff_val = ie_config.get("coefficient_value", 1.50)
+        lbl_ie = ie_config.get("labels", {}).get(lang, "Import/Export Base") if isinstance(ie_config.get("labels"), dict) else "Import/Export Base"
+        coeffs.append((lbl_ie, coeff_val))
+        if "note_import_base_150" in ui_t:
+            notes.append(ui_t["note_import_base_150"])
+
+    # 2. Импортный коэффициент 1.04 (лес и металлы)
+    imp_cfg = config.get("coefficients_updated_rules_2026", {}).get("import_metal_wood_1_04", {})
+    imp_prefixes = imp_cfg.get("gng_prefixes", ["44", "72", "73"])
+    if shipment_type_code == "import" and any(gng.startswith(p) for p in imp_prefixes if p):
+        coeff_val = imp_cfg.get("coefficient_value", 1.04)
+        lbl_imp = imp_cfg.get("labels", {}).get(lang, "Import Coeff") if isinstance(imp_cfg.get("labels"), dict) else "Import Coeff"
+        coeffs.append((lbl_imp, coeff_val))
+        if "note_timber_metal" in ui_t:
+            notes.append(ui_t["note_timber_metal"])
+
+    return coeffs, notes
