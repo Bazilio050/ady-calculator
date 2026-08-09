@@ -71,7 +71,7 @@ def determine_table_6_column(gng_code, park_type="SPS"):
             if any(clean_gng.startswith(p) for p in prefixes if p):
                 return rule.get("column_index", 6)
 
-    # 2. Проверка для инвентарных цистерн (İnventar parka məxsus / MPS) или запасной вариант
+    # 2. Проверка для инвентарных цистерн (İnventar parka məxsus / MPS)
     mps_rules = mapping.get("mps_inventory", [])
     default_col = 5  # "Digər yüklər" (Col 7)
 
@@ -117,15 +117,37 @@ def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_typ
     return rate_per_ton, details_str
 
 
-def get_table_6_coefficients(shipment_type_code, wagon_type, gng_code, lang="AZ", ui_t=None):
+def get_table_6_coefficients(shipment_type_code, wagon_type, gng_code, park_type="SPS", lang="AZ", ui_t=None):
     """
-    Проверяет и возвращает коэффициенты, относящиеся к Таблице 6.
+    Проверяет и возвращает коэффициенты Таблицы 6:
+    - Применяет базовый 1.50 для Импорта/Экспорта.
+    - ИСКЛЮЧАЕТ 1.50 для Нефти/Нефтепродуктов (Столбец 2) и Метанола (290511).
     """
     if ui_t is None:
         ui_t = {}
 
     coeffs = []
     notes = []
+    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
 
-    # Дополнительные коэффициенты Таблицы 6 (при наличии специфичных правил)
+    # 1. Применение базового коэффициента Импорта/Экспорта (1.50)
+    if shipment_type_code in ["import", "export"]:
+        col_idx = determine_table_6_column(clean_gng, park_type)
+        is_exception = False
+
+        # Исключение 1: Нефть и нефтепродукты (Столбец 2 - col_idx == 0)
+        if col_idx == 0:
+            is_exception = True
+
+        # Исключение 2: Метанол (ГНГ 29051100 / 290511)
+        if clean_gng.startswith("290511"):
+            is_exception = True
+
+        if not is_exception:
+            c_val = 1.50
+            c_lbl = "İdxal/İxrac baza 1.50" if lang == "AZ" else ("Импорт/Экспорт база 1.50" if lang == "RU" else "Import/Export base 1.50")
+            coeffs.append((c_lbl, c_val))
+            if "note_import_base_150" in ui_t:
+                notes.append(ui_t["note_import_base_150"])
+
     return coeffs, notes
