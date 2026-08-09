@@ -63,7 +63,6 @@ def get_table_3_column_index(billable_weight_tons):
 def calculate_table_3_base(distance_km, billable_weight_tons, *args, lang="AZ", **kwargs):
     """
     Расчет базовой ставки Таблицы 3 (Импорт / Экспорт универсальные вагоны).
-    Возвращает строго 2 значения: (base_chf, details_str)
     """
     rates = load_table_3_rates()
     col_idx = get_table_3_column_index(billable_weight_tons)
@@ -90,11 +89,30 @@ def calculate_table_3_base(distance_km, billable_weight_tons, *args, lang="AZ", 
     return base_chf, details_str
 
 
-def is_non_ferrous_metal_gng(gng_code):
+def extract_gng_digits(gng_code, kwargs):
+    """
+    Универсальное извлечение цифр ГНГ из любых аргументов.
+    """
+    candidates = [
+        gng_code,
+        kwargs.get("gng_code"),
+        kwargs.get("gng"),
+        kwargs.get("cargo_code"),
+        kwargs.get("cargo")
+    ]
+    for c in candidates:
+        if c:
+            m = re.search(r"\d+", str(c))
+            if m:
+                return m.group(0)
+    return ""
+
+
+def is_non_ferrous_metal_gng(gng_code, kwargs):
     """
     Проверка п. 3.1.1 (1.20) — Цветные металлы, драгметаллы и специфика
     """
-    g = str(gng_code or "").strip().lstrip("0")
+    g = extract_gng_digits(gng_code, kwargs)
     if not g:
         return False
 
@@ -102,7 +120,7 @@ def is_non_ferrous_metal_gng(gng_code):
     if any(g.startswith(p) for p in exact_prefixes):
         return True
 
-    if any(g.startswith(str(p)) for p in range(7106, 7113)):
+    if len(g) >= 4 and 7106 <= int(g[:4]) <= 7112:
         return True
 
     if g.startswith("74"):
@@ -123,33 +141,66 @@ def is_non_ferrous_metal_gng(gng_code):
     return False
 
 
-def is_timber_wood_gng(gng_code):
+def is_import_shipment(shipment_type_code, kwargs):
     """
-    Проверка древесины и лесных грузов (1.04) — Группа ГНГ 44
+    Проверка на режим Импорта (idxal)
     """
-    g = str(gng_code or "").strip().lstrip("0")
-    return g.startswith("44")
+    candidates = [
+        shipment_type_code,
+        kwargs.get("shipment_type_code"),
+        kwargs.get("shipment_type"),
+        kwargs.get("mode")
+    ]
+    for c in candidates:
+        if c:
+            st = str(c).lower()
+            if "idxal" in st or "import" in st:
+                return True
+    return True  # По умолчанию для Таблицы 3 в случае сомнений считаем Импортом
+
+
+def is_104_import_eligible_gng(gng_code, kwargs):
+    """
+    Проверка коэффициента 1.04 при импорте для:
+    1. Лес и пиломатериалы: ГНГ 4403, 4404, 4407–4413
+    2. Чёрные металлы: ГНГ 72 (все), 7301–7307
+    """
+    g = extract_gng_digits(gng_code, kwargs)
+    if not g:
+        return False
+
+    # 1. Лесоматериалы (4403, 4404, 4407-4413)
+    if g.startswith("4403") or g.startswith("4404"):
+        return True
+    if len(g) >= 4 and 4407 <= int(g[:4]) <= 4413:
+        return True
+
+    # 2. Чёрные металлы (72 - все позиции, 7301-7307)
+    if g.startswith("72"):
+        return True
+    if len(g) >= 4 and 7301 <= int(g[:4]) <= 7307:
+        return True
+
+    return False
 
 
 def get_table_3_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, lang="AZ", ui_t=None, *args, **kwargs):
     """
     Коэффициенты Таблицы 3 (Импорт / Экспорт).
-    ВНИМАНИЕ: Коэффициент 1.50 к Таблице 3 НЕ применяем вообще.
-    Возвращает строго 2 значения: (coeffs, notes)
     """
     coeffs = []
     notes = []
 
     # 1. Цветные металлы и специфика (1.20)
-    if is_non_ferrous_metal_gng(gng_code):
+    if is_non_ferrous_metal_gng(gng_code, kwargs):
         lbl = "Əlvan metal 1.20" if lang == "AZ" else ("Цветной металл 1.20" if lang == "RU" else "Non-ferrous metal 1.20")
         coeffs.append((lbl, 1.20))
         notes.append("Cədvəl 3: Əlvan metal / spesifik yüklərə (1,20) artırma əmsalı tətbiq olunmuşdur.")
 
-    # 2. Лесоматериалы и древесина (1.04)
-    if is_timber_wood_gng(gng_code):
-        lbl = "Meşə yükləri 1.04" if lang == "AZ" else ("Лесные грузы 1.04" if lang == "RU" else "Timber/Wood 1.04")
+    # 2. Лесоматериалы (4403, 4404, 4407-4413) и Чёрные металлы (72, 7301-7307) при ИМПОРТЕ -> 1.04
+    if is_import_shipment(shipment_type_code, kwargs) and is_104_import_eligible_gng(gng_code, kwargs):
+        lbl = "İdxal yükləri (1.04)" if lang == "AZ" else ("Импортные грузы (1.04)" if lang == "RU" else "Import cargo (1.04)")
         coeffs.append((lbl, 1.04))
-        notes.append("Cədvəl 3: Ağac və meşə məhsullarına (GNG 44) 1.04 artırma əmsalı tətbiq olunmuşdur.")
+        notes.append("Cədvəl 3: İdxal daşımaları zamanı taxta (4403, 4404, 4407-4413) və qara metallara (72, 7301-7307) 1.04 əmsalı tətbiq olunmuşdur.")
 
     return coeffs, notes
