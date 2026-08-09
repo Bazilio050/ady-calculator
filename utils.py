@@ -62,6 +62,7 @@ STATION_EXACT_MAP = {
     "забрат 2": "Zabrat-II",
     "zabrat 2": "Zabrat-II",
     "zabrat ii": "Zabrat-II",
+    "апшерон": "Abşeron",
     "абшерон": "Abşeron",
     "abşeron": "Abşeron",
     "absheron": "Abşeron",
@@ -79,8 +80,7 @@ STATION_EXACT_MAP = {
 
 def norm_str(s: str) -> str:
     """
-    Приводит строку к единому виду с заменой специфических букв (латиница/кириллица),
-    чтобы убрать чувствительность к написанию (например, ş -> s, ə -> e).
+    Приводит строку к единому виду с заменой букв (латиница/кириллица).
     """
     if not s:
         return ""
@@ -114,7 +114,7 @@ def normalize_st_name(st_name: str) -> str:
 
 def load_rules_config(filepath: str = "rules_config.json") -> dict:
     """
-    Загружает конфигурацию тарифных правил и коэффициентов из JSON.
+    Загружает конфигурацию тарифных правил из JSON.
     """
     possible_paths = [
         filepath,
@@ -139,13 +139,17 @@ def load_rules_config(filepath: str = "rules_config.json") -> dict:
 
 def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
     """
-    Безотказный поиск расстояния между двумя станциями в файле Distances.txt.
+    Поиск тарифного расстояния в километрах между двумя станциями в файле Distances.txt.
     """
     st_from_norm = normalize_st_name(st_from)
     st_to_norm = normalize_st_name(st_to)
 
     clean_from = norm_str(st_from_norm)
     clean_to = norm_str(st_to_norm)
+
+    # Варианты без замены sh -> s для гибкого поиска
+    raw_from = re.sub(r'[^a-z0-9]', '', st_from_norm.lower())
+    raw_to = re.sub(r'[^a-z0-9]', '', st_to_norm.lower())
 
     possible_files = [
         "Distances.txt",
@@ -169,7 +173,7 @@ def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
                 if not line_str or line_str.startswith("#") or line_str.startswith("="):
                     continue
 
-                # 1. Извлекаем числовое значение расстояния
+                # 1. Находим числовое значение расстояния
                 dist_match = re.search(r'(\d+)\s*$', line_str)
                 if not dist_match:
                     dist_match = re.search(r'[:|;\t]\s*(\d+)', line_str)
@@ -180,20 +184,18 @@ def find_distance_in_memory(st_from: str, st_to: str) -> int | None:
                 dist_value = int(dist_match.group(1))
 
                 # 2. Берем текстовую часть строки со станциями
-                st_part = line_str[:dist_match.start()].strip()
-                clean_st_part = norm_str(st_part)
+                text_part = line_str[:dist_match.start()].strip()
+                clean_text = norm_str(text_part)
+                raw_text = re.sub(r'[^a-z0-9]', '', text_part.lower())
 
-                # 3. Прямое совпадение: обе станции присутствуют в этой строке
-                if clean_from in clean_st_part and clean_to in clean_st_part:
+                # 3. Проверка совпадения по нормализованным символам
+                if (clean_from in clean_text) and (clean_to in clean_text):
                     return dist_value
 
-                # 4. Резервная проверка через разделение по токенам
-                tokens = re.split(r'\s+[-–—]\s+|\s*[-–—]\s*|\s*;\s*|\s*\|\s*|\t+', st_part)
-                if len(tokens) >= 2:
-                    s1 = norm_str(normalize_st_name(tokens[0]))
-                    s2 = norm_str(normalize_st_name(tokens[1]))
-                    if (clean_from == s1 and clean_to == s2) or (clean_from == s2 and clean_to == s1):
-                        return dist_value
+                # 4. Резервная проверка по сырым символам
+                if (raw_from in raw_text) and (raw_to in raw_text):
+                    return dist_value
+
     except Exception as e:
         print(f"Ошибка при поиске расстояния в {dist_file}: {e}")
 
