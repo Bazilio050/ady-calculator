@@ -157,7 +157,10 @@ def get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
     ])
 
     # 1. Состав рефсекции (парсинг 5+1, 1+5, 6+1, 3+1 и т.д.)
-    parsed_cnt = parse_ref_composition(full_text_search)
+    if isinstance(ref_wagons_cnt, int):
+        parsed_cnt = ref_wagons_cnt
+    else:
+        parsed_cnt = parse_ref_composition(full_text_search)
     if parsed_cnt is not None:
         w_cnt = parsed_cnt
         c_val = None
