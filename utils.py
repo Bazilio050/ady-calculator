@@ -172,10 +172,32 @@ def get_calculation_distance(distance_km: int, shipment_type: str) -> int:
 
 
 # ==============================================================================
-# 3. ВЕСОВАЯ СЕТКА И МИНИМАЛЬНЫЕ НОРМЫ ГНГ
+# 3. ВЕСОВАЯ СЕТКА (Cədvəl 1) И МИНИМАЛЬНЫЕ НОРМЫ ГНГ
 # ==============================================================================
 
+def get_weight_column_index(billable_weight_tons: float) -> int:
+    """
+    Сопоставление расчётного веса с 11 колонками Cədvəl 1 (для Таблиц 3 и 4):
+    0: 10t (0-12t),  1: 15t (13-16t), 2: 20t (17-23t), 3: 25t (24-26t),
+    4: 30t (27-31t), 5: 35t (32-36t), 6: 40t (37-40t), 7: 45t (41-46t),
+    8: 50t (47-51t), 9: 55t (52-55t), 10: 60t+ (56t+)
+    """
+    w = float(billable_weight_tons or 0)
+    if w <= 12: return 0
+    elif w <= 16: return 1
+    elif w <= 23: return 2
+    elif w <= 26: return 3
+    elif w <= 31: return 4
+    elif w <= 36: return 5
+    elif w <= 40: return 6
+    elif w <= 46: return 7
+    elif w <= 51: return 8
+    elif w <= 55: return 9
+    else: return 10
+
+
 def extract_gng_digits(gng_code, kwargs=None) -> str:
+    """Извлекает численный код ГНГ."""
     kwargs = kwargs or {}
     candidates = [gng_code, kwargs.get("gng_code"), kwargs.get("gng"), kwargs.get("cargo_code")]
     for c in candidates:
@@ -187,6 +209,7 @@ def extract_gng_digits(gng_code, kwargs=None) -> str:
 
 
 def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
+    """Полный реестр проверки минимальных норм загрузки по ГНГ."""
     g = extract_gng_digits(gng_code)
     w = float(actual_weight_tons or 0)
     if not g:
