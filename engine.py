@@ -18,10 +18,12 @@ from tables.table_6 import calculate_table_6_base, get_table_6_coefficients
 
 def get_currency_rate(requested_period: str = None, lang: str = "AZ") -> tuple:
     """
-    Возвращает курс CHF/USD (по умолчанию 1.12 согласно спецификации).
+    Определяет курс CHF/USD по дате из запроса или берет текущий период.
     """
-    rate = 1.12
-    label = f"**{rate:.2f} CHF/USD**"
+    target_dt = parse_date_from_string(requested_period)
+    rate, period_str = get_exchange_rate_for_date(target_dt)
+    
+    label = f"**{rate:.2f} CHF/USD** ({period_str})"
     return rate, label
 
 
