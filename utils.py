@@ -51,17 +51,32 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 # 2. ПОИСК И АВТО-РЕЗОЛВ ЕСР ПО НАЗВАНИЮ (Distances.txt)
 # ==============================================================================
 
+BORDER_STATION_ESR_OVERRIDE = {
+    "boyuk kesik": "558701",  # Böyük Kəsik (eksport) = 680 km (вместо внутренней 558631 = 676 km)
+    "yalama": "545006",       # Yalama (eksport)
+    "astara": "554109",       # Astara (eksport)
+    "culfa": "550004",        # Culfa (eksport)
+    "serur": "550409"         # Şərur (eksport)
+}
+
 def resolve_esr_by_station_name(station_name: str) -> str:
     """
     Автоматически сканирует Distances.txt и возвращает точный 6-значный ЕСР по названию станции.
+    Приоритет отдаётся экспортным пограничным переходам.
     """
     if not station_name:
         return ""
 
     # Очищаем название от суффиксов
     clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(station_name), flags=re.IGNORECASE).strip().lower()
-    clean = clean.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
+    clean_norm = clean.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
 
+    # 1. Приоритетный выбор для пограничных станций
+    for b_name, b_esr in BORDER_STATION_ESR_OVERRIDE.items():
+        if b_name in clean_norm or clean_norm in b_name:
+            return b_esr
+
+    # 2. Сканирование Distances.txt для остальных станций
     possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
     dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
 
@@ -82,13 +97,12 @@ def resolve_esr_by_station_name(station_name: str) -> str:
                 file_st_name = file_st_name.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
                 file_esr = re.sub(r'\D', '', parts[2])
 
-                if clean and file_st_name and (clean in file_st_name or file_st_name in clean):
+                if clean_norm and file_st_name and (clean_norm in file_st_name or file_st_name in clean_norm):
                     return file_esr
     except Exception as e:
         print(f"Error resolving ESR: {e}")
 
     return ""
-
 
 # Карта ЕСР-кодов для колонок погранпереходов Таблицы Distances.txt
 BORDER_COLUMN_MAP = {
