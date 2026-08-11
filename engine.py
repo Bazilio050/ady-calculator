@@ -100,13 +100,12 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
 
-    # 2. Глобальная скидка СПС (0.85) для универсальных/изотермических вагонов
-   if park_type == "SPS" and table_num != 6:
+    # 2. Глобальная скидка СПС (0.85) для вагонов СПС
+    if park_type == "SPS" and table_num != 6:
         sps_label = "SPS güzəşti 0.85" if lang == "AZ" else ("Скидка СПС 0.85" if lang == "RU" else "SPS Discount 0.85")
         coeffs.append((sps_label, 0.85))
         if "note_sps" in ui_t:
             notes.append(ui_t["note_sps"])
-
     # 3. Индексационный коэффициент 1.015 (для всех гружёных вагонов)
     input_lower = user_input_raw.lower()
     if not any(k in input_lower for k in ["boş", "порожн", "empty"]):
