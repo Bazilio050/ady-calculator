@@ -101,7 +101,7 @@ def apply_special_exceptions(
         notes.extend(tbl_notes)
 
     # 2. Глобальная скидка СПС (0.85) для универсальных/изотермических вагонов
-    if park_type == "SPS" and table_num != 6:
+   if park_type == "SPS" and table_num != 6:
         sps_label = "SPS güzəşti 0.85" if lang == "AZ" else ("Скидка СПС 0.85" if lang == "RU" else "SPS Discount 0.85")
         coeffs.append((sps_label, 0.85))
         if "note_sps" in ui_t:
