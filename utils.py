@@ -58,8 +58,8 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 
 def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
     """
-    Точный поиск километража в матрице Distances.txt по 6-значным кодам ЕСР.
-    Игнорирует служебные колонки (название станции и код ЕСР).
+    Поиск километража в матрице Distances.txt по кодам ЕСР.
+    Сравнивает станции по первым 5 цифрам (игнорируя контрольную 6-ю цифру).
     """
     clean_from = re.sub(r'\D', '', str(esr_from or ""))
     clean_to = re.sub(r'\D', '', str(esr_to or ""))
@@ -67,9 +67,12 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
     if not clean_from or not clean_to:
         return None
 
-    # Если станции совпадают — расстояние 0
     if clean_from == clean_to:
         return 0
+
+    # Берем первые 5 цифр для 100% совпадения кодов ЕСР
+    esr5_from = clean_from[:5]
+    esr5_to = clean_to[:5]
 
     possible_paths = [
         "Distances.txt", 
@@ -89,20 +92,19 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
         header_codes = []
         header_idx = -1
 
-        # 1. Ищем строку заголовка с кодами ЕСР
+        # 1. Поиск строки заголовка с кодами ЕСР
         for idx, line in enumerate(lines):
             if "|" in line:
                 cells = [re.sub(r'\D', '', c) for c in line.split("|")]
-                # В заголовке должны быть коды ЕСР (длина 5-6 цифр)
                 if sum(1 for c in cells if len(c) >= 5) >= 2:
-                    header_codes = cells
+                    header_codes = [c[:5] if len(c) >= 5 else "" for c in cells]
                     header_idx = idx
                     break
 
         if header_idx == -1:
             return None
 
-        # 2. Ищем пересечение станций в строках
+        # 2. Поиск строки отправления / назначения
         for line in lines[header_idx + 1:]:
             if "|" not in line or ":---" in line:
                 continue
@@ -111,33 +113,33 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
             if len(row_cells) < 4:
                 continue
 
-            # Код ЕСР строки лежит во 2-й или 3-й ячейке (проверяем все первые ячейки)
-            row_esr = ""
+            # Извлекаем 5-значный код строки
+            row_esr5 = ""
             for c in row_cells[:3]:
                 digits = re.sub(r'\D', '', c)
                 if len(digits) >= 5:
-                    row_esr = digits
+                    row_esr5 = digits[:5]
                     break
 
-            if not row_esr:
+            if not row_esr5:
                 continue
 
-            # Определяем, какую колонку ищем
-            target_col_esr = None
-            if clean_from == row_esr:
-                target_col_esr = clean_to
-            elif clean_to == row_esr:
-                target_col_esr = clean_from
+            # Определяем целевую колонку
+            target_col_esr5 = None
+            if esr5_from == row_esr5:
+                target_col_esr5 = esr5_to
+            elif esr5_to == row_esr5:
+                target_col_esr5 = esr5_from
 
-            # 3. Достаем число из найденной колонки
-            if target_col_esr:
-                for col_idx, col_esr in enumerate(header_codes):
-                    if col_esr == target_col_esr and col_idx < len(row_cells):
+            # 3. Считываем километраж на пересечении
+            if target_col_esr5:
+                for col_idx, col_esr5 in enumerate(header_codes):
+                    if col_esr5 == target_col_esr5 and col_idx < len(row_cells):
                         val_str = re.sub(r'\D', '', row_cells[col_idx])
                         if val_str:
                             val_int = int(val_str)
-                            # Защита: если значение случайно совпало с ЕСР-кодом — пропуск
-                            if len(val_str) >= 5 and (val_str == clean_from or val_str == clean_to):
+                            # Игнорируем случайное совпадение со значениями кодов ЕСР
+                            if val_int > 3000:
                                 continue
                             return val_int
 
