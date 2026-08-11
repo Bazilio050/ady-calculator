@@ -344,3 +344,17 @@ def get_global_coefficients(shipment_type: str, gng_code: str, origin_esr: str =
         notes.append("Ələt – Böyük Kəsik – Ələt marşrutu ilə tranzit daşımaya 1.20 əmsalı tətbiq olunmuşdur.")
 
     return coeffs, notes
+
+def load_rules_config(filepath: str = "RULES.md") -> str:
+    """
+    Загружает конфигурацию и правила из RULES.md для тестов.
+    """
+    possible_paths = [filepath, os.path.join(os.path.dirname(__file__), filepath)]
+    for path in possible_paths:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception as e:
+                print(f"Error reading {path}: {e}")
+    return ""
