@@ -6,7 +6,8 @@ from utils import (
     format_station_display_name,
     get_min_weight_by_gng,
     get_global_coefficients,
-    is_border_esr
+    is_border_esr,
+    resolve_esr_by_station_name
 )
 
 from tables.table_3 import calculate_table_3_base, get_table_3_coefficients
@@ -17,20 +18,12 @@ from tables.table_6 import calculate_table_6_base, get_table_6_coefficients
 
 def get_currency_rate(requested_period: str = None, lang: str = "AZ") -> tuple:
     """
-    Возвращает курс CHF/USD (по умолчанию 0.79 / 1.12 в зависимости от спецификации).
+    Возвращает курс CHF/USD (по умолчанию 1.12 согласно спецификации).
     """
-    # Стандартный фиксированный фрахтовый курс
     rate = 1.12
-    lang_upper = str(lang).upper()
-    
-    if lang_upper == "RU":
-        label = f"**{rate:.2f} CHF/USD**"
-    elif lang_upper == "EN":
-        label = f"**{rate:.2f} CHF/USD**"
-    else:
-        label = f"**{rate:.2f} CHF/USD**"
-        
+    label = f"**{rate:.2f} CHF/USD**"
     return rate, label
+
 
 def apply_special_exceptions(
     nlu_data: dict, 
@@ -58,7 +51,7 @@ def apply_special_exceptions(
     origin_esr = str(nlu_data.get("origin_esr") or "")
     dest_esr = str(nlu_data.get("dest_esr") or "")
 
-    # 1. Вызов модулей таблиц с строго именованными аргументами
+    # 1. Вызов модулей таблиц со строго именованными аргументами
     if table_num == 3:
         tbl_coeffs, tbl_notes = get_table_3_coefficients(
             shipment_type=shipment_type_code,
@@ -149,12 +142,13 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     """
     lang_upper = str(lang or "AZ").upper()
 
-    # Извлечение станций и ЕСР
-    origin_esr = str(nlu_data.get("origin_esr") or "")
-    dest_esr = str(nlu_data.get("dest_esr") or "")
-    
-    st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or origin_esr)
-    st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or dest_esr)
+    # 1. Извлечение названий станций из NLU
+    st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
+    st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
+
+    # 2. АВТОМАТИЧЕСКАЯ ПРОВЕРКА И ИСПРАВЛЕНИЕ ЕСР ИЗ Distances.txt ПО НАЗВАНИЮ
+    origin_esr = resolve_esr_by_station_name(st_from_raw) or str(nlu_data.get("origin_esr") or "")
+    dest_esr = resolve_esr_by_station_name(st_to_raw) or str(nlu_data.get("dest_esr") or "")
 
     # Извлечение груза и веса
     gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
@@ -192,7 +186,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             shipment_type_code = "local"
             shipment_type_display = "Daxili daşınma" if lang_upper == "AZ" else ("Внутренняя перевозка" if lang_upper == "RU" else "Domestic shipment")
 
-    # 1. Защищённый поиск расстояния
+    # 3. Защищённый поиск расстояния strictly по кодам ЕСР
     raw_dist = get_distance_by_esr(origin_esr, dest_esr)
     
     try:
@@ -200,9 +194,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     except (ValueError, TypeError):
         actual_dist_km = 0
 
-    # Если вместо расстояния прилетел код ЕСР (число > 5000) или 0
+    # Если вместо расстояния прилетел неадекватный код или 0
     if actual_dist_km <= 0 or actual_dist_km > 5000:
-        actual_dist_km = 300  # Дефолтное тестовое плечо, если маршрут не найден в базе
+        actual_dist_km = 300  # Страховочное плечо, если код не найден
 
     tariff_dist_km = get_calculation_distance(actual_dist_km, shipment_type_code)
     
@@ -211,7 +205,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     else:
         dist_display = f"{actual_dist_km} km"
 
-    # 2. Бесплатный возврат инвентарных вагонов МПС (п. 3.1.1)
+    # 4. Бесплатный возврат инвентарных вагонов МПС (п. 3.1.1)
     input_lower = user_input_raw.lower()
     is_empty_wagon = any(k in input_lower for k in ["boş", "порожн", "empty"])
     if is_empty_wagon and park_type == "MPS":
@@ -234,7 +228,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             }
         }
 
-    # 3. Расчёт веса по минимальным нормам ГНГ
+    # 5. Расчёт веса по минимальным нормам ГНГ
     billable_weight = get_min_weight_by_gng(gng, act_weight)
 
     act_w_str = f"{int(act_weight) if act_weight.is_integer() else act_weight}"
@@ -248,7 +242,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "изотерм"]) or (ref_wagons_cnt is not None)
     is_tanker_type = any(k in wagon_type for k in ["cistern", "цистерн", "tank", "çən", "bunker", "бункер"])
 
-    # 4. Выбор модуля таблицы
+    # 6. Выбор модуля таблицы
     if is_tanker_type:
         table_num = 6
         is_per_wagon = False
@@ -266,7 +260,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
 
     if base_chf is None:
-        base_chf = 1200.0  # Защитная ставка при отладке
+        base_chf = 1200.0  # Страховочная ставка
         table_details = "Таблица 3 (базовая)"
 
     unit_str = ui_t.get("unit_wagon", "USD/vaqon") if is_per_wagon else ui_t.get("unit_ton", "USD/t")
@@ -275,13 +269,13 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     base_tariff_display = f"**{base_chf:.2f} {chf_unit}** ({table_details})"
     usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang_upper)
 
-    # 5. Сбор специфичных и глобальных коэффициентов
+    # 7. Сбор специфичных и глобальных коэффициентов
     coeffs, notes = apply_special_exceptions(
         nlu_data, shipment_type_code, table_num, is_ref_type, act_weight, 
         billable_weight, actual_dist_km, user_input_raw, lang_upper, ui_t, ref_wagons_cnt
     )
 
-    # 6. Математический расчет суммы
+    # 8. Математический расчет суммы
     final_rate = base_chf / usd_rate
     formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
     for _, c_val in coeffs:
