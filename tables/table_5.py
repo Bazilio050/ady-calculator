@@ -145,13 +145,27 @@ def get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
                            ref_wagons_cnt=None, is_2tier_platform=False, 
                            is_fruit_veg_discount=False, lang="AZ", *args, **kwargs):
     """
+    Возвращает специфические коэффициенты Таблицdef get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, 
+                           ref_wagons_cnt=None, is_2tier_platform=False, 
+                           is_fruit_veg_discount=False, lang="AZ", *args, **kwargs):
+    """
     Возвращает специфические коэффициенты Таблицы 5.
     """
     coeffs = []
     notes = []
 
-    # 1. Состав рефсекции (парсинг 5+1, 1+5 и т.д.)
-    parsed_cnt = parse_ref_composition(ref_wagons_cnt or kwargs.get("composition") or kwargs.get("prompt"))
+    # Собираем весь доступный текст для парсинга комбинаций 5+1, 1+5, 4+1, 3+1
+    full_text_search = " ".join([
+        str(ref_wagons_cnt or ""),
+        str(kwargs.get("composition") or ""),
+        str(kwargs.get("prompt") or ""),
+        str(kwargs.get("user_input_raw") or ""),
+        str(kwargs.get("user_input") or ""),
+        str(kwargs.get("raw_text") or "")
+    ])
+
+    # 1. Состав рефсекции (парсинг 5+1, 1+5, 6+1, 3+1 и т.д.)
+    parsed_cnt = parse_ref_composition(full_text_search)
     if parsed_cnt is not None:
         w_cnt = parsed_cnt
         c_val = None
@@ -165,7 +179,7 @@ def get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
             c_val = 1.70
 
         if c_val and c_val != 1.0:
-            lbl = f"Ref {w_cnt}+1 vaqon ({c_val})" if lang == "AZ" else f"Реф {w_cnt}+1 вагон ({c_val})"
+            lbl = f"Refseksiya {w_cnt}+1 əmsalı ({c_val})" if lang == "AZ" else f"Коэффициент рефсекции {w_cnt}+1 ({c_val})"
             coeffs.append((lbl, c_val))
             notes.append(f"Cədvəl 5: Refseksiyanın vaqon tərkibinə ({w_cnt}+1) uyğun {c_val} əmsalı tətbiq olunmuşdur.")
 
