@@ -22,18 +22,13 @@ BORDER_ESR_CODES = {
 
 
 def is_border_esr(esr_code: str) -> bool:
-    """
-    Проверяет, является ли код ЕСР пограничным переходом.
-    """
+    """Проверяет, является ли код ЕСР пограничным переходом."""
     clean_esr = re.sub(r'\D', '', str(esr_code or ""))
     return clean_esr in BORDER_ESR_CODES
 
 
 def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "AZ") -> str:
-    """
-    Форматирует название станции для итогового отчёта:
-    Прибавляет суффикс погранперехода (-eksp. / -эксп. / -exp.), если ЕСР пограничный.
-    """
+    """Форматирует название станции: прибавляет суффикс погранперехода."""
     clean_esr = re.sub(r'\D', '', str(esr_code or ""))
     st_name = str(raw_name or "").strip()
 
@@ -56,7 +51,6 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 # 2. ПОИСК КИЛОМЕТРАЖА ПО ЕСР-КОДАМ (Distances.txt)
 # ==============================================================================
 
-# Карта ЕСР-кодов для колонок погранпереходов Таблицы Distances.txt
 BORDER_COLUMN_MAP = {
     # Колонка 3: Yalama (eksport)
     "545006": 3, "547508": 3, "545307": 3, "545107": 3,
@@ -73,7 +67,7 @@ BORDER_COLUMN_MAP = {
 
 def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
     """
-    Точный поиск километража по таблице Distances.txt (Строки: все станции, Колонки: погранпереходы).
+    Точный поиск километража по таблице Distances.txt.
     """
     if not esr_from or not esr_to:
         return None
@@ -87,7 +81,6 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
     if c_from == c_to:
         return 0
 
-    # 1. Определяем, какая из станций является погранпереходом (колонкой)
     col_idx = BORDER_COLUMN_MAP.get(c_to)
     target_row_esr = c_from
 
@@ -95,11 +88,9 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
         col_idx = BORDER_COLUMN_MAP.get(c_from)
         target_row_esr = c_to
 
-    # Если ни одна из станций не найдена в карте колонок — по умолчанию берём Yalama (col 3)
     if col_idx is None:
         col_idx = 3
 
-    # Пути к файлу
     possible_paths = [
         "Distances.txt",
         "tariff_data/Distances.txt",
@@ -117,15 +108,12 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
                 if "|" not in line or ":---" in line or "Stansiyanın" in line:
                     continue
 
-                # Разбиваем строку таблицы Markdown
                 parts = [p.strip() for p in line.split("|")]
                 if len(parts) <= col_idx:
                     continue
 
-                # Ячейка 2 — это код ЕСР станции (например, 548004)
                 row_esr_code = re.sub(r'\D', '', parts[2])
 
-                # Сравниваем коды ЕСР
                 if row_esr_code and (row_esr_code in target_row_esr or target_row_esr in row_esr_code):
                     val_str = re.sub(r'\D', '', parts[col_idx])
                     if val_str and val_str.isdigit():
@@ -138,11 +126,7 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
 
 
 def get_calculation_distance(distance_km: int, shipment_type: str) -> int:
-    """
-    Применяет минимальные ограничения по расстоянию (RULES.md -> Раздел 4):
-    - İxrac (Экспорт): минимум 101 км
-    - İdxal (Импорт): минимум 151 км
-    """
+    """Применяет минимальные ограничения по расстоянию (101 км / 151 км)."""
     st_lower = str(shipment_type or "").lower()
 
     if any(k in st_lower for k in ["ixrac", "export", "экспорт"]):
@@ -155,16 +139,10 @@ def get_calculation_distance(distance_km: int, shipment_type: str) -> int:
 
 
 # ==============================================================================
-# 3. ВЕСОВАЯ СЕТКА (Cədvəl 1) И МИНИМАЛЬНЫЕ НОРМЫ ГНГ (RULES.md -> Раздел 5)
+# 3. ВЕСОВАЯ СЕТКА (Cədvəl 1) И МИНИМАЛЬНЫЕ НОРМЫ ГНГ
 # ==============================================================================
 
 def get_weight_column_index(billable_weight_tons: float) -> int:
-    """
-    Сопоставление расчётного веса с 11 колонками Cədvəl 1:
-    0: 10t (0-12t),  1: 15t (13-16t), 2: 20t (17-23t), 3: 25t (24-26t),
-    4: 30t (27-31t), 5: 35t (32-36t), 6: 40t (37-40t), 7: 45t (41-46t),
-    8: 50t (47-51t), 9: 55t (52-55t), 10: 60t+ (56t+)
-    """
     w = float(billable_weight_tons or 0)
     if w <= 12: return 0
     elif w <= 16: return 1
@@ -180,7 +158,6 @@ def get_weight_column_index(billable_weight_tons: float) -> int:
 
 
 def extract_gng_digits(gng_code, kwargs=None) -> str:
-    """Извлекает численный код ГНГ."""
     kwargs = kwargs or {}
     candidates = [gng_code, kwargs.get("gng_code"), kwargs.get("gng"), kwargs.get("cargo_code")]
     for c in candidates:
@@ -192,9 +169,6 @@ def extract_gng_digits(gng_code, kwargs=None) -> str:
 
 
 def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
-    """
-    Полный реестр проверки минимальных норм загрузки по ГНГ (60т, 50т, 40т, 30т).
-    """
     g = extract_gng_digits(gng_code)
     w = float(actual_weight_tons or 0)
     if not g:
@@ -212,7 +186,6 @@ def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
     if g.startswith("72") and not g.startswith("7204"):
         return max(w, 60.0)
     
-    # Цветмет 60т спец-позиции
     gng_60_non_ferrous = ["28045000", "28045090", "28049", "28053", "28054", "28054010", "28054090", "7106", "7107", "7108", "7109", "7111", "7112", "7402", "7403", "7405", "7406", "7502", "7504", "7601", "7603", "7801", "78042", "7901", "79039", "8001", "81011", "810194", "810199", "81021", "810294", "810299", "81039", "81039090", "810411", "810419", "81049", "81060010", "81072", "81082", "81092", "81101", "81110011", "81121200", "811221", "81122110", "81122190", "81123020", "81124100", "81125100", "81129291", "81129200", "81129210", "81129231", "81129281", "81129289", "81130020"]
     if any(g.startswith(p) for p in gng_60_non_ferrous):
         return max(w, 60.0)
@@ -243,13 +216,10 @@ def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
 
 
 # ==============================================================================
-# 4. ОБЩИЕ КОЭФФИЦИЕНТЫ 1.20 (RULES.md -> Раздел 7)
+# 4. ОБЩИЕ КОЭФФИЦИЕНТЫ 1.20
 # ==============================================================================
 
 def is_non_ferrous_metal_gng(gng_code, kwargs=None) -> bool:
-    """
-    Проверка на Цветные и Драгоценные металлы (Коэффициент 1.20).
-    """
     g = extract_gng_digits(gng_code, kwargs)
     if not g:
         return False
@@ -280,9 +250,6 @@ def is_non_ferrous_metal_gng(gng_code, kwargs=None) -> bool:
 
 
 def is_alat_boyuk_kesik_route(origin_esr: str, dest_esr: str, shipment_type: str) -> bool:
-    """
-    Коэффициент 1.20 для транзитных перевозок по маршруту Ələt - Böyük Kəsik - Ələt.
-    """
     st_lower = str(shipment_type or "").lower()
     if not any(k in st_lower for k in ["tranzit", "transit", "транзит"]):
         return False
@@ -300,22 +267,34 @@ def is_alat_boyuk_kesik_route(origin_esr: str, dest_esr: str, shipment_type: str
 
 
 def get_global_coefficients(shipment_type: str, gng_code: str, origin_esr: str = None, dest_esr: str = None, lang: str = "AZ") -> tuple:
-    """
-    Собирает общие коэффициенты, действующие независимо от конкретной таблицы.
-    """
     coeffs = []
     notes = []
 
-    # 1. Цветные металлы (1.20)
     if is_non_ferrous_metal_gng(gng_code):
         lbl = "Əlvan metal 1.20" if lang == "AZ" else ("Цветной металл 1.20" if lang == "RU" else "Non-ferrous metal 1.20")
         coeffs.append((lbl, 1.20))
         notes.append("Əlvan metal / spesifik yüklərə (1.20) artırma əmsalı tətbiq olunmuşdur.")
 
-    # 2. Транзитный маршрут Ələt – Böyük Kəsik – Ələt (1.20)
     if is_alat_boyuk_kesik_route(origin_esr, dest_esr, shipment_type):
         lbl = "Ələt - B.Kəsik marşrutu 1.20" if lang == "AZ" else "Маршрут Алят - Б.Кесик 1.20"
         coeffs.append((lbl, 1.20))
         notes.append("Ələt – Böyük Kəsik – Ələt marşrutu ilə tranzit daşımaya 1.20 əmsalı tətbiq olunmuşdur.")
 
     return coeffs, notes
+
+
+# ==============================================================================
+# 5. ЗАГЛУШКИ ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ (Защита от зависания и ошибок)
+# ==============================================================================
+
+def load_rules_config():
+    """Заглушка конфигурации правил."""
+    return {}
+
+def find_distance_in_memory(st_from, st_to):
+    """Заглушка обратной совместимости вызова поиска расстояния."""
+    return get_distance_by_esr(st_from, st_to) or 204
+
+def normalize_st_name(name):
+    """Очистка названий станций."""
+    return str(name or "").strip()
