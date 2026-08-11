@@ -1,184 +1,342 @@
+import os
 import streamlit as st
-import json
+from google import genai
+from nlu import call_gemini_nlu, validate_nlu_input
 from engine import process_full_calculation
 
-# Импорт функции NLU-парсерa Gemini
-# Убедитесь, что имя файла совпадает с вашим NLU-модулем (например, nlu_parser.py)
-try:
-    from nlu_parser import parse_user_input_with_gemini
-except ImportError:
-    # Заглушка, если модуль называется иначе
-    def parse_user_input_with_gemini(user_input: str) -> dict:
-        return {}
-
-# ==============================================================================
-# 1. КОНФИГУРАЦИЯ СТРАНИЦЫ STREAMLIT
-# ==============================================================================
+# Настройка страницы Streamlit
 st.set_page_config(
-    page_title="ADY Express - Dəmiryol Tarif Kalkulyatoru",
-    page_icon="🚂",
-    layout="wide"
+    page_title="ADY Express — Tariff Calculator", 
+    page_icon="🚆", 
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
-# ==============================================================================
-# 2. СЛОВАРЬ ЛОКАЛИЗАЦИИ ИНТЕРФЕЙСА (UI_TRANSLATIONS)
-# ==============================================================================
-UI_TRANSLATIONS = {
+# Стили оформления (AGT Cargo + Анимация паровозика)
+st.markdown("""
+    <style>
+    .main-header {
+        background: linear-gradient(135deg, #0e2a47 0%, #1a4a75 100%);
+        padding: 6px 16px;
+        border-radius: 6px;
+        color: white;
+        margin-top: 6px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .main-header h1 {
+        color: #ffffff !important;
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.2;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .main-header p {
+        color: #b0c4de !important;
+        margin: 1px 0 0 0;
+        font-size: 0.8rem;
+        line-height: 1.2;
+    }
+    .agt-footer {
+        margin-top: 40px;
+        padding: 16px;
+        background-color: #f8f9fa;
+        border-top: 3px solid #ff5500;
+        border-radius: 8px;
+        text-align: center;
+        color: #333333;
+    }
+    .agt-footer p {
+        margin: 2px 0;
+        font-size: 0.92rem;
+    }
+    .agt-slogan {
+        font-size: 0.82rem;
+        letter-spacing: 2px;
+        color: #555555;
+        text-transform: uppercase;
+        margin-top: 4px !important;
+        font-weight: 600;
+    }
+
+    /* --- АНИМАЦИЯ ПАРОВОЗИКА --- */
+    @keyframes trainDrive {
+        0% { left: -15%; }
+        100% { left: 105%; }
+    }
+    .train-track {
+        position: relative;
+        width: 100%;
+        height: 55px;
+        background: #0e2a47;
+        border-bottom: 3px dashed #ff5500;
+        overflow: hidden;
+        border-radius: 8px;
+        margin: 15px 0 5px 0;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    }
+    .train-emoji {
+        position: absolute;
+        font-size: 28px;
+        top: 6px;
+        white-space: nowrap;
+        animation: trainDrive 2.2s linear infinite;
+    }
+    .train-loader-text {
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #ff5500;
+        margin-bottom: 15px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Текстовый словарь интерфейса (AZ, RU, EN)
+UI_TEXT = {
     "AZ": {
-        "title": "🚂 ADY Express - Dəmiryol Tarif Kalkulyatoru",
-        "input_label": "Daşıma sorğusunu daxil edin (marşrut, yük, çəki, vaqon tipi):",
-        "input_placeholder": "Məsələn: Yalama – Böyük Kəsik, GNG 4407 taxta-şalban, 35 ton, universal vaqon...",
-        "calc_button": "Tarifi Hesabla",
-        "type_import": "İdxal daşınması",
-        "type_export": "İxrac daşınması",
+        "title": "ADY Tarif Kalkulyatoru", 
+        "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili",
+        "year_select": "Fraxt ili:", 
+        "lang_select": "Dil / Language:", 
+        "input_header": "Daşıma parametrlərini daxil edin:",
+        "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
+        "calc_btn": "🚀 Tarifi hesabla", 
+        "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
+        "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...", 
+        "success": "Hesablama uğurla tamamlandı! (ADY Policy {})",
+        "result_title": "📋 Hesablama nəticəsi:", 
+        "sec1_title": "1. Marşrut və daşıma şərtləri", 
+        "sec2_title": "2. Əmsallar və valyuta məzənnəsi",
+        "sec3_title": "3. Tarifin hesablanması", 
+        "formula_title": "Hesablama düsturu:", 
+        "rates_title": "Yekun tariflər:",
+        "notes_title": "Qeydlər:", 
+        "disclaimer": "Qeyd olunan tariflərə stansiya xərcləri və əlavə yığımlar daxil deyildir.",
+        "col_param": "Parametr", 
+        "col_val": "Qiymət / Həcm", 
+        "col_rate_type": "Tarif növü", 
+        "col_amount": "Məblağ",
+        "lbl_route": "Marşrut", 
+        "lbl_type": "Daşıma növü", 
+        "lbl_dist": "Məsafə", 
+        "lbl_cargo": "Yük / Vəziyyət",
+        "lbl_weight": "Faktiki / Hesablaşma çəkisi", 
+        "lbl_period": "Dövr", 
+        "lbl_exchange": "CHF/USD", 
+        "lbl_base_rate": "Baza tarifi",
+        "lbl_net_rate": "Yekün ADY tarifi", 
+        "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
+        "api_warning": "⚠️ Serverdə GEMINI_API_KEY tapılmadı. Xahiş olunur, sistem tənzimləmələrini yoxlayın.", 
+        "api_label": "Gemini API Key:",
+        "type_import": "İdxal daşınması", 
+        "type_export": "İxrac daşınması", 
         "type_transit": "Tranzit daşınması",
-        "type_local": "Daxili daşınma",
-        "unit_ton": "USD/t",
-        "unit_wagon": "USD/vaqon",
-        "note_sps": "SPS vaqonları üçün 0.85 güzəşt əmsalı tətbiq olunmuşdur.",
-        "note_coef_1015": "Yüklü vaqonlar üçün 1.015 indeksasiya əmsalı tətbiq olunmuşdur.",
-        "note_import": "İdxal daşımaları üçün minimum tarif məsafəsi 151 km qəbul edilir.",
-        "note_export": "İxrac daşımaları üçün minimum tarif məsafəsi 101 km qəbul edilir.",
-        "note_min_weight": "Yükün faktiki çəkisi vaqonun minimal yükləmə normasından az olduğu üçün hesablaşma minimal norma ilə aparılmışdır.",
-        "note_express": "ADY Express tərəfindən 2% ekspeditor əlavəsi (surcharge) tətbiq edilir."
+        "unit_ton": "USD/t", 
+        "unit_wagon": "USD/vaqon", 
+        "table_name": "Cədvəl", 
+        "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:",
+        "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur."
     },
     "RU": {
-        "title": "🚂 ADY Express - Железнодорожный тарифный калькулятор",
-        "input_label": "Введите запрос на перевозку (маршрут, груз, вес, тип вагона):",
-        "input_placeholder": "Например: Ялама – Беюк Кесик, ГНГ 4407 пиломатериалы, 35 тонн, универсальный вагон...",
-        "calc_button": "Рассчитать тариф",
-        "type_import": "Импортная перевозка",
-        "type_export": "Экспортная перевозка",
+        "title": "Тарифный калькулятор ADY", 
+        "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
+        "year_select": "Фрахтовый год:", 
+        "lang_select": "Язык / Language:", 
+        "input_header": "Введите данные по перевозке:",
+        "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
+        "calc_btn": "🚀 Рассчитать тариф", 
+        "warning_empty": "Пожалуйста, введите условия расчета.",
+        "spinner_text": "Считаем тариф согласно Тарифной политике {}...", 
+        "success": "Расчет успешно выполнен! (Тарифная политика {})",
+        "result_title": "📋 Результат расчета:", 
+        "sec1_title": "1. Маршрут и условия перевозки", 
+        "sec2_title": "2. Коэффициенты и курс валют",
+        "sec3_title": "3. Расчет тарифа", 
+        "formula_title": "Формула расчета:", 
+        "rates_title": "Итоговые тарифы:",
+        "notes_title": "Примечания:", 
+        "disclaimer": "Ставки приведены без учета станционных расходов и дополнительных сборов.",
+        "col_param": "Параметр", 
+        "col_val": "Значение / Объем", 
+        "col_rate_type": "Тип тарифа", 
+        "col_amount": "Сумма",
+        "lbl_route": "Маршрут", 
+        "lbl_type": "Вид перевозки", 
+        "lbl_dist": "Расстояние", 
+        "lbl_cargo": "Груз / Состояние",
+        "lbl_weight": "Фактический / Расчетный вес", 
+        "lbl_period": "Период", 
+        "lbl_exchange": "CHF/USD", 
+        "lbl_base_rate": "Базовый тариф",
+        "lbl_net_rate": "Итоговый тариф", 
+        "lbl_express_rate": "Итоговый тариф (включая ADY Express +2%)",
+        "api_warning": "⚠️ На сервере не найден GEMINI_API_KEY. Пожалуйста, проверьте настройки системы.", 
+        "api_label": "Gemini API Key:",
+        "type_import": "Импортная перевозка", 
+        "type_export": "Экспортная перевозка", 
         "type_transit": "Транзитная перевозка",
-        "type_local": "Внутренняя перевозка",
-        "unit_ton": "USD/т",
-        "unit_wagon": "USD/вагон",
-        "note_sps": "Применена скидка СПС 0.85 для собственных/арендованных вагонов.",
-        "note_coef_1015": "Применён индексационный коэффициент 1.015 для гружёных вагонов.",
-        "note_import": "Для импортных перевозок минимальное тарифное плечо составляет 151 км.",
-        "note_export": "Для экспортных перевозок минимальное тарифное плечо составляет 101 км.",
-        "note_min_weight": "Расчёт произведён по минимальной норме загрузки вагона, так как фактический вес ниже нормы.",
-        "note_express": "Применена экспедиторская надбавка ADY Express в размере 2%."
+        "unit_ton": "USD/т", 
+        "unit_wagon": "USD/вагон", 
+        "table_name": "Таблица", 
+        "missing_title": "⚠️ Для точного расчета не хватает следующих данных:",
+        "footer_owner": "Данный проект принадлежит компании **AGT Cargo**."
     },
     "EN": {
-        "title": "🚂 ADY Express - Railway Tariff Calculator",
-        "input_label": "Enter shipment query (route, cargo, weight, wagon type):",
-        "input_placeholder": "e.g., Yalama – Boyuk Kesik, NHM 4407 timber, 35 tons, universal wagon...",
-        "calc_button": "Calculate Tariff",
-        "type_import": "Import shipment",
-        "type_export": "Export shipment",
+        "title": "ADY Tariff Calculator", 
+        "subtitle": "Railway freight tariff calculator for Azerbaijan — {} freight year",
+        "year_select": "Freight Year:", 
+        "lang_select": "Language:", 
+        "input_header": "Enter shipment details:",
+        "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
+        "calc_btn": "🚀 Calculate Freight Rate", 
+        "warning_empty": "Please enter shipment requirements.",
+        "spinner_text": "Calculating rates according to Tariff Policy {}...", 
+        "success": "Calculation completed successfully! (Tariff Policy {})",
+        "result_title": "📋 Calculation Results:", 
+        "sec1_title": "1. Route and Shipment Conditions", 
+        "sec2_title": "2. Coefficients and Exchange Rate",
+        "sec3_title": "3. Rate Calculation", 
+        "formula_title": "Calculation Formula:", 
+        "rates_title": "Final Rates:",
+        "notes_title": "Notes:", 
+        "disclaimer": "Rates are quoted excluding station charges and additional fees.",
+        "col_param": "Parameter", 
+        "col_val": "Value / Volume", 
+        "col_rate_type": "Rate Type", 
+        "col_amount": "Amount",
+        "lbl_route": "Route", 
+        "lbl_type": "Shipment Type", 
+        "lbl_dist": "Distance", 
+        "lbl_cargo": "Cargo / Condition",
+        "lbl_weight": "Actual / Billable Weight", 
+        "lbl_period": "Period", 
+        "lbl_exchange": "CHF/USD", 
+        "lbl_base_rate": "Base Tariff",
+        "lbl_net_rate": "Final Tariff", 
+        "lbl_express_rate": "Final Tariff (incl. ADY Express +2%)",
+        "api_warning": "⚠️ GEMINI_API_KEY not found on server. Please check system configuration.", 
+        "api_label": "Gemini API Key:",
+        "type_import": "Import shipment", 
+        "type_export": "Export shipment", 
         "type_transit": "Transit shipment",
-        "type_local": "Domestic shipment",
-        "unit_ton": "USD/t",
-        "unit_wagon": "USD/wagon",
-        "note_sps": "SPS discount coefficient 0.85 applied.",
-        "note_coef_1015": "Loaded wagon indexation coefficient 1.015 applied.",
-        "note_import": "Minimum tariff distance for import shipments is 151 km.",
-        "note_export": "Minimum tariff distance for export shipments is 101 km.",
-        "note_min_weight": "Calculation made by minimum load capacity, as actual weight is below the threshold.",
-        "note_express": "ADY Express 2% forwarding fee surcharge applied."
+        "unit_ton": "USD/t", 
+        "unit_wagon": "USD/wagon", 
+        "table_name": "Table", 
+        "missing_title": "⚠️ Required parameters missing:",
+        "footer_owner": "This project belongs to **AGT Cargo**."
     }
 }
 
-# ==============================================================================
-# 3. БОКОВАЯ ПАНЕЛЬ НАСТРОЕК (SIDEBAR)
-# ==============================================================================
-with st.sidebar:
-    st.header("⚙️ Параметры / Settings")
-    lang = st.selectbox("Mühit dili / Язык / Language", options=["AZ", "RU", "EN"], index=0)
-    year = st.selectbox("İl / Фрахтовый год / Freight year", options=["2026", "2025", "2024"], index=0)
-    st.markdown("---")
-    st.info("💡 **ADY Express Tariff Engine v3.0**\n\nРасчет железнодорожных тарифных ставок в соответствии со спецификациями Tarif Razılaşması.")
+# Загрузка логотипа
+logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
 
-ui_t = UI_TRANSLATIONS.get(lang, UI_TRANSLATIONS["AZ"])
+# --- ЛЕВАЯ КОЛОНКА С ЛОГОТИПОМ И ВЫБОРОМ ЯЗЫКА / ГОДА ---
+left_col, _ = st.columns([3, 2])
 
-st.title(ui_t["title"])
-
-# ==============================================================================
-# 4. ФОРМА ВВОДА ЗАПРОСА
-# ==============================================================================
-user_input_raw = st.text_area(
-    ui_t["input_label"],
-    placeholder=ui_t["input_placeholder"],
-    height=120
-)
-
-# ==============================================================================
-# 5. ОБРАБОТКА И РАСЧЕТ С ТЕКУЩИМ NLU (МГНОВЕННО С 1-ГО КЛИКА)
-# ==============================================================================
-if st.button(ui_t["calc_button"], type="primary", use_container_width=True) and user_input_raw.strip():
+with left_col:
+    if logo_path:
+        st.image(logo_path, width=200)
     
-    with st.spinner("Анализ данных и расчет стоимости..." if lang == "RU" else "Məlumatlar təhlil edilir..."):
+    ctrl_col, _ = st.columns([1.2, 2.8])
+    with ctrl_col:
+        # 1. Язык сайта
+        selected_lang = st.selectbox(f"🌐 Dil / Language:", options=["AZ", "RU", "EN"], index=0)
+        t = UI_TEXT[selected_lang]
         
-        # Шаг A: Распознаем свежие данные прямо из текстового запроса
-        fresh_nlu_data = parse_user_input_with_gemini(user_input_raw)
+        # 2. Фрахтовый год
+        selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
+
+# --- БАННЕР С СИНИМ ГРАДИЕНТОМ ---
+st.markdown(f"""
+    <div class="main-header">
+        <h1>🚆 {t['title']}</h1>
+        <p>{t['subtitle'].format(selected_year)}</p>
+    </div>
+""", unsafe_allow_html=True)
+
+# --- ПОЛЕ ВВОДА ЗАПРОСА ---
+user_input = st.text_area(t["input_header"], height=120, placeholder=t["input_placeholder"])
+user_api_key = os.environ.get("GEMINI_API_KEY", "")
+
+# --- КНОПКА РАСЧЁТА И ОБРАБОТКА ---
+if st.button(t["calc_btn"], type="primary"):
+    if not user_input.strip():
+        st.warning(t["warning_empty"])
+    elif not user_api_key.strip():
+        st.error(t["api_warning"])
+    else:
+        # Контейнер для паровозика
+        loader_placeholder = st.empty()
         
-        # Шаг B: Сохраняем в session_state для системной истории
-        st.session_state["nlu_data"] = fresh_nlu_data
-        
-        # Шаг C: Передаем СВЕЖИЙ fresh_nlu_data напрямую в engine.py
-        calc_result = process_full_calculation(
-            nlu_data=fresh_nlu_data,  # <-- Главный секрет работы с 1-го раза!
-            user_input_raw=user_input_raw,
-            lang=lang,
-            year=year,
-            ui_t=ui_t
-        )
+        # Показываем анимированный состав
+        loader_placeholder.markdown(f"""
+            <div class="train-track">
+                <div class="train-emoji">🚂🚃🚃🚃💨</div>
+            </div>
+            <div class="train-loader-text">
+                ⏳ {t['spinner_text'].format(selected_year)}
+            </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.subheader("📋 Итоговый отчёт / Yekun Hesabat" if lang == "RU" else "📋 Yekun Hesabat")
+        try:
+            # 1. Вызов Gemini для парсинга
+            client = genai.Client(api_key=user_api_key.strip())
+            nlu_res = call_gemini_nlu(client, user_input, selected_lang)
+            
+            missing = validate_nlu_input(nlu_res, selected_lang)
+            
+            # Убираем паровозик после завершения расчёта
+            loader_placeholder.empty()
 
-    # --- 1. Маршрут и условия ---
-    part1 = calc_result.get("part1", {})
-    st.markdown("### 1. Marşrut və daşıma şərtləri" if lang == "AZ" else ("### 1. Маршрут и условия перевозки" if lang == "RU" else "### 1. Route & Conditions"))
-    
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("Маршрут / Marşrut", part1.get("route", "-"))
-        st.metric("Груз и вагон / Yük və vaqon", part1.get("cargo_and_wagon", "-"))
-    with c2:
-        st.metric("Вид перевозки / Daşıma növü", part1.get("shipment_type", "-"))
-        st.metric("Расчетный вес / Çəki", part1.get("weight_info", "-"))
-    with c3:
-        st.metric("Расстояние / Məsafə", part1.get("distance", "-"))
-        st.metric("Период / Dövr", part1.get("period", "-"))
+            if missing:
+                st.warning(t["missing_title"])
+                for m in missing:
+                    st.markdown(f"* {m}")
+            else:
+                # 2. Расчёт через Python-engine
+                data = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
+                st.success(t["success"].format(selected_year))
+                
+                # Просмотр JSON для отладки
+                with st.expander("🔍 Gemini NLU JSON (Для проверки распознавания)"):
+                    st.json(nlu_res)
 
-    st.markdown("---")
+                p1, p2, p3 = data["part1"], data["part2"], data["part3"]
+                
+                # Блок 1: Маршрут и условия
+                st.markdown(f"#### 📍 {t['sec1_title']}")
+                st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n| **{t['lbl_route']}** | {p1['route']} |\n| **{t['lbl_type']}** | {p1['shipment_type']} |\n| **{t['lbl_dist']}** | {p1['distance']} |\n| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n| **{t['lbl_weight']}** | {p1['weight_info']} |\n| **{t['lbl_period']}** | {p1['period']} |")
 
-    # --- 2. Базовый тариф и коэффициенты ---
-    part2 = calc_result.get("part2", {})
-    st.markdown("### 2. Базовая ставка и коэффициенты" if lang == "RU" else "### 2. Baza tarifi və əmsallar")
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.write(f"**Курс валюты / Valyuta məzənnəsi:** {part2.get('exchange_rate', '-')}")
-        st.write(f"**Базовый тариф / Baza tarifi:** {part2.get('base_tariff', '-')}")
-    with c2:
-        st.write("**Коэффициенты / Əmsallar:**")
-        coeffs = part2.get("coefficients", [])
-        if coeffs:
-            for c in coeffs:
-                st.write(f"• {c.get('name')}: `{c.get('value')}`")
-        else:
-            st.write("• *Нет дополнительных коэффициентов*")
+                # Блок 2: Коэффициенты и курс
+                st.markdown(f"#### ⚙️ {t['sec2_title']}")
+                t2_rows = [f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |", f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"]
+                for coeff in p2.get("coefficients", []):
+                    t2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
+                st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(t2_rows))
 
-    st.markdown("---")
+                # Блок 3: Формула и итоговые суммы
+                st.markdown(f"#### 📐 {t['sec3_title']}")
+                st.code(p3["formula"], language="text")
+                st.markdown(f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |\n| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |")
 
-    # --- 3. Итоговые расчётные ставки ---
-    part3 = calc_result.get("part3", {})
-    st.markdown("### 3. Итоговая калькуляция ставки" if lang == "RU" else "### 3. Yekun qiymətləndirmə")
+                # Примечания
+                if p3.get("notes"):
+                    st.markdown(f"**{t['notes_title']}**")
+                    for idx, note in enumerate(p3["notes"], start=1):
+                        st.markdown(f"{idx}. *{note}*")
 
-    st.code(f"Формула расчета: {part3.get('formula', '-')}", language="text")
+        except Exception as e:
+            loader_placeholder.empty()
+            st.error(f"Error: {str(e)}")
 
-    res_col1, res_col2 = st.columns(2)
-    with res_col1:
-        st.success(f"**Ставка АЗЖД (Net ADY):**\n### {part3.get('net_ady_rate', '-')}")
-    with res_col2:
-        st.info(f"**Ставка ADY Express (+2% Surcharge):**\n### {part3.get('express_rate', '-')}")
-
-    # --- Примечания и правила ---
-    notes = part3.get("notes", [])
-    if notes:
-        st.markdown("**Примечания и правила / Qeydlər:**")
-        for note in notes:
-            st.warning(f"📌 {note}")
+# --- ФИРМЕННЫЙ ПОДВАЛ AGT CARGO ---
+st.markdown(f"""
+    <div class="agt-footer">
+        <p>{t['footer_owner']}</p>
+        <p class="agt-slogan">BE GLOBAL CONNECTED</p>
+    </div>
+""", unsafe_allow_html=True)
