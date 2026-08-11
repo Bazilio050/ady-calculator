@@ -358,3 +358,65 @@ def load_rules_config(filepath: str = "RULES.md") -> str:
             except Exception as e:
                 print(f"Error reading {path}: {e}")
     return ""
+# Таблица коэффициентов CHF/USD по периодам
+CURRENCY_RATES_TABLE = [
+    ("01.01.2023", "31.01.2023", 0.98),
+    ("01.04.2023", "30.06.2023", 0.93),
+    ("01.07.2023", "30.09.2023", 0.91),
+    ("01.10.2023", "31.12.2023", 0.88),
+    ("01.01.2024", "31.03.2024", 0.90),
+    ("01.04.2024", "30.06.2024", 0.87),
+    ("01.07.2024", "30.09.2024", 0.90),
+    ("01.10.2024", "31.12.2024", 0.88),
+    ("01.01.2025", "31.03.2025", 0.86),
+    ("01.04.2025", "30.06.2025", 0.90),
+    ("01.07.2025", "30.09.2025", 0.85),
+    ("01.09.2025", "31.12.2025", 0.81),
+    ("01.01.2026", "31.03.2026", 0.80),
+    ("01.04.2026", "30.06.2026", 0.79),
+    ("01.07.2026", "30.09.2026", 0.79),
+]
+
+
+def parse_date_from_string(text: str) -> datetime:
+    """Пытается извлечь дату (ДД.ММ.ГГГГ или ГГГГ-ММ-ДД) из текста."""
+    if not text:
+        return None
+    
+    # Ищем дд.мм.гггг
+    match = re.search(r'\b(\d{1,2})[\./-](\d{1,2})[\./-](\d{4})\b', str(text))
+    if match:
+        d, m, y = map(int, match.groups())
+        try:
+            return datetime(y, m, d)
+        except ValueError:
+            pass
+
+    # Ищем гггг-мм-дд
+    match_iso = re.search(r'\b(\d{4})[\./-](\d{1,2})[\./-](\d{1,2})\b', str(text))
+    if match_iso:
+        y, m, d = map(int, match_iso.groups())
+        try:
+            return datetime(y, m, d)
+        except ValueError:
+            pass
+
+    return None
+
+
+def get_exchange_rate_for_date(target_date: datetime = None) -> tuple:
+    """
+    Возвращает (rate, period_str) для указанной даты.
+    Если дата не указана — берет текущую дату (август 2026 -> 0.79).
+    """
+    if target_date is None:
+        target_date = datetime.now()
+
+    for start_s, end_s, rate in CURRENCY_RATES_TABLE:
+        s_date = datetime.strptime(start_s, "%d.%m.%Y")
+        e_date = datetime.strptime(end_s, "%d.%m.%Y")
+        if s_date <= target_date <= e_date:
+            return rate, f"{start_s} - {end_s}"
+
+    # Дефолт для текущего периода 2026, если вышли за границы таблицы
+    return 0.79, "01.07.2026 - 30.09.2026"
