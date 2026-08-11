@@ -2,34 +2,33 @@
   "table_5_rules": {
     "columns_mapping": {
       "refrigerated": {
-        "keywords": ["ref", "реф"],
-        "under_weight_limit": { "limit_tons": 25.0, "column_index": 0 },
-        "over_or_equal_limit": { "column_index": 1 }
+        "under_weight_limit": { "limit_tons": 25.0, "column_index": 0, "is_per_wagon": true },
+        "over_or_equal_limit": { "column_index": 1, "is_per_wagon": false }
       },
       "thermos": {
-        "keywords": ["thermos", "термос"],
-        "under_weight_limit": { "limit_tons": 25.0, "column_index": 2 },
-        "over_or_equal_limit": { "column_index": 3 }
+        "under_weight_limit": { "limit_tons": 25.0, "column_index": 2, "is_per_wagon": true },
+        "over_or_equal_limit": { "column_index": 3, "is_per_wagon": false }
       },
       "autocarrier": {
-        "keywords": ["auto", "авто"],
-        "default": { "column_index": 4 }
+        "default": { "column_index": 4, "is_per_wagon": false, "min_weight_tons": 10.0 }
+      },
+      "inv_anv": {
+        "loaded": { "column_index": 5, "is_per_wagon": true },
+        "empty": { "column_index": 6, "is_per_wagon": true }
       }
     },
     "ref_section_composition": {
-      "5_or_more_wagons": { "coefficient_value": 0.85 },
+      "5_or_more": { "coefficient_value": 0.85 },
+      "4_wagons": { "coefficient_value": 1.00 },
       "3_wagons": { "coefficient_value": 1.10 },
       "2_wagons": { "coefficient_value": 1.40 },
       "1_wagon": { "coefficient_value": 1.70 }
     },
+    "autocarrier_2tier_platform": {
+      "coefficient_value": 0.80
+    },
     "fruit_veg_discount_0_60": {
-      "coefficient_value": 0.60,
-      "gng_prefixes": ["07", "08"],
-      "labels": { "AZ": "Meyvə-tərəvəz güzəşti 0.60", "RU": "Скидка плодоовощная 0.60" }
+      "coefficient_value": 0.60
     }
-  },
-  "refrigerated_transit_1_20": {
-    "coefficient_value": 1.20,
-    "labels": { "AZ": "Tranzit izotermik 1.20", "RU": "Транзит изотермический 1.20" }
   }
 }
