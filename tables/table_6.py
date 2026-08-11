@@ -1,6 +1,7 @@
 import os
 import json
 import re
+from utils import extract_gng_digits
 
 
 def load_table_6_config():
@@ -10,8 +11,8 @@ def load_table_6_config():
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception as e:
-            print(f"Ошибка загрузки {config_path}: {e}")
+        except Exception:
+            pass
     return {}
 
 
@@ -21,7 +22,9 @@ def load_table_6_rates():
         "Table_6_Tariffs.txt",
         "Table6.txt",
         "tables/Table_6_Tariffs.txt",
-        "tables/Table6.txt"
+        "tables/Table6.txt",
+        "tariff_data/Table_6_Tariffs.txt",
+        "tariff_data/Table6.txt"
     ]
 
     t_file = None
@@ -38,7 +41,7 @@ def load_table_6_rates():
                 if not line_str or line_str.startswith("#") or line_str.startswith("=") or "Məsafə" in line_str or "Col" in line_str:
                     continue
 
-                r_match = re.search(r"(\d+)\s*[-–]\s*(\d+)", line_str)
+                r_match = re.search(r"^(\d+)\s*[-–]\s*(\d+)", line_str)
                 if r_match:
                     d_min, d_max = int(r_match.group(1)), int(r_match.group(2))
                     parts = line_str.split("|")
@@ -48,22 +51,23 @@ def load_table_6_rates():
                     else:
                         numbers = re.findall(r"(\d+[\.,]\d+|\d+)", line_str)
                         if len(numbers) >= 2:
-                            val = float(numbers[-1].replace(",", "."))
-                            rates.append((d_min, d_max, [val]))
+                            vals = [float(x.replace(",", ".")) for x in numbers[1:]]
+                            rates.append((d_min, d_max, vals))
     return rates
 
 
 def determine_table_6_column(gng_code, park_type="SPS"):
     """
-    Определяет индекс колонки (0..6, соответствующие Col 2..Col 8) на основе ГНГ и типа парка (MPS или SPS).
+    Определяет индекс колонки (0..6, соответствующие Col 2..Col 8 в Table_6_Tariffs.txt)
+    на основе ГНГ и группы (Инвентарные МПС vs Частные СПС).
     """
-    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
+    clean_gng = extract_gng_digits(gng_code)
     park_type = str(park_type or "SPS").upper()
 
     t6_cfg = load_table_6_config()
     mapping = t6_cfg.get("table_6_rules", {}).get("columns_mapping", {})
 
-    # 1. Проверка для частных цистерн (Özəl çənlər / SPS) -> Col 8 (индекс 6)
+    # 1. Если цистерна частная (Özəl / SPS) — проверяем попадание под спец-список углеводородов (Столбец 8 -> col_idx 6)
     if park_type == "SPS":
         sps_rules = mapping.get("sps_private", [])
         for rule in sps_rules:
@@ -71,7 +75,7 @@ def determine_table_6_column(gng_code, park_type="SPS"):
             if any(clean_gng.startswith(p) for p in prefixes if p):
                 return rule.get("column_index", 6)
 
-    # 2. Проверка для инвентарных цистерн (İnventar parka məxsus / MPS) -> Col 2..Col 7 (индексы 0..5)
+    # 2. Во всех остальных случаях (МПС или стандартные наливные грузы) выбираем колонки 2..7 (col_idx 0..5)
     mps_rules = mapping.get("mps_inventory", [])
     default_col = 5  # "Digər yüklər" (Col 7)
 
@@ -89,10 +93,10 @@ def determine_table_6_column(gng_code, park_type="SPS"):
     return default_col
 
 
-def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_type, config, lang="AZ"):
+def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_type="SPS", *args, lang="AZ", **kwargs):
     """
     Рассчитывает базовую тарифную ставку по Таблице 6 (Наливные грузы в цистернах).
-    Возвращает 2 значения: (rate_per_ton, details_str).
+    Возвращает: (rate_per_ton, details_str)
     """
     col_idx = determine_table_6_column(gng_code, park_type)
     rates = load_table_6_rates()
@@ -117,25 +121,24 @@ def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_typ
     return rate_per_ton, details_str
 
 
-def get_table_6_coefficients(shipment_type_code, wagon_type, gng_code, park_type="SPS", lang="AZ", ui_t=None):
+def get_table_6_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, park_type="SPS", lang="AZ", *args, **kwargs):
     """
-    Проверяет и возвращает специфичные коэффициенты Таблицы 6:
+    Возвращает специфические коэффициенты Таблицы 6:
     1. Базовый 1.50 для Импорта/Экспорта (Исключения: Нефть/Нефтепродукты и Метанол).
     2. Повышающий 1.20 для Нефти и Нефтепродуктов при Импорте или Транзите.
     """
-    if ui_t is None:
-        ui_t = {}
-
     coeffs = []
     notes = []
-    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
+    clean_gng = extract_gng_digits(gng_code, kwargs)
     col_idx = determine_table_6_column(clean_gng, park_type)
+    
+    st_lower = str(shipment_type_code or kwargs.get("shipment_type") or kwargs.get("mode") or "").lower()
 
-    # 1. Применение базового коэффициента Импорта/Экспорта (1.50)
-    if shipment_type_code in ["import", "export"]:
+    # 1. Коэффициент 1.50 (İdxal / İxrac)
+    if any(k in st_lower for k in ["import", "export", "idxal", "ixrac"]):
         is_150_exception = False
 
-        # Исключение 1: Нефть и нефтепродукты (Столбец 2 - col_idx == 0)
+        # Исключение 1: Нефть и нефтепродукты (Столбец 2 -> col_idx == 0)
         if col_idx == 0:
             is_150_exception = True
 
@@ -147,20 +150,13 @@ def get_table_6_coefficients(shipment_type_code, wagon_type, gng_code, park_type
             c_val = 1.50
             c_lbl = "İdxal/İxrac baza 1.50" if lang == "AZ" else ("Импорт/Экспорт база 1.50" if lang == "RU" else "Import/Export base 1.50")
             coeffs.append((c_lbl, c_val))
-            if "note_import_base_150" in ui_t:
-                notes.append(ui_t["note_import_base_150"])
+            notes.append("Cədvəl 6: İdxal/İxrac daşımaları üçün 1.50 baza əmsalı tətbiq olunmuşdur.")
 
     # 2. Повышающий коэффициент 1.20 для Нефти и Нефтепродуктов (Столбец 2) при ИМПОРТЕ или ТРАНЗИТЕ
-    if shipment_type_code in ["import", "transit"] and col_idx == 0:
+    if col_idx == 0 and any(k in st_lower for k in ["import", "transit", "idxal", "tranzit"]):
         c_val_oil = 1.20
         c_lbl_oil = "Neft/Neft məhsulları 1.20" if lang == "AZ" else ("Нефть/Нефтепродукты 1.20" if lang == "RU" else "Oil/Petroleum 1.20")
         coeffs.append((c_lbl_oil, c_val_oil))
-
-        note_oil = {
-            "AZ": "Cədvəl 6: İdxal və ya tranzit rejimində neft və neft məhsullarına 1.20 artırma əmsalı tətbiq olunmuşdur.",
-            "RU": "Таблица 6: Применен повышающий коэффициент 1.20 для нефти и нефтепродуктов при импорте или транзите.",
-            "EN": "Table 6: A 1.20 markup coefficient applied for oil and petroleum products in import or transit mode."
-        }
-        notes.append(note_oil.get(lang, note_oil["AZ"]))
+        notes.append("Cədvəl 6: İdxal və ya tranzit rejimində neft və neft məhsullarına 1.20 artırma əmsalı tətbiq olunmuşdur.")
 
     return coeffs, notes
