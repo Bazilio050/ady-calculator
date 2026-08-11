@@ -32,7 +32,6 @@ def get_currency_rate(requested_period: str = None, lang: str = "AZ") -> tuple:
         
     return rate, label
 
-
 def apply_special_exceptions(
     nlu_data: dict, 
     shipment_type_code: str, 
@@ -57,23 +56,50 @@ def apply_special_exceptions(
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
     
     origin_esr = str(nlu_data.get("origin_esr") or "")
-    dest_esr = str(nlu_res_data_esr(nlu_data))
+    dest_esr = str(nlu_data.get("dest_esr") or "")
 
-    # 1. Специфические коэффициенты таблиц
+    # 1. Вызов модулей таблиц с строго именованными аргументами
     if table_num == 3:
-        tbl_coeffs, tbl_notes = get_table_3_coefficients(shipment_type_code, wagon_type, gng, lang=lang, ui_t=ui_t)
+        tbl_coeffs, tbl_notes = get_table_3_coefficients(
+            shipment_type=shipment_type_code,
+            wagon_type=wagon_type,
+            gng=gng,
+            lang=lang,
+            ui_t=ui_t
+        )
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 4:
-        tbl_coeffs, tbl_notes = get_table_4_coefficients(shipment_type_code, wagon_type, gng, lang=lang, ui_t=ui_t)
+        tbl_coeffs, tbl_notes = get_table_4_coefficients(
+            shipment_type=shipment_type_code,
+            wagon_type=wagon_type,
+            gng=gng,
+            lang=lang,
+            ui_t=ui_t
+        )
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 5:
-        tbl_coeffs, tbl_notes = get_table_5_coefficients(shipment_type_code, wagon_type, gng, False, ref_wagons_cnt, lang=lang, ui_t=ui_t)
+        tbl_coeffs, tbl_notes = get_table_5_coefficients(
+            shipment_type=shipment_type_code,
+            wagon_type=wagon_type,
+            gng=gng,
+            is_tariff_agreement=False,
+            ref_wagons_cnt=ref_wagons_cnt,
+            lang=lang,
+            ui_t=ui_t
+        )
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 6:
-        tbl_coeffs, tbl_notes = get_table_6_coefficients(shipment_type_code, wagon_type, gng, park_type=park_type, lang=lang, ui_t=ui_t)
+        tbl_coeffs, tbl_notes = get_table_6_coefficients(
+            shipment_type=shipment_type_code,
+            wagon_type=wagon_type,
+            gng=gng,
+            park_type=park_type,
+            lang=lang,
+            ui_t=ui_t
+        )
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
 
