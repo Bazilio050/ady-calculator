@@ -2,7 +2,13 @@ import os
 import streamlit as st
 from google import genai
 from nlu import call_gemini_nlu, validate_nlu_input
-from engine import process_full_calculation
+try:
+    from engine import process_full_calculation
+except Exception as err:
+    import traceback
+    st.error(f"Ошибка в engine.py: {err}")
+    st.code(traceback.format_exc())
+    st.stop()
 
 # Настройка страницы Streamlit
 st.set_page_config(
