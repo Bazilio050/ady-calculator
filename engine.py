@@ -7,7 +7,9 @@ from utils import (
     get_min_weight_by_gng,
     get_global_coefficients,
     is_border_esr,
-    resolve_esr_by_station_name
+    resolve_esr_by_station_name,
+    get_exchange_rate_for_date,
+    parse_date_from_string
 )
 
 from tables.table_3 import calculate_table_3_base, get_table_3_coefficients
@@ -18,7 +20,7 @@ from tables.table_6 import calculate_table_6_base, get_table_6_coefficients
 
 def get_currency_rate(requested_period: str = None, lang: str = "AZ") -> tuple:
     """
-    Определяет курс CHF/USD по дате из запроса или берет текущий период.
+    Определяет курс CHF/USD по дате из запроса или берёт текущий период.
     """
     target_dt = parse_date_from_string(requested_period)
     rate, period_str = get_exchange_rate_for_date(target_dt)
