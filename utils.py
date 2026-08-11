@@ -56,29 +56,55 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 # 2. ПОИСК КИЛОМЕТРАЖА ПО ЕСР-КОДАМ (Distances.txt)
 # ==============================================================================
 
+# Карта ЕСР-кодов для колонок погранпереходов Таблицы Distances.txt
+BORDER_COLUMN_MAP = {
+    # Колонка 3: Yalama (eksport)
+    "545006": 3, "547508": 3, "545307": 3, "545107": 3,
+    # Колонка 4: Astara (eksport)
+    "554109": 4, "554503": 4, "553905": 4,
+    # Колонка 5: Böyük Kəsik (eksport)
+    "558701": 5, "558631": 5, "558504": 5, "558400": 5,
+    # Колонка 6: Culfa (eksport)
+    "550004": 6, "550108": 6, "550803": 6,
+    # Колонка 7: Ələt eksp / Bakı liman
+    "549204": 7, "553002": 7, "548803": 7, "547302": 7, 
+    "547406": 7, "547209": 7, "548502": 7, "548703": 7
+}
+
 def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
     """
-    Поиск километража в матрице Distances.txt по кодам ЕСР.
-    Сравнивает станции по первым 5 цифрам (игнорируя контрольную 6-ю цифру).
+    Точный поиск километража по таблице Distances.txt (Строки: все станции, Колонки: погранпереходы).
     """
-    clean_from = re.sub(r'\D', '', str(esr_from or ""))
-    clean_to = re.sub(r'\D', '', str(esr_to or ""))
-
-    if not clean_from or not clean_to:
+    if not esr_from or not esr_to:
         return None
 
-    if clean_from == clean_to:
+    c_from = re.sub(r'\D', '', str(esr_from))
+    c_to = re.sub(r'\D', '', str(esr_to))
+
+    if not c_from or not c_to:
+        return None
+
+    if c_from == c_to:
         return 0
 
-    # Берем первые 5 цифр для 100% совпадения кодов ЕСР
-    esr5_from = clean_from[:5]
-    esr5_to = clean_to[:5]
+    # 1. Определяем, какая из станций является погранпереходом (колонкой)
+    col_idx = BORDER_COLUMN_MAP.get(c_to)
+    target_row_esr = c_from
 
+    if col_idx is None:
+        col_idx = BORDER_COLUMN_MAP.get(c_from)
+        target_row_esr = c_to
+
+    # Если ни одна из станций не найдена в карте колонок — по умолчанию берём Yalama (col 3)
+    if col_idx is None:
+        col_idx = 3
+
+    # Пути к файлу
     possible_paths = [
-        "Distances.txt", 
-        "data/Distances.txt", 
-        "tables/Distances.txt", 
-        "tariff_data/Distances.txt"
+        "Distances.txt",
+        "tariff_data/Distances.txt",
+        "data/Distances.txt",
+        "tables/Distances.txt"
     ]
     dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
 
@@ -87,61 +113,23 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
 
     try:
         with open(dist_file, "r", encoding="utf-8") as f:
-            lines = [line.strip() for line in f if line.strip()]
+            for line in f:
+                if "|" not in line or ":---" in line or "Stansiyanın" in line:
+                    continue
 
-        header_codes = []
-        header_idx = -1
+                # Разбиваем строку таблицы Markdown
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) <= col_idx:
+                    continue
 
-        # 1. Поиск строки заголовка с кодами ЕСР
-        for idx, line in enumerate(lines):
-            if "|" in line:
-                cells = [re.sub(r'\D', '', c) for c in line.split("|")]
-                if sum(1 for c in cells if len(c) >= 5) >= 2:
-                    header_codes = [c[:5] if len(c) >= 5 else "" for c in cells]
-                    header_idx = idx
-                    break
+                # Ячейка 2 — это код ЕСР станции (например, 548004)
+                row_esr_code = re.sub(r'\D', '', parts[2])
 
-        if header_idx == -1:
-            return None
-
-        # 2. Поиск строки отправления / назначения
-        for line in lines[header_idx + 1:]:
-            if "|" not in line or ":---" in line:
-                continue
-
-            row_cells = [c.strip() for c in line.split("|")]
-            if len(row_cells) < 4:
-                continue
-
-            # Извлекаем 5-значный код строки
-            row_esr5 = ""
-            for c in row_cells[:3]:
-                digits = re.sub(r'\D', '', c)
-                if len(digits) >= 5:
-                    row_esr5 = digits[:5]
-                    break
-
-            if not row_esr5:
-                continue
-
-            # Определяем целевую колонку
-            target_col_esr5 = None
-            if esr5_from == row_esr5:
-                target_col_esr5 = esr5_to
-            elif esr5_to == row_esr5:
-                target_col_esr5 = esr5_from
-
-            # 3. Считываем километраж на пересечении
-            if target_col_esr5:
-                for col_idx, col_esr5 in enumerate(header_codes):
-                    if col_esr5 == target_col_esr5 and col_idx < len(row_cells):
-                        val_str = re.sub(r'\D', '', row_cells[col_idx])
-                        if val_str:
-                            val_int = int(val_str)
-                            # Игнорируем случайное совпадение со значениями кодов ЕСР
-                            if val_int > 3000:
-                                continue
-                            return val_int
+                # Сравниваем коды ЕСР
+                if row_esr_code and (row_esr_code in target_row_esr or target_row_esr in row_esr_code):
+                    val_str = re.sub(r'\D', '', parts[col_idx])
+                    if val_str and val_str.isdigit():
+                        return int(val_str)
 
     except Exception as e:
         print(f"Error reading Distances.txt: {e}")
