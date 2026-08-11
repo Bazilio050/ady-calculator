@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import datetime
 
 # ==============================================================================
 # 1. РЕЕСТР ПОГРАНИЧНЫХ СТАНЦИЙ И ЕСР-КОДОВ (RULES.md -> Раздел 2)
@@ -358,7 +359,11 @@ def load_rules_config(filepath: str = "RULES.md") -> str:
             except Exception as e:
                 print(f"Error reading {path}: {e}")
     return ""
-# Таблица коэффициентов CHF/USD по периодам
+
+# ==============================================================================
+# 5. ТАБЛИЦА КУРСОВ CHF/USD И ПОИСК ПО ДАТЕ
+# ==============================================================================
+
 CURRENCY_RATES_TABLE = [
     ("01.01.2023", "31.01.2023", 0.98),
     ("01.04.2023", "30.06.2023", 0.93),
@@ -378,7 +383,7 @@ CURRENCY_RATES_TABLE = [
 ]
 
 
-def parse_date_from_string(text: str) -> datetime:
+def parse_date_from_string(text: str):
     """Пытается извлечь дату (ДД.ММ.ГГГГ или ГГГГ-ММ-ДД) из текста."""
     if not text:
         return None
@@ -404,10 +409,10 @@ def parse_date_from_string(text: str) -> datetime:
     return None
 
 
-def get_exchange_rate_for_date(target_date: datetime = None) -> tuple:
+def get_exchange_rate_for_date(target_date=None) -> tuple:
     """
     Возвращает (rate, period_str) для указанной даты.
-    Если дата не указана — берет текущую дату (август 2026 -> 0.79).
+    Если дата не указана — берет текущую дату (0.79).
     """
     if target_date is None:
         target_date = datetime.now()
