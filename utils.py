@@ -59,6 +59,7 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
     """
     Точный поиск километража в матрице Distances.txt по 6-значным кодам ЕСР.
+    Игнорирует служебные колонки (название станции и код ЕСР).
     """
     clean_from = re.sub(r'\D', '', str(esr_from or ""))
     clean_to = re.sub(r'\D', '', str(esr_to or ""))
@@ -66,12 +67,17 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
     if not clean_from or not clean_to:
         return None
 
-    possible_paths = ["Distances.txt", "data/Distances.txt", "tables/Distances.txt", "tariff_data/Distances.txt"]
-    dist_file = None
-    for p in possible_paths:
-        if os.path.exists(p):
-            dist_file = p
-            break
+    # Если станции совпадают — расстояние 0
+    if clean_from == clean_to:
+        return 0
+
+    possible_paths = [
+        "Distances.txt", 
+        "data/Distances.txt", 
+        "tables/Distances.txt", 
+        "tariff_data/Distances.txt"
+    ]
+    dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
 
     if not dist_file:
         return None
@@ -80,50 +86,63 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
         with open(dist_file, "r", encoding="utf-8") as f:
             lines = [line.strip() for line in f if line.strip()]
 
-        header_esr_codes = []
+        header_codes = []
         header_idx = -1
 
+        # 1. Ищем строку заголовка с кодами ЕСР
         for idx, line in enumerate(lines):
             if "|" in line:
-                codes = [re.sub(r'\D', '', cell) for cell in line.split("|")]
-                if any(len(c) >= 5 for c in codes if c):
-                    header_esr_codes = codes
+                cells = [re.sub(r'\D', '', c) for c in line.split("|")]
+                # В заголовке должны быть коды ЕСР (длина 5-6 цифр)
+                if sum(1 for c in cells if len(c) >= 5) >= 2:
+                    header_codes = cells
                     header_idx = idx
                     break
 
         if header_idx == -1:
             return None
 
+        # 2. Ищем пересечение станций в строках
         for line in lines[header_idx + 1:]:
             if "|" not in line or ":---" in line:
                 continue
 
             row_cells = [c.strip() for c in line.split("|")]
-            if len(row_cells) < 3:
+            if len(row_cells) < 4:
                 continue
 
-            row_esr = re.sub(r'\D', '', row_cells[1])
+            # Код ЕСР строки лежит во 2-й или 3-й ячейке (проверяем все первые ячейки)
+            row_esr = ""
+            for c in row_cells[:3]:
+                digits = re.sub(r'\D', '', c)
+                if len(digits) >= 5:
+                    row_esr = digits
+                    break
 
+            if not row_esr:
+                continue
+
+            # Определяем, какую колонку ищем
             target_col_esr = None
-            if clean_from in row_esr or row_esr in clean_from:
+            if clean_from == row_esr:
                 target_col_esr = clean_to
-            elif clean_to in row_esr or row_esr in clean_to:
+            elif clean_to == row_esr:
                 target_col_esr = clean_from
 
+            # 3. Достаем число из найденной колонки
             if target_col_esr:
-                for col_idx, col_esr in enumerate(header_esr_codes):
-                    # Проверяем только колонки со значениями расстояний (пропуская служебные колонки с именем и ЕСР)
-                    if col_esr and (target_col_esr in col_esr or col_esr in target_col_esr):
-                        if col_idx < len(row_cells):
-                            val_str = re.sub(r'\D', '', row_cells[col_idx])
-                            if val_str:
-                                dist_val = int(val_str)
-                                # Если прочитанное расстояние совпало с ЕСР-кодом (ошибка колонки) — пропускаем
-                                if dist_val != int(target_col_esr) and dist_val != int(row_esr):
-                                    return dist_val
+                for col_idx, col_esr in enumerate(header_codes):
+                    if col_esr == target_col_esr and col_idx < len(row_cells):
+                        val_str = re.sub(r'\D', '', row_cells[col_idx])
+                        if val_str:
+                            val_int = int(val_str)
+                            # Защита: если значение случайно совпало с ЕСР-кодом — пропуск
+                            if len(val_str) >= 5 and (val_str == clean_from or val_str == clean_to):
+                                continue
+                            return val_int
 
     except Exception as e:
-        print(f"Ошибка чтения расстояний из {dist_file}: {e}")
+        print(f"Error reading Distances.txt: {e}")
 
     return None
 
