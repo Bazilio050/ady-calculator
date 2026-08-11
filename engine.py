@@ -145,7 +145,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     Главный калькулятор-диспетчер.
     """
     lang_upper = str(lang or "AZ").upper()
-
+    
     # 1. Извлечение названий станций из NLU
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
