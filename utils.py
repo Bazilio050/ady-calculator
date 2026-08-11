@@ -28,7 +28,7 @@ def is_border_esr(esr_code: str) -> bool:
 
 
 def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "AZ") -> str:
-    """Форматирует название станции: прибавляет суффикс погранперехода."""
+    """Форматирует название станции для итогового отчёта (прибавляет суффикс погранперехода)."""
     clean_esr = re.sub(r'\D', '', str(esr_code or ""))
     st_name = str(raw_name or "").strip()
 
@@ -48,9 +48,49 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 
 
 # ==============================================================================
-# 2. ПОИСК КИЛОМЕТРАЖА ПО ЕСР-КОДАМ (Distances.txt)
+# 2. ПОИСК И АВТО-РЕЗОЛВ ЕСР ПО НАЗВАНИЮ (Distances.txt)
 # ==============================================================================
 
+def resolve_esr_by_station_name(station_name: str) -> str:
+    """
+    Автоматически сканирует Distances.txt и возвращает точный 6-значный ЕСР по названию станции.
+    """
+    if not station_name:
+        return ""
+
+    # Очищаем название от суффиксов
+    clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(station_name), flags=re.IGNORECASE).strip().lower()
+    clean = clean.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
+
+    possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
+    dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
+
+    if not dist_file:
+        return ""
+
+    try:
+        with open(dist_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if "|" not in line or ":---" in line or "Stansiyanın" in line:
+                    continue
+
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) < 3:
+                    continue
+
+                file_st_name = parts[1].replace("*", "").strip().lower()
+                file_st_name = file_st_name.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
+                file_esr = re.sub(r'\D', '', parts[2])
+
+                if clean and file_st_name and (clean in file_st_name or file_st_name in clean):
+                    return file_esr
+    except Exception as e:
+        print(f"Error resolving ESR: {e}")
+
+    return ""
+
+
+# Карта ЕСР-кодов для колонок погранпереходов Таблицы Distances.txt
 BORDER_COLUMN_MAP = {
     # Колонка 3: Yalama (eksport)
     "545006": 3, "547508": 3, "545307": 3, "545107": 3,
@@ -66,9 +106,7 @@ BORDER_COLUMN_MAP = {
 }
 
 def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
-    """
-    Точный поиск километража по таблице Distances.txt.
-    """
+    """Точный поиск километража по таблице Distances.txt."""
     if not esr_from or not esr_to:
         return None
 
@@ -91,12 +129,7 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
     if col_idx is None:
         col_idx = 3
 
-    possible_paths = [
-        "Distances.txt",
-        "tariff_data/Distances.txt",
-        "data/Distances.txt",
-        "tables/Distances.txt"
-    ]
+    possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
     dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
 
     if not dist_file:
@@ -139,23 +172,8 @@ def get_calculation_distance(distance_km: int, shipment_type: str) -> int:
 
 
 # ==============================================================================
-# 3. ВЕСОВАЯ СЕТКА (Cədvəl 1) И МИНИМАЛЬНЫЕ НОРМЫ ГНГ
+# 3. ВЕСОВАЯ СЕТКА И МИНИМАЛЬНЫЕ НОРМЫ ГНГ
 # ==============================================================================
-
-def get_weight_column_index(billable_weight_tons: float) -> int:
-    w = float(billable_weight_tons or 0)
-    if w <= 12: return 0
-    elif w <= 16: return 1
-    elif w <= 23: return 2
-    elif w <= 26: return 3
-    elif w <= 31: return 4
-    elif w <= 36: return 5
-    elif w <= 40: return 6
-    elif w <= 46: return 7
-    elif w <= 51: return 8
-    elif w <= 55: return 9
-    else: return 10
-
 
 def extract_gng_digits(gng_code, kwargs=None) -> str:
     kwargs = kwargs or {}
@@ -281,20 +299,3 @@ def get_global_coefficients(shipment_type: str, gng_code: str, origin_esr: str =
         notes.append("Ələt – Böyük Kəsik – Ələt marşrutu ilə tranzit daşımaya 1.20 əmsalı tətbiq olunmuşdur.")
 
     return coeffs, notes
-
-
-# ==============================================================================
-# 5. ЗАГЛУШКИ ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ (Защита от зависания и ошибок)
-# ==============================================================================
-
-def load_rules_config():
-    """Заглушка конфигурации правил."""
-    return {}
-
-def find_distance_in_memory(st_from, st_to):
-    """Заглушка обратной совместимости вызова поиска расстояния."""
-    return get_distance_by_esr(st_from, st_to) or 204
-
-def normalize_st_name(name):
-    """Очистка названий станций."""
-    return str(name or "").strip()
