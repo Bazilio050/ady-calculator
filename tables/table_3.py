@@ -1,5 +1,7 @@
 import os
 import re
+from utils import get_weight_column_index, extract_gng_digits  # Импорт общих правил
+
 
 def load_table_3_rates():
     """
@@ -9,7 +11,9 @@ def load_table_3_rates():
         "Table_3_Tariffs.txt",
         "Table3.txt",
         "tables/Table_3_Tariffs.txt",
-        "tables/Table3.txt"
+        "tables/Table3.txt",
+        "tariff_data/Table_3_Tariffs.txt",
+        "tariff_data/Table3.txt"
     ]
 
     t_file = None
@@ -41,31 +45,13 @@ def load_table_3_rates():
     return rates
 
 
-def get_table_3_column_index(billable_weight_tons):
-    """
-    Сопоставление веса с колонками Таблицы 3:
-    0: 10t, 1: 15t, 2: 20t, 3: 25t, 4: 30t, 5: 35t, 6: 40t, 7: 45t, 8: 50t, 9: 55t, 10: 60t+
-    """
-    w = float(billable_weight_tons or 0)
-    if w <= 10: return 0
-    elif w <= 15: return 1
-    elif w <= 20: return 2
-    elif w <= 25: return 3
-    elif w <= 30: return 4
-    elif w <= 35: return 5
-    elif w <= 40: return 6
-    elif w <= 45: return 7
-    elif w <= 50: return 8
-    elif w <= 55: return 9
-    else: return 10
-
-
 def calculate_table_3_base(distance_km, billable_weight_tons, *args, lang="AZ", **kwargs):
     """
     Расчет базовой ставки Таблицы 3 (Импорт / Экспорт универсальные вагоны).
     """
     rates = load_table_3_rates()
-    col_idx = get_table_3_column_index(billable_weight_tons)
+    # Сетка весов Cədvəl 1 берётся из общего utils.py
+    col_idx = get_weight_column_index(billable_weight_tons)
     tbl_name = "Cədvəl 3" if lang == "AZ" else ("Таблица 3" if lang == "RU" else "Table 3")
 
     if not rates:
@@ -89,61 +75,9 @@ def calculate_table_3_base(distance_km, billable_weight_tons, *args, lang="AZ", 
     return base_chf, details_str
 
 
-def extract_gng_digits(gng_code, kwargs):
-    """
-    Универсальное извлечение цифр ГНГ из любых аргументов.
-    """
-    candidates = [
-        gng_code,
-        kwargs.get("gng_code"),
-        kwargs.get("gng"),
-        kwargs.get("cargo_code"),
-        kwargs.get("cargo")
-    ]
-    for c in candidates:
-        if c:
-            m = re.search(r"\d+", str(c))
-            if m:
-                return m.group(0)
-    return ""
-
-
-def is_non_ferrous_metal_gng(gng_code, kwargs):
-    """
-    Проверка п. 3.1.1 (1.20) — Цветные металлы, драгметаллы и специфика
-    """
-    g = extract_gng_digits(gng_code, kwargs)
-    if not g:
-        return False
-
-    exact_prefixes = ["28045090", "28049", "28054", "32121", "7115", "8302", "83079", "8309", "8311", "85481"]
-    if any(g.startswith(p) for p in exact_prefixes):
-        return True
-
-    if len(g) >= 4 and 7106 <= int(g[:4]) <= 7112:
-        return True
-
-    if g.startswith("74"):
-        return not (g.startswith("7401") or g.startswith("7418"))
-
-    if g.startswith("75"):
-        return not g.startswith("7501")
-
-    if g.startswith("76"):
-        return not g.startswith("7615")
-
-    if g.startswith("78") or g.startswith("79") or g.startswith("80"):
-        return True
-
-    if g.startswith("81"):
-        return not g.startswith("81052")
-
-    return False
-
-
 def is_import_shipment(shipment_type_code, kwargs):
     """
-    Проверка на режим Импорта (idxal)
+    Безопасная проверка на режим Импорта (idxal)
     """
     candidates = [
         shipment_type_code,
@@ -156,7 +90,9 @@ def is_import_shipment(shipment_type_code, kwargs):
             st = str(c).lower()
             if "idxal" in st or "import" in st:
                 return True
-    return True
+            if "ixrac" in st or "export" in st or "daxili" in st or "tranzit" in st:
+                return False
+    return False
 
 
 def is_104_import_eligible_gng(gng_code, kwargs):
@@ -184,23 +120,17 @@ def is_104_import_eligible_gng(gng_code, kwargs):
     return False
 
 
-def get_table_3_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, lang="AZ", ui_t=None, *args, **kwargs):
+def get_table_3_coefficients(shipment_type_code=None, gng_code=None, lang="AZ", *args, **kwargs):
     """
-    Коэффициенты Таблицы 3 (Импорт / Экспорт).
+    Возвращает коэффициенты, специфичные ТОЛЬКО для Таблицы 3.
     """
     coeffs = []
     notes = []
 
-    # 1. Цветные металлы и специфика (1.20)
-    if is_non_ferrous_metal_gng(gng_code, kwargs):
-        lbl = "Əlvan metal 1.20" if lang == "AZ" else ("Цветной металл 1.20" if lang == "RU" else "Non-ferrous metal 1.20")
-        coeffs.append((lbl, 1.20))
-        notes.append("Cədvəl 3: Əlvan metal / spesifik yüklərə (1,20) artırma əmsalı tətbiq olunmuşdur.")
-
-    # 2. Лесоматериалы (4403, 4404, 4407-4413) и Чёрные металлы (72, 7301-7307) при ИМПОРТЕ -> 1.04
+    # 1.04 — Только при импорте леса / чермета
     if is_import_shipment(shipment_type_code, kwargs) and is_104_import_eligible_gng(gng_code, kwargs):
-        lbl = "İdxal yükləri" if lang == "AZ" else ("Импортные грузы" if lang == "RU" else "Import cargo")
+        lbl = "İdxal yükləri 1.04" if lang == "AZ" else ("Импортные грузы 1.04" if lang == "RU" else "Import cargo 1.04")
         coeffs.append((lbl, 1.04))
-        notes.append("Cədvəl 3: İdxal daşımaları zamanı taxta (4403, 4404, 4407-4413) və qara metallara (72, 7301-7307) 1.04 əmsalı tətbiq olunmuşdur.")
+        notes.append("Cədvəl 3: İdxal daşımaları zamanı taxta və qara metallara 1.04 əmsalı tətbiq olunmuşdur.")
 
     return coeffs, notes
