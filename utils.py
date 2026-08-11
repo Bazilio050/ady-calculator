@@ -52,7 +52,7 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 # ==============================================================================
 
 BORDER_STATION_ESR_OVERRIDE = {
-    "boyuk kesik": "558701",  # Böyük Kəsik (eksport) = 680 km (вместо внутренней 558631 = 676 km)
+    "boyuk kesik": "558701",  # Böyük Kəsik (eksport) -> 680 km (вместо 558631 = 676 km)
     "yalama": "545006",       # Yalama (eksport)
     "astara": "554109",       # Astara (eksport)
     "culfa": "550004",        # Culfa (eksport)
@@ -61,17 +61,17 @@ BORDER_STATION_ESR_OVERRIDE = {
 
 def resolve_esr_by_station_name(station_name: str) -> str:
     """
-    Автоматически сканирует Distances.txt и возвращает точный 6-значный ЕСР по названию станции.
-    Приоритет отдаётся экспортным пограничным переходам.
+    Сканирует Distances.txt и возвращает точный 6-значный ЕСР по названию станции.
+    Для пограничных станций приоритет отдаётся экспортным кодам.
     """
     if not station_name:
         return ""
 
-    # Очищаем название от суффиксов
+    # Очищаем название от суффиксов и спецсимволов
     clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(station_name), flags=re.IGNORECASE).strip().lower()
     clean_norm = clean.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
 
-    # 1. Приоритетный выбор для пограничных станций
+    # 1. Приоритетный поиск для погранпереходов
     for b_name, b_esr in BORDER_STATION_ESR_OVERRIDE.items():
         if b_name in clean_norm or clean_norm in b_name:
             return b_esr
