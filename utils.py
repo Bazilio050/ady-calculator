@@ -112,11 +112,15 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
 
             if target_col_esr:
                 for col_idx, col_esr in enumerate(header_esr_codes):
+                    # Проверяем только колонки со значениями расстояний (пропуская служебные колонки с именем и ЕСР)
                     if col_esr and (target_col_esr in col_esr or col_esr in target_col_esr):
                         if col_idx < len(row_cells):
                             val_str = re.sub(r'\D', '', row_cells[col_idx])
                             if val_str:
-                                return int(val_str)
+                                dist_val = int(val_str)
+                                # Если прочитанное расстояние совпало с ЕСР-кодом (ошибка колонки) — пропускаем
+                                if dist_val != int(target_col_esr) and dist_val != int(row_esr):
+                                    return dist_val
 
     except Exception as e:
         print(f"Ошибка чтения расстояний из {dist_file}: {e}")
