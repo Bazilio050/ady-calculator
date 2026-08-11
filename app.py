@@ -1,11 +1,10 @@
 import os
 import streamlit as st
 from google import genai
-from utils import load_rules_config
 from nlu import call_gemini_nlu, validate_nlu_input
 from engine import process_full_calculation
 
-# Настройка страницы
+# Настройка страницы Streamlit
 st.set_page_config(
     page_title="ADY Express — Tariff Calculator", 
     page_icon="🚆", 
@@ -13,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Стили
+# Стили оформления (AGT Cargo + Анимация паровозика)
 st.markdown("""
     <style>
     .main-header {
@@ -62,9 +61,41 @@ st.markdown("""
         margin-top: 4px !important;
         font-weight: 600;
     }
+
+    /* --- АНИМАЦИЯ ПАРОВОЗИКА --- */
+    @keyframes trainDrive {
+        0% { left: -15%; }
+        100% { left: 105%; }
+    }
+    .train-track {
+        position: relative;
+        width: 100%;
+        height: 55px;
+        background: #0e2a47;
+        border-bottom: 3px dashed #ff5500;
+        overflow: hidden;
+        border-radius: 8px;
+        margin: 15px 0 5px 0;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    }
+    .train-emoji {
+        position: absolute;
+        font-size: 28px;
+        top: 6px;
+        white-space: nowrap;
+        animation: trainDrive 2.2s linear infinite;
+    }
+    .train-loader-text {
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #ff5500;
+        margin-bottom: 15px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
+# Текстовый словарь интерфейса (AZ, RU, EN)
 UI_TEXT = {
     "AZ": {
         "title": "ADY Tarif Kalkulyatoru", 
@@ -99,21 +130,11 @@ UI_TEXT = {
         "lbl_base_rate": "Baza tarifi",
         "lbl_net_rate": "Yekün ADY tarifi", 
         "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
-        "api_warning": "⚠️ Xahiş olunur, GEMINI_API_KEY daxil edin.", 
+        "api_warning": "⚠️ Serverdə GEMINI_API_KEY tapılmadı. Xahiş olunur, sistem tənzimləmələrini yoxlayın.", 
         "api_label": "Gemini API Key:",
         "type_import": "İdxal daşınması", 
         "type_export": "İxrac daşınması", 
         "type_transit": "Tranzit daşınması",
-        "note_sps": "Özəl vaqonlar (SPS) üçün 0.85 güzəşt əmsalı tətbiq olunmuşdur.", 
-        "note_import": "İdxal rejimində minimal tarif məsafəsi norması 151 km-dir.",
-        "note_export": "İxrac rejimində minimal tarif məsafəsi norması 101 km-dir.", 
-        "note_import_base_150": "İdxal/İxrac rejimində 1.50 baza əmsalı tətbiq olunmuşdur.",
-        "note_express": "ADY Express xidməti üçün +2% əlavə əmsal tətbiq olunmuşdur.", 
-        "note_timber_metal": "İdxal rejimində meşə materialları və qara metallar üçün 1.04 əmsalı tətbiq edilmişdir.",
-        "note_ref_transit_120": "Tranzit rejimində izotermik vaqonlar üçün 1.20 əmsalı tətbiq olunmuşdur.", 
-        "note_coef_1015": "Tətbiq olunan əlavə əmsal: 1.015.",
-        "note_min_weight": "Hesablama minimal norma üzrə aparılmışdır.", 
-        "note_ref_composition": "Refseksiyanın vaqon tərkibinə uyğun müvafiq əmsal tətbiq edilmişdir.",
         "unit_ton": "USD/t", 
         "unit_wagon": "USD/vaqon", 
         "table_name": "Cədvəl", 
@@ -153,21 +174,11 @@ UI_TEXT = {
         "lbl_base_rate": "Базовый тариф",
         "lbl_net_rate": "Итоговый тариф", 
         "lbl_express_rate": "Итоговый тариф (включая ADY Express +2%)",
-        "api_warning": "⚠️ Пожалуйста, укажите GEMINI_API_KEY.", 
+        "api_warning": "⚠️ На сервере не найден GEMINI_API_KEY. Пожалуйста, проверьте настройки системы.", 
         "api_label": "Gemini API Key:",
         "type_import": "Импортная перевозка", 
         "type_export": "Экспортная перевозка", 
         "type_transit": "Транзитная перевозка",
-        "note_sps": "Применен скидочный коэффициент 0.85 для собственных вагонов (СПС).", 
-        "note_import": "В режиме импорта минимальное тарифное расстояние составляет 151 км.",
-        "note_export": "В режиме экспорта минимальное тарифное расстояние составляет 101 км.", 
-        "note_import_base_150": "Применен базовый коэффициент 1.50 для импорта/экспорта.",
-        "note_express": "Применен дополнительный коэффициент +2% за сервис ADY Express.", 
-        "note_timber_metal": "В режиме импорта применен коэффициент 1.04 для лесных грузов и черных металлов.",
-        "note_ref_transit_120": "Применен коэффициент 1.20 для транзита изотермических вагонов.", 
-        "note_coef_1015": "Применен дополнительный коэффициент: 1.015.",
-        "note_min_weight": "Расчет произведен по минимальной весовой норме.", 
-        "note_ref_composition": "Применен соответствующий коэффициент согласно составу рефсекции.",
         "unit_ton": "USD/т", 
         "unit_wagon": "USD/вагон", 
         "table_name": "Таблица", 
@@ -207,21 +218,11 @@ UI_TEXT = {
         "lbl_base_rate": "Base Tariff",
         "lbl_net_rate": "Final Tariff", 
         "lbl_express_rate": "Final Tariff (incl. ADY Express +2%)",
-        "api_warning": "⚠️ Please provide GEMINI_API_KEY.", 
+        "api_warning": "⚠️ GEMINI_API_KEY not found on server. Please check system configuration.", 
         "api_label": "Gemini API Key:",
         "type_import": "Import shipment", 
         "type_export": "Export shipment", 
         "type_transit": "Transit shipment",
-        "note_sps": "Discount coefficient 0.85 applied for private wagons (SPS).", 
-        "note_import": "Minimum tariff distance for import is 151 km.",
-        "note_export": "Minimum tariff distance for export is 101 km.", 
-        "note_import_base_150": "Base import/export coefficient 1.50 applied.",
-        "note_express": "Additional coefficient +2% applied for ADY Express service.", 
-        "note_timber_metal": "Coefficient 1.04 applied for import of timber and ferrous metals.",
-        "note_ref_transit_120": "Coefficient 1.20 applied for transit of isothermal wagons.", 
-        "note_coef_1015": "Additional coefficient applied: 1.015.",
-        "note_min_weight": "Calculation is based on minimum weight.", 
-        "note_ref_composition": "Coefficient applied according to refrigerated section composition.",
         "unit_ton": "USD/t", 
         "unit_wagon": "USD/wagon", 
         "table_name": "Table", 
@@ -230,26 +231,26 @@ UI_TEXT = {
     }
 }
 
+# Загрузка логотипа
 logo_path = "Logo.png" if os.path.exists("Logo.png") else ("logo.png" if os.path.exists("logo.png") else None)
 
-# --- ЛЕВАЯ КОЛОНКА С ЛОГОТИПОМ И СЕЛЕКТОРАМИ, ДРУГ ПОД ДРУГОМ ---
+# --- ЛЕВАЯ КОЛОНКА С ЛОГОТИПОМ И ВЫБОРОМ ЯЗЫКА / ГОДА ---
 left_col, _ = st.columns([3, 2])
 
 with left_col:
     if logo_path:
         st.image(logo_path, width=200)
     
-    # Вложенная колонка для ограничения ширины выпадающих списков
     ctrl_col, _ = st.columns([1.2, 2.8])
     with ctrl_col:
-        # 1. Сверху Dil / Language
-        selected_lang = st.selectbox(f"🌐 {UI_TEXT['AZ']['lang_select']}", options=["AZ", "RU", "EN"], index=0)
+        # 1. Язык сайта
+        selected_lang = st.selectbox(f"🌐 Dil / Language:", options=["AZ", "RU", "EN"], index=0)
         t = UI_TEXT[selected_lang]
         
-        # 2. Прямо под ним Fraxt ili
+        # 2. Фрахтовый год
         selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
 
-# --- КОМПАКТНЫЙ СИНИЙ БАННЕР ---
+# --- БАННЕР С СИНИМ ГРАДИЕНТОМ ---
 st.markdown(f"""
     <div class="main-header">
         <h1>🚆 {t['title']}</h1>
@@ -257,53 +258,82 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- ПОЛЕ ВВОДА ---
+# --- ПОЛЕ ВВОДА ЗАПРОСА ---
 user_input = st.text_area(t["input_header"], height=120, placeholder=t["input_placeholder"])
 user_api_key = os.environ.get("GEMINI_API_KEY", "")
 
+# --- КНОПКА РАСЧЁТА И ОБРАБОТКА ---
 if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
+    elif not user_api_key.strip():
+        st.error(t["api_warning"])
     else:
-        client = genai.Client(api_key=user_api_key.strip())
+        # Контейнер для паровозика
+        loader_placeholder = st.empty()
+        
+        # Показываем анимированный состав
+        loader_placeholder.markdown(f"""
+            <div class="train-track">
+                <div class="train-emoji">🚂🚃🚃🚃💨</div>
+            </div>
+            <div class="train-loader-text">
+                ⏳ {t['spinner_text'].format(selected_year)}
+            </div>
+        """, unsafe_allow_html=True)
+
         try:
+            # 1. Вызов Gemini для парсинга
+            client = genai.Client(api_key=user_api_key.strip())
             nlu_res = call_gemini_nlu(client, user_input, selected_lang)
             
-            with st.expander("🔍 Gemini NLU JSON (Для проверки распознавания)"):
-                st.json(nlu_res)
-
             missing = validate_nlu_input(nlu_res, selected_lang)
+            
+            # Убираем паровозик после завершения расчёта
+            loader_placeholder.empty()
+
             if missing:
                 st.warning(t["missing_title"])
                 for m in missing:
                     st.markdown(f"* {m}")
             else:
+                # 2. Расчёт через Python-engine
                 data = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
                 st.success(t["success"].format(selected_year))
                 
+                # Просмотр JSON для отладки
+                with st.expander("🔍 Gemini NLU JSON (Для проверки распознавания)"):
+                    st.json(nlu_res)
+
                 p1, p2, p3 = data["part1"], data["part2"], data["part3"]
                 
+                # Блок 1: Маршрут и условия
                 st.markdown(f"#### 📍 {t['sec1_title']}")
                 st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n| **{t['lbl_route']}** | {p1['route']} |\n| **{t['lbl_type']}** | {p1['shipment_type']} |\n| **{t['lbl_dist']}** | {p1['distance']} |\n| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n| **{t['lbl_weight']}** | {p1['weight_info']} |\n| **{t['lbl_period']}** | {p1['period']} |")
 
+                # Блок 2: Коэффициенты и курс
                 st.markdown(f"#### ⚙️ {t['sec2_title']}")
                 t2_rows = [f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |", f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"]
-                for coeff in p2["coefficients"]:
+                for coeff in p2.get("coefficients", []):
                     t2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
                 st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(t2_rows))
 
+                # Блок 3: Формула и итоговые суммы
                 st.markdown(f"#### 📐 {t['sec3_title']}")
                 st.code(p3["formula"], language="text")
                 st.markdown(f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |\n| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |")
 
-                if p3["notes"]:
+                # Примечания
+                if p3.get("notes"):
                     st.markdown(f"**{t['notes_title']}**")
                     for idx, note in enumerate(p3["notes"], start=1):
                         st.markdown(f"{idx}. *{note}*")
+
         except Exception as e:
+            loader_placeholder.empty()
             st.error(f"Error: {str(e)}")
 
-# --- ПОДВАЛ В КОНЦЕ СТРАНИЦЫ ---
+# --- ФИРМЕННЫЙ ПОДВАЛ AGT CARGO ---
 st.markdown(f"""
     <div class="agt-footer">
         <p>{t['footer_owner']}</p>
