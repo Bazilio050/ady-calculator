@@ -148,9 +148,6 @@ def get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
     Возвращает специфические коэффициенты Таблицdef get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, 
                            ref_wagons_cnt=None, is_2tier_platform=False, 
                            is_fruit_veg_discount=False, lang="AZ", *args, **kwargs):
-    """
-    Возвращает специфические коэффициенты Таблицы 5.
-    """
     coeffs = []
     notes = []
 
