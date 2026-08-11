@@ -2,48 +2,36 @@ import json
 from google.genai import types
 
 def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
-    """
-    Парсит пользовательский запрос и возвращает структурированный JSON с ЕСР-кодами,
-    полными названиями станций и коротким именем груза на языке сайта (site_lang).
-    Использует строго рабочую модель gemini-3.5-flash-lite.
-    """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(site_lang).upper(), "Azerbaijani")
 
     prompt = (
         "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
-        f"Parse user input into a strict JSON object. All station names ('origin_name', 'dest_name') "
-        f"must be translated strictly to {target_lang}. Short cargo name ('gng_name') MUST be translated strictly to {target_lang} (1-3 words).\n\n"
+        f"Parse user input into a strict JSON object. Translate station names ('origin_name', 'dest_name') "
+        f"and short cargo name ('gng_name') STRICTLY to {target_lang}.\n\n"
+        "CRITICAL ESR CODE INSTRUCTIONS:\n"
+        "- Always output the exact standard 6-digit ESR code for each station ('origin_esr', 'dest_esr').\n"
+        "- Example ESRs: Yalama=545006, Biləcəri/Баладжары=546808, Abşeron=548004, Böyük Kəsik=558701, Bakı-Yük=547105, Astara=554109.\n"
+        "- Do NOT confuse Biləcəri (546808) with ferry/port codes (547209).\n\n"
         "EXPECTED JSON STRUCTURE:\n"
         "{\n"
-        '  "origin_esr": "string or null (6-digit ESR station code, e.g. 545006, 558701, 548004)",\n'
-        f'  "origin_name": "string or null (Official full station name in {target_lang})",\n'
-        '  "dest_esr": "string or null (6-digit ESR station code, e.g. 545006, 558701, 548004)",\n'
-        f'  "dest_name": "string or null (Official full station name in {target_lang})",\n'
-        '  "gng_code": "string or null (Extract numeric GNG/NHM cargo code: 2, 4, 6 or 8 digits, e.g. 2701, 72, 2815)",\n'
-        f'  "gng_name": "string or null (Short 1-3 words cargo description strictly in {target_lang})",\n'
+        '  "origin_esr": "6-digit ESR string or null",\n'
+        f'  "origin_name": "Station name in {target_lang}",\n'
+        '  "dest_esr": "6-digit ESR string or null",\n'
+        f'  "dest_name": "Station name in {target_lang}",\n'
+        '  "gng_code": "Numeric GNG code string or null",\n'
+        f'  "gng_name": "Short cargo description in {target_lang}",\n'
         '  "weight_tons": float or null,\n'
-        '  "wagon_type": "string (universal / tank / ref / thermos / autocarrier / container)",\n'
-        '  "park_type": "string (SPS / MPS)",\n'
-        '  "ref_section_cargo_wagons": integer or null (e.g. 5 for 5+1),\n'
-        '  "explicit_mode": "string or null (import / export / transit)"\n'
+        '  "wagon_type": "universal / tank / ref / thermos / autocarrier",\n'
+        '  "park_type": "SPS / MPS",\n'
+        '  "ref_section_cargo_wagons": integer or null,\n'
+        '  "explicit_mode": "import / export / transit or null"\n'
         "}\n\n"
-        "CRITICAL ESR & STATION RULES:\n"
-        "- Yalama -> ESR: 545006\n"
-        "- Böyük Kəsik / Beyuk Kasik -> ESR: 558701\n"
-        "- Abşeron / Absheron / Апшерон -> ESR: 548004\n"
-        "- Bakı-Yük / Баку-Товарная -> ESR: 547105\n"
-        "- Astara -> ESR: 554109\n"
-        "- Culfa / Джульфа -> ESR: 550004\n"
-        "- Ələt / Alat / Kurik / Kuryk / Aktau / TRK:\n"
-        "  * If mode is import/export (local station) -> ESR: 548703 (Ələt yeni)\n"
-        "  * Otherwise (default border/ferry transition) -> ESR: 549204 (Ələt eksport Aktau)\n"
-        "- IF BOTH STATIONS ARE BORDER CROSSINGS (e.g. Yalama & Böyük Kəsik) -> set 'explicit_mode' to 'transit'.\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
 
     response = client.models.generate_content(
-        model="gemini-3.5-flash-lite",  # СТРОГО gemini-3.5-flash-lite
+        model="gemini-3.5-flash-lite",
         config=types.GenerateContentConfig(
             temperature=0.0,
             response_mime_type="application/json",
