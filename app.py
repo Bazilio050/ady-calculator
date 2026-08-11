@@ -6,7 +6,7 @@ from engine import process_full_calculation
 
 # Настройка страницы Streamlit
 st.set_page_config(
-    page_title="ADY Express — Tariff Calculator", 
+    page_title="ADY — Tariff Calculator", 
     page_icon="🚆", 
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -260,7 +260,11 @@ st.markdown(f"""
 
 # --- ПОЛЕ ВВОДА ЗАПРОСА ---
 user_input = st.text_area(t["input_header"], height=120, placeholder=t["input_placeholder"])
+
+# Подтягиваем API ключ из os.environ или st.secrets (гибкий поиск)
 user_api_key = os.environ.get("GEMINI_API_KEY", "")
+if not user_api_key and "GEMINI_API_KEY" in st.secrets:
+    user_api_key = st.secrets["GEMINI_API_KEY"]
 
 # --- КНОПКА РАСЧЁТА И ОБРАБОТКА ---
 if st.button(t["calc_btn"], type="primary"):
@@ -283,13 +287,13 @@ if st.button(t["calc_btn"], type="primary"):
         """, unsafe_allow_html=True)
 
         try:
-            # 1. Вызов Gemini для парсинга
+            # 1. Вызов Gemini для мгновенного парсинга NLU
             client = genai.Client(api_key=user_api_key.strip())
             nlu_res = call_gemini_nlu(client, user_input, selected_lang)
             
             missing = validate_nlu_input(nlu_res, selected_lang)
             
-            # Убираем паровозик после завершения расчёта
+            # Убираем паровозик после завершения распознавания
             loader_placeholder.empty()
 
             if missing:
@@ -309,11 +313,23 @@ if st.button(t["calc_btn"], type="primary"):
                 
                 # Блок 1: Маршрут и условия
                 st.markdown(f"#### 📍 {t['sec1_title']}")
-                st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n| **{t['lbl_route']}** | {p1['route']} |\n| **{t['lbl_type']}** | {p1['shipment_type']} |\n| **{t['lbl_dist']}** | {p1['distance']} |\n| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n| **{t['lbl_weight']}** | {p1['weight_info']} |\n| **{t['lbl_period']}** | {p1['period']} |")
+                st.markdown(
+                    f"| {t['col_param']} | {t['col_val']} |\n"
+                    f"| :--- | :--- |\n"
+                    f"| **{t['lbl_route']}** | {p1['route']} |\n"
+                    f"| **{t['lbl_type']}** | {p1['shipment_type']} |\n"
+                    f"| **{t['lbl_dist']}** | {p1['distance']} |\n"
+                    f"| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n"
+                    f"| **{t['lbl_weight']}** | {p1['weight_info']} |\n"
+                    f"| **{t['lbl_period']}** | {p1['period']} |"
+                )
 
                 # Блок 2: Коэффициенты и курс
                 st.markdown(f"#### ⚙️ {t['sec2_title']}")
-                t2_rows = [f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |", f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"]
+                t2_rows = [
+                    f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |", 
+                    f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
+                ]
                 for coeff in p2.get("coefficients", []):
                     t2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
                 st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(t2_rows))
@@ -321,7 +337,12 @@ if st.button(t["calc_btn"], type="primary"):
                 # Блок 3: Формула и итоговые суммы
                 st.markdown(f"#### 📐 {t['sec3_title']}")
                 st.code(p3["formula"], language="text")
-                st.markdown(f"| {t['col_rate_type']} | {t['col_amount']} |\n| :--- | :--- |\n| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |\n| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |")
+                st.markdown(
+                    f"| {t['col_rate_type']} | {t['col_amount']} |\n"
+                    f"| :--- | :--- |\n"
+                    f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |\n"
+                    f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |"
+                )
 
                 # Примечания
                 if p3.get("notes"):
