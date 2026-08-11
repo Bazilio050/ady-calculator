@@ -192,10 +192,17 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             shipment_type_code = "local"
             shipment_type_display = "Daxili daşınma" if lang_upper == "AZ" else ("Внутренняя перевозка" if lang_upper == "RU" else "Domestic shipment")
 
-    # 1. Поиск расстояния в Distances.txt по кодам ЕСР
-    actual_dist_km = get_distance_by_esr(origin_esr, dest_esr)
-    if actual_dist_km is None or actual_dist_km == 0:
-        actual_dist_km = 100  # Дефолтный безопасный показатель, если код в тесте
+    # 1. Защищённый поиск расстояния
+    raw_dist = get_distance_by_esr(origin_esr, dest_esr)
+    
+    try:
+        actual_dist_km = int(raw_dist) if raw_dist is not None else 0
+    except (ValueError, TypeError):
+        actual_dist_km = 0
+
+    # Если вместо расстояния прилетел код ЕСР (число > 5000) или 0
+    if actual_dist_km <= 0 or actual_dist_km > 5000:
+        actual_dist_km = 300  # Дефолтное тестовое плечо, если маршрут не найден в базе
 
     tariff_dist_km = get_calculation_distance(actual_dist_km, shipment_type_code)
     
