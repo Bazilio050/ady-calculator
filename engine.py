@@ -246,7 +246,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             container_type=nlu_data.get("container_type"),
             is_empty=is_empty_wagon,
             gng_code=clean_gng,
-            lang=lang_upper
+            lang=lang_upper,
+            user_input_raw=user_input_raw
         )
     elif is_tanker_type:
         table_num = 6
