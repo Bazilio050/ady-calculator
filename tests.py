@@ -120,6 +120,20 @@ TEST_SUITE = [
             "actual_weight_tons": 50.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
         },
         "expected_rate": 26.66
+
+        "name": "13. Баку-тов -> Ялама (4407, крытый, 50т, СПС)",
+        "raw_text": "Баку-тов Ялама 4407 крытый 50тн СПС",
+        "nlu": {
+            "route_from": "Bakı-Yük",
+            "route_to": "Yalama",
+            "cargo_gng_code": "4407",
+            "cargo_name": "Taxta",
+            "actual_weight_tons": 50.0,
+            "wagon_type": "universal",
+            "park_type": "SPS",
+            "explicit_mode": "export"
+        },
+        "expected_rate": 15.38
     }
 ]
 
