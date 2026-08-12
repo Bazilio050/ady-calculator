@@ -13,6 +13,7 @@ UI_T = {
 }
 
 TEST_SUITE = [
+    # --- ОСНОВНЫЕ МАРШРУТЫ (1 - 4) ---
     {
         "name": "1. Ялама -> Апшерон (4407, 35т, крытый, СПС)",
         "raw_text": "Ялама Апшерон 4407 35т крытый СПС",
@@ -73,6 +74,128 @@ TEST_SUITE = [
             "explicit_mode": "export"
         },
         "expected_rate": 18.84
+    },
+
+    # --- НОВЫЕ ТЕСТЫ ЦИСТЕРН (Таблица 6) ---
+    {
+        "name": "5. Ялама -> Гюздек (3404, цистерна, 60т, СПС)",
+        "raw_text": "Ялама Гюздек 3404 цистерна 60т СПС",
+        "nlu": {
+            "route_from": "Yalama",
+            "route_to": "Güzdək",
+            "cargo_gng_code": "3404",
+            "cargo_name": "Neft məhsulları",
+            "actual_weight_tons": 60.0,
+            "wagon_type": "cistern",
+            "park_type": "SPS",
+            "explicit_mode": "import"
+        },
+        "expected_rate": 16.63
+    },
+    {
+        "name": "6. Ялама -> Гюздек (3404, цистерна, 60т, МПС)",
+        "raw_text": "Ялама Гюздек 3404 цистерна 60т МПС",
+        "nlu": {
+            "route_from": "Yalama",
+            "route_to": "Güzdək",
+            "cargo_gng_code": "3404",
+            "cargo_name": "Neft məhsulları",
+            "actual_weight_tons": 60.0,
+            "wagon_type": "cistern",
+            "park_type": "MPS",
+            "explicit_mode": "import"
+        },
+        "expected_rate": 19.56
+    },
+    {
+        "name": "7. Г.Тагиев -> Беюк Кясик (2705, цистерна, 60т, СПС)",
+        "raw_text": "Г.Тагиев Беюк Кясик 2705 цистерна 60т СПС",
+        "nlu": {
+            "route_from": "H.Z. Tağıyev",
+            "route_to": "Böyük Kəsik",
+            "cargo_gng_code": "2705",
+            "cargo_name": "Enerjili qazlar",
+            "actual_weight_tons": 60.0,
+            "wagon_type": "cistern",
+            "park_type": "SPS",
+            "explicit_mode": "export"
+        },
+        "expected_rate": 27.27
+    },
+    {
+        "name": "8. Г.Тагиев -> Ялама (28042, цистерна, 50т, СПС)",
+        "raw_text": "Г.Тагиев Ялама 28042 цистерна 50т СПС",
+        "nlu": {
+            "route_from": "H.Z. Tağıyev",
+            "route_to": "Yalama",
+            "cargo_gng_code": "28042",
+            "cargo_name": "Qazlar və karbohidrogenlər",
+            "actual_weight_tons": 50.0,
+            "wagon_type": "cistern",
+            "park_type": "SPS",
+            "explicit_mode": "export"
+        },
+        "expected_rate": 24.16
+    },
+    {
+        "name": "9. Баладжары -> Ялама (39053, цистерна, 60т, СПС)",
+        "raw_text": "Баладжары Ялама 39053 цистерна 60т СПС",
+        "nlu": {
+            "route_from": "Biləcəri",
+            "route_to": "Yalama",
+            "cargo_gng_code": "39053",
+            "cargo_name": "Spirt və fenollar",
+            "actual_weight_tons": 60.0,
+            "wagon_type": "cistern",
+            "park_type": "SPS",
+            "explicit_mode": "export"
+        },
+        "expected_rate": 24.16
+    },
+    {
+        "name": "10. Сумгаит -> Ялама (2202, цистерна, 60т, МПС)",
+        "raw_text": "Сумгаит Ялама 2202 цистерна 60т МПС",
+        "nlu": {
+            "route_from": "Sumqayıt",
+            "route_to": "Yalama",
+            "cargo_gng_code": "2202",
+            "cargo_name": "Tez xarab olan maye yüklər",
+            "actual_weight_tons": 60.0,
+            "wagon_type": "cistern",
+            "park_type": "MPS",
+            "explicit_mode": "export"
+        },
+        "expected_rate": 28.42
+    },
+    {
+        "name": "11. Ялама -> Ширван (15071010, цистерна, 50т, СПС)",
+        "raw_text": "Ялама Ширван 15071010 цистерна 50т СПС",
+        "nlu": {
+            "route_from": "Yalama",
+            "route_to": "Şirvan",
+            "cargo_gng_code": "15071010",
+            "cargo_name": "Bitki yağları",
+            "actual_weight_tons": 50.0,
+            "wagon_type": "cistern",
+            "park_type": "SPS",
+            "explicit_mode": "import"
+        },
+        "expected_rate": 24.16
+    },
+    {
+        "name": "12. Ялама -> Сиазань (29023, цистерна, 50т, СПС)",
+        "raw_text": "Ялама Сиазань 29023 цистерна 50т СПС",
+        "nlu": {
+            "route_from": "Yalama",
+            "route_to": "Siyəzən",
+            "cargo_gng_code": "29023",
+            "cargo_name": "Özəl çənlər yükləri",
+            "actual_weight_tons": 50.0,
+            "wagon_type": "cistern",
+            "park_type": "SPS",
+            "explicit_mode": "import"
+        },
+        "expected_rate": 28.42
     }
 ]
 
@@ -88,7 +211,7 @@ def parse_float(val):
     return 0.0
 
 def run_tests():
-    print("🧪 ПРОВЕРКА 4 ОСНОВНЫХ МАРШРУТОВ...\n" + "="*50)
+    print(f"🧪 ПРОВЕРКА {len(TEST_SUITE)} ОСНОВНЫХ И ДОПОЛНИТЕЛЬНЫХ МАРШРУТОВ...\n" + "="*60)
     passed, failed = 0, 0
 
     for test in TEST_SUITE:
@@ -109,7 +232,7 @@ def run_tests():
             print(f"❌ {test['name']} -> Ошибка кода: {e}")
             failed += 1
 
-    print("\n" + "="*50)
+    print("\n" + "="*60)
     print(f"📊 ИТОГ: Успешно: {passed} | Ошибок: {failed}")
 
     if failed > 0:
