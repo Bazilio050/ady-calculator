@@ -120,18 +120,13 @@ TEST_SUITE = [
             "actual_weight_tons": 50.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
         },
         "expected_rate": 26.66
-
+    },
+    {
         "name": "13. Баку-тов -> Ялама (4407, крытый, 50т, СПС)",
         "raw_text": "Баку-тов Ялама 4407 крытый 50тн СПС",
         "nlu": {
-            "route_from": "Bakı-Yük",
-            "route_to": "Yalama",
-            "cargo_gng_code": "4407",
-            "cargo_name": "Taxta",
-            "actual_weight_tons": 50.0,
-            "wagon_type": "universal",
-            "park_type": "SPS",
-            "explicit_mode": "export"
+            "route_from": "Bakı-Yük", "route_to": "Yalama", "cargo_gng_code": "4407", "cargo_name": "Taxta",
+            "actual_weight_tons": 50.0, "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "export"
         },
         "expected_rate": 15.38
     }
@@ -153,7 +148,6 @@ def run_tests():
 
     for test in TEST_SUITE:
         try:
-            # Передаём "" вместо raw_text, чтобы engine брал чистый NLU-объект
             res = process_full_calculation(test["nlu"], "", "AZ", "2026", UI_T)
             
             raw_rate = res['part3'].get('express_rate') or res['part3'].get('net_ady_rate')
