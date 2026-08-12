@@ -17,6 +17,7 @@ from tables.table_3 import calculate_table_3_base, get_table_3_coefficients
 from tables.table_4 import calculate_table_4_base, get_table_4_coefficients
 from tables.table_5 import calculate_table_5_base, get_table_5_coefficients
 from tables.table_6 import calculate_table_6_base, get_table_6_coefficients
+from tables.table_7 import calculate_table_7_base, get_table_7_coefficients
 
 
 def get_currency_rate(requested_period: str = None, lang: str = "AZ") -> tuple:
@@ -81,6 +82,10 @@ def apply_special_exceptions(
         tbl_coeffs, tbl_notes = get_table_6_coefficients(shipment_type=shipment_type_code, wagon_type=wagon_type, gng=gng, park_type=park_type, lang=lang, ui_t=ui_t)
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
+    elif table_num == 7:
+        tbl_coeffs, tbl_notes = get_table_7_coefficients(shipment_type_code=shipment_type_code, wagon_type=wagon_type, gng_code=gng, lang=lang, ui_t=ui_t)
+        coeffs.extend(tbl_coeffs)
+        notes.extend(tbl_notes)
 
     # 4. Общие глобальные коэффициенты (цветмет 1.20, Алят-Беюк Кесик 1.20)
     g_coeffs, g_notes = get_global_coefficients(shipment_type_code, gng, origin_esr, dest_esr, lang)
@@ -91,7 +96,7 @@ def apply_special_exceptions(
     if park_type == "SPS":
         should_apply_sps = False
         
-        if table_num in [3, 4, 5]:
+        if table_num in [3, 4, 5, 7]:
             should_apply_sps = True
         elif table_num == 6:
             # Для Таблицы 6 скидка 0.85 применяется к Столбцам 2-7 ("İnventar parka məxsus"),
@@ -136,6 +141,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     act_weight = float(nlu_data.get("weight_tons") or nlu_data.get("actual_weight_tons") or 0.0)
     park_type = str(nlu_data.get("park_type", "SPS") or "SPS").upper()
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
+    shipment_kind = str(nlu_data.get("shipment_kind") or "").lower()
 
     ref_wagons_cnt = nlu_data.get("ref_section_cargo_wagons")
     if ref_wagons_cnt is None:
@@ -207,7 +213,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             }
         }
 
-    # 5. Расчёт веса по минимальным нормам ГНГ
+    # 5. Расчёт веса по минимальным нормам ГНГ (для обычных вагонов)
     billable_weight = get_min_weight_by_gng(gng, act_weight)
 
     act_w_str = f"{int(act_weight) if act_weight.is_integer() else act_weight}"
@@ -221,8 +227,28 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "изотерм"]) or (ref_wagons_cnt is not None)
     is_tanker_type = any(k in wagon_type for k in ["cistern", "цистерн", "tank", "çən", "bunker", "бункер"])
 
+    clean_gng = re.sub(r'\D', '', gng)
+    is_table_7_type = (
+        "small_chunk" in wagon_type or "small_chunk" in shipment_kind or
+        "passenger" in wagon_type or "sərnişin" in wagon_type or "baggage" in wagon_type or
+        clean_gng.startswith("99910000") or
+        ("container" in wagon_type and act_weight <= 5.0)
+    )
+
     # 6. Выбор модуля таблицы
-    if is_tanker_type:
+    if is_table_7_type:
+        table_num = 7
+        is_per_wagon = False
+        base_chf, table_details = calculate_table_7_base(
+            distance_km=tariff_dist_km,
+            billable_weight_tons=act_weight if act_weight > 0 else billable_weight,
+            wagon_type=wagon_type,
+            container_type=nlu_data.get("container_type"),
+            is_empty=is_empty_wagon,
+            gng_code=clean_gng,
+            lang=lang_upper
+        )
+    elif is_tanker_type:
         table_num = 6
         is_per_wagon = False
         base_chf, table_details = calculate_table_6_base(tariff_dist_km, billable_weight, gng, park_type, {}, lang_upper)
@@ -267,7 +293,15 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     park_display = "SPS" if park_type == "SPS" else "MPS"
 
     sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
-    wagon_disp_name = f"Çən vaqonu" if (is_tanker_type and lang_upper == "AZ") else (f"Вагон-цистерна" if is_tanker_type and lang_upper == "RU" else (f"Tank wagon" if is_tanker_type else (f"İzotermik vaqon{sec_info}" if (is_ref_type and lang_upper == "AZ") else (f"Изотермический вагон{sec_info}" if is_ref_type and lang_upper == "RU" else (f"Isothermal wagon{sec_info}" if is_ref_type else ("Universal vaqon" if lang_upper == "AZ" else ("Универсальный вагон" if lang_upper == "RU" else "Universal wagon")))))))
+    if table_num == 7:
+        wagon_disp_name = "Sərnişin vaqonu" if (("passenger" in wagon_type or "sərnişin" in wagon_type) and lang_upper == "AZ") else ("Пассажирский вагон" if ("passenger" in wagon_type or "sərnişin" in wagon_type) else ("Xırda göndərmə" if lang_upper == "AZ" else "Малотоннажная отправка"))
+    elif is_tanker_type:
+        wagon_disp_name = "Çən vaqonu" if lang_upper == "AZ" else ("Вагон-цистерна" if lang_upper == "RU" else "Tank wagon")
+    elif is_ref_type:
+        wagon_disp_name = f"İzotermik vaqon{sec_info}" if lang_upper == "AZ" else (f"Изотермический вагон{sec_info}" if lang_upper == "RU" else f"Isothermal wagon{sec_info}")
+    else:
+        wagon_disp_name = "Universal vaqon" if lang_upper == "AZ" else ("Универсальный вагон" if lang_upper == "RU" else "Universal wagon")
+
     gng_label = "GNG" if lang_upper != "EN" else "NHM"
 
     cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})" if (cargo_name_nlu and cargo_name_nlu != gng) else (f"{gng_label} {gng}, {wagon_disp_name} ({park_display})" if gng else f"{wagon_disp_name} ({park_display})")
