@@ -18,6 +18,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Инициализация памяти сессии
+if "calc_result" not in st.session_state:
+    st.session_state.calc_result = None
+if "nlu_res" not in st.session_state:
+    st.session_state.nlu_res = None
+if "missing_data" not in st.session_state:
+    st.session_state.missing_data = None
+
 # Стили оформления (AGT Cargo + Анимация паровозика)
 st.markdown("""
     <style>
@@ -330,8 +338,10 @@ if not user_api_key and "GEMINI_API_KEY" in st.secrets:
 if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
+        st.session_state.calc_result = None
     elif not user_api_key.strip():
         st.error(t["api_warning"])
+        st.session_state.calc_result = None
     else:
         # Контейнер для паровозика
         loader_placeholder = st.empty()
@@ -380,62 +390,73 @@ if st.button(t["calc_btn"], type="primary"):
             loader_placeholder.empty()
 
             if missing:
-                st.warning(t["missing_title"])
-                for m in missing:
-                    st.markdown(f"* {m}")
+                st.session_state.missing_data = missing
+                st.session_state.calc_result = None
             else:
-                # 2. Расчёт через Python-engine
-                data = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
-                st.success(t["success"].format(selected_year))
-                
-                # Просмотр JSON для отладки
-                with st.expander("🔍 Gemini NLU JSON (Для проверки распознавания)"):
-                    st.json(nlu_res)
-
-                p1, p2, p3 = data["part1"], data["part2"], data["part3"]
-                
-                # Блок 1: Маршрут и условия
-                st.markdown(f"#### 📍 {t['sec1_title']}")
-                st.markdown(
-                    f"| {t['col_param']} | {t['col_val']} |\n"
-                    f"| :--- | :--- |\n"
-                    f"| **{t['lbl_route']}** | {p1['route']} |\n"
-                    f"| **{t['lbl_type']}** | {p1['shipment_type']} |\n"
-                    f"| **{t['lbl_dist']}** | {p1['distance']} |\n"
-                    f"| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n"
-                    f"| **{t['lbl_weight']}** | {p1['weight_info']} |\n"
-                    f"| **{t['lbl_period']}** | {p1['period']} |"
-                )
-
-                # Блок 2: Коэффициенты и курс
-                st.markdown(f"#### ⚙️ {t['sec2_title']}")
-                t2_rows = [
-                    f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |", 
-                    f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
-                ]
-                for coeff in p2.get("coefficients", []):
-                    t2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
-                st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(t2_rows))
-
-                # Блок 3: Формула и итоговые суммы
-                st.markdown(f"#### 📐 {t['sec3_title']}")
-                st.code(p3["formula"], language="text")
-                st.markdown(
-                    f"| {t['col_rate_type']} | {t['col_amount']} |\n"
-                    f"| :--- | :--- |\n"
-                    f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |\n"
-                    f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |"
-                )
-
-                # Примечания
-                if p3.get("notes"):
-                    st.markdown(f"**{t['notes_title']}**")
-                    for idx, note in enumerate(p3["notes"], start=1):
-                        st.markdown(f"{idx}. *{note}*")
+                st.session_state.missing_data = None
+                # 2. Расчёт через Python-engine и сохранение в память сессии
+                st.session_state.calc_result = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
+                st.session_state.nlu_res = nlu_res
 
         except Exception as e:
             loader_placeholder.empty()
             st.error(f"Error: {str(e)}")
+            st.session_state.calc_result = None
+
+# --- ОТОБРАЖЕНИЕ РЕЗУЛЬТАТОВ ИЗ ПАМЯТИ СЕССИИ ---
+if st.session_state.missing_data:
+    st.warning(t["missing_title"])
+    for m in st.session_state.missing_data:
+        st.markdown(f"* {m}")
+
+elif st.session_state.calc_result:
+    data = st.session_state.calc_result
+    st.success(t["success"].format(selected_year))
+    
+    # Просмотр JSON для отладки
+    with st.expander("🔍 Gemini NLU JSON (Для проверки распознавания)"):
+        st.json(st.session_state.nlu_res)
+
+    p1, p2, p3 = data["part1"], data["part2"], data["part3"]
+    
+    # Блок 1: Маршрут и условия
+    st.markdown(f"#### 📍 {t['sec1_title']}")
+    st.markdown(
+        f"| {t['col_param']} | {t['col_val']} |\n"
+        f"| :--- | :--- |\n"
+        f"| **{t['lbl_route']}** | {p1['route']} |\n"
+        f"| **{t['lbl_type']}** | {p1['shipment_type']} |\n"
+        f"| **{t['lbl_dist']}** | {p1['distance']} |\n"
+        f"| **{t['lbl_cargo']}** | {p1['cargo_and_wagon']} |\n"
+        f"| **{t['lbl_weight']}** | {p1['weight_info']} |\n"
+        f"| **{t['lbl_period']}** | {p1['period']} |"
+    )
+
+    # Блок 2: Коэффициенты и курс
+    st.markdown(f"#### ⚙️ {t['sec2_title']}")
+    t2_rows = [
+        f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |", 
+        f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
+    ]
+    for coeff in p2.get("coefficients", []):
+        t2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
+    st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(t2_rows))
+
+    # Блок 3: Формула и итоговые суммы
+    st.markdown(f"#### 📐 {t['sec3_title']}")
+    st.code(p3["formula"], language="text")
+    st.markdown(
+        f"| {t['col_rate_type']} | {t['col_amount']} |\n"
+        f"| :--- | :--- |\n"
+        f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |\n"
+        f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |"
+    )
+
+    # Примечания
+    if p3.get("notes"):
+        st.markdown(f"**{t['notes_title']}**")
+        for idx, note in enumerate(p3["notes"], start=1):
+            st.markdown(f"{idx}. *{note}*")
 
 # --- ФИРМЕННЫЙ ПОДВАЛ AGT CARGO ---
 st.markdown(f"""
