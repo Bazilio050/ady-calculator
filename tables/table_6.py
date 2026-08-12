@@ -58,57 +58,45 @@ def load_table_6_rates():
 
 def determine_table_6_column(gng_code, park_type="SPS") -> int:
     """
-    Определяет индекс колонки (0..6, соответствующие Col 2..Col 8 в Table_6_Tariffs.txt)
-    на основе ГНГ и группы (Инвентарные МПС vs Частные СПС).
+    Определяет индекс колонки (0..6, соответствующие Col 2..Col 8 в Table_6_Tariffs.txt):
     col_idx 0 = Столбец 2 (Нефть и нефтепродукты)
     col_idx 1 = Столбец 3 (Энергетические газы)
     col_idx 2 = Столбец 4 (Газы и углеводороды)
     col_idx 3 = Столбец 5 (Спирт и фенолы)
     col_idx 4 = Столбец 6 (Скоропортящиеся жидкие)
     col_idx 5 = Столбец 7 (Другие грузы)
-    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər)
+    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər - только 29023, 27071-27073 и т.д.)
     """
     clean_gng = extract_gng_digits(gng_code)
     norm_gng = clean_gng.lstrip("0") if clean_gng else ""
-    park_type = str(park_type or "SPS").upper()
 
-    t6_cfg = load_table_6_config()
-    mapping = t6_cfg.get("table_6_rules", {}).get("columns_mapping", {})
+    # 1. Столбец 8 (Özəl çənlər) — только для узкого списка углеводородов
+    private_only_prefixes = ["290211", "29022", "29023", "290241", "290242", "290243", "290244", "29026", "29027", "29029", "27071", "27072", "27073"]
+    if park_type == "SPS" and any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in private_only_prefixes):
+        return 6  # Столбец 8
 
-    # 1. Если есть конфиг JSON
-    if mapping:
-        if park_type == "SPS":
-            sps_rules = mapping.get("sps_private", [])
-            for rule in sps_rules:
-                prefixes = rule.get("gng_prefixes", [])
-                if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in prefixes if p):
-                    return rule.get("column_index", 6)
-
-        mps_rules = mapping.get("mps_inventory", [])
-        default_col = 5
-
-        for rule in mps_rules:
-            if rule.get("is_default"):
-                default_col = rule.get("column_index", 5)
-                continue
-
-            prefixes = rule.get("gng_prefixes", [])
-            excludes = rule.get("exclude_prefixes", [])
-
-            matches_pfx = any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in prefixes if p)
-            matches_ex = any(norm_gng.startswith(ex) or clean_gng.startswith(ex) for ex in excludes if ex)
-
-            if matches_pfx and not matches_ex:
-                return rule.get("column_index", 5)
-
-        return default_col
-
-    # 2. Резервный фоллбек, если JSON нет
+    # 2. Столбец 2 (Нефть и нефтепродукты)
     oil_prefixes = ["2709", "2710", "2712", "2713", "2714", "2715", "3403", "3404", "3811", "3817", "3824"]
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in oil_prefixes):
         return 0  # Столбец 2
 
-    return 5  # Столбец 7
+    # 3. Столбец 3 (Энергетические газы)
+    if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in ["2705", "2711"]):
+        return 1  # Столбец 3
+
+    # 4. Столбец 4 (Газы и химические углеводороды)
+    if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in ["2801", "2804", "2811", "2812", "2814", "2853", "2901", "2902", "3817", "3823"]):
+        return 2  # Столбец 4
+
+    # 5. Столбец 5 (Спирты и фенолы)
+    if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in ["1520", "27077", "27079", "2905", "2906", "2907", "2908", "2909", "2932", "2933", "3820", "3905"]):
+        return 3  # Столбец 5
+
+    # 6. Столбец 6 (Пищевые и скоропортящиеся)
+    if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in ["0401", "0403", "0404", "0405", "0406", "1501", "1502", "1503", "1504", "1505", "1506", "1507", "1508", "1509", "1510", "1511", "1512", "1513", "1514", "1515", "1516", "1517", "1518", "2009", "2105", "2201", "2202", "2203", "2204", "2205", "2206"]):
+        return 4  # Столбец 6
+
+    return 5  # По умолчанию Столбец 7 (Digər yüklər)
 
 
 def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_type="SPS", *args, lang="AZ", **kwargs):
