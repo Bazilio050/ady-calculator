@@ -41,10 +41,10 @@ TEST_SUITE = [
         "expected_rate": 38.14
     },
     {
-        "name": "4. Баку-тов -> Ялама (2713, цистерна, 60т, СПС)",
-        "raw_text": "Баку-тов Ялама 2713 цистерна 60тн СПС",
+        "name": "4. Баку тов -> Ялама (2713, цистерна, 60т, СПС)",
+        "raw_text": "Баку тов Ялама 2713 цистерна 60тн СПС",
         "nlu": {
-            "route_from": "Bakı-Yük (547105)", "route_to": "Yalama", "cargo_gng_code": "2713", "cargo_name": "Neft məhsulları",
+            "route_from": "Bakı Yük (547105)", "route_to": "Yalama", "cargo_gng_code": "2713", "cargo_name": "Neft məhsulları",
             "actual_weight_tons": 60.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "export"
         },
         "expected_rate": 18.84
