@@ -3,7 +3,7 @@ import re
 
 
 def extract_gng_digits(val) -> str:
-    """Безопасно извлекает только цифры из кода ГНГ любого формата."""
+    """Безопасно извлекает только цифры из кода ГНГ любого типа."""
     if val is None:
         return ""
     if isinstance(val, dict):
@@ -53,27 +53,29 @@ def load_table_6_rates():
 
 def determine_table_6_column(gng_code=None, park_type="SPS", *args, **kwargs) -> int:
     """
-    Автономное определение столбца Таблицы 6:
-    col_idx 0 = Столбец 2 (Нефть и нефтепродукты: 2709, 2710, 2712, 2713, 2714...)
-    col_idx 1 = Столбец 3 (Энергетические газы: 2705, 2711)
+    Определение столбца Таблицы 6:
+    col_idx 0 = Столбец 2 (Нефть и нефтепродукты: 2709, 2710, 2712, 2713, 2714, 2715, 3403, 3404...)
+    col_idx 1 = Столбец 3 (Энергетические газы)
     col_idx 2 = Столбец 4 (Газы и химические углеводороды)
     col_idx 3 = Столбец 5 (Спирты и фенолы)
     col_idx 4 = Столбец 6 (Скоропортящиеся / жиры 1501-1506)
     col_idx 5 = Столбец 7 (Другие грузы, ВКЛЮЧАЯ растительные масла 1507-1515)
-    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər)
+    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər - строго 29023, 27071-27073)
     """
     if gng_code is None or isinstance(gng_code, dict):
-        if isinstance(gng_code, dict):
-            d = gng_code
-        else:
-            d = kwargs
+        d = gng_code if isinstance(gng_code, dict) else kwargs
         gng_code = d.get("cargo_gng_code") or d.get("gng_code") or d.get("code") or ""
 
     clean_gng = extract_gng_digits(gng_code)
     norm_gng = clean_gng.lstrip("0") if clean_gng else ""
     park_type = str(park_type or "SPS").upper()
 
-    # 1. Столбец 8 (Özəl çənlər) — только узкий перечень специфических фракций
+    # 1. ПРИОРИТЕТ №1: Нефть и нефтепродукты (Столбец 2 -> col_idx 0)
+    oil_prefixes = ["2709", "2710", "2712", "2713", "2714", "2715", "3403", "3404", "3811", "3817", "3824"]
+    if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in oil_prefixes):
+        return 0
+
+    # 2. ПРИОРИТЕТ №2: Частные цистерны (Столбец 8 -> col_idx 6) - только для 2707 и 2902
     private_only_prefixes = [
         "27071", "27072", "27073", "290211", "29022", "29023",
         "290241", "290242", "290243", "290244", "29026", "29027", "29029"
@@ -81,28 +83,19 @@ def determine_table_6_column(gng_code=None, park_type="SPS", *args, **kwargs) ->
     if park_type == "SPS" and any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in private_only_prefixes):
         return 6
 
-    # 2. Столбец 2 (Нефть и нефтепродукты — включая 2713, 2709, 2710, 2712, 2714, 2715)
-    oil_prefixes = ["2709", "2710", "2712", "2713", "2714", "2715", "3403", "3404", "3811", "3817", "3824"]
-    if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in oil_prefixes):
-        return 0
-
-    # Защитный фоллбек для жидких нефтепродуктов группы 27xx
-    if norm_gng.startswith("27") and not any(norm_gng.startswith(p) for p in ["2705", "2711", "2707"]):
-        return 0
-
-    # 3. Столбец 3 (Энергетические газы)
+    # 3. Энергетические газы (Столбец 3 -> col_idx 1)
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in ["2705", "2711"]):
         return 1
 
-    # 4. Столбец 4 (Газы и химические углеводороды)
+    # 4. Газы и химические углеводороды (Столбец 4 -> col_idx 2)
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in ["2801", "2804", "2811", "2812", "2814", "2853", "2901", "2902", "3823"]):
         return 2
 
-    # 5. Столбец 5 (Спирты и фенолы)
+    # 5. Спирты и фенолы (Столбец 5 -> col_idx 3)
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in ["1520", "27077", "27079", "2905", "2906", "2907", "2908", "2909", "2932", "2933", "3820", "3905"]):
         return 3
 
-    # 6. Столбец 6 (Скоропортящиеся жидкие грузы: молочные 0401-0406, животные жиры 1501-1506, напитки 2201-2206)
+    # 6. Скоропортящиеся жидкие грузы (Столбец 6 -> col_idx 4)
     food_prefixes = [
         "0401", "0403", "0404", "0405", "0406", 
         "1501", "1502", "1503", "1504", "1505", "1506", 
@@ -111,7 +104,7 @@ def determine_table_6_column(gng_code=None, park_type="SPS", *args, **kwargs) ->
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in food_prefixes):
         return 4
 
-    # 7. Столбец 7 (Digər yüklər — растительные масла 1507-1515 и всё остальное)
+    # 7. Фоллбек: Прочие грузы (Столбец 7 -> col_idx 5)
     return 5
 
 
