@@ -63,7 +63,7 @@ def determine_table_7_column(wagon_type=None, weight_tons=25.0, container_type=N
     col_idx 1 = Столбец 3 (Вагоны 10т)
     col_idx 2 = Столбец 4 (Вагоны 15т)
     col_idx 3 = Столбец 5 (Вагоны 20т)
-    col_idx 4 = Столбец 6 (Вагоны 25т / Пассажирские / Багажные / Почта)
+    col_idx 4 = Столбец 6 (Вагоны 25т / Пассажирские / Багажные / Почта / Транспортеры)
     col_idx 5 = Столбец 7 (Konteyner Yüklü 3t)
     col_idx 6 = Столбец 8 (Konteyner Yüklü 5t)
     col_idx 7 = Столбец 9 (Konteyner Boş 3t)
@@ -71,9 +71,10 @@ def determine_table_7_column(wagon_type=None, weight_tons=25.0, container_type=N
     """
     w_type = str(wagon_type or kwargs.get("shipment_kind") or "").lower()
     clean_gng = extract_digits(gng_code or kwargs.get("cargo_gng_code"))
+    is_transporter = any(k in w_type for k in ["transporter", "транспортер", "transportyor"])
 
-    # 1. Пассажирские/багажные вагоны (п. 3.1.2.5) и почта (ГНГ 99910000) -> Столбец 6 (col_idx 4)
-    if "passenger" in w_type or "sərnişin" in w_type or "baggage" in w_type or clean_gng.startswith("99910000"):
+    # 1. Пассажирские/багажные вагоны (п. 3.1.2.5), почта (ГНГ 99910000) и транспортеры (п. 3.1.2.6) -> Столбец 6 (col_idx 4)
+    if "passenger" in w_type or "sərnişin" in w_type or "baggage" in w_type or clean_gng.startswith("99910000") or is_transporter:
         return 4
 
     # 2. Среднетоннажные контейнеры (3 тонны и 5 тонн)
@@ -139,9 +140,26 @@ def get_table_7_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
     coeffs = []
     notes = []
     w_type = str(wagon_type or "").lower()
-
     clean_gng = extract_digits(gng_code or kwargs.get("cargo_gng_code"))
-    if clean_gng.startswith("99910000") or "sərnişin" in w_type or "passenger" in w_type:
-        notes.append("Cədvəl 7 (sütun 6): Sərnişin vaqonlarında daşınma tarifi 25 ton çəki kateqoriyasına əsasən hesablanmışdır.")
+    is_transporter = any(k in w_type for k in ["transporter", "транспортер", "transportyor"])
+
+    if is_transporter:
+        note_text = (
+            "Cədvəl 7 (sütun 6): Transportyorlar üçün daşıma tarifi 25 ton çəki kateqoriyasının xüsusi dərəcəsinə əsasən hesablanmışdır."
+            if lang == "AZ" else
+            ("Таблица 7 (столбец 6): Тариф для транспортеров рассчитан по удельной ставке категории 25 тонн."
+             if lang == "RU" else
+             "Table 7 (col 6): Rate for transporters calculated based on 25-ton category rate.")
+        )
+        notes.append(note_text)
+    elif clean_gng.startswith("99910000") or "sərnişin" in w_type or "passenger" in w_type:
+        note_text = (
+            "Cədvəl 7 (sütun 6): Sərnişin vaqonlarında daşınma tarifi 25 ton çəki kateqoriyasına əsasən hesablanmışdır."
+            if lang == "AZ" else
+            ("Таблица 7 (столбец 6): Тариф в пассажирских вагонах рассчитан по категории 25 тонн."
+             if lang == "RU" else
+             "Table 7 (col 6): Rate in passenger wagons calculated based on 25-ton category.")
+        )
+        notes.append(note_text)
 
     return coeffs, notes
