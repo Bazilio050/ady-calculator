@@ -32,7 +32,7 @@ Gemini генерирует строго следующий JSON, передав
   "origin_name": "Yalama",
   "dest_esr": "558701",
   "dest_name": "Böyük Kəsik",
-  "gng_code": "0207",
+  "gng_code": "2, 4 или 8-значная строка (например, '78', '0207', '27130000'),
   "gng_name": "Ev quşlarının əti və əlavə məhsulları",
   "weight_tons": 35.0,
   "wagon_type": "ref",
