@@ -89,24 +89,24 @@ def apply_special_exceptions(
 
     # 5. СКИДКА СПС (0.85) — Применяется в самом конце
     if park_type == "SPS":
-    should_apply_sps = False
-    
-    if table_num in [3, 4, 5]:
-        should_apply_sps = True
-    elif table_num == 6:
-        # Для Таблицы 6 скидка 0.85 применяется к Столбцам 2-7 ("İnventar parka məxsus"),
-        # но НЕ применяется к Столбцу 8 ("Özəl çənlər")
-        clean_gng = extract_gng_digits(gng)
-        from tables.table_6 import determine_table_6_column
-        col_idx = determine_table_6_column(clean_gng, park_type)
+        should_apply_sps = False
         
-        # col_idx == 6 соответствует 8-му столбцу (Özəl çənlər)
-        if col_idx != 6:
+        if table_num in [3, 4, 5]:
             should_apply_sps = True
+        elif table_num == 6:
+            # Для Таблицы 6 скидка 0.85 применяется к Столбцам 2-7 ("İnventar parka məxsus"),
+            # но НЕ применяется к Столбцу 8 ("Özəl çənlər")
+            clean_gng = re.sub(r'\D', '', gng)
+            from tables.table_6 import determine_table_6_column
+            col_idx = determine_table_6_column(clean_gng, park_type)
+            
+            # col_idx == 6 соответствует 8-му столбцу (Özəl çənlər)
+            if col_idx != 6:
+                should_apply_sps = True
 
-    if should_apply_sps:
-        sps_label = "SPS güzəşti 0.85" if lang == "AZ" else ("Скидка СПС 0.85" if lang == "RU" else "SPS Discount 0.85")
-        coeffs.append((sps_label, 0.85))    
+        if should_apply_sps:
+            sps_label = "SPS güzəşti 0.85" if lang == "AZ" else ("Скидка СПС 0.85" if lang == "RU" else "SPS Discount 0.85")
+            coeffs.append((sps_label, 0.85))
 
     return coeffs, notes
 
