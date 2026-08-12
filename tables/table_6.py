@@ -121,10 +121,36 @@ def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_typ
     return rate_per_ton, details_str
 
 
+def extract_gng_digits(gng_code, kwargs=None):
+    if gng_code:
+        return re.sub(r'\D', '', str(gng_code))
+    if kwargs:
+        for key in ['gng', 'cargo_gng_code', 'gng_code']:
+            if kwargs.get(key):
+                return re.sub(r'\D', '', str(kwargs[key]))
+    return ""
+
+def determine_table_6_column(clean_gng: str, park_type: str = "SPS") -> int:
+    """
+    Возвращает индекс столбца Таблицы 6 (0..6, что соответствует столбцам 2..8):
+    col_idx 0 = Столбец 2 (Нефть и нефтепродукты)
+    col_idx 1 = Столбец 3 (Энергетические газы)
+    col_idx 2 = Столбец 4 (Газы и углеводороды)
+    col_idx 3 = Столбец 5 (Спирт и фенолы)
+    col_idx 4 = Столбец 6 (Скоропортящиеся жидкие)
+    col_idx 5 = Столбец 7 (Другие грузы)
+    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər)
+    """
+    if clean_gng.startswith("2713") or clean_gng.startswith("2710") or clean_gng.startswith("2709"):
+        return 0  # Столбец 2
+    return 5  # По умолчанию Столбец 7
+
+
 def get_table_6_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, park_type="SPS", lang="AZ", *args, **kwargs):
     """
     Специфические коэффициенты Таблицы 6:
     Повышающий 1.20 для Нефти и Нефтепродуктов (Столбец 2) строго при ИМПОРТЕ или ТРАНЗИТЕ.
+    На ЭКСПОРТ 1.20 НЕ применяется!
     """
     coeffs = []
     notes = []
@@ -133,7 +159,7 @@ def get_table_6_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
     
     st_lower = str(shipment_type_code or kwargs.get("shipment_type") or kwargs.get("mode") or "").lower()
 
-    # Повышающий коэффициент 1.20 для Нефти и Нефтепродуктов (Столбец 2) ТОЛЬКО при ИМПОРТЕ или ТРАНЗИТЕ
+    # Коэффициент 1.20 применяется ТОЛЬКО для Импорта и Транзита (на Экспорт НЕ распространяется)
     if col_idx == 0 and any(k in st_lower for k in ["import", "transit", "idxal", "tranzit"]):
         c_val_oil = 1.20
         c_lbl_oil = "Neft/Neft məhsulları 1.20" if lang == "AZ" else ("Нефть/Нефтепродукты 1.20" if lang == "RU" else "Oil/Petroleum 1.20")
