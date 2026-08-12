@@ -139,7 +139,8 @@ def run_tests():
 
     for test in TEST_SUITE:
         try:
-            res = process_full_calculation(test["nlu"], test["raw_text"], "AZ", "2026", UI_T)
+            # Передаём "" вместо raw_text, чтобы engine брал чистый NLU-объект
+            res = process_full_calculation(test["nlu"], "", "AZ", "2026", UI_T)
             
             raw_rate = res['part3'].get('express_rate') or res['part3'].get('net_ady_rate')
             calc_rate = parse_float(raw_rate)
