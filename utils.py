@@ -445,6 +445,9 @@ def get_transporter_min_weight(axle_count: int, actual_weight: float) -> float:
 
 
 def is_long_platform_scep(raw_text: str, wagon_type: str = "") -> bool:
-    text_lower = (raw_text + " " + wagon_type).lower()
+    text_lower = (str(raw_text or "") + " " + str(wagon_type or "")).lower()
     patterns = [r'19\s*m', r'19\s*м', r'>\s*19', r'сцеп', r'scep', r'qoşqu']
-    return any(re.search(p, text_lower) for pstr in patterns if re.search(pstr, text_lower))
+    for pattern in patterns:
+        if re.search(pattern, text_lower):
+            return True
+    return False
