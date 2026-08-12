@@ -352,29 +352,27 @@ if st.button(t["calc_btn"], type="primary"):
             nlu_res = call_gemini_nlu(client, user_input, selected_lang)
             
             # --- ПРИНУДИТЕЛЬНАЯ ЛОКАЛИЗАЦИЯ ДЕФОЛТНОГО ГРУЗА ---
-gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
-cargo_val = str(nlu_res.get("gng_name") or nlu_res.get("cargo_name") or "").strip()
+            gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
+            cargo_val = str(nlu_res.get("gng_name") or nlu_res.get("cargo_name") or "").strip()
 
-# Проверяем, отсутствует ли груз или вернулось дефолтное системное название
-is_default_or_empty = (
-    not gng_val or gng_val in ["00000000", "0000", "0"] or
-    not cargo_val or "Aşırılan" in cargo_val or "Ümumi" in cargo_val
-)
+            is_default_or_empty = (
+                not gng_val or gng_val in ["00000000", "0000", "0"] or
+                not cargo_val or "Aşırılan" in cargo_val or "Ümumi" in cargo_val
+            )
 
-if is_default_or_empty:
-    nlu_res["gng_code"] = "00000000"
-    nlu_res["cargo_gng_code"] = "00000000"
-    
-    cargo_defaults = {
-        "AZ": "Aşırılan yük",
-        "RU": "Общий / Генеральный груз",
-        "EN": "General cargo"
-    }
-    localized_cargo_name = cargo_defaults.get(selected_lang, "Aşırılan yük")
-    
-    # Обновляем сразу оба ключа, чтобы engine.py взял нужный язык
-    nlu_res["cargo_name"] = localized_cargo_name
-    nlu_res["gng_name"] = localized_cargo_name
+            if is_default_or_empty:
+                nlu_res["gng_code"] = "00000000"
+                nlu_res["cargo_gng_code"] = "00000000"
+                
+                cargo_defaults = {
+                    "AZ": "Aşırılan yük",
+                    "RU": "Общий / Генеральный груз",
+                    "EN": "General cargo"
+                }
+                localized_cargo_name = cargo_defaults.get(selected_lang, "Aşırılan yük")
+                
+                nlu_res["cargo_name"] = localized_cargo_name
+                nlu_res["gng_name"] = localized_cargo_name
             
             missing = validate_nlu_input(nlu_res, selected_lang)
             
