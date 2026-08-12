@@ -13,15 +13,15 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
         "- Always output the exact standard 6-digit ESR code for each station ('origin_esr', 'dest_esr').\n"
         "- Example ESRs: Yalama=545006, Biləcəri/Баладжары=546808, Abşeron=548004, Böyük Kəsik=558701, Bakı-Yük=547105, Astara=554109.\n"
         "- Do NOT confuse Biləcəri (546808) with ferry/port codes (547209).\n"
-        "- GNG/NHM cargo codes can be 2, 4, or 8 digits (e.g., '78', '72', '0207', '27130000'). ALWAYS output them strictly as strings with leading zeros preserved.
-        "- If a 2-digit group code is provided (like '78' or '72'), set 'gng_code' to string (e.g., "78") AND infer the cargo group name for 'gng_name' (e.g., "Svinç / Əlvan metallar").
+        "- GNG/NHM cargo codes can be 2, 4, or 8 digits (e.g., '78', '72', '0207', '27130000'). ALWAYS output them strictly as strings with leading zeros preserved.\n"
+        "- If a 2-digit group code is provided (like '78' or '72'), set 'gng_code' to string (e.g., \"78\") AND infer the cargo group name for 'gng_name' (e.g., \"Svinç / Əlvan metallar\").\n\n"
         "EXPECTED JSON STRUCTURE:\n"
         "{\n"
         '  "origin_esr": "6-digit ESR string or null",\n'
         f'  "origin_name": "Station name in {target_lang}",\n'
         '  "dest_esr": "6-digit ESR string or null",\n'
         f'  "dest_name": "Station name in {target_lang}",\n'
-        '  "gng_code": "4-digit GNG code string like \'0207\' or null",\n'
+        '  "gng_code": "2, 4, or 8 digit GNG code string or null",\n'
         f'  "gng_name": "Short cargo description in {target_lang}",\n'
         '  "weight_tons": float or null,\n'
         '  "wagon_type": "universal / tank / ref / thermos / autocarrier",\n'
