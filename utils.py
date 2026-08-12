@@ -444,10 +444,7 @@ def get_transporter_min_weight(axle_count: int, actual_weight: float) -> float:
     return actual_weight
 
 
-def is_long_platform_scep(text_raw: str, wagon_type: str = "") -> bool:
-    """
-    Пункт 3.1.2.7: Проверка специализированных платформ сцепа с базой > 19м.
-    """
-    txt = (str(text_raw or "") + " " + str(wagon_type or "")).lower()
-    keywords = ["19m", "19 м", "19m-dən", "19m-den", "19 метр", "avtoqoşqu", "автопоезд", "сцеп"]
-    return any(k in txt for k in keywords)
+def is_long_platform_scep(raw_text: str, wagon_type: str = "") -> bool:
+    text_lower = (raw_text + " " + wagon_type).lower()
+    patterns = [r'19\s*m', r'19\s*м', r'>\s*19', r'сцеп', r'scep', r'qoşqu']
+    return any(re.search(p, text_lower) for pstr in patterns if re.search(pstr, text_lower))
