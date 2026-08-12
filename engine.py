@@ -9,7 +9,7 @@ from utils import (
     is_border_esr,
     resolve_esr_by_station_name,
     get_exchange_rate_for_date,
-    parse_date_from_string
+    parse_date_from_string,
     should_apply_150_coeff
 )
 
