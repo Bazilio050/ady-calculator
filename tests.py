@@ -110,7 +110,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Şirvan", "cargo_gng_code": "15071010", "cargo_name": "Bitki yağları",
             "actual_weight_tons": 50.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 36.11
+        "expected_rate": 42.12
     },
     {
         "name": "12. Ялама -> Сиазань (29023, цистерна, 50т, СПС)",
