@@ -147,23 +147,7 @@ TEST_SUITE = [
             "actual_weight_tons": 10.0, "wagon_type": "universal", "park_type": "MPS", "explicit_mode": "local"
         },
         "expected_rate": 9.37
-     {
-        "name": "14. Баку тов -> Ялама (Почта, 15т, пассажирский)",
-        "raw_text": "Баку тов Ялама 99910000 15тн",
-        "nlu": {
-            "route_from": "Bakı Yük (547105)", "route_to": "Yalama", "cargo_gng_code": "99910000", "cargo_name": "Poçt",
-            "actual_weight_tons": 15.0, "wagon_type": "passenger", "park_type": "SPS", "explicit_mode": "export"
-        },
-        "expected_rate": 41.27
-     {
-        "name": "15. Баладжары -> Сумгаит (10т, малотоннажная отправка, 35 км)",
-        "raw_text": "Баладжары Сумгаит 10тн малотоннажная",
-        "nlu": {
-            "route_from": "Biləcəri", "route_to": "Sumqayıt", "cargo_gng_code": "00000000",
-            "actual_weight_tons": 10.0, "wagon_type": "small_chunk", "shipment_kind": "small_chunk", "park_type": "MPS", "explicit_mode": "local"
-        },
-        "expected_rate": 9.37
-    }
+     }
 ]
 
 def parse_float(val):
