@@ -10,7 +10,9 @@ from utils import (
     resolve_esr_by_station_name,
     get_exchange_rate_for_date,
     parse_date_from_string,
-    should_apply_150_coeff
+    should_apply_150_coeff,
+    get_transporter_min_weight,
+    is_long_platform_scep
 )
 
 from tables.table_3 import calculate_table_3_base, get_table_3_coefficients
@@ -21,9 +23,6 @@ from tables.table_7 import calculate_table_7_base, get_table_7_coefficients
 
 
 def get_currency_rate(requested_period: str = None, lang: str = "AZ") -> tuple:
-    """
-    Определяет курс CHF/USD по дате из запроса или берёт текущий период.
-    """
     target_dt = parse_date_from_string(requested_period)
     rate, period_str = get_exchange_rate_for_date(target_dt)
     
@@ -55,7 +54,8 @@ def apply_special_exceptions(
 
     # 1. ИНДЕКСАЦИЯ 1.015 (Для всех гружёных вагонов)
     input_lower = user_input_raw.lower()
-    if not any(k in input_lower for k in ["boş", "порожн", "empty"]):
+    is_empty = any(k in input_lower for k in ["boş", "порожн", "empty"])
+    if not is_empty:
         ind_label = "Əlavə əmsal 1.015" if lang == "AZ" else ("Индексация 1.015" if lang == "RU" else "Indexation 1.015")
         coeffs.append((ind_label, 1.015))
 
@@ -87,25 +87,31 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
 
-    # 4. Общие глобальные коэффициенты (цветмет 1.20, Алят-Беюк Кесик 1.20)
+    # 3.1.2.7 — Спецплатформы длиннее 19 м
+    if is_long_platform_scep(user_input_raw, wagon_type):
+        if not is_empty:
+            lbl_19m = "Sintez platforma >19m 1.20" if lang == "AZ" else ("Спецплатформа >19м 1.20" if lang == "RU" else "Special platform >19m 1.20")
+            coeffs.append((lbl_19m, 1.20))
+            notes.append("Qoşqu oxları 19m-dən artıq olan platformalar üçün 1.20 əmsalı tətbiq edilmişdir.")
+        elif park_type == "SPS":
+            lbl_empty_19m = "Boş platforma >19m 0.60" if lang == "AZ" else ("Скидка порожн. >19м 0.60" if lang == "RU" else "Empty platform >19m 0.60")
+            coeffs.append((lbl_empty_19m, 0.60))
+
+    # 4. Общие глобальные коэффициенты
     g_coeffs, g_notes = get_global_coefficients(shipment_type_code, gng, origin_esr, dest_esr, lang)
     coeffs.extend(g_coeffs)
     notes.extend(g_notes)
 
-    # 5. СКИДКА СПС (0.85) — Применяется в самом конце
+    # 5. СКИДКА СПС (0.85)
     if park_type == "SPS":
         should_apply_sps = False
         
         if table_num in [3, 4, 5, 7]:
             should_apply_sps = True
         elif table_num == 6:
-            # Для Таблицы 6 скидка 0.85 применяется к Столбцам 2-7 ("İnventar parka məxsus"),
-            # но НЕ применяется к Столбцу 8 ("Özəl çənlər")
             clean_gng = re.sub(r'\D', '', gng)
             from tables.table_6 import determine_table_6_column
             col_idx = determine_table_6_column(clean_gng, park_type)
-            
-            # col_idx == 6 соответствует 8-му столбцу (Özəl çənlər)
             if col_idx != 6:
                 should_apply_sps = True
 
@@ -121,20 +127,14 @@ def nlu_res_data_esr(nlu_data: dict) -> str:
 
 
 def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, year: str, ui_t: dict) -> dict:
-    """
-    Главный калькулятор-диспетчер.
-    """
     lang_upper = str(lang or "AZ").upper()
     
-    # 1. Извлечение названий станций из NLU
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
 
-    # 2. АВТОМАТИЧЕСКАЯ ПРОВЕРКА И ИСПРАВЛЕНИЕ ЕСР ИЗ Distances.txt ПО НАЗВАНИЮ
     origin_esr = resolve_esr_by_station_name(st_from_raw) or str(nlu_data.get("origin_esr") or "")
     dest_esr = resolve_esr_by_station_name(st_to_raw) or str(nlu_data.get("dest_esr") or "")
 
-    # Извлечение груза и веса
     gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
     cargo_name_nlu = str(nlu_data.get("gng_name") or nlu_data.get("cargo_name") or "").strip()
 
@@ -151,12 +151,10 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     explicit_mode = nlu_data.get("explicit_mode")
 
-    # Красивое отображение станций с суффиксами погранпереходов
     display_from = format_station_display_name(st_from_raw, origin_esr, lang_upper)
     display_to = format_station_display_name(st_to_raw, dest_esr, lang_upper)
     route_display = f"{display_from} – {display_to}"
 
-    # Определение вида перевозки
     if explicit_mode in ["import", "export", "transit"]:
         shipment_type_code = explicit_mode
         shipment_type_display = ui_t.get(f"type_{explicit_mode}", explicit_mode.capitalize())
@@ -171,17 +169,14 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             shipment_type_code = "local"
             shipment_type_display = "Daxili daşınma" if lang_upper == "AZ" else ("Внутренняя перевозка" if lang_upper == "RU" else "Domestic shipment")
 
-    # 3. Защищённый поиск расстояния strictly по кодам ЕСР
     raw_dist = get_distance_by_esr(origin_esr, dest_esr)
-    
     try:
         actual_dist_km = int(raw_dist) if raw_dist is not None else 0
     except (ValueError, TypeError):
         actual_dist_km = 0
 
-    # Если вместо расстояния прилетел неадекватный код или 0
     if actual_dist_km <= 0 or actual_dist_km > 5000:
-        actual_dist_km = 300  # Страховочное плечо, если код не найден
+        actual_dist_km = 300
 
     tariff_dist_km = get_calculation_distance(actual_dist_km, shipment_type_code)
     
@@ -190,7 +185,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     else:
         dist_display = f"{actual_dist_km} km"
 
-    # 4. Бесплатный возврат инвентарных вагонов МПС (п. 3.1.1)
     input_lower = user_input_raw.lower()
     is_empty_wagon = any(k in input_lower for k in ["boş", "порожн", "empty"])
     if is_empty_wagon and park_type == "MPS":
@@ -213,8 +207,13 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             }
         }
 
-    # 5. Расчёт веса по минимальным нормам ГНГ (для обычных вагонов)
+    # 5. Расчёт веса (с учётом норм ГНГ и транспортеров п. 3.1.2.6)
     billable_weight = get_min_weight_by_gng(gng, act_weight)
+
+    match_axle = re.search(r'(\d+)\s*(?:oxlu|осн|axle|осей)', input_lower)
+    if match_axle:
+        axles = int(match_axle.group(1))
+        billable_weight = get_transporter_min_weight(axles, billable_weight)
 
     act_w_str = f"{int(act_weight) if act_weight.is_integer() else act_weight}"
     bill_w_str = f"{int(billable_weight) if billable_weight.is_integer() else billable_weight}"
@@ -235,7 +234,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         ("container" in wagon_type and act_weight <= 5.0)
     )
 
-    # 6. Выбор модуля таблицы
     if is_table_7_type:
         table_num = 7
         is_per_wagon = False
@@ -265,7 +263,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
 
     if base_chf is None:
-        base_chf = 1200.0  # Страховочная ставка
+        base_chf = 1200.0
         table_details = "Таблица 3 (базовая)"
 
     unit_str = ui_t.get("unit_wagon", "USD/vaqon") if is_per_wagon else ui_t.get("unit_ton", "USD/t")
@@ -274,13 +272,11 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     base_tariff_display = f"**{base_chf:.2f} {chf_unit}** ({table_details})"
     usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang_upper)
 
-    # 7. Сбор специфичных и глобальных коэффициентов
     coeffs, notes = apply_special_exceptions(
         nlu_data, shipment_type_code, table_num, is_ref_type, act_weight, 
         billable_weight, actual_dist_km, user_input_raw, lang_upper, ui_t, ref_wagons_cnt
     )
 
-    # 8. Математический расчет суммы
     final_rate = base_chf / usd_rate
     formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
     for _, c_val in coeffs:
