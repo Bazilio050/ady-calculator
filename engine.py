@@ -10,6 +10,7 @@ from utils import (
     resolve_esr_by_station_name,
     get_exchange_rate_for_date,
     parse_date_from_string
+    should_apply_150_coeff
 )
 
 from tables.table_3 import calculate_table_3_base, get_table_3_coefficients
@@ -42,95 +43,54 @@ def apply_special_exceptions(
     ui_t: dict, 
     ref_wagons_cnt: int
 ) -> tuple:
-    """
-    Координирует коэффициенты и примечания согласно RULES.md.
-    """
     coeffs = []
     notes = []
 
     park_type = str(nlu_data.get("park_type", "SPS") or "SPS").upper()
     gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
-    
     origin_esr = str(nlu_data.get("origin_esr") or "")
     dest_esr = str(nlu_data.get("dest_esr") or "")
 
-    # 1. Вызов модулей таблиц со строго именованными аргументами
-    if table_num == 3:
-        tbl_coeffs, tbl_notes = get_table_3_coefficients(
-            shipment_type=shipment_type_code,
-            wagon_type=wagon_type,
-            gng=gng,
-            lang=lang,
-            ui_t=ui_t
-        )
-        coeffs.extend(tbl_coeffs)
-        notes.extend(tbl_notes)
-    elif table_num == 4:
-        tbl_coeffs, tbl_notes = get_table_4_coefficients(
-            shipment_type=shipment_type_code,
-            wagon_type=wagon_type,
-            gng=gng,
-            lang=lang,
-            ui_t=ui_t
-        )
-        coeffs.extend(tbl_coeffs)
-        notes.extend(tbl_notes)
-    elif table_num == 5:
-        tbl_coeffs, tbl_notes = get_table_5_coefficients(
-            shipment_type=shipment_type_code,
-            wagon_type=wagon_type,
-            gng=gng,
-            is_tariff_agreement=False,
-            ref_wagons_cnt=ref_wagons_cnt,
-            lang=lang,
-            ui_t=ui_t
-        )
-        coeffs.extend(tbl_coeffs)
-        notes.extend(tbl_notes)
-    elif table_num == 6:
-        tbl_coeffs, tbl_notes = get_table_6_coefficients(
-            shipment_type=shipment_type_code,
-            wagon_type=wagon_type,
-            gng=gng,
-            park_type=park_type,
-            lang=lang,
-            ui_t=ui_t
-        )
-        coeffs.extend(tbl_coeffs)
-        notes.extend(tbl_notes)
-
-    # 2. Глобальная скидка СПС (0.85) для вагонов СПС
-    if park_type == "SPS" and table_num != 6:
-        sps_label = "SPS güzəşti 0.85" if lang == "AZ" else ("Скидка СПС 0.85" if lang == "RU" else "SPS Discount 0.85")
-        coeffs.append((sps_label, 0.85))
-        if "note_sps" in ui_t:
-            notes.append(ui_t["note_sps"])
-    # 3. Индексационный коэффициент 1.015 (для всех гружёных вагонов)
+    # 1. ИНДЕКСАЦИЯ 1.015 (Для всех гружёных вагонов)
     input_lower = user_input_raw.lower()
     if not any(k in input_lower for k in ["boş", "порожн", "empty"]):
         ind_label = "Əlavə əmsal 1.015" if lang == "AZ" else ("Индексация 1.015" if lang == "RU" else "Indexation 1.015")
         coeffs.append((ind_label, 1.015))
-        if "note_coef_1015" in ui_t:
-            notes.append(ui_t["note_coef_1015"])
 
-    # 4. Общие глобальные коэффициенты (цветмет, маршрут Алят-Беюк Кесик 1.20)
+    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50 (С проверкой 5 исключений)
+    if should_apply_150_coeff(shipment_type_code, table_num, gng, wagon_type, park_type):
+        lbl_150 = "İdxal/İxrac baza 1.50" if lang == "AZ" else ("Импорт/Экспорт база 1.50" if lang == "RU" else "Import/Export base 1.50")
+        coeffs.append((lbl_150, 1.50))
+        notes.append("Baza tarifinə İdxal/İxrac üzrə 1.50 əmsalı tətbiq olunmuşdur.")
+
+    # 3. Специфические коэффициенты конкретных таблиц
+    if table_num == 3:
+        tbl_coeffs, tbl_notes = get_table_3_coefficients(shipment_type=shipment_type_code, wagon_type=wagon_type, gng=gng, lang=lang, ui_t=ui_t)
+        coeffs.extend(tbl_coeffs)
+        notes.extend(tbl_notes)
+    elif table_num == 4:
+        tbl_coeffs, tbl_notes = get_table_4_coefficients(shipment_type=shipment_type_code, wagon_type=wagon_type, gng=gng, lang=lang, ui_t=ui_t)
+        coeffs.extend(tbl_coeffs)
+        notes.extend(tbl_notes)
+    elif table_num == 5:
+        tbl_coeffs, tbl_notes = get_table_5_coefficients(shipment_type=shipment_type_code, wagon_type=wagon_type, gng=gng, ref_wagons_cnt=ref_wagons_cnt, lang=lang, ui_t=ui_t)
+        coeffs.extend(tbl_coeffs)
+        notes.extend(tbl_notes)
+    elif table_num == 6:
+        tbl_coeffs, tbl_notes = get_table_6_coefficients(shipment_type=shipment_type_code, wagon_type=wagon_type, gng=gng, park_type=park_type, lang=lang, ui_t=ui_t)
+        coeffs.extend(tbl_coeffs)
+        notes.extend(tbl_notes)
+
+    # 4. Общие глобальные коэффициенты (цветмет 1.20, Алят-Беюк Кесик 1.20)
     g_coeffs, g_notes = get_global_coefficients(shipment_type_code, gng, origin_esr, dest_esr, lang)
-    for c_lbl, c_val in g_coeffs:
-        coeffs.append((c_lbl, c_val))
+    coeffs.extend(g_coeffs)
     notes.extend(g_notes)
 
-    # 5. Примечания по правилам
-    if shipment_type_code == "import" and dist_km < 151 and "note_import" in ui_t:
-        notes.append(ui_t["note_import"])
-    elif shipment_type_code == "export" and dist_km < 101 and "note_export" in ui_t:
-        notes.append(ui_t["note_export"])
-
-    if act_weight < billable_weight and "note_min_weight" in ui_t:
-        notes.append(ui_t["note_min_weight"])
-
-    if "note_express" in ui_t:
-        notes.append(ui_t["note_express"])
+    # 5. СКИДКА СПС (0.85) — Применяется в самом конце
+    if park_type == "SPS" and table_num != 6:
+        sps_label = "SPS güzəşti 0.85" if lang == "AZ" else ("Скидка СПС 0.85" if lang == "RU" else "SPS Discount 0.85")
+        coeffs.append((sps_label, 0.85))
 
     return coeffs, notes
 
