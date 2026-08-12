@@ -13,7 +13,7 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
         "- Always output the exact standard 6-digit ESR code for each station ('origin_esr', 'dest_esr').\n"
         "- Example ESRs: Yalama=545006, Biləcəri/Баладжары=546808, Abşeron=548004, Böyük Kəsik=558701, Bakı-Yük=547105, Astara=554109.\n"
         "- Do NOT confuse Biləcəri (546808) with ferry/port codes (547209).\n"
-        "- GNG/NHM cargo codes can be 2, 4, or 8 digits (e.g., '78', '72', '0207', '27130000'). ALWAYS output them strictly as strings with leading zeros preserved.\n"
+        "- GNG/NHM cargo codes can be any digit length from 2 to 8 digits (e.g., '78', '72', '0207', '780120', '27130000'). ALWAYS output them strictly as strings with leading zeros preserved."
         "- If a 2-digit group code is provided (like '78' or '72'), set 'gng_code' to string (e.g., \"78\") AND infer the cargo group name for 'gng_name' (e.g., \"Svinç / Əlvan metallar\").\n\n"
         "EXPECTED JSON STRUCTURE:\n"
         "{\n"
