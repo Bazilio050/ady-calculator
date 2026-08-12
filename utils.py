@@ -425,3 +425,46 @@ def get_exchange_rate_for_date(target_date=None) -> tuple:
 
     # Дефолт для текущего периода 2026, если вышли за границы таблицы
     return 0.79, "01.07.2026 - 30.09.2026"
+
+def should_apply_150_coeff(shipment_type_code: str, table_num: int, gng_code: str, wagon_type: str, park_type: str = "SPS") -> bool:
+    """
+    Централизованная проверка коэффициента 1.50 по RULES.md (Раздел 8.1).
+    """
+    st = str(shipment_type_code or "").lower()
+    # Работает ТОЛЬКО для Импорта и Экспорта
+    if not any(k in st for k in ["import", "export", "idxal", "ixrac"]):
+        return False
+
+    # ИСКЛЮЧЕНИЕ 1: Все расчёты по Таблице 3
+    if table_num == 3:
+        return False
+
+    clean_gng = extract_gng_digits(gng_code)
+    w_type = str(wagon_type or "").lower()
+    is_universal = any(k in w_type for k in ["universal", "универсал", "крытый", "полувагон", "платформ"])
+
+    # ИСКЛЮЧЕНИЕ 2: Лес и пиломатериалы (4403, 4404, 4407–4413) в универсальных вагонах
+    if is_universal:
+        if clean_gng.startswith("4403") or clean_gng.startswith("4404"):
+            return False
+        if len(clean_gng) >= 4 and 4407 <= int(clean_gng[:4]) <= 4413:
+            return False
+
+    # ИСКЛЮЧЕНИЕ 3: Чёрные металлы (72, 7301–7307) в универсальных вагонах
+    if is_universal:
+        if clean_gng.startswith("72"):
+            return False
+        if len(clean_gng) >= 4 and 7301 <= int(clean_gng[:4]) <= 7307:
+            return False
+
+    # ИСКЛЮЧЕНИЕ 4: Метанол (290511) в цистернах
+    if clean_gng.startswith("290511"):
+        return False
+
+    # ИСКЛЮЧЕНИЕ 5: Нефть и нефтепродукты (Таблица 6, Столбец 2)
+    if table_num == 6:
+        from tables.table_6 import determine_table_6_column
+        if determine_table_6_column(clean_gng, park_type) == 0:
+            return False
+
+    return True
