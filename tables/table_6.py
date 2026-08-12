@@ -45,7 +45,6 @@ def load_table_6_rates():
 
 def determine_table_6_column(gng_code, park_type="SPS") -> int:
     """
-    Определяет индекс колонки (0..6, соответствующие Col 2..Col 8 в Table_6_Tariffs.txt):
     col_idx 0 = Столбец 2 (Нефть и нефтепродукты)
     col_idx 1 = Столбец 3 (Энергетические газы)
     col_idx 2 = Столбец 4 (Газы и химические углеводороды)
@@ -58,7 +57,7 @@ def determine_table_6_column(gng_code, park_type="SPS") -> int:
     norm_gng = clean_gng.lstrip("0") if clean_gng else ""
     park_type = str(park_type or "SPS").upper()
 
-    # 1. Столбец 8 (Özəl çənlər)
+    # 1. Столбец 8 (Özəl çənlər) — строго только для узкого перечня частных углеводородов
     private_only_prefixes = [
         "27071", "27072", "27073", "290211", "29022", "29023",
         "290241", "290242", "290243", "290244", "29026", "29027", "29029"
@@ -66,7 +65,7 @@ def determine_table_6_column(gng_code, park_type="SPS") -> int:
     if park_type == "SPS" and any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in private_only_prefixes):
         return 6
 
-    # 2. Столбец 2 (Нефть и нефтепродукты)
+    # 2. Столбец 2 (Нефть и нефтепродукты - включая 2713)
     oil_prefixes = ["2709", "2710", "2712", "2713", "2714", "2715", "3403", "3404", "3811", "3817", "3824"]
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in oil_prefixes):
         return 0
@@ -83,7 +82,7 @@ def determine_table_6_column(gng_code, park_type="SPS") -> int:
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in ["1520", "27077", "27079", "2905", "2906", "2907", "2908", "2909", "2932", "2933", "3820", "3905"]):
         return 3
 
-    # 6. Столбец 6 (Животные жиры 1501-1506, молочные, напитки)
+    # 6. Столбец 6 (Скоропортящиеся жидкие грузы: молочные 0401-0406, животные жиры 1501-1506, напитки 2201-2206)
     food_prefixes = [
         "0401", "0403", "0404", "0405", "0406", 
         "1501", "1502", "1503", "1504", "1505", "1506", 
@@ -92,7 +91,7 @@ def determine_table_6_column(gng_code, park_type="SPS") -> int:
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in food_prefixes):
         return 4
 
-    # 7. Столбец 7 (Digər yüklər - растительные масла 1507-1515 и всё остальное)
+    # 7. Столбец 7 (Digər yüklər — сюда попадают растительные масла 1507-1515 и всё остальное)
     return 5
 
 
