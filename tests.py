@@ -129,6 +129,35 @@ TEST_SUITE = [
             "actual_weight_tons": 50.0, "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "export"
         },
         "expected_rate": 15.38
+        ,
+    {
+        "name": "14. Баку-тов -> Ялама (Почта, 15т, пассажирский)",
+        "raw_text": "Баку-тов Ялама 99910000 15тн",
+        "nlu": {
+            "route_from": "Bakı Yük (547105)", 
+            "route_to": "Yalama", 
+            "cargo_gng_code": "99910000", 
+            "cargo_name": "Poçt",
+            "actual_weight_tons": 15.0, 
+            "wagon_type": "passenger", 
+            "park_type": "SPS", 
+            "explicit_mode": "export"
+        },
+        "expected_rate": 31.27  # Расчёт: 24.70 CHF (Col 6, 207km) / 0.79 = 31.27 USD
+    },
+    {
+        "name": "15. Баладжары -> Сумгаит (10т, универсальный вагон, 35 км)",
+        "raw_text": "Баладжары Сумгаит 10тн",
+        "nlu": {
+            "route_from": "Biləcəri", 
+            "route_to": "Sumqayıt", 
+            "cargo_gng_code": "00000000",
+            "actual_weight_tons": 10.0, 
+            "wagon_type": "universal", 
+            "park_type": "MPS", 
+            "explicit_mode": "local"
+        },
+        "expected_rate": 9.37  # Расчёт: 7.40 CHF (Col 3, 31-40km) / 0.79 = 9.37 USD
     }
 ]
 
