@@ -225,13 +225,15 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "изотерм"]) or (ref_wagons_cnt is not None)
     is_tanker_type = any(k in wagon_type for k in ["cistern", "цистерн", "tank", "çən", "bunker", "бункер"])
+    is_transporter = any(k in input_lower for k in ["транспортер", "transportyor", "transporter"])
 
     clean_gng = re.sub(r'\D', '', gng)
     is_table_7_type = (
         "small_chunk" in wagon_type or "small_chunk" in shipment_kind or
         "passenger" in wagon_type or "sərnişin" in wagon_type or "baggage" in wagon_type or
         clean_gng.startswith("99910000") or
-        ("container" in wagon_type and act_weight <= 5.0)
+        ("container" in wagon_type and act_weight <= 5.0) or
+        is_transporter or "transporter" in wagon_type
     )
 
     if is_table_7_type:
@@ -239,7 +241,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         is_per_wagon = False
         base_chf, table_details = calculate_table_7_base(
             distance_km=tariff_dist_km,
-            billable_weight_tons=act_weight if act_weight > 0 else billable_weight,
+            billable_weight_tons=billable_weight,
             wagon_type=wagon_type,
             container_type=nlu_data.get("container_type"),
             is_empty=is_empty_wagon,
@@ -290,7 +292,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
     if table_num == 7:
-        wagon_disp_name = "Sərnişin vaqonu" if (("passenger" in wagon_type or "sərnişin" in wagon_type) and lang_upper == "AZ") else ("Пассажирский вагон" if ("passenger" in wagon_type or "sərnişin" in wagon_type) else ("Xırda göndərmə" if lang_upper == "AZ" else "Малотоннажная отправка"))
+        if is_transporter or "transporter" in wagon_type:
+            wagon_disp_name = "Transportyor" if lang_upper == "AZ" else ("Транспортер" if lang_upper == "RU" else "Transporter")
+        elif "passenger" in wagon_type or "sərnişin" in wagon_type:
+            wagon_disp_name = "Sərnişin vaqonu" if lang_upper == "AZ" else ("Пассажирский вагон" if lang_upper == "RU" else "Passenger wagon")
+        else:
+            wagon_disp_name = "Xırda göndərmə" if lang_upper == "AZ" else ("Малотоннажная отправка" if lang_upper == "RU" else "Small chunk shipment")
     elif is_tanker_type:
         wagon_disp_name = "Çən vaqonu" if lang_upper == "AZ" else ("Вагон-цистерна" if lang_upper == "RU" else "Tank wagon")
     elif is_ref_type:
