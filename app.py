@@ -145,7 +145,8 @@ UI_TEXT = {
         "unit_wagon": "USD/vaqon", 
         "table_name": "Cədvəl", 
         "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:",
-        "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur."
+        "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur.",
+        "guide_title": "💡 Daxiletmə nümunələri və dəmir yolu terminləri (Açmaq üçün basın)"
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
@@ -189,7 +190,8 @@ UI_TEXT = {
         "unit_wagon": "USD/вагон", 
         "table_name": "Таблица", 
         "missing_title": "⚠️ Для точного расчета не хватает следующих данных:",
-        "footer_owner": "Данный проект принадлежит компании **AGT Cargo**."
+        "footer_owner": "Данный проект принадлежит компании **AGT Cargo**.",
+        "guide_title": "💡 Шаблоны запросов и справочник сокращений (Нажмите для просмотра)"
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
@@ -233,7 +235,8 @@ UI_TEXT = {
         "unit_wagon": "USD/wagon", 
         "table_name": "Table", 
         "missing_title": "⚠️ Required parameters missing:",
-        "footer_owner": "This project belongs to **AGT Cargo**."
+        "footer_owner": "This project belongs to **AGT Cargo**.",
+        "guide_title": "💡 Quick Templates & Railway Glossary (Click to expand)"
     }
 }
 
@@ -263,6 +266,57 @@ st.markdown(f"""
         <p>{t['subtitle'].format(selected_year)}</p>
     </div>
 """, unsafe_allow_html=True)
+
+# --- СВОРАЧИВАЕМАЯ ШПАРГАЛКА С ШАБЛОНАМИ ---
+with st.expander(t["guide_title"]):
+    if selected_lang == "AZ":
+        st.markdown("""
+        **🐣 Yeni başlayanlar üçün hazır şablonlar:**
+        * **Ümumi vaqon:** `[Haradan] -> [Haraya], [Çəki]t, [Vaqon növü], [SPS/MPS]`  
+          *Nümunə:* `Yalama - Böyük Kəsik, 45t, örtülü vaqon, SPS`
+        * **Transportyorlar:** `[Haradan] -> [Haraya], [Ox sayı]-oxlu transportyor, [Çəki]t`  
+          *Nümunə:* `Astara - Yalama, 8-oxlu transportyor, 15t`
+        * **Xüsusi platformalar:** `[Haradan] -> [Haraya], platforma qoşqu 19m, [Çəki]t`  
+          *Nümunə:* `Yalama - Abşeron platforma scep >19m 40t`
+        * **Soyuducu vaqonlar:** `[Haradan] -> [Haraya], refseksiya [Sxem], [Çəki]t`  
+          *Nümunə:* `Yalama - Biləcəri, 5+1, 35t`
+
+        ---
+        **⚡ Təcrübəli mütəxəssislər üçün (sürətli daxiletmə):**
+        `5+1`, `1+5`, `İZVK`, `VTVK`, `SPS`, `MPS`, `8-oxlu`, `>19m`.
+        """)
+    elif selected_lang == "RU":
+        st.markdown("""
+        **🐣 Готовые шаблоны запросов (для начинающих):**
+        * **Универсальный вагон:** `[Откуда] -> [Куда], [Вес]т, [Тип вагона], [СПС/МПС]`  
+          *Пример:* `Ялама - Беюк Кясик, 45т, крытый вагон, СПС`
+        * **Транспортеры:** `[Откуда] -> [Куда], [Осей]-осный транспортер, [Вес]т`  
+          *Пример:* `Астара - Ялама, 8-осный транспортер, 15т`
+        * **Спецплатформы (сцеп >19м):** `[Откуда] -> [Куда], платформа сцеп >19м, [Вес]т`  
+          *Пример:* `Ялама - Апшерон платформа сцеп 19м 40т`
+        * **Рефсекции:** `[Откуда] -> [Куда], рефсекция [Схема], [Вес]т`  
+          *Пример:* `Ялама - Баладжары, 5+1, 35т`
+
+        ---
+        **⚡ Для опытных сотрудников (программа понимает сокращения):**
+        `5+1`, `1+5`, `İZVK`, `VTVK`, `СПС`, `МПС`, `8-осн`, `>19м`.
+        """)
+    else:
+        st.markdown("""
+        **🐣 Quick templates for beginners:**
+        * **Universal wagon:** `[From] -> [To], [Weight]t, [Wagon type], [SPS/MPS]`  
+          *Example:* `Yalama - Beyuk Kasik, 45t, covered wagon, SPS`
+        * **Transporters:** `[From] -> [To], [Axles]-axle transporter, [Weight]t`  
+          *Example:* `Astara - Yalama, 8-axle transporter, 15t`
+        * **Special platforms:** `[From] -> [To], platform scep >19m, [Weight]t`  
+          *Example:* `Yalama - Absheron platform scep >19m 40t`
+        * **Refrigerated sections:** `[From] -> [To], ref section [Scheme], [Weight]t`  
+          *Example:* `Yalama - Bilajari, 5+1, 35t`
+
+        ---
+        **⚡ Fast shortcuts for experienced users:**
+        `5+1`, `1+5`, `İZVK`, `VTVK`, `SPS`, `MPS`, `8-axle`, `>19m`.
+        """)
 
 # --- ПОЛЕ ВВОДА ЗАПРОСА ---
 user_input = st.text_area(t["input_header"], height=120, placeholder=t["input_placeholder"])
@@ -296,6 +350,12 @@ if st.button(t["calc_btn"], type="primary"):
             # 1. Вызов Gemini для мгновенного парсинга NLU
             client = genai.Client(api_key=user_api_key.strip())
             nlu_res = call_gemini_nlu(client, user_input, selected_lang)
+            
+            # --- АВТОПОДСТАНОВКА ГНГ ЕСЛИ ОН НЕ УКАЗАН ПОЛЬЗОВАТЕЛЕМ ---
+            if not nlu_res.get("gng_code") and not nlu_res.get("cargo_gng_code") and not nlu_res.get("cargo_name"):
+                nlu_res["gng_code"] = "00000000"
+                nlu_res["cargo_gng_code"] = "00000000"
+                nlu_res["cargo_name"] = "Aşırılan yük / Ümumi yük"
             
             missing = validate_nlu_input(nlu_res, selected_lang)
             
