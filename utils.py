@@ -52,7 +52,6 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 # 2. ПОИСК И АВТО-РЕЗОЛВ ЕСР ПО НАЗВАНИЮ (Distances.txt)
 # ==============================================================================
 
-# Приоритетный реестр экспортных кодов погранпереходов (RULES.md -> Раздел 2)
 BORDER_STATION_ESR_OVERRIDE = {
     "boyuk kesik": "558701",  # Böyük Kəsik (eksport) -> даёт точные 680 км!
     "yalama": "547508",       # Yalama (eksport) -> даёт точные 680 км!
@@ -70,16 +69,13 @@ def resolve_esr_by_station_name(station_name: str) -> str:
     if not station_name:
         return ""
 
-    # Очищаем название от суффиксов
     clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(station_name), flags=re.IGNORECASE).strip().lower()
     clean_norm = clean.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
 
-    # 1. Приоритетный поиск для погранпереходов
     for b_name, b_esr in BORDER_STATION_ESR_OVERRIDE.items():
         if b_name in clean_norm or clean_norm in b_name:
             return b_esr
 
-    # 2. Сканирование Distances.txt для остальных станций
     possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
     dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
 
@@ -108,17 +104,11 @@ def resolve_esr_by_station_name(station_name: str) -> str:
     return ""
 
 
-# Карта ЕСР-кодов для колонок погранпереходов Таблицы Distances.txt
 BORDER_COLUMN_MAP = {
-    # Колонка 3: Yalama (eksport)
     "545006": 3, "547508": 3, "545307": 3, "545107": 3,
-    # Колонка 4: Astara (eksport)
     "554109": 4, "554503": 4, "553905": 4,
-    # Колонка 5: Böyük Kəsik (eksport)
     "558701": 5, "558631": 5, "558504": 5, "558400": 5,
-    # Колонка 6: Culfa (eksport)
     "550004": 6, "550108": 6, "550803": 6,
-    # Колонка 7: Ələt eksp / Bakı liman
     "549204": 7, "553002": 7, "548803": 7, "547302": 7, 
     "547406": 7, "547209": 7, "548502": 7, "548703": 7
 }
@@ -195,12 +185,6 @@ def get_calculation_distance(distance_km: int, shipment_type: str) -> int:
 # ==============================================================================
 
 def get_weight_column_index(billable_weight_tons: float) -> int:
-    """
-    Сопоставление расчётного веса с 11 колонками Cədvəl 1 (для Таблиц 3 и 4):
-    0: 10t (0-12t),  1: 15t (13-16t), 2: 20t (17-23t), 3: 25t (24-26t),
-    4: 30t (27-31t), 5: 35t (32-36t), 6: 40t (37-40t), 7: 45t (41-46t),
-    8: 50t (47-51t), 9: 55t (52-55t), 10: 60t+ (56t+)
-    """
     w = float(billable_weight_tons or 0)
     if w <= 12: return 0
     elif w <= 16: return 1
@@ -216,7 +200,6 @@ def get_weight_column_index(billable_weight_tons: float) -> int:
 
 
 def extract_gng_digits(gng_code, kwargs=None) -> str:
-    """Извлекает численный код ГНГ."""
     kwargs = kwargs or {}
     candidates = [gng_code, kwargs.get("gng_code"), kwargs.get("gng"), kwargs.get("cargo_code")]
     for c in candidates:
@@ -228,9 +211,6 @@ def extract_gng_digits(gng_code, kwargs=None) -> str:
 
 
 def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
-    """
-    Полный реестр проверки минимальных норм загрузки по ГНГ из официального документа Tarif Razılaşması.
-    """
     g = extract_gng_digits(gng_code)
     w = float(actual_weight_tons or 0)
     if not g:
@@ -239,7 +219,7 @@ def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
     # --- 1. НОРМА 60 ТОНН ---
     if g in ["28182000", "7201", "1701", "1107", "7203", "7401", "7501", "81052"] or g.startswith("2701") or g.startswith("2702") or g.startswith("10"):
         return max(w, 60.0)
-    if g.startswith("26") and not (2618 <= int(g[:4]) <= 2621):
+    if g.startswith("26") and not (2618 <= int(g[:4]) <= 2621 if len(g) >= 4 else False):
         return max(w, 60.0)
     if g.startswith("31") and not g.startswith("3101"):
         return max(w, 60.0)
@@ -284,21 +264,15 @@ def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
 # ==============================================================================
 
 def is_non_ferrous_metal_gng(gng_code: str) -> bool:
-    """
-    Проверяет, относится ли код ГНГ к цветным/драгоценным металлам.
-    """
     clean_gng = extract_gng_digits(gng_code)
     if not clean_gng:
         return False
 
-    # 💡 ВАЖНО: Убираем ведущие нули (например: "0078" -> "78", "07801" -> "7801")
     norm_gng = clean_gng.lstrip("0")
 
-    # Проверка короткого кода группы 78 (Свинец) и других цветметов
     if norm_gng.startswith("78") or clean_gng.startswith("78"):
         return True
 
-    # Проверка остальных префиксов (74, 75, 76, 79, 80, 81 и т.д.)
     non_ferrous_prefixes = [
         "28045090", "28049", "28054", "32121", 
         "7106", "7107", "7108", "7109", "7110", "7111", "7112", "7115",
@@ -308,30 +282,6 @@ def is_non_ferrous_metal_gng(gng_code: str) -> bool:
     for pfx in non_ferrous_prefixes:
         if norm_gng.startswith(pfx) or clean_gng.startswith(pfx):
             return True
-
-    return False
-    
-    exact_prefixes = ["28045090", "28049", "28054", "32121", "7115", "8302", "83079", "8309", "8311", "85481"]
-    if any(g.startswith(p) for p in exact_prefixes):
-        return True
-
-    if len(g) >= 4 and 7106 <= int(g[:4]) <= 7112:
-        return True
-
-    if g.startswith("74"):
-        return not (g.startswith("7401") or g.startswith("7418"))
-
-    if g.startswith("75"):
-        return not g.startswith("7501")
-
-    if g.startswith("76"):
-        return not g.startswith("7615")
-
-    if g.startswith("78") or g.startswith("79") or g.startswith("80"):
-        return True
-
-    if g.startswith("81"):
-        return not g.startswith("81052")
 
     return False
 
@@ -369,10 +319,8 @@ def get_global_coefficients(shipment_type: str, gng_code: str, origin_esr: str =
 
     return coeffs, notes
 
+
 def load_rules_config(filepath: str = "RULES.md") -> str:
-    """
-    Загружает конфигурацию и правила из RULES.md для тестов.
-    """
     possible_paths = [filepath, os.path.join(os.path.dirname(__file__), filepath)]
     for path in possible_paths:
         if os.path.exists(path):
@@ -382,6 +330,7 @@ def load_rules_config(filepath: str = "RULES.md") -> str:
             except Exception as e:
                 print(f"Error reading {path}: {e}")
     return ""
+
 
 # ==============================================================================
 # 5. ТАБЛИЦА КУРСОВ CHF/USD И ПОИСК ПО ДАТЕ
@@ -407,11 +356,9 @@ CURRENCY_RATES_TABLE = [
 
 
 def parse_date_from_string(text: str):
-    """Пытается извлечь дату (ДД.ММ.ГГГГ или ГГГГ-ММ-ДД) из текста."""
     if not text:
         return None
     
-    # Ищем дд.мм.гггг
     match = re.search(r'\b(\d{1,2})[\./-](\d{1,2})[\./-](\d{4})\b', str(text))
     if match:
         d, m, y = map(int, match.groups())
@@ -420,7 +367,6 @@ def parse_date_from_string(text: str):
         except ValueError:
             pass
 
-    # Ищем гггг-мм-дд
     match_iso = re.search(r'\b(\d{4})[\./-](\d{1,2})[\./-](\d{1,2})\b', str(text))
     if match_iso:
         y, m, d = map(int, match_iso.groups())
@@ -433,10 +379,6 @@ def parse_date_from_string(text: str):
 
 
 def get_exchange_rate_for_date(target_date=None) -> tuple:
-    """
-    Возвращает (rate, period_str) для указанной даты.
-    Если дата не указана — берет текущую дату (0.79).
-    """
     if target_date is None:
         target_date = datetime.now()
 
@@ -446,19 +388,17 @@ def get_exchange_rate_for_date(target_date=None) -> tuple:
         if s_date <= target_date <= e_date:
             return rate, f"{start_s} - {end_s}"
 
-    # Дефолт для текущего периода 2026, если вышли за границы таблицы
     return 0.79, "01.07.2026 - 30.09.2026"
+
 
 def should_apply_150_coeff(shipment_type_code: str, table_num: int, gng_code: str, wagon_type: str, park_type: str = "SPS") -> bool:
     """
     Централизованная проверка коэффициента 1.50 по RULES.md (Раздел 8.1).
     """
     st = str(shipment_type_code or "").lower()
-    # Работает ТОЛЬКО для Импорта и Экспорта
     if not any(k in st for k in ["import", "export", "idxal", "ixrac"]):
         return False
 
-    # ИСКЛЮЧЕНИЕ 1: Все расчёты по Таблице 3
     if table_num == 3:
         return False
 
@@ -466,28 +406,48 @@ def should_apply_150_coeff(shipment_type_code: str, table_num: int, gng_code: st
     w_type = str(wagon_type or "").lower()
     is_universal = any(k in w_type for k in ["universal", "универсал", "крытый", "полувагон", "платформ"])
 
-    # ИСКЛЮЧЕНИЕ 2: Лес и пиломатериалы (4403, 4404, 4407–4413) в универсальных вагонах
     if is_universal:
         if clean_gng.startswith("4403") or clean_gng.startswith("4404"):
             return False
         if len(clean_gng) >= 4 and 4407 <= int(clean_gng[:4]) <= 4413:
             return False
 
-    # ИСКЛЮЧЕНИЕ 3: Чёрные металлы (72, 7301–7307) в универсальных вагонах
     if is_universal:
         if clean_gng.startswith("72"):
             return False
         if len(clean_gng) >= 4 and 7301 <= int(clean_gng[:4]) <= 7307:
             return False
 
-    # ИСКЛЮЧЕНИЕ 4: Метанол (290511) в цистернах
     if clean_gng.startswith("290511"):
         return False
 
-    # ИСКЛЮЧЕНИЕ 5: Нефть и нефтепродукты (Таблица 6, Столбец 2)
     if table_num == 6:
         from tables.table_6 import determine_table_6_column
         if determine_table_6_column(clean_gng, park_type) == 0:
             return False
 
     return True
+
+
+# ==============================================================================
+# 6. СПЕЦИАЛЬНЫЕ ПРАВИЛА (п. 3.1.2.6 - 3.1.2.7: Транспортеры и Платформы >19м)
+# ==============================================================================
+
+def get_transporter_min_weight(axle_count: int, actual_weight: float) -> float:
+    """
+    Пункт 3.1.2.6: Для 4, 6 и 8-осных транспортеров расчетный вес 
+    принимается не менее 5 тонн на каждую ось.
+    """
+    if axle_count in [4, 6, 8]:
+        min_allowed = axle_count * 5.0
+        return max(actual_weight, min_allowed)
+    return actual_weight
+
+
+def is_long_platform_scep(text_raw: str, wagon_type: str = "") -> bool:
+    """
+    Пункт 3.1.2.7: Проверка специализированных платформ сцепа с базой > 19м.
+    """
+    txt = (str(text_raw or "") + " " + str(wagon_type or "")).lower()
+    keywords = ["19m", "19 м", "19m-dən", "19m-den", "19 метр", "avtoqoşqu", "автопоезд", "сцеп"]
+    return any(k in txt for k in keywords)
