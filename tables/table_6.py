@@ -56,41 +56,59 @@ def load_table_6_rates():
     return rates
 
 
-def determine_table_6_column(gng_code, park_type="SPS"):
+def determine_table_6_column(gng_code, park_type="SPS") -> int:
     """
     Определяет индекс колонки (0..6, соответствующие Col 2..Col 8 в Table_6_Tariffs.txt)
     на основе ГНГ и группы (Инвентарные МПС vs Частные СПС).
+    col_idx 0 = Столбец 2 (Нефть и нефтепродукты)
+    col_idx 1 = Столбец 3 (Энергетические газы)
+    col_idx 2 = Столбец 4 (Газы и углеводороды)
+    col_idx 3 = Столбец 5 (Спирт и фенолы)
+    col_idx 4 = Столбец 6 (Скоропортящиеся жидкие)
+    col_idx 5 = Столбец 7 (Другие грузы)
+    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər)
     """
     clean_gng = extract_gng_digits(gng_code)
+    norm_gng = clean_gng.lstrip("0") if clean_gng else ""
     park_type = str(park_type or "SPS").upper()
 
     t6_cfg = load_table_6_config()
     mapping = t6_cfg.get("table_6_rules", {}).get("columns_mapping", {})
 
-    # 1. Если цистерна частная (Özəl / SPS) — проверяем попадание под спец-список углеводородов (Столбец 8 -> col_idx 6)
-    if park_type == "SPS":
-        sps_rules = mapping.get("sps_private", [])
-        for rule in sps_rules:
+    # 1. Если есть конфиг JSON
+    if mapping:
+        if park_type == "SPS":
+            sps_rules = mapping.get("sps_private", [])
+            for rule in sps_rules:
+                prefixes = rule.get("gng_prefixes", [])
+                if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in prefixes if p):
+                    return rule.get("column_index", 6)
+
+        mps_rules = mapping.get("mps_inventory", [])
+        default_col = 5
+
+        for rule in mps_rules:
+            if rule.get("is_default"):
+                default_col = rule.get("column_index", 5)
+                continue
+
             prefixes = rule.get("gng_prefixes", [])
-            if any(clean_gng.startswith(p) for p in prefixes if p):
-                return rule.get("column_index", 6)
+            excludes = rule.get("exclude_prefixes", [])
 
-    # 2. Во всех остальных случаях (МПС или стандартные наливные грузы) выбираем колонки 2..7 (col_idx 0..5)
-    mps_rules = mapping.get("mps_inventory", [])
-    default_col = 5  # "Digər yüklər" (Col 7)
+            matches_pfx = any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in prefixes if p)
+            matches_ex = any(norm_gng.startswith(ex) or clean_gng.startswith(ex) for ex in excludes if ex)
 
-    for rule in mps_rules:
-        if rule.get("is_default"):
-            default_col = rule.get("column_index", 5)
-            continue
+            if matches_pfx and not matches_ex:
+                return rule.get("column_index", 5)
 
-        prefixes = rule.get("gng_prefixes", [])
-        excludes = rule.get("exclude_prefixes", [])
+        return default_col
 
-        if any(clean_gng.startswith(p) for p in prefixes if p) and not any(clean_gng.startswith(ex) for ex in excludes if ex):
-            return rule.get("column_index", 5)
+    # 2. Резервный фоллбек, если JSON нет
+    oil_prefixes = ["2709", "2710", "2712", "2713", "2714", "2715", "3403", "3404", "3811", "3817", "3824"]
+    if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in oil_prefixes):
+        return 0  # Столбец 2
 
-    return default_col
+    return 5  # Столбец 7
 
 
 def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_type="SPS", *args, lang="AZ", **kwargs):
@@ -121,31 +139,6 @@ def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_typ
     return rate_per_ton, details_str
 
 
-def extract_gng_digits(gng_code, kwargs=None):
-    if gng_code:
-        return re.sub(r'\D', '', str(gng_code))
-    if kwargs:
-        for key in ['gng', 'cargo_gng_code', 'gng_code']:
-            if kwargs.get(key):
-                return re.sub(r'\D', '', str(kwargs[key]))
-    return ""
-
-def determine_table_6_column(clean_gng: str, park_type: str = "SPS") -> int:
-    """
-    Возвращает индекс столбца Таблицы 6 (0..6, что соответствует столбцам 2..8):
-    col_idx 0 = Столбец 2 (Нефть и нефтепродукты)
-    col_idx 1 = Столбец 3 (Энергетические газы)
-    col_idx 2 = Столбец 4 (Газы и углеводороды)
-    col_idx 3 = Столбец 5 (Спирт и фенолы)
-    col_idx 4 = Столбец 6 (Скоропортящиеся жидкие)
-    col_idx 5 = Столбец 7 (Другие грузы)
-    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər)
-    """
-    if clean_gng.startswith("2713") or clean_gng.startswith("2710") or clean_gng.startswith("2709"):
-        return 0  # Столбец 2
-    return 5  # По умолчанию Столбец 7
-
-
 def get_table_6_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, park_type="SPS", lang="AZ", *args, **kwargs):
     """
     Специфические коэффициенты Таблицы 6:
@@ -154,7 +147,7 @@ def get_table_6_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
     """
     coeffs = []
     notes = []
-    clean_gng = extract_gng_digits(gng_code, kwargs)
+    clean_gng = extract_gng_digits(gng_code)
     col_idx = determine_table_6_column(clean_gng, park_type)
     
     st_lower = str(shipment_type_code or kwargs.get("shipment_type") or kwargs.get("mode") or "").lower()
