@@ -1,6 +1,12 @@
 import os
 import re
-from utils import extract_gng_digits
+
+
+def extract_gng_digits(gng_code) -> str:
+    """Безопасно извлекает только цифры из кода ГНГ."""
+    if gng_code:
+        return re.sub(r'\D', '', str(gng_code))
+    return ""
 
 
 def load_table_6_rates():
@@ -45,20 +51,20 @@ def load_table_6_rates():
 
 def determine_table_6_column(gng_code, park_type="SPS") -> int:
     """
-    Прямое определение столбца Таблицы 6 без использования JSON-конфига:
+    Автономное определение столбца Таблицы 6:
     col_idx 0 = Столбец 2 (Нефть и нефтепродукты: 2709, 2710, 2712, 2713, 2714...)
     col_idx 1 = Столбец 3 (Энергетические газы: 2705, 2711)
     col_idx 2 = Столбец 4 (Газы и химические углеводороды)
     col_idx 3 = Столбец 5 (Спирты и фенолы)
     col_idx 4 = Столбец 6 (Скоропортящиеся / жиры 1501-1506)
     col_idx 5 = Столбец 7 (Другие грузы, ВКЛЮЧАЯ растительные масла 1507-1515)
-    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər - только 29023, 27071-27073)
+    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər)
     """
     clean_gng = extract_gng_digits(gng_code)
     norm_gng = clean_gng.lstrip("0") if clean_gng else ""
     park_type = str(park_type or "SPS").upper()
 
-    # 1. Столбец 8 (Özəl çənlər) — строго только для узкого перечня частных углеводородов
+    # 1. Столбец 8 (Özəl çənlər) — только узкий перечень специфических фракций
     private_only_prefixes = [
         "27071", "27072", "27073", "290211", "29022", "29023",
         "290241", "290242", "290243", "290244", "29026", "29027", "29029"
@@ -66,7 +72,7 @@ def determine_table_6_column(gng_code, park_type="SPS") -> int:
     if park_type == "SPS" and any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in private_only_prefixes):
         return 6
 
-    # 2. Столбец 2 (Нефть и нефтепродукты — ВКЛЮЧАЯ 2713)
+    # 2. Столбец 2 (Нефть и нефтепродукты — включая 2713)
     oil_prefixes = ["2709", "2710", "2712", "2713", "2714", "2715", "3403", "3404", "3811", "3817", "3824"]
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in oil_prefixes):
         return 0
@@ -92,7 +98,7 @@ def determine_table_6_column(gng_code, park_type="SPS") -> int:
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in food_prefixes):
         return 4
 
-    # 7. Столбец 7 (Digər yüklər — сюда попадают растительные масла 1507-1515 и всё остальное)
+    # 7. Столбец 7 (Digər yüklər — растительные масла 1507-1515 и всё остальное)
     return 5
 
 
