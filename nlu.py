@@ -9,17 +9,18 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
         "You are an expert railway logistics NLU parser for Azerbaijan Railways (ADY).\n"
         f"Parse user input into a strict JSON object. Translate station names ('origin_name', 'dest_name') "
         f"and short cargo name ('gng_name') STRICTLY to {target_lang}.\n\n"
-        "CRITICAL ESR CODE INSTRUCTIONS:\n"
+        "CRITICAL ESR CODE & GNG INSTRUCTIONS:\n"
         "- Always output the exact standard 6-digit ESR code for each station ('origin_esr', 'dest_esr').\n"
         "- Example ESRs: Yalama=545006, Biləcəri/Баладжары=546808, Abşeron=548004, Böyük Kəsik=558701, Bakı-Yük=547105, Astara=554109.\n"
-        "- Do NOT confuse Biləcəri (546808) with ferry/port codes (547209).\n\n"
+        "- Do NOT confuse Biləcəri (546808) with ferry/port codes (547209).\n"
+        "- ALWAYS output GNG/NHM cargo codes strictly as 4-digit strings with leading zeros (e.g., '0207', '0101', '2701'). Never convert them to numbers or trim leading zeros.\n\n"
         "EXPECTED JSON STRUCTURE:\n"
         "{\n"
         '  "origin_esr": "6-digit ESR string or null",\n'
         f'  "origin_name": "Station name in {target_lang}",\n'
         '  "dest_esr": "6-digit ESR string or null",\n'
         f'  "dest_name": "Station name in {target_lang}",\n'
-        '  "gng_code": "Numeric GNG code string or null",\n'
+        '  "gng_code": "4-digit GNG code string like \'0207\' or null",\n'
         f'  "gng_name": "Short cargo description in {target_lang}",\n'
         '  "weight_tons": float or null,\n'
         '  "wagon_type": "universal / tank / ref / thermos / autocarrier",\n'
