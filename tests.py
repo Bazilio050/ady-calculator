@@ -140,14 +140,23 @@ TEST_SUITE = [
         "expected_rate": 41.27
     },
     {
-        "name": "15. Баладжары -> Сумгаит (10т, универсальный вагон, 35 км)",
-        "raw_text": "Баладжары Сумгаит 10тн",
+        "name": "15. Астара -> Ялама (8-осный транспортер, 15т груза)",
+        "raw_text": "Астара Ялама 8-осный транспортер 15тн",
         "nlu": {
-            "route_from": "Biləcəri", "route_to": "Sumqayıt", "cargo_gng_code": "00000000",
-            "actual_weight_tons": 10.0, "wagon_type": "universal", "park_type": "MPS", "explicit_mode": "local"
+            "route_from": "Astara", "route_to": "Yalama", "cargo_gng_code": "00000000",
+            "actual_weight_tons": 15.0, "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "transit"
         },
-        "expected_rate": 9.37
-     }
+        "expected_rate": 35.88
+    },
+    {
+        "name": "16. Беюк Кясик -> Астара (Спецплатформа сцеп >19м, 40т)",
+        "raw_text": "Беюк Кясик Астара платформа сцеп 19м 40тн",
+        "nlu": {
+            "route_from": "Böyük Kəsik", "route_to": "Astara", "cargo_gng_code": "00000000",
+            "actual_weight_tons": 40.0, "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "transit"
+        },
+        "expected_rate": 43.06
+    }
 ]
 
 def parse_float(val):
@@ -166,7 +175,7 @@ def run_tests():
 
     for test in TEST_SUITE:
         try:
-            res = process_full_calculation(test["nlu"], "", "AZ", "2026", UI_T)
+            res = process_full_calculation(test["nlu"], test["raw_text"], "AZ", "2026", UI_T)
             
             raw_rate = res['part3'].get('express_rate') or res['part3'].get('net_ady_rate')
             calc_rate = parse_float(raw_rate)
