@@ -2,11 +2,13 @@ import os
 import re
 
 
-def extract_gng_digits(gng_code) -> str:
-    """Безопасно извлекает только цифры из кода ГНГ."""
-    if gng_code:
-        return re.sub(r'\D', '', str(gng_code))
-    return ""
+def extract_gng_digits(val) -> str:
+    """Безопасно извлекает только цифры из кода ГНГ любого формата."""
+    if val is None:
+        return ""
+    if isinstance(val, dict):
+        val = val.get("cargo_gng_code") or val.get("gng_code") or val.get("code") or ""
+    return re.sub(r'\D', '', str(val))
 
 
 def load_table_6_rates():
@@ -49,7 +51,7 @@ def load_table_6_rates():
     return rates
 
 
-def determine_table_6_column(gng_code, park_type="SPS") -> int:
+def determine_table_6_column(gng_code=None, park_type="SPS", *args, **kwargs) -> int:
     """
     Автономное определение столбца Таблицы 6:
     col_idx 0 = Столбец 2 (Нефть и нефтепродукты: 2709, 2710, 2712, 2713, 2714...)
@@ -60,6 +62,13 @@ def determine_table_6_column(gng_code, park_type="SPS") -> int:
     col_idx 5 = Столбец 7 (Другие грузы, ВКЛЮЧАЯ растительные масла 1507-1515)
     col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər)
     """
+    if gng_code is None or isinstance(gng_code, dict):
+        if isinstance(gng_code, dict):
+            d = gng_code
+        else:
+            d = kwargs
+        gng_code = d.get("cargo_gng_code") or d.get("gng_code") or d.get("code") or ""
+
     clean_gng = extract_gng_digits(gng_code)
     norm_gng = clean_gng.lstrip("0") if clean_gng else ""
     park_type = str(park_type or "SPS").upper()
@@ -72,9 +81,13 @@ def determine_table_6_column(gng_code, park_type="SPS") -> int:
     if park_type == "SPS" and any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in private_only_prefixes):
         return 6
 
-    # 2. Столбец 2 (Нефть и нефтепродукты — включая 2713)
+    # 2. Столбец 2 (Нефть и нефтепродукты — включая 2713, 2709, 2710, 2712, 2714, 2715)
     oil_prefixes = ["2709", "2710", "2712", "2713", "2714", "2715", "3403", "3404", "3811", "3817", "3824"]
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in oil_prefixes):
+        return 0
+
+    # Защитный фоллбек для жидких нефтепродуктов группы 27xx
+    if norm_gng.startswith("27") and not any(norm_gng.startswith(p) for p in ["2705", "2711", "2707"]):
         return 0
 
     # 3. Столбец 3 (Энергетические газы)
@@ -102,8 +115,8 @@ def determine_table_6_column(gng_code, park_type="SPS") -> int:
     return 5
 
 
-def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_type="SPS", *args, lang="AZ", **kwargs):
-    col_idx = determine_table_6_column(gng_code, park_type)
+def calculate_table_6_base(distance_km, billable_weight_tons, gng_code=None, park_type="SPS", *args, lang="AZ", **kwargs):
+    col_idx = determine_table_6_column(gng_code, park_type, **kwargs)
     rates = load_table_6_rates()
     tbl_name = "Cədvəl 6" if lang == "AZ" else ("Таблица 6" if lang == "RU" else "Table 6")
 
@@ -129,8 +142,8 @@ def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_typ
 def get_table_6_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, park_type="SPS", lang="AZ", *args, **kwargs):
     coeffs = []
     notes = []
-    clean_gng = extract_gng_digits(gng_code)
-    col_idx = determine_table_6_column(clean_gng, park_type)
+    clean_gng = extract_gng_digits(gng_code or kwargs.get("cargo_gng_code"))
+    col_idx = determine_table_6_column(clean_gng, park_type, **kwargs)
     
     st_lower = str(shipment_type_code or kwargs.get("shipment_type") or kwargs.get("mode") or "").lower()
 
