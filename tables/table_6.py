@@ -45,13 +45,13 @@ def load_table_6_rates():
 
 def determine_table_6_column(gng_code, park_type="SPS") -> int:
     """
-    col_idx 0 = Столбец 2 (Нефть и нефтепродукты)
-    col_idx 1 = Столбец 3 (Энергетические газы)
+    col_idx 0 = Столбец 2 (Нефть и нефтепродукты: 2709, 2710, 2712, 2713, 2714...)
+    col_idx 1 = Столбец 3 (Энергетические газы: 2705, 2711)
     col_idx 2 = Столбец 4 (Газы и химические углеводороды)
-    col_idx 3 = Столбец 5 (Спирт и фенолы)
-    col_idx 4 = Столбец 6 (Скоропортящиеся жидкие / животные жиры 1501-1506)
-    col_idx 5 = Столбец 7 (Другие грузы, включая растительные масла 1507-1515)
-    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər)
+    col_idx 3 = Столбец 5 (Спирты и фенолы)
+    col_idx 4 = Столбец 6 (Скоропортящиеся / жиры 1501-1506)
+    col_idx 5 = Столбец 7 (Другие грузы, ВКЛЮЧАЯ растительные масла 1507-1515)
+    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər - 29023 и др.)
     """
     clean_gng = extract_gng_digits(gng_code)
     norm_gng = clean_gng.lstrip("0") if clean_gng else ""
@@ -65,7 +65,7 @@ def determine_table_6_column(gng_code, park_type="SPS") -> int:
     if park_type == "SPS" and any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in private_only_prefixes):
         return 6
 
-    # 2. Столбец 2 (Нефть и нефтепродукты - включая 2713)
+    # 2. Столбец 2 (Нефть и нефтепродукты — ВКЛЮЧАЯ 2713)
     oil_prefixes = ["2709", "2710", "2712", "2713", "2714", "2715", "3403", "3404", "3811", "3817", "3824"]
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in oil_prefixes):
         return 0
