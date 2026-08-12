@@ -45,56 +45,54 @@ def load_table_6_rates():
 
 def determine_table_6_column(gng_code, park_type="SPS") -> int:
     """
-    Определяет индекс колонки (0..6, соответствующие Col 2..Col 8 в Table_6_Tariffs.txt):
-    col_idx 0 = Столбец 2 (Нефть и нефтепродукты)
-    col_idx 1 = Столбец 3 (Энергетические газы)
+    col_idx 0 = Столбец 2 (Нефть и нефтепродукты: 2709, 2710, 2712, 2713, 2714...)
+    col_idx 1 = Столбец 3 (Энергетические газы: 2705, 2711)
     col_idx 2 = Столбец 4 (Газы и химические углеводороды)
-    col_idx 3 = Столбец 5 (Спирт и фенолы)
-    col_idx 4 = Столбец 6 (Скоропортящиеся жидкие / животные жиры 1501-1506)
-    col_idx 5 = Столбец 7 (Другие грузы, включая растительные масла 1507-1515)
-    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər)
+    col_idx 3 = Столбец 5 (Спирты и фенолы)
+    col_idx 4 = Столбец 6 (Скоропортящиеся / жиры 1501-1506)
+    col_idx 5 = Столбец 7 (Другие грузы, ВКЛЮЧАЯ растительные масла 1507-1515)
+    col_idx 6 = Столбец 8 (Частные цистерны / Özəl çənlər - 29023 и др.)
     """
     clean_gng = extract_gng_digits(gng_code)
     norm_gng = clean_gng.lstrip("0") if clean_gng else ""
     park_type = str(park_type or "SPS").upper()
 
-    # 1. Столбец 8 (Özəl çənlər) — строго только для узкого перечня частных углеводородов
+    # 1. Столбец 8 (Özəl çənlər)
     private_only_prefixes = [
         "27071", "27072", "27073", "290211", "29022", "29023",
         "290241", "290242", "290243", "290244", "29026", "29027", "29029"
     ]
     if park_type == "SPS" and any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in private_only_prefixes):
-        return 6  # Столбец 8
+        return 6
 
     # 2. Столбец 2 (Нефть и нефтепродукты)
     oil_prefixes = ["2709", "2710", "2712", "2713", "2714", "2715", "3403", "3404", "3811", "3817", "3824"]
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in oil_prefixes):
-        return 0  # Столбец 2
+        return 0
 
     # 3. Столбец 3 (Энергетические газы)
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in ["2705", "2711"]):
-        return 1  # Столбец 3
+        return 1
 
-    # 4. Столбец 4 (Газы и химические углеводороды)
+    # 4. Столбец 4
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in ["2801", "2804", "2811", "2812", "2814", "2853", "2901", "2902", "3823"]):
-        return 2  # Столбец 4
+        return 2
 
-    # 5. Столбец 5 (Спирты и фенолы)
+    # 5. Столбец 5
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in ["1520", "27077", "27079", "2905", "2906", "2907", "2908", "2909", "2932", "2933", "3820", "3905"]):
-        return 3  # Столбец 5
+        return 3
 
-    # 6. Столбец 6 (Скоропортящиеся жидкие грузы: молочные 0401-0406, животные жиры 1501-1506, напитки 2201-2206)
-    # ⚠️ Растительные масла (1507-1515) сюда НЕ входят!
+    # 6. Столбец 6 (Животные жиры 1501-1506, молочные, напитки)
     food_prefixes = [
         "0401", "0403", "0404", "0405", "0406", 
         "1501", "1502", "1503", "1504", "1505", "1506", 
         "151610", "151790", "2009", "2105", "2201", "2202", "2203", "2204", "2205", "2206"
     ]
     if any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in food_prefixes):
-        return 4  # Столбец 6
+        return 4
 
-    # 7. Столбец 7 (Digər yüklər — сюда попадают растительные масла 1507-1515 и всё остальное)
-    return 5  # Столбец 7
+    # 7. Столбец 7 (Растительные масла 1507-1515 и всё остальное)
+    return 5
 
 
 def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_type="SPS", *args, lang="AZ", **kwargs):
