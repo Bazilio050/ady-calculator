@@ -283,11 +283,34 @@ def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
 # 4. ОБЩИЕ КОЭФФИЦИЕНТЫ 1.20
 # ==============================================================================
 
-def is_non_ferrous_metal_gng(gng_code, kwargs=None) -> bool:
-    g = extract_gng_digits(gng_code, kwargs)
-    if not g:
+def is_non_ferrous_metal_gng(gng_code: str) -> bool:
+    """
+    Проверяет, относится ли код ГНГ к цветным/драгоценным металлам.
+    """
+    clean_gng = extract_gng_digits(gng_code)
+    if not clean_gng:
         return False
 
+    # 💡 ВАЖНО: Убираем ведущие нули (например: "0078" -> "78", "07801" -> "7801")
+    norm_gng = clean_gng.lstrip("0")
+
+    # Проверка короткого кода группы 78 (Свинец) и других цветметов
+    if norm_gng.startswith("78") or clean_gng.startswith("78"):
+        return True
+
+    # Проверка остальных префиксов (74, 75, 76, 79, 80, 81 и т.д.)
+    non_ferrous_prefixes = [
+        "28045090", "28049", "28054", "32121", 
+        "7106", "7107", "7108", "7109", "7110", "7111", "7112", "7115",
+        "74", "75", "76", "79", "80", "81", "8302", "83079", "8309", "8311", "85481"
+    ]
+
+    for pfx in non_ferrous_prefixes:
+        if norm_gng.startswith(pfx) or clean_gng.startswith(pfx):
+            return True
+
+    return False
+    
     exact_prefixes = ["28045090", "28049", "28054", "32121", "7115", "8302", "83079", "8309", "8311", "85481"]
     if any(g.startswith(p) for p in exact_prefixes):
         return True
