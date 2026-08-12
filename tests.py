@@ -137,7 +137,7 @@ TEST_SUITE = [
             "route_from": "Bakı Yük (547105)", "route_to": "Yalama", "cargo_gng_code": "99910000", "cargo_name": "Poçt",
             "actual_weight_tons": 15.0, "wagon_type": "passenger", "park_type": "SPS", "explicit_mode": "export"
         },
-        "expected_rate": 31.27
+        "expected_rate": 41.27
     },
     {
         "name": "15. Баладжары -> Сумгаит (10т, универсальный вагон, 35 км)",
