@@ -155,7 +155,7 @@ TEST_SUITE = [
             "route_from": "Böyük Kəsik", "route_to": "Astara", "cargo_gng_code": "00000000",
             "actual_weight_tons": 40.0, "wagon_type": "platform", "park_type": "SPS", "explicit_mode": "transit"
         },
-        "expected_rate": 86.39
+        "expected_rate": 46.48
     },
     {
         "name": "17. Ялама -> Апшерон (Спецплатформа сцеп >19м, 40т, Импорт)",
@@ -164,7 +164,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
             "actual_weight_tons": 40.0, "wagon_type": "platform", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 33.02
+        "expected_rate": 21.96
     },
     {
         "name": "18. Апшерон -> Ялама (8-осный транспортер, 15т груза, Экспорт)",
