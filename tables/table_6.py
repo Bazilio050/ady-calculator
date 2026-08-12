@@ -123,9 +123,8 @@ def calculate_table_6_base(distance_km, billable_weight_tons, gng_code, park_typ
 
 def get_table_6_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, park_type="SPS", lang="AZ", *args, **kwargs):
     """
-    Возвращает специфические коэффициенты Таблицы 6:
-    1. Базовый 1.50 для Импорта/Экспорта (Исключения: Нефть/Нефтепродукты и Метанол).
-    2. Повышающий 1.20 для Нефти и Нефтепродуктов при Импорте или Транзите.
+    Специфические коэффициенты Таблицы 6:
+    Повышающий 1.20 для Нефти и Нефтепродуктов (Столбец 2) строго при ИМПОРТЕ или ТРАНЗИТЕ.
     """
     coeffs = []
     notes = []
@@ -134,25 +133,7 @@ def get_table_6_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
     
     st_lower = str(shipment_type_code or kwargs.get("shipment_type") or kwargs.get("mode") or "").lower()
 
-    # 1. Коэффициент 1.50 (İdxal / İxrac)
-    if any(k in st_lower for k in ["import", "export", "idxal", "ixrac"]):
-        is_150_exception = False
-
-        # Исключение 1: Нефть и нефтепродукты (Столбец 2 -> col_idx == 0)
-        if col_idx == 0:
-            is_150_exception = True
-
-        # Исключение 2: Метанол (ГНГ 29051100 / 290511)
-        if clean_gng.startswith("290511"):
-            is_150_exception = True
-
-        if not is_150_exception:
-            c_val = 1.50
-            c_lbl = "İdxal/İxrac baza 1.50" if lang == "AZ" else ("Импорт/Экспорт база 1.50" if lang == "RU" else "Import/Export base 1.50")
-            coeffs.append((c_lbl, c_val))
-            notes.append("Cədvəl 6: İdxal/İxrac daşımaları üçün 1.50 baza əmsalı tətbiq olunmuşdur.")
-
-    # 2. Повышающий коэффициент 1.20 для Нефти и Нефтепродуктов (Столбец 2) при ИМПОРТЕ или ТРАНЗИТЕ
+    # Повышающий коэффициент 1.20 для Нефти и Нефтепродуктов (Столбец 2) ТОЛЬКО при ИМПОРТЕ или ТРАНЗИТЕ
     if col_idx == 0 and any(k in st_lower for k in ["import", "transit", "idxal", "tranzit"]):
         c_val_oil = 1.20
         c_lbl_oil = "Neft/Neft məhsulları 1.20" if lang == "AZ" else ("Нефть/Нефтепродукты 1.20" if lang == "RU" else "Oil/Petroleum 1.20")
