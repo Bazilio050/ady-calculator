@@ -1,6 +1,6 @@
 import os
 import re
-from utils import get_weight_column_index, extract_gng_digits  # Импорт общих правил
+from utils import get_weight_column_index, extract_gng_digits
 
 
 def load_table_3_rates():
@@ -50,7 +50,6 @@ def calculate_table_3_base(distance_km, billable_weight_tons, *args, lang="AZ", 
     Расчет базовой ставки Таблицы 3 (Импорт / Экспорт универсальные вагоны).
     """
     rates = load_table_3_rates()
-    # Сетка весов Cədvəl 1 берётся из общего utils.py
     col_idx = get_weight_column_index(billable_weight_tons)
     tbl_name = "Cədvəl 3" if lang == "AZ" else ("Таблица 3" if lang == "RU" else "Table 3")
 
@@ -95,54 +94,27 @@ def is_import_shipment(shipment_type_code, kwargs):
     return False
 
 
-def is_104_import_eligible_gng(gng_code, kwargs):
-    """
-    Проверка коэффициента 1.04 при импорте для:
-    1. Лес и пиломатериалы: ГНГ 4403, 4404, 4407–4413
-    2. Чёрные металлы: ГНГ 72 (все), 7301–7307
-    """
-    g = extract_gng_digits(gng_code, kwargs)
-    if not g:
-        return False
-
-    # 1. Лесоматериалы (4403, 4404, 4407-4413)
-    if g.startswith("4403") or g.startswith("4404"):
-        return True
-    if len(g) >= 4 and 4407 <= int(g[:4]) <= 4413:
-        return True
-
-    # 2. Чёрные металлы (72 - все позиции, 7301-7307)
-    if g.startswith("72"):
-        return True
-    if len(g) >= 4 and 7301 <= int(g[:4]) <= 7307:
-        return True
-
-    return False
-
-
-get_table_3_coefficients(shipment_type_code=None, gng_code=None, lang="AZ", *args, **kwargs):
+def get_table_3_coefficients(shipment_type_code=None, gng_code=None, lang="AZ", *args, **kwargs):
     """
     Возвращает коэффициенты, специфичные ТОЛЬКО для Таблицы 3.
     """
     coeffs = []
     notes = []
 
-    # Читаем параметры из именованных или обычных аргументов
-    st = shipment_type_code or kwargs.get("shipment_type") or kwargs.get("mode") or ""
+    st = str(shipment_type_code or kwargs.get("shipment_type") or kwargs.get("mode") or "").lower()
     g_raw = gng_code or kwargs.get("gng") or kwargs.get("cargo_gng_code") or ""
     g = re.sub(r'\D', '', str(g_raw))
 
-    if is_import_shipment(st, kwargs):
+    if "idxal" in st or "import" in st:
         is_wood = False
         is_metal = False
-        
+
         if g:
             if g.startswith("4403") or g.startswith("4404") or (len(g) >= 4 and 4407 <= int(g[:4]) <= 4413):
                 is_wood = True
             elif g.startswith("72") or (len(g) >= 4 and 7301 <= int(g[:4]) <= 7307):
                 is_metal = True
 
-        # Если код определился или это лесоматериалы по умолчанию
         if is_wood or is_metal or not g:
             lbl = "İdxal yükləri 1.04" if lang == "AZ" else ("Импортные грузы 1.04" if lang == "RU" else "Import cargo 1.04")
             coeffs.append((lbl, 1.04))
@@ -151,14 +123,17 @@ get_table_3_coefficients(shipment_type_code=None, gng_code=None, lang="AZ", *arg
                 note_msg = (
                     "Cədvəl 3: İdxal daşımaları zamanı qara metallara 1.04 əmsalı tətbiq olunmuşdur."
                     if lang == "AZ" else
-                    ("Таблица 3: При импорте чёрных металлов применяется коэффициент 1.04." if lang == "RU" else "Table 3: 1.04 coefficient applied for import of ferrous metals.")
+                    ("Таблица 3: При импорте чёрных металлов применяется коэффициент 1.04."
+                     if lang == "RU" else
+                     "Table 3: 1.04 coefficient applied for import of ferrous metals.")
                 )
             else:
-                # По умолчанию выводим точный текст для леса (meşə materialları)
                 note_msg = (
                     "Cədvəl 3: İdxal daşımaları zamanı meşə materiallarına (taxta) 1.04 əmsalı tətbiq olunmuşdur."
                     if lang == "AZ" else
-                    ("Таблица 3: При импорте лесоматериалов применяется коэффициент 1.04." if lang == "RU" else "Table 3: 1.04 coefficient applied for import of timber.")
+                    ("Таблица 3: При импорте лесоматериалов применяется коэффициент 1.04."
+                     if lang == "RU" else
+                     "Table 3: 1.04 coefficient applied for import of timber.")
                 )
             notes.append(note_msg)
 
