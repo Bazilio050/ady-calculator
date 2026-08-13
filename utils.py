@@ -17,8 +17,8 @@ BORDER_ESR_CODES = {
     "550004", "550108", "550803",
     # Шарур
     "550502", "550409",
-    # Алят (Паром / Бакинский Порт)
-    "549204", "553002", "548803", "547302", "547406", "547209", "548502"
+    # Алят (Паром / Бакинский Порт / Ələt yeni)
+    "549204", "553002", "548803", "547302", "547406", "547209", "548502", "548703"
 }
 
 
@@ -57,7 +57,8 @@ BORDER_STATION_ESR_OVERRIDE = {
     "yalama": "547508",       # Yalama (eksport) -> даёт точные 680 км!
     "astara": "554109",       # Astara (eksport)
     "culfa": "550004",        # Culfa (eksport)
-    "serur": "550409"         # Şərur (eksport)
+    "serur": "550409",        # Şərur (eksport)
+    "alet": "549204"          # Ələt (parom/eksp) -> даёт точные 429 км!
 }
 
 
@@ -294,8 +295,8 @@ def is_alat_boyuk_kesik_route(origin_esr: str, dest_esr: str, shipment_type: str
     o_esr = re.sub(r'\D', '', str(origin_esr or ""))
     d_esr = re.sub(r'\D', '', str(dest_esr or ""))
 
-    alat_codes = ["549204", "553002", "548803", "547302", "547406", "547209", "548502"]
-    boyuk_kesik_codes = ["558631", "558701"]
+    alat_codes = ["549204", "553002", "548803", "547302", "547406", "547209", "548502", "548703"]
+    boyuk_kesik_codes = ["558631", "558701", "558504", "558400"]
 
     is_alat_to_bk = any(o_esr == c for c in alat_codes) and any(d_esr == c for c in boyuk_kesik_codes)
     is_bk_to_alat = any(o_esr == c for c in boyuk_kesik_codes) and any(d_esr == c for c in alat_codes)
