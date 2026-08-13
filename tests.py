@@ -194,6 +194,33 @@ TEST_SUITE = [
             "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "transit"
         },
         "expected_rate": 265.87
+    },
+    {
+        "name": "21. Ялама -> Апшерон (Автопоезд на спецплатформе, 25т, СПС, Импорт — п. 3.2.6)",
+        "raw_text": "Ялама Апшерон avtoqatar 25t SPS idxal",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
+            "actual_weight_tons": 25.0, "wagon_type": "avtoqatar", "park_type": "SPS", "explicit_mode": "import"
+        },
+        "expected_rate": 652.65
+    },
+    {
+        "name": "22. Ялама -> Апшерон (Прицеп qoşqu порожний на платформе, СПС, Экспорт — п. 3.2.6)",
+        "raw_text": "Ялама Апшерон qoşqu boş SPS ixrac",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "99220000",
+            "cargo_name": "Boş qoşqu", "is_empty": True, "wagon_type": "qoşqu", "park_type": "SPS", "explicit_mode": "export"
+        },
+        "expected_rate": 450.10
+    },
+    {
+        "name": "23. Ялама -> Сиазань (27071 бензол, цистерна 55т, СПС — п. 3.2.5, мин 151км)",
+        "raw_text": "Ялама Сиазань 27071 цистерна 55т СПС",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Siyəzən", "cargo_gng_code": "27071", "cargo_name": "Benzol və aromatik karbohidrogenlər",
+            "actual_weight_tons": 55.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
+        },
+        "expected_rate": 18.66
     }
 ]
 
