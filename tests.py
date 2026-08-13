@@ -221,6 +221,16 @@ TEST_SUITE = [
             "actual_weight_tons": 55.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
         },
         "expected_rate": 18.66
+    },
+    {
+        "name": "24. Ялама -> Сумгаит (35т, 3-я верхняя негабаритность, платформа, СПС — Cədvəl 11)",
+        "raw_text": "Ялама Сумгаит 35т 3-yuxarı əndazə platforma SPS",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Sumqayıt", "cargo_gng_code": "00000000",
+            "cargo_name": "Əndazəsiz yük", "actual_weight_tons": 35.0, "wagon_type": "platform",
+            "park_type": "SPS", "oversize_group": "deg3_upper", "explicit_mode": "import"
+        },
+        "expected_rate": 51.25
     }
 ]
 
