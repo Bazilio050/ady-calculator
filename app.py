@@ -278,9 +278,9 @@ st.markdown(f"""
 # --- ИНТЕРАКТИВНАЯ ШПАРГАЛКА В ВИДЕ ВКЛАДОК ---
 with st.expander(t["guide_title"]):
     if selected_lang == "AZ":
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
             "📦 Ümumi vaqonlar", "❄️ Refseksiyalar", "🌡️ Vaqon-termoslar", 
-            "🛢️ Neft çənləri", "🧪 Kimyəvi çənlər", "🏗️ Transportyorlar", "🚛 Xüsusi platformalar"
+            "🛢️ Neft çənləri", "🧪 Kimyəvi çənlər", "🏗️ Transportyorlar", "🚛 Xüsusi platformalar", "📐 Əndazəsiz yüklər"
         ])
 
         with tab1:
@@ -301,8 +301,8 @@ with st.expander(t["guide_title"]):
 
         with tab3:
             st.markdown("""
-            📐 **Şablon:** `[Haradan] -> [Haraya], termos, [Çəki]t, SPS`  
-            💡 **Nümunə:** `Yalama – Biləcəri, termos, 30t, SPS`  
+            📐 **Şablon:** `[Haradan] -> [Haraya], thermos, [Çəki]t, SPS`  
+            💡 **Nümunə:** `Yalama – Biləcəri, thermos, 30t, SPS`  
             ⚙️ **Açar sözlər:** `thermos` • `termos` • `lednik` • `SPS`  
             📌 **Qaydalar:** Cədvəl 5 (4-cü və 5-ci sütunlar) üzrə hesablanır. 25 tonadək vaqonbaşı, 25 tondan yuxarı tonbaşına dərəcə götürülür.
             """)
@@ -338,11 +338,19 @@ with st.expander(t["guide_title"]):
             ⚙️ **Açar sözlər:** `avtoqatar` • `qoşqu` • `yarımqoşqu` • `>19m` • `scep`  
             📌 **Qaydalar:** Avtoqatar və qoşqular Cədvəl 5 (bənd 3.2.6) üzrə vaqonbaşı hesablanır. Qabarixdan kənar sseplər (>19m) üçün 1.20 / 0.60 əmsalı tətbiq edilir.
             """)
-            
+
+        with tab8:
+            st.markdown("""
+            📐 **Şablon:** `[Haradan] -> [Haraya], [Çəki]t, [Əndazəsizlik dərəcəsi], [SPS/MPS]`  
+            💡 **Nümunə:** `Yalama – Böyük Kəsik, 35t, 3-yuxarı əndazə platforma, SPS`  
+            ⚙️ **Açar sözlər:** `3-yuxarı` • `3-5 aşağı` • `4-5 yan` • `6-cı dərəcə`  
+            📌 **Qaydalar:** Cədvəl 11 üzrə hesablanır (bənd 3.5.1.2). 3-yuxarı üçün 1.50, 3-5 aşağı / 4-5 yan üçün 2.00 əmsalı tətbiq edilir (min. çəki 10t).
+            """)
+
     elif selected_lang == "RU":
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
             "📦 Универсальные", "❄️ Рефсекции", "🌡️ Термосы", 
-            "🛢️ Нефтецистерны", "🧪 Химцистерны", "🏗️ Транспортер", "🚛 Спецплатформы"
+            "🛢️ Нефтецистерны", "🧪 Химцистерны", "🏗️ Транспортер", "🚛 Спецплатформы", "📐 Негабарит (Таб. 11)"
         ])
 
         with tab1:
@@ -401,10 +409,18 @@ with st.expander(t["guide_title"]):
             📌 **Правила:** Автопоезда и прицепы считаются по Таблице 5 (п. 3.2.6) за вагон. Сцепы >19м идут с коэффициентом 1.20 / 0.60.
             """)
 
+        with tab8:
+            st.markdown("""
+            📐 **Шаблон:** `[Откуда] -> [Куда], [Вес]т, [Степень негабаритности], [СПС/МПС]`  
+            💡 **Пример:** `Ялама – Беюк Кясик, 35т, 3-верхняя негабаритность, платформа, СПС`  
+            ⚙️ **Ключевые слова:** `3-верхняя` • `3-5 нижняя` • `4-5 боковая` • `6 степень`  
+            📌 **Правила:** Расчет по Таблице 11 (п. 3.5.1.2). Для 3 верх. коэфф. 1.50, для 3-5 ниж. / 4-5 бок. — 2.00 (мин. вес 10т).
+            """)
+
     else:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
             "📦 Universal", "❄️ Ref section", "🌡️ Thermos", 
-            "🛢️ Oil tanks", "🧪 Chemical tanks", "🏗️ Transporter", "🚛 Special platform"
+            "🛢️ Oil tanks", "🧪 Chemical tanks", "🏗️ Transporter", "🚛 Special platform", "📐 Oversize (Tab. 11)"
         ])
 
         with tab1:
@@ -461,6 +477,14 @@ with st.expander(t["guide_title"]):
             💡 **Example:** `Yalama – Absheron, road train, 25t, SPS, import`  
             ⚙️ **Keywords:** `road train` • `trailer` • `semitrailer` • `>19m` • `scep`  
             📌 **Rules:** Road trains/trailers are charged per wagon via Table 5 (clause 3.2.6). Sceps >19m get 1.20 / 0.60 factors.
+            """)
+
+        with tab8:
+            st.markdown("""
+            📐 **Template:** `[From] -> [To], [Weight]t, [Oversize degree], [SPS/MPS]`  
+            💡 **Example:** `Yalama – Beyuk Kasik, 35t, 3rd upper oversize platform, SPS`  
+            ⚙️ **Keywords:** `3-upper` • `3-5 lower` • `4-5 side` • `degree 6`  
+            📌 **Rules:** Calculated via Table 11 (clause 3.5.1.2). Factor 1.50 for 3rd upper, 2.00 for 3-5 lower / 4-5 side (min weight 10t).
             """)
 
 # --- ПОЛЕ ВВОДА ЗАПРОСА ---
