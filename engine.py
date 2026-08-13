@@ -35,7 +35,7 @@ def get_currency_rate(requested_period: str = None, lang: str = "AZ") -> tuple:
 def apply_special_exceptions(
     nlu_data: dict, 
     shipment_type_code: str, 
-    table_num: int, 
+    table_num: float, 
     is_ref_type: bool, 
     act_weight: float, 
     billable_weight: float, 
@@ -43,7 +43,9 @@ def apply_special_exceptions(
     user_input_raw: str, 
     lang: str, 
     ui_t: dict, 
-    ref_wagons_cnt: int
+    ref_wagons_cnt: int,
+    origin_esr: str = "",
+    dest_esr: str = ""
 ) -> tuple:
     coeffs = []
     notes = []
@@ -52,8 +54,14 @@ def apply_special_exceptions(
     gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
     clean_gng = re.sub(r'\D', '', gng).zfill(8)
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
-    origin_esr = str(nlu_data.get("origin_esr") or "")
-    dest_esr = str(nlu_data.get("dest_esr") or "")
+    
+    # Резолвим ESR, если они не были переданы напрямую
+    if not origin_esr:
+        st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
+        origin_esr = resolve_esr_by_station_name(st_from_raw) or str(nlu_data.get("origin_esr") or "")
+    if not dest_esr:
+        st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
+        dest_esr = resolve_esr_by_station_name(st_to_raw) or str(nlu_data.get("dest_esr") or "")
 
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
@@ -64,7 +72,7 @@ def apply_special_exceptions(
         coeffs.append((ind_label, 1.015))
 
     # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50 (С проверкой 5 исключений)
-    # Для порожних вагонов СПС по п. 3.2.2 (EMPTY_SPS_CODES) коэффициент 1.50 начислется при Import/Export
+    # Для порожних вагонов СПС по п. 3.2.2 (EMPTY_SPS_CODES) коэффициент 1.50 начисляется при Import/Export
     if is_empty and clean_gng in EMPTY_SPS_CODES:
         if shipment_type_code in ["import", "export"]:
             lbl_150 = "İdxal/İxrac baza 1.50" if lang == "AZ" else ("Импорт/Экспорт база 1.50" if lang == "RU" else "Import/Export base 1.50")
@@ -114,7 +122,7 @@ def apply_special_exceptions(
     notes.extend(g_notes)
 
     # 5. СКИДКА СПС (0.85)
-    # Повторно НЕ применяется для порожняка п. 3.2.2 (так как 0.10 CHF - это ставка приватного вагона)
+    # Повторно НЕ применяется для порожняка п. 3.2.2 (так как 0.10 CHF - это спецставка приватного вагона)
     if park_type == "SPS" and not (is_empty and clean_gng in EMPTY_SPS_CODES):
         should_apply_sps = False
         
@@ -306,9 +314,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang_upper)
 
     is_ref_type_check = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "изотерм"]) or (ref_wagons_cnt is not None)
+    
+    # ПЕРЕДАЕМ origin_esr и dest_esr ДЛЯ ТОЧНОГО ОПРЕДЕЛЕНИЯ ГЛОБАЛЬНЫХ КОЭФФИЦИЕНТОВ
     coeffs, notes = apply_special_exceptions(
         nlu_data, shipment_type_code, table_num, is_ref_type_check, act_weight, 
-        billable_weight, actual_dist_km, user_input_raw, lang_upper, ui_t, ref_wagons_cnt
+        billable_weight, actual_dist_km, user_input_raw, lang_upper, ui_t, ref_wagons_cnt,
+        origin_esr, dest_esr
     )
 
     final_rate = base_chf / usd_rate
