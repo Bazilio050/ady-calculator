@@ -66,7 +66,7 @@ def apply_special_exceptions(
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015 (Без цифр в названии)
+    # 1. ИНДЕКСАЦИЯ 1.015
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
@@ -87,7 +87,7 @@ def apply_special_exceptions(
         )
         notes.append(ind_note)
         
-    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50 (Без цифр в названии)
+    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50
     if is_empty and clean_gng in EMPTY_SPS_CODES:
         if shipment_type_code in ["import", "export"]:
             lbl_150 = "İdxal/İxrac baza" if lang == "AZ" else ("Импорт/Экспорт база" if lang == "RU" else "Import/Export base")
@@ -121,7 +121,7 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
 
-    # 3.1.2.7 — Спецплатформы длиннее 19 м (Без цифр в названии)
+    # 3.1.2.7 — Спецплатформы длиннее 19 м
     if is_long_platform_scep(user_input_raw, wagon_type):
         if not is_empty:
             lbl_19m = "Sintez platforma >19m" if lang == "AZ" else ("Спецплатформа >19м" if lang == "RU" else "Special platform >19m")
@@ -137,7 +137,7 @@ def apply_special_exceptions(
     notes.extend(g_notes)
 
     # 5. СКИДКА СПС (0.85 или 0.70 согласно п. 3.2.5)
-    if park_type == "SPS" and not (is_empty and clean_gng in EMPTY_SPS_CODES):
+    if park_type == "SPS":
         sps_val = 0.85
         apply_sps = False
 
@@ -147,7 +147,6 @@ def apply_special_exceptions(
             from tables.table_6 import determine_table_6_column
             col_idx = determine_table_6_column(clean_gng, park_type)
             if col_idx == 6:
-                # 💡 Пункт 3.2.5: Для 8-го столбца (2707, 2902) применяем 0.70 вместо 0.85
                 sps_val = 0.70
                 apply_sps = True
             else:
@@ -176,10 +175,6 @@ def apply_special_exceptions(
             notes.append(sps_note)
 
     return coeffs, notes
-
-
-def nlu_res_data_esr(nlu_data: dict) -> str:
-    return str(nlu_data.get("dest_esr") or "")
 
 
 def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, year: str, ui_t: dict) -> dict:
@@ -245,6 +240,10 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     input_lower = user_input_raw.lower()
     is_empty_wagon = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
+    # Определение спецплатформ, автопоездов и прицепов (Таблица 5, п. 3.2.6)
+    table_5_keywords = ["ref", "реф", "thermos", "термос", "изотерм", "auto", "авто", "avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов", "inv", "anv"]
+    is_table_5_object = any(k in wagon_type for k in table_5_keywords) or (ref_wagons_cnt is not None) or any(k in input_lower for k in table_5_keywords)
+
     # Инвентарный порожний вагон МПС -> Бесплатно (п. 3.1.1)
     if is_empty_wagon and park_type == "MPS":
         empty_note = {
@@ -268,8 +267,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     # ---------------------------------------------------------
     # ПУНКТ 3.2.2: Порожний приватный вагон СПС (0.10 CHF/ось-км)
+    # Исключение: спецплатформы с прицепами/автопоездами идут в Таблицу 5!
     # ---------------------------------------------------------
-    if is_empty_wagon and clean_gng in EMPTY_SPS_CODES:
+    if is_empty_wagon and clean_gng in EMPTY_SPS_CODES and not is_table_5_object:
         table_num = 3.22
         is_per_wagon = True
         axles = float(nlu_data.get("axles_count") or 4)
@@ -283,7 +283,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         billable_weight = 0.0
 
     else:
-        # Расчёт веса для гружёных вагонов
+        # Расчёт веса для гружёных вагонов и объектов Таблицы 5
         billable_weight = get_min_weight_by_gng(gng, act_weight)
 
         match_axle = re.search(r'(\d+)\s*(?:oxlu|осн|axle|осей)', input_lower)
@@ -298,10 +298,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             weight_display = f"{act_w_str} t (min. {bill_w_str} t)"
         else:
             weight_display = f"{act_w_str} t"
-
-        # Расширенное определение объектов Таблицы 5 (изотермические, рефсекции, автовозы, автопоезда, прицепы)
-        table_5_keywords = ["ref", "реф", "thermos", "термос", "изотерм", "auto", "авто", "avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов", "inv", "anv"]
-        is_table_5_object = any(k in wagon_type for k in table_5_keywords) or (ref_wagons_cnt is not None) or any(k in input_lower for k in table_5_keywords)
 
         is_tanker_type = any(k in wagon_type for k in ["cistern", "цистерн", "tank", "çən", "bunker", "бункер"])
         is_transporter = any(k in input_lower for k in ["транспортер", "transportyor", "transporter"])
@@ -375,7 +371,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         notes.insert(0, weight_note)
 
     # Добавление ссылки на п. 3.2.2 при порожнем СПС
-    if is_empty_wagon and clean_gng in EMPTY_SPS_CODES:
+    if is_empty_wagon and clean_gng in EMPTY_SPS_CODES and not is_table_5_object:
         empty_sps_note = (
             "Xüsusi mülkiyyətdə olan (icarəyə verilmiş) boş vaqonların daşınması tarif siyasətinin 3.2.2 bəndinə əsasən (0.10 CHF/ox-km) hesablanmışdır."
             if lang_upper == "AZ" else
@@ -397,7 +393,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     park_display = "SPS" if park_type == "SPS" else "MPS"
     sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
 
-    if is_empty_wagon and clean_gng in EMPTY_SPS_CODES:
+    if is_empty_wagon and clean_gng in EMPTY_SPS_CODES and not is_table_5_object:
         wagon_disp_name = "Boş vaqon" if lang_upper == "AZ" else ("Порожний вагон" if lang_upper == "RU" else "Empty wagon")
     elif table_num == 7:
         if is_transporter or "transporter" in wagon_type:
