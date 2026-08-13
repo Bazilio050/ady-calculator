@@ -78,6 +78,16 @@ def apply_special_exceptions(
         ind_label = "Əlavə əmsal 1.015" if lang == "AZ" else ("Индексация 1.015" if lang == "RU" else "Indexation 1.015")
         coeffs.append((ind_label, 1.015))
         
+        # 💡 ТЕКСТ ПРИМЕЧАНИЯ ДЛЯ 1.015
+        ind_note = (
+            "Yüklü vaqonların daşınmasına 1.015 əlavə əmsalı (indeksasiya) tətbiq olunmuşdur."
+            if lang == "AZ" else
+            ("К перевозке гружёных вагонов применён дополнительный коэффициент (индексация) 1.015."
+             if lang == "RU" else
+             "Additional indexation factor 1.015 applied for loaded wagon movement.")
+        )
+        notes.append(ind_note)
+        
     # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50
     if is_empty and clean_gng in EMPTY_SPS_CODES:
         if shipment_type_code in ["import", "export"]:
