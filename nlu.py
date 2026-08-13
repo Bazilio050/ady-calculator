@@ -57,6 +57,12 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
 
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(site_lang).upper()
+   
+    # 💡 ПОДСТРАХОВКА: Принудительный поиск порожняка по ключевым словам
+    input_lower = user_input_text.lower()
+    if any(k in input_lower for k in ["boş", "порожн", "empty", "возврат", "qaytar"]):
+        result["is_empty"] = True
+        
     return result
 
 
