@@ -85,12 +85,24 @@ def calculate_table_5_base(distance_km, billable_weight_tons, wagon_type, *args,
     Возвращает: (base_chf, details_str, is_per_wagon)
     """
     w_type_lower = str(wagon_type or "").lower()
+    raw_input = str(kwargs.get("user_input_raw") or kwargs.get("raw_text") or "").lower()
+    full_type_str = f"{w_type_lower} {raw_input}"
     
     col_idx = 0
     is_per_wagon = True
 
-    # 1. Определение колонки и типа ставки (за вагон / за тонну)
-    if any(k in w_type_lower for k in ["thermos", "термос", "lednik", "ледник"]):
+    # 1. Пункт 3.2.6: Автопоезда, прицепы, полуприцепы и съемные кузова на спецплатформах -> Col 7 (груженый) / Col 8 (порожний)
+    is_road_train = any(k in full_type_str for k in ["avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов"])
+
+    if is_road_train or "inv" in w_type_lower or "anv" in w_type_lower:
+        if "boş" in full_type_str or "empty" in full_type_str or "порожн" in full_type_str:
+            col_idx = 6  # Col 8: İNV/ANV / спецплатформы порожний (per wagon)
+        else:
+            col_idx = 5  # Col 7: İNV/ANV / спецплатформы гружёный (per wagon)
+        is_per_wagon = True
+
+    # 2. Термосы и ледники
+    elif any(k in w_type_lower for k in ["thermos", "термос", "lednik", "ледник"]):
         if billable_weight_tons < 25.0:
             col_idx = 2  # Col 4: Термос < 25t (per wagon)
             is_per_wagon = True
@@ -98,19 +110,13 @@ def calculate_table_5_base(distance_km, billable_weight_tons, wagon_type, *args,
             col_idx = 3  # Col 5: Термос >= 25t (per ton)
             is_per_wagon = False
 
+    # 3. Автомобилевозы
     elif any(k in w_type_lower for k in ["auto", "авто"]):
         col_idx = 4      # Col 6: Автомобилевоз (per ton, min 10t)
         is_per_wagon = False
 
-    elif "inv" in w_type_lower or "anv" in w_type_lower:
-        if "boş" in w_type_lower or "empty" in w_type_lower or "порожн" in w_type_lower:
-            col_idx = 6  # Col 8: İNV/ANV порожний (per wagon)
-        else:
-            col_idx = 5  # Col 7: İNV/ANV гружёный (per wagon)
-        is_per_wagon = True
-
+    # 4. По умолчанию — Рефрижераторы / АРВ
     else:
-        # По умолчанию — Рефрижератор / АРВ
         if billable_weight_tons < 25.0:
             col_idx = 0  # Col 2: Реф < 25t (per wagon)
             is_per_wagon = True
@@ -136,7 +142,7 @@ def calculate_table_5_base(distance_km, billable_weight_tons, wagon_type, *args,
     if base_chf is None:
         return None, f"{tbl_name}, {distance_km} km", is_per_wagon
 
-    details_str = f"{tbl_name} ({distance_km} km)"
+    details_str = f"{tbl_name} ({distance_km} km, sütun {col_idx + 2})"
     return base_chf, details_str, is_per_wagon
 
 
@@ -176,7 +182,6 @@ def get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
             c_val = 1.70
 
         if c_val and c_val != 1.0:
-            # Название параметра без цифр значения
             lbl = "Refseksiya tərkibi" if lang == "AZ" else ("Состав рефсекции" if lang == "RU" else "Ref section composition")
             coeffs.append((lbl, c_val))
             notes.append(f"Cədvəl 5: Refseksiyanın vaqon tərkibinə ({w_cnt}+1) uyğun {c_val} əmsalı tətbiq olunmuşdur.")
