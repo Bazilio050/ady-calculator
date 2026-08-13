@@ -21,8 +21,30 @@ from tables.table_4 import calculate_table_4_base, get_table_4_coefficients
 from tables.table_5 import calculate_table_5_base, get_table_5_coefficients
 from tables.table_6 import calculate_table_6_base, get_table_6_coefficients
 from tables.table_7 import calculate_table_7_base, get_table_7_coefficients
+from tables.table_11 import calculate_table_11_tariff
 
 EMPTY_SPS_CODES = ["99210000", "99213000", "99220000", "99223000"]
+
+
+def detect_oversize_group(nlu_data: dict, user_input_raw: str) -> str:
+    """
+    Определяет группу негабаритности на основе JSON от Gemini или текста запроса.
+    """
+    group = str(nlu_data.get("oversize_group") or "").strip().lower()
+    if group in ["deg3_upper", "deg3_5_lowside", "small_deg", "degree_6"]:
+        return group
+    
+    inp = user_input_raw.lower()
+    if any(k in inp for k in ["3-yuxarı", "3 yuxarı", "3 верхняя", "3 верх", "3 yuxari", "3 deg upper"]):
+        return "deg3_upper"
+    elif any(k in inp for k in ["3-5 aşağı", "3-5 asagi", "4-5 yan", "3-5 нижняя", "4-5 боковая", "3-5 low", "4-5 side"]):
+        return "deg3_5_lowside"
+    elif any(k in inp for k in ["6-cı dərəcə", "6 dərəcə", "6 степень", "6-ci derece", "сверхнегабарит"]):
+        return "degree_6"
+    elif any(k in inp for k in ["kiçik dərəcə", "малая степень", "1-2 aşağı", "1-3 yan", "1-2 yuxarı"]):
+        return "small_deg"
+    
+    return ""
 
 
 def get_currency_rate(requested_period: str = None, lang: str = "AZ") -> tuple:
@@ -113,7 +135,7 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 6:
-        tbl_coeffs, tbl_notes = get_table_6_coefficients(shipment_type=shipment_type_code, wagon_type=wagon_type, gng=gng, park_type=park_type, lang=lang, ui_t=ui_t)
+        tbl_coeffs, tbl_notes = get_table_6_coefficients(shipment_type_code=shipment_type_code, wagon_type=wagon_type, gng=gng, park_type=park_type, lang=lang, ui_t=ui_t)
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 7:
@@ -121,8 +143,32 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
 
-    # 3.1.2.7 — Спецплатформы длиннее 19 м (НЕ применяется к Таблице 5)
-    if table_num != 5 and is_long_platform_scep(user_input_raw, wagon_type):
+    # 3.1. ТАБЛИЦА 11 И ПРАВИЛА НЕГАБАРИТА (Пункт 3.5.1)
+    oversize_grp = detect_oversize_group(nlu_data, user_input_raw)
+    if table_num == 11:
+        if oversize_grp == "deg3_upper":
+            lbl_ov = "Əndazəsizlik (3 yuxarı)" if lang == "AZ" else ("Негабаритность (3 верх.)" if lang == "RU" else "Oversize (3rd upper)")
+            coeffs.append((lbl_ov, 1.50))
+            notes.append("3-cü yuxarı dərəcəli əndazəsiz yüklər üçün Cədvəl 11 tariflərinə 1.50 artırma əmsalı tətbiq olunmuşdur (bənd 3.5.1.2).")
+        else:
+            lbl_ov = "Əndazəsizlik (3-5 aşağı, 4-5 yan)" if lang == "AZ" else ("Негабаритность (3-5 ниж., 4-5 бок.)" if lang == "RU" else "Oversize (3-5 low / 4-5 side)")
+            coeffs.append((lbl_ov, 2.00))
+            notes.append("3-5 aşağı və 4-5 yan dərəcəli əndazəsiz yüklər üçün Cədvəl 11 tariflərinə 2.00 artırma əmsalı tətbiq olunmuşdur (bənd 3.5.1.2).")
+
+    elif table_num == 7 and any(k in input_lower for k in ["транспортер", "transportyor", "transporter"]):
+        # Негабарит на транспортерах (п. 3.5.1.3 и 3.5.1.5)
+        if oversize_grp == "degree_6" or "5 aşağı" in input_lower or "5 yan" in input_lower:
+            coeffs.append(("Əndazəsizlik (6-cı dərəcə / 5 aşağı-yan)", 3.00))
+            notes.append("Транспортердә 6-cı dərəcəli və ya 5 aşağı/yan əndazəsiz yükə 3.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3 / 3.5.1.5).")
+        elif oversize_grp == "deg3_5_lowside":
+            coeffs.append(("Əndazəsizlik (3-4 aşağı, 4 yan)", 2.00))
+            notes.append("Транспортерdə 3-4 aşağı və ya 4 yan dərəcəli əndazəsiz yükə 2.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3).")
+        elif oversize_grp == "deg3_upper":
+            coeffs.append(("Əndazəsizlik (3 yuxarı)", 1.50))
+            notes.append("Транспортерdə 3-cü yuxarı dərəcəli əndazəsiz yükə 1.50 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3).")
+
+    # 3.1.2.7 — Спецплатформы длиннее 19 м (НЕ применяется к Таблице 5 и Таблице 11)
+    if table_num not in [5, 11] and is_long_platform_scep(user_input_raw, wagon_type):
         if not is_empty:
             lbl_19m = "Sintez platforma >19m" if lang == "AZ" else ("Спецплатформа >19м" if lang == "RU" else "Special platform >19m")
             coeffs.append((lbl_19m, 1.20))
@@ -141,7 +187,7 @@ def apply_special_exceptions(
         sps_val = 0.85
         apply_sps = False
 
-        if table_num in [3, 4, 5, 7]:
+        if table_num in [3, 4, 5, 7, 11]:
             apply_sps = True
         elif table_num == 6:
             from tables.table_6 import determine_table_6_column
@@ -283,13 +329,76 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         billable_weight = 0.0
 
     else:
-        # Расчёт веса для гружёных вагонов и объектов Таблицы 5
-        billable_weight = get_min_weight_by_gng(gng, act_weight)
+        # ---------------------------------------------------------
+        # РАСЧЁТ НЕГАБАРИТА И ВЫБОР ТАБЛИЦЫ 11 (п. 3.5.1.2)
+        # ---------------------------------------------------------
+        oversize_group = detect_oversize_group(nlu_data, user_input_raw)
 
-        match_axle = re.search(r'(\d+)\s*(?:oxlu|осн|axle|осей)', input_lower)
-        if match_axle:
-            axles = int(match_axle.group(1))
-            billable_weight = get_transporter_min_weight(axles, billable_weight)
+        # 1. Если определена 3-я верхняя или 3-5 нижняя/боковая негабаритность -> Таблица 11!
+        if oversize_group in ["deg3_upper", "deg3_5_lowside"]:
+            table_num = 11
+            # Минимальный расчетный вес по п. 3.5.1.2 не менее 10 тонн
+            billable_weight = max(10.0, act_weight)
+            
+            res_t11 = calculate_table_11_tariff(tariff_dist_km, billable_weight, oversize_group)
+            base_chf = res_t11["base_chf"]
+            table_details = f"Cədvəl 11 ({res_t11['column_info']})"
+            is_per_wagon = (res_t11["rate_type"] == "per_wagon")
+
+        else:
+            # 2. Обычные стандарты веса
+            if oversize_group == "small_deg":
+                # Малая степень негабаритности (п. 3.5.1.1): мин. 25 тонн
+                billable_weight = max(25.0, act_weight)
+            else:
+                billable_weight = get_min_weight_by_gng(gng, act_weight)
+
+            match_axle = re.search(r'(\d+)\s*(?:oxlu|осн|axle|осей)', input_lower)
+            if match_axle:
+                axles = int(match_axle.group(1))
+                billable_weight = get_transporter_min_weight(axles, billable_weight)
+
+            is_tanker_type = any(k in wagon_type for k in ["cistern", "цистерн", "tank", "çən", "bunker", "бункер"])
+            is_transporter = any(k in input_lower for k in ["транспортер", "transportyor", "transporter"])
+
+            is_table_7_type = (
+                "small_chunk" in wagon_type or "small_chunk" in shipment_kind or
+                "passenger" in wagon_type or "sərnişin" in wagon_type or "baggage" in wagon_type or
+                clean_gng.startswith("99910000") or
+                ("container" in wagon_type and act_weight <= 5.0) or
+                is_transporter or "transporter" in wagon_type
+            )
+
+            if is_table_7_type:
+                table_num = 7
+                is_per_wagon = False
+                base_chf, table_details = calculate_table_7_base(
+                    distance_km=tariff_dist_km,
+                    billable_weight_tons=billable_weight,
+                    wagon_type=wagon_type,
+                    container_type=nlu_data.get("container_type"),
+                    is_empty=is_empty_wagon,
+                    gng_code=clean_gng,
+                    lang=lang_upper,
+                    user_input_raw=user_input_raw
+                )
+            elif is_tanker_type:
+                table_num = 6
+                is_per_wagon = False
+                base_chf, table_details = calculate_table_6_base(tariff_dist_km, billable_weight, gng, park_type, {}, lang_upper)
+            elif is_table_5_object:
+                table_num = 5
+                base_chf, table_details, is_per_wagon = calculate_table_5_base(
+                    tariff_dist_km, billable_weight, wagon_type, lang=lang_upper, user_input_raw=user_input_raw, is_empty=is_empty_wagon
+                )
+            elif shipment_type_code == "transit":
+                table_num = 4
+                is_per_wagon = False
+                base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, {}, lang_upper)
+            else:
+                table_num = 3
+                is_per_wagon = False
+                base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
 
         act_w_str = f"{int(act_weight) if act_weight.is_integer() else act_weight}"
         bill_w_str = f"{int(billable_weight) if billable_weight.is_integer() else billable_weight}"
@@ -298,48 +407,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             weight_display = f"{act_w_str} t (min. {bill_w_str} t)"
         else:
             weight_display = f"{act_w_str} t"
-
-        is_tanker_type = any(k in wagon_type for k in ["cistern", "цистерн", "tank", "çən", "bunker", "бункер"])
-        is_transporter = any(k in input_lower for k in ["транспортер", "transportyor", "transporter"])
-
-        is_table_7_type = (
-            "small_chunk" in wagon_type or "small_chunk" in shipment_kind or
-            "passenger" in wagon_type or "sərnişin" in wagon_type or "baggage" in wagon_type or
-            clean_gng.startswith("99910000") or
-            ("container" in wagon_type and act_weight <= 5.0) or
-            is_transporter or "transporter" in wagon_type
-        )
-
-        if is_table_7_type:
-            table_num = 7
-            is_per_wagon = False
-            base_chf, table_details = calculate_table_7_base(
-                distance_km=tariff_dist_km,
-                billable_weight_tons=billable_weight,
-                wagon_type=wagon_type,
-                container_type=nlu_data.get("container_type"),
-                is_empty=is_empty_wagon,
-                gng_code=clean_gng,
-                lang=lang_upper,
-                user_input_raw=user_input_raw
-            )
-        elif is_tanker_type:
-            table_num = 6
-            is_per_wagon = False
-            base_chf, table_details = calculate_table_6_base(tariff_dist_km, billable_weight, gng, park_type, {}, lang_upper)
-        elif is_table_5_object:
-            table_num = 5
-            base_chf, table_details, is_per_wagon = calculate_table_5_base(
-                tariff_dist_km, billable_weight, wagon_type, lang=lang_upper, user_input_raw=user_input_raw, is_empty=is_empty_wagon
-            )
-        elif shipment_type_code == "transit":
-            table_num = 4
-            is_per_wagon = False
-            base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, {}, lang_upper)
-        else:
-            table_num = 3
-            is_per_wagon = False
-            base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
 
         if base_chf is None:
             base_chf = 1200.0
@@ -362,11 +429,11 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     # Добавление нормы минимального веса в Qeydlər
     if not is_empty_wagon and act_weight > 0 and act_weight < billable_weight:
         weight_note = (
-            f"YHN (GNG) {gng} kodlu yük üçün minimum hesablama çəkisi norması {int(billable_weight)} ton tətbiq olunmuşdur."
+            f"Minimum hesablama çəkisi norması {int(billable_weight)} ton tətbiq olunmuşdur."
             if lang_upper == "AZ" else
-            (f"Для груза ГНГ {gng} применена минимальная норма расчётного веса {int(billable_weight)} тонн."
+            (f"Применена минимальная норма расчётного веса {int(billable_weight)} тонн."
              if lang_upper == "RU" else
-             f"Minimum billable weight norm of {int(billable_weight)} tons applied for GNG {gng}.")
+             f"Minimum billable weight norm of {int(billable_weight)} tons applied.")
         )
         notes.insert(0, weight_note)
 
@@ -395,14 +462,16 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     if is_empty_wagon and clean_gng in EMPTY_SPS_CODES and not is_table_5_object:
         wagon_disp_name = "Boş vaqon" if lang_upper == "AZ" else ("Порожний вагон" if lang_upper == "RU" else "Empty wagon")
+    elif table_num == 11:
+        wagon_disp_name = "Əndazəsiz yük (Cədvəl 11)" if lang_upper == "AZ" else ("Негабаритный груз (Таблица 11)" if lang_upper == "RU" else "Oversized cargo (Table 11)")
     elif table_num == 7:
-        if is_transporter or "transporter" in wagon_type:
+        if any(k in input_lower for k in ["транспортер", "transportyor", "transporter"]) or "transporter" in wagon_type:
             wagon_disp_name = "Transportyor" if lang_upper == "AZ" else ("Транспортер" if lang_upper == "RU" else "Transporter")
         elif "passenger" in wagon_type or "sərnişin" in wagon_type:
             wagon_disp_name = "Sərnişin vaqonu" if lang_upper == "AZ" else ("Пассажирский вагон" if lang_upper == "RU" else "Passenger wagon")
         else:
             wagon_disp_name = "Xırda göndərmə" if lang_upper == "AZ" else ("Малотоннажная отправка" if lang_upper == "RU" else "Small chunk shipment")
-    elif is_tanker_type:
+    elif table_num == 6:
         wagon_disp_name = "Çən vaqonu" if lang_upper == "AZ" else ("Вагон-цистерна" if lang_upper == "RU" else "Tank wagon")
     elif table_num == 5:
         if any(k in input_lower or k in wagon_type for k in ["avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов"]):
