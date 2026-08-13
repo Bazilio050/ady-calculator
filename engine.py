@@ -136,29 +136,43 @@ def apply_special_exceptions(
     coeffs.extend(g_coeffs)
     notes.extend(g_notes)
 
-    # 5. СКИДКА СПС (Без цифр в названии)
+    # 5. СКИДКА СПС (0.85 или 0.70 согласно п. 3.2.5)
     if park_type == "SPS" and not (is_empty and clean_gng in EMPTY_SPS_CODES):
-        should_apply_sps = False
-        
+        sps_val = 0.85
+        apply_sps = False
+
         if table_num in [3, 4, 5, 7]:
-            should_apply_sps = True
+            apply_sps = True
         elif table_num == 6:
             from tables.table_6 import determine_table_6_column
             col_idx = determine_table_6_column(clean_gng, park_type)
-            if col_idx != 6:
-                should_apply_sps = True
+            if col_idx == 6:
+                # 💡 Пункт 3.2.5: Для 8-го столбца (2707, 2902) применяем 0.70 вместо 0.85
+                sps_val = 0.70
+                apply_sps = True
+            else:
+                apply_sps = True
 
-        if should_apply_sps:
+        if apply_sps:
             sps_label = "SPS güzəşti" if lang == "AZ" else ("Скидка СПС" if lang == "RU" else "SPS Discount")
-            coeffs.append((sps_label, 0.85))
+            coeffs.append((sps_label, sps_val))
             
-            sps_note = (
-                "Xüsusi mülkiyyətdə olan (SPS) vaqonlara 0.85 güzəşt əmsalı tətbiq edilmişdir."
-                if lang == "AZ" else
-                ("К приватным вагонам (СПС) применён скидочный коэффициент 0.85."
-                 if lang == "RU" else
-                 "SPS discount factor 0.85 applied for private wagons.")
-            )
+            if sps_val == 0.70:
+                sps_note = (
+                    "Cədvəl 6 (sütun 8): 2707 və 2902 YHN kodlu yüklər üçün özəl çənlərə 0.85 əvəzinə 0.70 güzəşt əmsalı tətbiq olunmuşdur (bənd 3.2.5)."
+                    if lang == "AZ" else
+                    ("Таблица 6 (ст. 8): Для грузов ГНГ 2707 и 2902 в приватных цистернах применён скидочный коэффициент 0.70 вместо 0.85 (п. 3.2.5)."
+                     if lang == "RU" else
+                     "Table 6 (col 8): SPS discount factor 0.70 applied instead of 0.85 for GNG 2707 and 2902 (clause 3.2.5).")
+                )
+            else:
+                sps_note = (
+                    "Xüsusi mülkiyyətdə olan (SPS) vaqonlara 0.85 güzəşt əmsalı tətbiq edilmişdir."
+                    if lang == "AZ" else
+                    ("К приватным вагонам (СПС) применён скидочный коэффициент 0.85."
+                     if lang == "RU" else
+                     "SPS discount factor 0.85 applied for private wagons.")
+                )
             notes.append(sps_note)
 
     return coeffs, notes
