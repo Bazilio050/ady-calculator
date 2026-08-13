@@ -65,7 +65,6 @@ def parse_ref_composition(user_input_str):
     m = re.search(r"(\d+)\+(\d+)", st)
     if m:
         num1, num2 = int(m.group(1)), int(m.group(2))
-        # Обычная логика: 1 — это дизель-генератор, большая цифра — грузовые вагоны
         if num1 == 1:
             return num2
         elif num2 == 1:
@@ -78,6 +77,7 @@ def parse_ref_composition(user_input_str):
         return int(m_single.group(1))
 
     return None
+
 
 def calculate_table_5_base(distance_km, billable_weight_tons, wagon_type, *args, lang="AZ", **kwargs):
     """
@@ -146,9 +146,10 @@ def get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
     coeffs = []
     notes = []
 
-    # Собираем весь доступный текст для парсинга комбинаций 5+1, 1+5, 4+1, 3+1
+    # Собираем весь доступный текст для парсинга комбинаций
     full_text_search = " ".join([
         str(ref_wagons_cnt or ""),
+        str(kwargs.get("ref_wagons_cnt") or ""),
         str(kwargs.get("composition") or ""),
         str(kwargs.get("prompt") or ""),
         str(kwargs.get("user_input_raw") or ""),
@@ -161,6 +162,7 @@ def get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
         parsed_cnt = ref_wagons_cnt
     else:
         parsed_cnt = parse_ref_composition(full_text_search)
+
     if parsed_cnt is not None:
         w_cnt = parsed_cnt
         c_val = None
@@ -174,20 +176,21 @@ def get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
             c_val = 1.70
 
         if c_val and c_val != 1.0:
-            lbl = f"Refseksiya {w_cnt}+1 əmsalı ({c_val})" if lang == "AZ" else f"Коэффициент рефсекции {w_cnt}+1 ({c_val})"
+            # Название параметра без цифр значения
+            lbl = "Refseksiya tərkibi" if lang == "AZ" else ("Состав рефсекции" if lang == "RU" else "Ref section composition")
             coeffs.append((lbl, c_val))
             notes.append(f"Cədvəl 5: Refseksiyanın vaqon tərkibinə ({w_cnt}+1) uyğun {c_val} əmsalı tətbiq olunmuşdur.")
 
     # 2. Автомобилевозы на двухэтажных платформах (0.80)
     w_type_lower = str(wagon_type or "").lower()
     if ("auto" in w_type_lower or "авто" in w_type_lower) and (is_2tier_platform or "platform" in w_type_lower or "платформ" in w_type_lower):
-        lbl = "İkimərtəbəli platforma 0.80" if lang == "AZ" else "Двухэтажная платформа 0.80"
+        lbl = "İkimərtəbəli platforma" if lang == "AZ" else ("Двухэтажная платформа" if lang == "RU" else "Double-deck platform")
         coeffs.append((lbl, 0.80))
         notes.append("Cədvəl 5: Avtomobil daşıyan ikimərtəbəli platforma üçün 0.80 əmsalı tətbiq olunmuşdur.")
 
     # 3. Плодоовощная скидка (0.60) — ТОЛЬКО если запрошено пользователем
     if is_fruit_veg_discount or kwargs.get("fruit_veg_requested"):
-        lbl = "Meyvə-tərəvəz güzəşti 0.60" if lang == "AZ" else "Скидка плодоовощная 0.60"
+        lbl = "Meyvə-tərəvəz güzəşti" if lang == "AZ" else ("Скидка плодоовощная" if lang == "RU" else "Fruit & Veg discount")
         coeffs.append((lbl, 0.60))
         notes.append("Cədvəl 5: Tarif Razılaşması iştirakçısı olan ölkələrin meyvə-tərəvəz yükünə 0.60 güzəşt əmsalı tətbiq olunmuşdur.")
 
