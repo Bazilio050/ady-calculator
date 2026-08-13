@@ -277,10 +277,10 @@ st.markdown(f"""
 
 # --- ИНТЕРАКТИВНАЯ ШПАРГАЛКА В ВИДЕ ВКЛАДОК ---
 with st.expander(t["guide_title"]):
-    if selected_lang == "AZ":
+    f selected_lang == "AZ":
         tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-            "📦 Ümumi", "❄️ Refseksiya", "🌡️ Termos", 
-            "🛢️ Neft çənləri", "🧪 Kimya çənləri", "🏗️ Transportyor", "🚛 Xüsusi platforma"
+            "📦 Ümumi vaqonlar", "❄️ Refseksiyalar", "🌡️ Vaqon-termoslar", 
+            "🛢️ Neft çənləri", "🧪 Kimyəvi çənlər", "🏗️ Transportyorlar", "🚛 Xüsusi platformalar"
         ])
 
         with tab1:
@@ -296,15 +296,15 @@ with st.expander(t["guide_title"]):
             📐 **Şablon:** `[Haradan] -> [Haraya], [GNG], [Sxem], [Çəki]t, SPS`  
             💡 **Nümunə:** `Yalama – Biləcəri, 0207, 5+1, 35t, SPS`  
             ⚙️ **Açar sözlər:** `5+1` • `1+5` • `4+1` • `3+1` • `SPS`  
-            📌 **Qaydalar:** Cədvəl 5 üzrə hesablanır. Tərkibə uyğun əmsal avtomatik tətbiq olunur (məs: 5+1 → 0.85).
+            📌 **Qaydalar:** Cədvəl 5 üzrə hesablanır. Seksiyanın tərkibinə uyğun koeffisient avtomatik tətbiq olunur (məs: 5+1 → 0.85).
             """)
 
         with tab3:
             st.markdown("""
-            📐 **Şablon:** `[Haradan] -> [Haraya], thermos, [Çəki]t, SPS`  
-            💡 **Nümunə:** `Yalama – Biləcəri, thermos, 30t, SPS`  
+            📐 **Şablon:** `[Haradan] -> [Haraya], termos, [Çəki]t, SPS`  
+            💡 **Nümunə:** `Yalama – Biləcəri, termos, 30t, SPS`  
             ⚙️ **Açar sözlər:** `thermos` • `termos` • `lednik` • `SPS`  
-            📌 **Qaydalar:** Cədvəl 5 (Sütun 4/5) üzrə hesablanır. <25t olduqda vaqonbaşı, >=25t tonda hesablanır.
+            📌 **Qaydalar:** Cədvəl 5 (4-cü və 5-ci sütunlar) üzrə hesablanır. 25 tonadək vaqonbaşı, 25 tondan yuxarı tonbaşına dərəcə götürülür.
             """)
 
         with tab4:
@@ -312,7 +312,7 @@ with st.expander(t["guide_title"]):
             📐 **Şablon:** `[Haradan] -> [Haraya], [GNG], çən vaqonu, [Çəki]t, SPS`  
             💡 **Nümunə:** `Yalama – Güzdək, 2713, çən vaqonu, 60t, SPS`  
             ⚙️ **Açar sözlər:** `2713` • `2710` • `çən vaqonu` • `SPS`  
-            📌 **Qaydalar:** Cədvəl 6 (Sütun 2) üzrə hesablanır.
+            📌 **Qaydalar:** Cədvəl 6 (2-ci sütun) üzrə neft və neft məhsulları tarifi ilə hesablanır.
             """)
 
         with tab5:
@@ -320,7 +320,7 @@ with st.expander(t["guide_title"]):
             📐 **Şablon:** `[Haradan] -> [Haraya], [GNG], çən vaqonu, [Çəki]t, SPS`  
             💡 **Nümunə:** `Yalama – Siyəzən, 27071, çən vaqonu, 55t, SPS`  
             ⚙️ **Açar sözlər:** `27071` • `2902` • `çən vaqonu` • `SPS`  
-            📌 **Qaydalar:** Cədvəl 6 (Sütun 8) üzrə hesablanır. Özəl çənlər üçün bənd 3.2.5-ə əsasən **0.70 güzəşti** tətbiq edilir.
+            📌 **Qaydalar:** Cədvəl 6 (8-ci sütun) üzrə hesablanır. Özəl (xüsusi) çənlərdə kimyəvi və aromatik yüklər üçün **0.70 güzəşt əmsalı** (bənd 3.2.5) tətbiq edilir.
             """)
 
         with tab6:
@@ -328,7 +328,7 @@ with st.expander(t["guide_title"]):
             📐 **Şablon:** `[Haradan] -> [Haraya], [Ox sayı]-oxlu transportyor, [Çəki]t`  
             💡 **Nümunə:** `Astara – Yalama, 8-oxlu transportyor, 15t`  
             ⚙️ **Açar sözlər:** `4-oxlu` • `6-oxlu` • `8-oxlu` • `transportyor`  
-            📌 **Qaydalar:** Cədvəl 7 üzrə oxbaşına min. 5 ton çəki norması ilə hesablanır.
+            📌 **Qaydalar:** Cədvəl 7 üzrə hesablanır. Hər oxa düşən minimum hesablaşma çəkisi 5 ton götürülür.
             """)
 
         with tab7:
@@ -336,9 +336,9 @@ with st.expander(t["guide_title"]):
             📐 **Şablon:** `[Haradan] -> [Haraya], [avtoqatar/qoşqu/scep >19m], [Çəki]t, SPS, [idxal/ixrac]`  
             💡 **Nümunə:** `Yalama – Abşeron, avtoqatar, 25t, SPS, idxal`  
             ⚙️ **Açar sözlər:** `avtoqatar` • `qoşqu` • `yarımqoşqu` • `>19m` • `scep`  
-            📌 **Qaydalar:** Avtoqatar və qoşqular Cədvəl 5 (bənd 3.2.6) üzrə vaqonbaşı hesablanır. Sceplər üçünsə 1.20 / 0.60 əmsalı tətbiq edilir.
+            📌 **Qaydalar:** Avtoqatar və qoşqular Cədvəl 5 (bənd 3.2.6) üzrə vaqonbaşı hesablanır. Qabarixdan kənar sseplər (>19m) üçün 1.20 / 0.60 əmsalı tətbiq edilir.
             """)
-
+            
     elif selected_lang == "RU":
         tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
             "📦 Универсальные", "❄️ Рефсекции", "🌡️ Термосы", 
