@@ -85,17 +85,21 @@ def calculate_table_5_base(distance_km, billable_weight_tons, wagon_type, *args,
     Возвращает: (base_chf, details_str, is_per_wagon)
     """
     w_type_lower = str(wagon_type or "").lower()
-    raw_input = str(kwargs.get("user_input_raw") or kwargs.get("raw_text") or "").lower()
+    raw_input = str(kwargs.get("user_input_raw") or kwargs.get("raw_text") or kwargs.get("cargo_name") or "").lower()
     full_type_str = f"{w_type_lower} {raw_input}"
     
     col_idx = 0
     is_per_wagon = True
 
-    # 1. Пункт 3.2.6: Автопоезда, прицепы, полуприцепы и съемные кузова на спецплатформах -> Col 7 (груженый) / Col 8 (порожний)
-    is_road_train = any(k in full_type_str for k in ["avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов"])
+    # Проверка на порожнее состояние
+    is_empty_flag = kwargs.get("is_empty", False) or any(k in full_type_str for k in ["boş", "empty", "порожн"])
 
-    if is_road_train or "inv" in w_type_lower or "anv" in w_type_lower:
-        if "boş" in full_type_str or "empty" in full_type_str or "порожн" in full_type_str:
+    # 1. Пункт 3.2.6: Автопоезда, прицепы, полуприцепы, кузова и İNV/ANV -> Col 7 (груженый) / Col 8 (порожний)
+    road_train_keywords = ["avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов", "inv", "anv"]
+    is_road_train = any(k in full_type_str for k in road_train_keywords)
+
+    if is_road_train:
+        if is_empty_flag:
             col_idx = 6  # Col 8: İNV/ANV / спецплатформы порожний (per wagon)
         else:
             col_idx = 5  # Col 7: İNV/ANV / спецплатформы гружёный (per wagon)
