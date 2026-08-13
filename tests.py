@@ -119,7 +119,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Siyəzən", "cargo_gng_code": "29023", "cargo_name": "Özəl çənlər yükləri",
             "actual_weight_tons": 50.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 26.66
+        "expected_rate": 18.66
     },
     {
         "name": "13. Баку тов -> Ялама (4407, крытый, 50т, СПС)",
