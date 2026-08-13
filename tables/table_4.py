@@ -77,9 +77,16 @@ def calculate_table_4_base(distance_km, billable_weight_tons, *args, lang="AZ", 
 
 def get_table_4_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, lang="AZ", *args, **kwargs):
     """
-    Возвращает специфические коэффициенты Таблицы 4 (при наличии).
-    Общие коэффициенты (1.20 цветмет, 1.20 маршрут Алят-Беюк Кесик) обрабатываются в utils.py.
+    Возвращает специфические коэффициенты Таблицы 4.
+    Общие коэффициенты (1.20 транзитный коридор Алят-Беюк Кясик, скидка СПС 0.85, индексация 1.015)
+    обрабатываются централизованно в engine.py и utils.py.
     """
     coeffs = []
     notes = []
+
+    # Гибкое чтение параметров (из именованных аргументов или kwargs)
+    st = str(shipment_type_code or kwargs.get("shipment_type") or kwargs.get("mode") or "").lower()
+    g_raw = gng_code or kwargs.get("gng") or kwargs.get("cargo_gng_code") or ""
+    g = re.sub(r'\D', '', str(g_raw))
+
     return coeffs, notes
