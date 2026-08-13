@@ -121,8 +121,8 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
 
-    # 3.1.2.7 — Спецплатформы длиннее 19 м
-    if is_long_platform_scep(user_input_raw, wagon_type):
+    # 3.1.2.7 — Спецплатформы длиннее 19 м (НЕ применяется к Таблице 5)
+    if table_num != 5 and is_long_platform_scep(user_input_raw, wagon_type):
         if not is_empty:
             lbl_19m = "Sintez platforma >19m" if lang == "AZ" else ("Спецплатформа >19м" if lang == "RU" else "Special platform >19m")
             coeffs.append((lbl_19m, 1.20))
@@ -130,7 +130,7 @@ def apply_special_exceptions(
         elif park_type == "SPS":
             lbl_empty_19m = "Boş platforma >19m" if lang == "AZ" else ("Скидка порожн. >19м" if lang == "RU" else "Empty platform >19m")
             coeffs.append((lbl_empty_19m, 0.60))
-
+            
     # 4. Общие глобальные коэффициенты
     g_coeffs, g_notes = get_global_coefficients(shipment_type_code, gng, origin_esr, dest_esr, lang)
     coeffs.extend(g_coeffs)
