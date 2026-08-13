@@ -109,7 +109,7 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 5:
-        tbl_coeffs, tbl_notes = get_table_5_coefficients(shipment_type=shipment_type_code, wagon_type=wagon_type, gng=gng, ref_wagons_cnt=ref_wagons_cnt, lang=lang, ui_t=ui_t)
+        tbl_coeffs, tbl_notes = get_table_5_coefficients(shipment_type_code=shipment_type_code, wagon_type=wagon_type, gng_code=gng, ref_wagons_cnt=ref_wagons_cnt, lang=lang, ui_t=ui_t, user_input_raw=user_input_raw)
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 6:
@@ -299,7 +299,10 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         else:
             weight_display = f"{act_w_str} t"
 
-        is_ref_type = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "изотерм"]) or (ref_wagons_cnt is not None)
+        # Расширенное определение объектов Таблицы 5 (изотермические, рефсекции, автовозы, автопоезда, прицепы)
+        table_5_keywords = ["ref", "реф", "thermos", "термос", "изотерм", "auto", "авто", "avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов", "inv", "anv"]
+        is_table_5_object = any(k in wagon_type for k in table_5_keywords) or (ref_wagons_cnt is not None) or any(k in input_lower for k in table_5_keywords)
+
         is_tanker_type = any(k in wagon_type for k in ["cistern", "цистерн", "tank", "çən", "bunker", "бункер"])
         is_transporter = any(k in input_lower for k in ["транспортер", "transportyor", "transporter"])
 
@@ -328,9 +331,11 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             table_num = 6
             is_per_wagon = False
             base_chf, table_details = calculate_table_6_base(tariff_dist_km, billable_weight, gng, park_type, {}, lang_upper)
-        elif is_ref_type:
+        elif is_table_5_object:
             table_num = 5
-            base_chf, table_details, is_per_wagon = calculate_table_5_base(tariff_dist_km, billable_weight, wagon_type, {}, lang_upper)
+            base_chf, table_details, is_per_wagon = calculate_table_5_base(
+                tariff_dist_km, billable_weight, wagon_type, lang=lang_upper, user_input_raw=user_input_raw, is_empty=is_empty_wagon
+            )
         elif shipment_type_code == "transit":
             table_num = 4
             is_per_wagon = False
@@ -350,7 +355,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     base_tariff_display = f"**{base_chf:.2f} {chf_unit}** ({table_details})"
     usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang_upper)
 
-    is_ref_type_check = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "изотерм"]) or (ref_wagons_cnt is not None)
+    is_ref_type_check = (table_num == 5)
     
     coeffs, notes = apply_special_exceptions(
         nlu_data, shipment_type_code, table_num, is_ref_type_check, act_weight, 
@@ -403,8 +408,11 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             wagon_disp_name = "Xırda göndərmə" if lang_upper == "AZ" else ("Малотоннажная отправка" if lang_upper == "RU" else "Small chunk shipment")
     elif is_tanker_type:
         wagon_disp_name = "Çən vaqonu" if lang_upper == "AZ" else ("Вагон-цистерна" if lang_upper == "RU" else "Tank wagon")
-    elif is_ref_type_check:
-        wagon_disp_name = f"İzotermik vaqon{sec_info}" if lang_upper == "AZ" else (f"Изотермический вагон{sec_info}" if lang_upper == "RU" else f"Isothermal wagon{sec_info}")
+    elif table_num == 5:
+        if any(k in input_lower or k in wagon_type for k in ["avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов"]):
+            wagon_disp_name = "Xüsusi platforma (avtoqatar/qoşqu)" if lang_upper == "AZ" else ("Спецплатформа (автопоезд/прицеп)" if lang_upper == "RU" else "Special platform (road train/trailer)")
+        else:
+            wagon_disp_name = f"İzotermik vaqon{sec_info}" if lang_upper == "AZ" else (f"Изотермический вагон{sec_info}" if lang_upper == "RU" else f"Isothermal wagon{sec_info}")
     else:
         wagon_disp_name = "Universal vaqon" if lang_upper == "AZ" else ("Универсальный вагон" if lang_upper == "RU" else "Universal wagon")
 
