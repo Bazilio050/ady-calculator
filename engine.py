@@ -33,6 +33,9 @@ def get_currency_rate(requested_period: str = None, lang: str = "AZ") -> tuple:
     return rate, label
 
 
+apply_special_exceptions в engine.py на эту версию:
+
+Python
 def apply_special_exceptions(
     nlu_data: dict, 
     shipment_type_code: str, 
@@ -56,7 +59,6 @@ def apply_special_exceptions(
     clean_gng = re.sub(r'\D', '', gng).zfill(8)
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
     
-    # Резолвим ESR, если они не были переданы напрямую
     if not origin_esr:
         st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
         origin_esr = resolve_esr_by_station_name(st_from_raw) or str(nlu_data.get("origin_esr") or "")
@@ -79,8 +81,7 @@ def apply_special_exceptions(
         ind_label = "Əlavə əmsal 1.015" if lang == "AZ" else ("Индексация 1.015" if lang == "RU" else "Indexation 1.015")
         coeffs.append((ind_label, 1.015))
         
-    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50 (С проверкой 5 исключений)
-    # Для порожних вагонов СПС по п. 3.2.2 (EMPTY_SPS_CODES) коэффициент 1.50 начисляется при Import/Export
+    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50
     if is_empty and clean_gng in EMPTY_SPS_CODES:
         if shipment_type_code in ["import", "export"]:
             lbl_150 = "İdxal/İxrac baza 1.50" if lang == "AZ" else ("Импорт/Экспорт база 1.50" if lang == "RU" else "Import/Export base 1.50")
@@ -94,7 +95,7 @@ def apply_special_exceptions(
 
     # 3. Специфические коэффициенты конкретных таблиц
     if table_num == 3:
-        tbl_coeffs, tbl_notes = get_table_3_coefficients(shipment_type=shipment_type_code, wagon_type=wagon_type, gng=gng, lang=lang, ui_t=ui_t)
+        tbl_coeffs, tbl_notes = get_table_3_coefficients(shipment_type_code=shipment_type_code, wagon_type=wagon_type, gng_code=gng, lang=lang, ui_t=ui_t)
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 4:
@@ -124,13 +125,12 @@ def apply_special_exceptions(
             lbl_empty_19m = "Boş platforma >19m 0.60" if lang == "AZ" else ("Скидка порожн. >19м 0.60" if lang == "RU" else "Empty platform >19m 0.60")
             coeffs.append((lbl_empty_19m, 0.60))
 
-    # 4. Общие глобальные коэффициенты (включая 1.20 для транзита Алят - Беюк Кясик)
+    # 4. Общие глобальные коэффициенты
     g_coeffs, g_notes = get_global_coefficients(shipment_type_code, gng, origin_esr, dest_esr, lang)
     coeffs.extend(g_coeffs)
     notes.extend(g_notes)
 
-    # 5. СКИДКА СПС (0.85)
-    # Повторно НЕ применяется для порожняка п. 3.2.2 (так как 0.10 CHF - это спецставка приватного вагона)
+    # 5. СКИДКА СПС (0.85) + ПРИМЕЧАНИЕ
     if park_type == "SPS" and not (is_empty and clean_gng in EMPTY_SPS_CODES):
         should_apply_sps = False
         
@@ -145,6 +145,18 @@ def apply_special_exceptions(
         if should_apply_sps:
             sps_label = "SPS güzəşti 0.85" if lang == "AZ" else ("Скидка СПС 0.85" if lang == "RU" else "SPS Discount 0.85")
             coeffs.append((sps_label, 0.85))
+            
+            # 💡 ТЕПЕРЬ ТЕКСТ ПРИМЕЧАНИЯ ДОБАВЛЯЕТСЯ 100%
+            sps_note = (
+                "Xüsusi mülkiyyətdə olan (SPS) vaqonlara 0.85 güzəşt əmsalı tətbiq edilmişdir."
+                if lang == "AZ" else
+                ("К приватным вагонам (СПС) применён скидочный коэффициент 0.85."
+                 if lang == "RU" else
+                 "SPS discount factor 0.85 applied for private wagons.")
+            )
+            notes.append(sps_note)
+
+    return coeffs, notes
 
     return coeffs, notes
 
