@@ -128,9 +128,34 @@ def get_table_3_coefficients(shipment_type_code=None, gng_code=None, lang="AZ", 
     notes = []
 
     # 1.04 — Только при импорте леса / чермета
-    if is_import_shipment(shipment_type_code, kwargs) and is_104_import_eligible_gng(gng_code, kwargs):
-        lbl = "İdxal yükləri 1.04" if lang == "AZ" else ("Импортные грузы 1.04" if lang == "RU" else "Import cargo 1.04")
-        coeffs.append((lbl, 1.04))
-        notes.append("Cədvəl 3: İdxal daşımaları zamanı taxta və qara metallara 1.04 əmsalı tətbiq olunmuşdur.")
+    if is_import_shipment(shipment_type_code, kwargs):
+        g = extract_gng_digits(gng_code, kwargs)
+        
+        is_wood = False
+        is_metal = False
+        if g:
+            if g.startswith("4403") or g.startswith("4404") or (len(g) >= 4 and 4407 <= int(g[:4]) <= 4413):
+                is_wood = True
+            elif g.startswith("72") or (len(g) >= 4 and 7301 <= int(g[:4]) <= 7307):
+                is_metal = True
+
+        if is_wood or is_metal:
+            lbl = "İdxal yükləri 1.04" if lang == "AZ" else ("Импортные грузы 1.04" if lang == "RU" else "Import cargo 1.04")
+            coeffs.append((lbl, 1.04))
+
+            # Разделяем примечание персонализированно по грузу
+            if is_wood:
+                note_msg = (
+                    "Cədvəl 3: İdxal daşımaları zamanı meşə materiallarına (taxta) 1.04 əmsalı tətbiq olunmuşdur."
+                    if lang == "AZ" else
+                    ("Таблица 3: При импорте лесоматериалов применяется коэффициент 1.04." if lang == "RU" else "Table 3: Coefficient 1.04 applied for import of timber.")
+                )
+            else:
+                note_msg = (
+                    "Cədvəl 3: İdxal daşımaları zamanı qara metallara 1.04 əmsalı tətbiq olunmuşdur."
+                    if lang == "AZ" else
+                    ("Таблица 3: При импорте чёрных металлов применяется коэффициент 1.04." if lang == "RU" else "Table 3: Coefficient 1.04 applied for import of ferrous metals.")
+                )
+            notes.append(note_msg)
 
     return coeffs, notes
