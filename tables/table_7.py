@@ -14,8 +14,7 @@ def extract_digits(val) -> str:
 def load_table_7_rates():
     """
     Чтение тарифных ставок из Table_7_Tariffs.txt / Table7.txt.
-    Ищет файл в корне репозитория и в папке tables/.
-    Ожидает 10 столбцов:
+    Ожидает 10 столбцов после расстояния:
     Məsafə | 5t | 10t | 15t | 20t | 25t | Cont_Y_3t | Cont_Y_5t | Cont_B_3t | Cont_B_5t
     """
     possible_files = [
@@ -57,13 +56,25 @@ def load_table_7_rates():
 
 
 def determine_table_7_column(wagon_type=None, weight_tons=25.0, container_type=None, is_empty=False, gng_code=None, **kwargs) -> int:
+    """
+    Определяет столбец Таблицы 7:
+    col_idx 0 = До 5т (Col 2)
+    col_idx 1 = До 10т (Col 3)
+    col_idx 2 = До 15т (Col 4)
+    col_idx 3 = До 20т (Col 5)
+    col_idx 4 = До 25т / Пассажирские / Почта / Транспортеры (Col 6)
+    col_idx 5 = Контейнер 3т гружёный (Col 7)
+    col_idx 6 = Контейнер 5т гружёный (Col 8)
+    col_idx 7 = Контейнер 3т порожний (Col 9)
+    col_idx 8 = Контейнер 5т порожний (Col 10)
+    """
     w_type = str(wagon_type or kwargs.get("shipment_kind") or "").lower()
     raw_input = str(kwargs.get("raw_text") or kwargs.get("user_input_raw") or "").lower()
     clean_gng = extract_digits(gng_code or kwargs.get("cargo_gng_code"))
     
     is_transporter = any(k in (w_type + " " + raw_input) for k in ["transporter", "транспортер", "transportyor"])
 
-    # 1. Пассажирские/багажные вагоны (п. 3.1.2.5), почта (ГНГ 99910000) и транспортеры (п. 3.1.2.6) -> Столбец 6 (col_idx 4)
+    # 1. Пассажирские/багажные вагоны, почта (ГНГ 99910000) и транспортеры -> Столбец 6 (col_idx 4)
     if "passenger" in w_type or "sərnişin" in w_type or "baggage" in w_type or clean_gng.startswith("99910000") or is_transporter:
         return 4
 
@@ -73,26 +84,26 @@ def determine_table_7_column(wagon_type=None, weight_tons=25.0, container_type=N
         is_5t = "5" in c_size
 
         if is_empty or kwargs.get("is_empty_container"):
-            return 8 if is_5t else 7
+            return 8 if is_5t else 7  # Col 10 или Col 9
         else:
-            return 6 if is_5t else 5
+            return 6 if is_5t else 5  # Col 8 или Col 7
 
-    # 3. Вагоны по категориям массы
+    # 3. Малотоннажные отправки по категориям массы
     try:
         w = float(weight_tons or 25.0)
     except (ValueError, TypeError):
         w = 25.0
 
     if w <= 5.0:
-        return 0
+        return 0  # Col 2
     elif w <= 10.0:
-        return 1
+        return 1  # Col 3
     elif w <= 15.0:
-        return 2
+        return 2  # Col 4
     elif w <= 20.0:
-        return 3
+        return 3  # Col 5
     else:
-        return 4
+        return 4  # Col 6
 
 
 def calculate_table_7_base(distance_km, billable_weight_tons=25.0, wagon_type=None, container_type=None, is_empty=False, gng_code=None, *args, lang="AZ", **kwargs):
@@ -125,64 +136,6 @@ def calculate_table_7_base(distance_km, billable_weight_tons=25.0, wagon_type=No
         return None, f"{tbl_name}, {distance_km} km"
 
     details_str = f"{tbl_name} ({distance_km} km, {col_word} {col_idx + 2})"
-    return rate_val, details_str
-
-    # 2. Среднетоннажные контейнеры (3 тонны и 5 тонн)
-    if "container" in w_type or "konteyner" in w_type or container_type:
-        c_size = str(container_type or kwargs.get("container_size") or weight_tons or "5")
-        is_5t = "5" in c_size
-
-        if is_empty or kwargs.get("is_empty_container"):
-            return 8 if is_5t else 7  # Col 10 или Col 9
-        else:
-            return 6 if is_5t else 5  # Col 8 или Col 7
-
-    # 3. Вагоны по категориям массы (до 5т, 10т, 15т, 20т, 25т)
-    try:
-        w = float(weight_tons or 25.0)
-    except (ValueError, TypeError):
-        w = 25.0
-
-    if w <= 5.0:
-        return 0  # Col 2
-    elif w <= 10.0:
-        return 1  # Col 3
-    elif w <= 15.0:
-        return 2  # Col 4
-    elif w <= 20.0:
-        return 3  # Col 5
-    else:
-        return 4  # Col 6 (25t)
-
-
-def calculate_table_7_base(distance_km, billable_weight_tons=25.0, wagon_type=None, container_type=None, is_empty=False, gng_code=None, *args, lang="AZ", **kwargs):
-    col_idx = determine_table_7_column(
-        wagon_type=wagon_type,
-        weight_tons=billable_weight_tons,
-        container_type=container_type,
-        is_empty=is_empty,
-        gng_code=gng_code,
-        **kwargs
-    )
-    rates = load_table_7_rates()
-    tbl_name = "Cədvəl 7" if lang == "AZ" else ("Таблица 7" if lang == "RU" else "Table 7")
-
-    if not rates:
-        return None, f"{tbl_name} faylı tapılmadı"
-
-    rate_val = None
-    for d_min, d_max, vals in rates:
-        if d_min <= distance_km <= d_max:
-            if col_idx < len(vals):
-                rate_val = vals[col_idx]
-            elif len(vals) > 0:
-                rate_val = vals[-1]
-            break
-
-    if rate_val is None:
-        return None, f"{tbl_name}, {distance_km} km"
-
-    details_str = f"{tbl_name} ({distance_km} km, sütun {col_idx + 2})"
     return rate_val, details_str
 
 
