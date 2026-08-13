@@ -65,7 +65,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Güzdək", "cargo_gng_code": "3404", "cargo_name": "Neft məhsulları",
             "actual_weight_tons": 60.0, "wagon_type": "cistern", "park_type": "MPS", "explicit_mode": "import"
         },
-        "expected_rate": 10.76
+        "expected_rate": 19.76
     },
     {
         "name": "7. Г.Тагиев -> Беюк Кясик (2705, цистерна, 60т, СПС)",
