@@ -277,7 +277,7 @@ st.markdown(f"""
 
 # --- ИНТЕРАКТИВНАЯ ШПАРГАЛКА В ВИДЕ ВКЛАДОК ---
 with st.expander(t["guide_title"]):
-    f selected_lang == "AZ":
+    if selected_lang == "AZ":
         tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
             "📦 Ümumi vaqonlar", "❄️ Refseksiyalar", "🌡️ Vaqon-termoslar", 
             "🛢️ Neft çənləri", "🧪 Kimyəvi çənlər", "🏗️ Transportyorlar", "🚛 Xüsusi platformalar"
