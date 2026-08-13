@@ -350,7 +350,7 @@ with st.expander(t["guide_title"]):
     elif selected_lang == "RU":
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
             "📦 Универсальные", "❄️ Рефсекции", "🌡️ Термосы", 
-            "🛢️ Нефтецистерны", "🧪 Химцистерны", "🏗️ Транспортер", "🚛 Спецплатформы", "📐 Негабарит (Таб. 11)"
+            "🛢️ Нефтецистерны", "🧪 Химцистерны", "🏗️ Транспортер", "🚛 Спецплатформы", "📐 Негабарит"
         ])
 
         with tab1:
@@ -420,7 +420,7 @@ with st.expander(t["guide_title"]):
     else:
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
             "📦 Universal", "❄️ Ref section", "🌡️ Thermos", 
-            "🛢️ Oil tanks", "🧪 Chemical tanks", "🏗️ Transporter", "🚛 Special platform", "📐 Oversize (Tab. 11)"
+            "🛢️ Oil tanks", "🧪 Chemical tanks", "🏗️ Transporter", "🚛 Special platform", "📐 Oversized cargo"
         ])
 
         with tab1:
