@@ -138,14 +138,16 @@ def get_table_6_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
     
     g_raw = gng_code or kwargs.get("gng") or kwargs.get("cargo_gng_code") or ""
     clean_gng = extract_gng_digits(g_raw)
-    col_idx = determine_table_6_column(clean_gng, park_type, **kwargs)
+    norm_gng = clean_gng.lstrip("0") if clean_gng else ""
     
     st_lower = str(shipment_type_code or kwargs.get("shipment_type") or kwargs.get("mode") or "").lower()
 
-    # Повышающий коэффициент 1.20 для импорта/транзита нефти и нефтепродуктов (Столбец 2)
-    if col_idx == 0 and any(k in st_lower for k in ["import", "transit", "idxal", "tranzit"]):
+    # 💡 Повышающий коэффициент 1.20 строго для сырой нефти и основных нефтепродуктов (2709, 2710, 2712, 2713, 2714, 2715)
+    oil_surcharge_prefixes = ["2709", "2710", "2712", "2713", "2714", "2715"]
+    is_oil_cargo = any(norm_gng.startswith(p) or clean_gng.startswith(p) for p in oil_surcharge_prefixes)
+
+    if is_oil_cargo and any(k in st_lower for k in ["import", "transit", "idxal", "tranzit"]):
         c_val_oil = 1.20
-        # Название параметра без цифр значения
         c_lbl_oil = "Neft/Neft məhsulları" if lang == "AZ" else ("Нефть/Нефтепродукты" if lang == "RU" else "Oil/Petroleum")
         coeffs.append((c_lbl_oil, c_val_oil))
         notes.append("Cədvəl 6: İdxal və ya tranzit rejimində neft və neft məhsullarına 1.20 artırma əmsalı tətbiq olunmuşdur.")
