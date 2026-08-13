@@ -77,7 +77,7 @@ def apply_special_exceptions(
         if shipment_type_code in ["import", "export"]:
             lbl_150 = "İdxal/İxrac baza 1.50" if lang == "AZ" else ("Импорт/Экспорт база 1.50" if lang == "RU" else "Import/Export base 1.50")
             coeffs.append((lbl_150, 1.50))
-            notes.append("Boş vaqonların İdxal/İxrac daşınmasına 1.50 əmsalı tətbiq olunmuşdur (bənd 3.2.2).")
+            notes.append("Boş vaqonların İdxal/İxrac daşınmasına 1.50 əmsalı tətbiq olunmuşdur.")
     else:
         if should_apply_150_coeff(shipment_type_code, table_num, gng, wagon_type, park_type):
             lbl_150 = "İdxal/İxrac baza 1.50" if lang == "AZ" else ("Импорт/Экспорт база 1.50" if lang == "RU" else "Import/Export base 1.50")
@@ -321,6 +321,17 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         billable_weight, actual_dist_km, user_input_raw, lang_upper, ui_t, ref_wagons_cnt,
         origin_esr, dest_esr
     )
+
+    # 💡 ДОБАВЛЯЕМ ПРИМЕЧАНИЕ О ПУНКТЕ 3.2.2 СТРОГО ПРИ ПОРОЖНЕМ ПРОБЕГЕ СПС
+    if is_empty_wagon and clean_gng in EMPTY_SPS_CODES:
+        empty_sps_note = (
+            "Xüsusi mülkiyyətdə olan (icarəyə verilmiş) boş vaqonların daşınması tarif siyasətinin 3.2.2 bəndinə əsasən (0.10 CHF/ox-km) hesablanmışdır."
+            if lang_upper == "AZ" else
+            ("Перевозка порожних приватных (арендованных) вагонов рассчитана согласно п. 3.2.2 Тарифной политики (0.10 CHF/ось-км)."
+             if lang_upper == "RU" else
+             "Empty private/leased wagon movement is calculated according to clause 3.2.2 of the Tariff Policy (0.10 CHF/axle-km).")
+        )
+        notes.insert(0, empty_sps_note)
 
     final_rate = base_chf / usd_rate
     formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
