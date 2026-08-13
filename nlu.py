@@ -13,8 +13,12 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
         "- Always output the exact standard 6-digit ESR code for each station ('origin_esr', 'dest_esr').\n"
         "- Example ESRs: Yalama=545006, Biləcəri/Баладжары=546808, Abşeron=548004, Böyük Kəsik=558701, Bakı-Yük=547105, Astara=554109.\n"
         "- Do NOT confuse Biləcəri (546808) with ferry/port codes (547209).\n"
-        "- GNG/NHM cargo codes can be any digit length from 2 to 8 digits (e.g., '78', '72', '0207', '780120', '27130000'). ALWAYS output them strictly as strings with leading zeros preserved."
+        "- GNG/NHM cargo codes can be any digit length from 2 to 8 digits (e.g., '78', '72', '0207', '780120', '27130000', '99220000'). ALWAYS output them strictly as strings with leading zeros preserved.\n"
         "- If a 2-digit group code is provided (like '78' or '72'), set 'gng_code' to string (e.g., \"78\") AND infer the cargo group name for 'gng_name' (e.g., \"Svinç / Əlvan metallar\").\n\n"
+        "EMPTY WAGON RUN (BOŞ VAQON / ПОРОЖНИЙ ПРОБЕГ) INSTRUCTIONS:\n"
+        "- Detect if user input indicates an empty wagon movement or return (keywords: 'boş', 'порожний', 'возврат', 'empty'). Set 'is_empty': true or false.\n"
+        "- If 'is_empty' is true and no GNG code is provided, set 'gng_code': \"99220000\" and 'gng_name': \"Yükdən boşaldılmış vaqonlar\" (or translated equivalent).\n"
+        "- For empty wagons, default 'park_type' to \"SPS\" and 'axles_count' to 4 unless specified otherwise.\n\n"
         "EXPECTED JSON STRUCTURE:\n"
         "{\n"
         '  "origin_esr": "6-digit ESR string or null",\n'
@@ -27,7 +31,9 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
         '  "wagon_type": "universal / tank / ref / thermos / autocarrier",\n'
         '  "park_type": "SPS / MPS",\n'
         '  "ref_section_cargo_wagons": integer or null,\n'
-        '  "explicit_mode": "import / export / transit or null"\n'
+        '  "explicit_mode": "import / export / transit or null",\n'
+        '  "is_empty": boolean,\n'
+        '  "axles_count": integer or null\n'
         "}\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
@@ -59,14 +65,23 @@ def validate_nlu_input(nlu_res, lang="AZ"):
     Проверяет наличие минимально необходимых данных для расчёта.
     """
     missing_items = []
+    lang_upper = str(lang).upper()
+
+    # 1. Если зафиксирован порожний пробег (is_empty) - выставляем дефолты ДО проверки
+    is_empty = nlu_res.get("is_empty", False)
+    if is_empty:
+        if not nlu_res.get("gng_code"):
+            nlu_res["gng_code"] = "99220000"
+            nlu_res["gng_name"] = "Yükdən boşaldılmış vaqonlar" if lang_upper == "AZ" else ("Вагоны, очищенные после выгрузки" if lang_upper == "RU" else "Empty uncleaned/cleaned wagons")
+        nlu_res["park_type"] = "SPS"
+        if not nlu_res.get("axles_count"):
+            nlu_res["axles_count"] = 4
 
     st_from = nlu_res.get("origin_esr") or nlu_res.get("origin_name")
     st_to = nlu_res.get("dest_esr") or nlu_res.get("dest_name")
     weight = nlu_res.get("weight_tons")
     gng = nlu_res.get("gng_code")
     cargo_name = nlu_res.get("gng_name")
-
-    lang_upper = str(lang).upper()
 
     if not st_from:
         missing_items.append(
@@ -76,7 +91,9 @@ def validate_nlu_input(nlu_res, lang="AZ"):
         missing_items.append(
             "📍 **Təyinat stansiyası**" if lang_upper == "AZ" else ("📍 **Станция назначения**" if lang_upper == "RU" else "📍 **Destination station**")
         )
-    if not weight or float(weight) <= 0:
+    
+    # Для порожнего пробега фактический вес груза не требуется (он равен 0)
+    if not is_empty and (not weight or float(weight) <= 0):
         missing_items.append(
             "⚖️ **Faktiki çəki (tonla)**" if lang_upper == "AZ" else ("⚖️ **Фактический вес (в тоннах)**" if lang_upper == "RU" else "⚖️ **Actual weight in tons**")
         )
