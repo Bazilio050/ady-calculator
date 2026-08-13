@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import datetime
 from utils import (
     get_distance_by_esr,
     get_calculation_distance,
@@ -66,11 +67,18 @@ def apply_special_exceptions(
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015 (Применяется СТРОГО для всех ГРУЖЁНЫХ вагонов)
-    if not is_empty:
+    # 1. ИНДЕКСАЦИЯ 1.015 (С 01.04.2026 СТРОГО для всех ГРУЖЁНЫХ вагонов)
+    req_period = nlu_data.get("requested_period")
+    target_dt = parse_date_from_string(req_period) if req_period else None
+    if not target_dt:
+        target_dt = datetime.now()
+
+    is_after_april_2026 = target_dt >= datetime(2026, 4, 1)
+
+    if not is_empty and is_after_april_2026:
         ind_label = "Əlavə əmsal 1.015" if lang == "AZ" else ("Индексация 1.015" if lang == "RU" else "Indexation 1.015")
         coeffs.append((ind_label, 1.015))
-
+        
     # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50 (С проверкой 5 исключений)
     # Для порожних вагонов СПС по п. 3.2.2 (EMPTY_SPS_CODES) коэффициент 1.50 начисляется при Import/Export
     if is_empty and clean_gng in EMPTY_SPS_CODES:
@@ -321,6 +329,17 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         billable_weight, actual_dist_km, user_input_raw, lang_upper, ui_t, ref_wagons_cnt,
         origin_esr, dest_esr
     )
+
+    # 💡 ДОБАВЛЯЕМ ПРИМЕЧАНИЕ О МИНИМАЛЬНОЙ НОРМЕ ВЕСА ПО ГНГ (ЕСЛИ ФАКТ < НОРМЫ)
+    if not is_empty_wagon and act_weight > 0 and act_weight < billable_weight:
+        weight_note = (
+            f"YHN (GNG) {gng} kodlu yük üçün minimum hesablama çəkisi norması {int(billable_weight)} ton tətbiq olunmuşdur."
+            if lang_upper == "AZ" else
+            (f"Для груза ГНГ {gng} применена минимальная норма расчётного веса {int(billable_weight)} тонн."
+             if lang_upper == "RU" else
+             f"Minimum billable weight norm of {int(billable_weight)} tons applied for GNG {gng}.")
+        )
+        notes.insert(0, weight_note)
 
     # 💡 ДОБАВЛЯЕМ ПРИМЕЧАНИЕ О ПУНКТЕ 3.2.2 СТРОГО ПРИ ПОРОЖНЕМ ПРОБЕГЕ СПС
     if is_empty_wagon and clean_gng in EMPTY_SPS_CODES:
