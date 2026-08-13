@@ -73,8 +73,13 @@ def validate_nlu_input(nlu_res, lang="AZ"):
     missing_items = []
     lang_upper = str(lang).upper()
 
-    # 1. Если зафиксирован порожний пробег (is_empty) - выставляем дефолты ДО проверки
-    is_empty = nlu_res.get("is_empty", False)
+    # 1. Железобетонная проверка флага is_empty (учитывает bool, string и ключевые слова)
+    raw_is_empty = nlu_res.get("is_empty")
+    if isinstance(raw_is_empty, str):
+        is_empty = raw_is_empty.lower() in ["true", "1", "yes"]
+    else:
+        is_empty = bool(raw_is_empty)
+
     if is_empty:
         if not nlu_res.get("gng_code"):
             nlu_res["gng_code"] = "99220000"
@@ -82,6 +87,9 @@ def validate_nlu_input(nlu_res, lang="AZ"):
         nlu_res["park_type"] = "SPS"
         if not nlu_res.get("axles_count"):
             nlu_res["axles_count"] = 4
+
+        # Принудительно гарантируем, что is_empty теперь строго True
+        nlu_res["is_empty"] = True
 
     st_from = nlu_res.get("origin_esr") or nlu_res.get("origin_name")
     st_to = nlu_res.get("dest_esr") or nlu_res.get("dest_name")
@@ -98,7 +106,7 @@ def validate_nlu_input(nlu_res, lang="AZ"):
             "📍 **Təyinat stansiyası**" if lang_upper == "AZ" else ("📍 **Станция назначения**" if lang_upper == "RU" else "📍 **Destination station**")
         )
     
-    # Для порожнего пробега фактический вес груза не требуется (он равен 0)
+    # Для порожнего пробега вес НЕ требуется
     if not is_empty and (not weight or float(weight) <= 0):
         missing_items.append(
             "⚖️ **Faktiki çəki (tonla)**" if lang_upper == "AZ" else ("⚖️ **Фактический вес (в тоннах)**" if lang_upper == "RU" else "⚖️ **Actual weight in tons**")
