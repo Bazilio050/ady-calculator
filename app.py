@@ -279,51 +279,93 @@ st.markdown(f"""
 with st.expander(t["guide_title"]):
     if selected_lang == "AZ":
         st.markdown("""
-        **🐣 Yeni başlayanlar üçün hazır şablonlar:**
-        * **Ümumi vaqon:** `[Haradan] -> [Haraya], [Çəki]t, [Vaqon növü], [SPS/MPS]`  
-          *Nümunə:* `Yalama - Böyük Kəsik, 45t, örtülü vaqon, SPS`
+        ### 🐣 **Yeni başlayanlar üçün hazır şablonlar:**
+
+        * **Ümumi vaqonlar:** `[Haradan] -> [Haraya], [Çəki]t, [Vaqon növü], [SPS/MPS]`  
+          *Nümunə:* `Yalama – Böyük Kəsik, 45t, örtülü vaqon, SPS`
+
+        * **Soyuducu vaqonlar və refseksiyalar:** `[Haradan] -> [Haraya], [GNG], [Sxem], [Çəki]t, SPS`  
+          *Nümunə:* `Yalama – Biləcəri, 0207, 5+1, 35t, SPS`
+
+        * **Vaqon-termoslar:** `[Haradan] -> [Haraya], thermos, [Çəki]t, SPS`  
+          *Nümunə:* `Yalama – Biləcəri, thermos, 30t, SPS`
+
+        * **Çən vaqonları (Neft və neft məhsulları):** `[Haradan] -> [Haraya], [GNG], çən vaqonu, [Çəki]t, SPS`  
+          *Nümunə:* `Yalama – Güzdək, 2713, çən vaqonu, 60t, SPS`
+
+        * **Çən vaqonları (Kimyəvi yüklər və spirtlər):** `[Haradan] -> [Haraya], [GNG], çən vaqonu, [Çəki]t, SPS`  
+          *Nümunə:* `Yalama – Siyəzən, 27071, çən vaqonu, 55t, SPS`
+
         * **Transportyorlar:** `[Haradan] -> [Haraya], [Ox sayı]-oxlu transportyor, [Çəki]t`  
-          *Nümunə:* `Astara - Yalama, 8-oxlu transportyor, 15t`
-        * **Xüsusi platformalar:** `[Haradan] -> [Haraya], platforma qoşqu 19m, [Çəki]t`  
-          *Nümunə:* `Yalama - Abşeron platforma scep >19m 40t`
-        * **Soyuducu vaqonlar:** `[Haradan] -> [Haraya], refseksiya [Sxem], [Çəki]t`  
-          *Nümunə:* `Yalama - Biləcəri, 5+1, 35t`
+          *Nümunə:* `Astara – Yalama, 8-oxlu transportyor, 15t`
+
+        * **Xüsusi platformalar, avtoqatarlar və qoşqular:** `[Haradan] -> [Haraya], [avtoqatar/qoşqu/scep >19m], [Çəki]t, SPS, [idxal/ixrac]`  
+          *Nümunə:* `Yalama – Abşeron, avtoqatar, 25t, SPS, idxal`
 
         ---
-        **⚡ Təcrübəli mütəxəssislər üçün (sürətli daxiletmə):**
-        `5+1`, `1+5`, `İZVK`, `VTVK`, `SPS`, `MPS`, `8-oxlu`, `>19m`.
+
+        ### ⚙️ **Əlavə parametrlər və açar sözlər:**  
+        `5+1` , `1+5` , `thermos` , `İZVK` , `VTVK` , `SPS` , `MPS` , `8-oxlu` , `>19m` , `avtoqatar` , `qoşqu`
         """)
     elif selected_lang == "RU":
         st.markdown("""
-        **🐣 Готовые шаблоны запросов (для начинающих):**
-        * **Универсальный вагон:** `[Откуда] -> [Куда], [Вес]т, [Тип вагона], [СПС/МПС]`  
-          *Пример:* `Ялама - Беюк Кясик, 45т, крытый вагон, СПС`
+        ### 🐣 **Готовые шаблоны запросов (для начинающих):**
+
+        * **Универсальные вагоны:** `[Откуда] -> [Куда], [Вес]т, [Тип вагона], [СПС/МПС]`  
+          *Пример:* `Ялама – Беюк Кясик, 45т, крытый вагон, СПС`
+
+        * **Рефрижераторные вагоны и секции:** `[Откуда] -> [Куда], [ГНГ], [Схема], [Вес]т, СПС`  
+          *Пример:* `Ялама – Баладжары, 0207, 5+1, 35т, СПС`
+
+        * **Вагоны-термосы:** `[Откуда] -> [Куда], термос, [Вес]т, СПС`  
+          *Пример:* `Ялама – Баладжары, термос, 30т, СПС`
+
+        * **Вагоны-цистерны (Нефть и нефтепродукты):** `[Откуда] -> [Куда], [ГНГ], цистерна, [Вес]т, СПС`  
+          *Пример:* `Ялама – Гюздек, 2713, цистерна, 60т, СПС`
+
+        * **Вагоны-цистерны (Химия, спирты и бензол):** `[Откуда] -> [Куда], [ГНГ], цистерна, [Вес]т, СПС`  
+          *Пример:* `Ялама – Сиязань, 27071, цистерна, 55т, СПС`
+
         * **Транспортеры:** `[Откуда] -> [Куда], [Осей]-осный транспортер, [Вес]т`  
-          *Пример:* `Астара - Ялама, 8-осный транспортер, 15т`
-        * **Спецплатформы (сцеп >19м):** `[Откуда] -> [Куда], платформа сцеп >19м, [Вес]т`  
-          *Пример:* `Ялама - Апшерон платформа сцеп 19м 40т`
-        * **Рефсекции:** `[Откуда] -> [Куда], рефсекция [Схема], [Вес]т`  
-          *Пример:* `Ялама - Баладжары, 5+1, 35т`
+          *Пример:* `Астара – Ялама, 8-осный транспортер, 15т`
+
+        * **Спецплатформы, автопоезда и прицепы:** `[Откуда] -> [Куда], [автопоезд/прицеп/сцеп >19м], [Вес]т, СПС, [импорт/экспорт]`  
+          *Пример:* `Ялама – Апшерон, автопоезд, 25т, СПС, импорт`
 
         ---
-        **⚡ Для опытных сотрудников (программа понимает сокращения):**
-        `5+1`, `1+5`, `İZVK`, `VTVK`, `СПС`, `МПС`, `8-осн`, `>19м`.
+
+        ### ⚙️ **Əlavə parametrlər və açar sözlər:**  
+        `5+1` , `1+5` , `thermos` , `İZVK` , `VTVK` , `СПС` , `МПС` , `8-осн` , `>19м` , `автопоезд` , `прицеп`
         """)
     else:
         st.markdown("""
-        **🐣 Quick templates for beginners:**
-        * **Universal wagon:** `[From] -> [To], [Weight]t, [Wagon type], [SPS/MPS]`  
-          *Example:* `Yalama - Beyuk Kasik, 45t, covered wagon, SPS`
+        ### 🐣 **Quick templates for beginners:**
+
+        * **Universal wagons:** `[From] -> [To], [Weight]t, [Wagon type], [SPS/MPS]`  
+          *Example:* `Yalama – Beyuk Kasik, 45t, covered wagon, SPS`
+
+        * **Refrigerated wagons and sections:** `[From] -> [To], [NHM], [Scheme], [Weight]t, SPS`  
+          *Example:* `Yalama – Bilajari, 0207, 5+1, 35t, SPS`
+
+        * **Thermos wagons:** `[From] -> [To], thermos, [Weight]t, SPS`  
+          *Example:* `Yalama – Bilajari, thermos, 30t, SPS`
+
+        * **Tank wagons (Oil and petroleum products):** `[From] -> [To], [NHM], tank wagon, [Weight]t, SPS`  
+          *Example:* `Yalama – Guzdek, 2713, tank wagon, 60t, SPS`
+
+        * **Tank wagons (Chemicals, alcohols, and benzene):** `[From] -> [To], [NHM], tank wagon, [Weight]t, SPS`  
+          *Example:* `Yalama – Siyazan, 27071, tank wagon, 55t, SPS`
+
         * **Transporters:** `[From] -> [To], [Axles]-axle transporter, [Weight]t`  
-          *Example:* `Astara - Yalama, 8-axle transporter, 15t`
-        * **Special platforms:** `[From] -> [To], platform scep >19m, [Weight]t`  
-          *Example:* `Yalama - Absheron platform scep >19m 40t`
-        * **Refrigerated sections:** `[From] -> [To], ref section [Scheme], [Weight]t`  
-          *Example:* `Yalama - Bilajari, 5+1, 35t`
+          *Example:* `Astara – Yalama, 8-axle transporter, 15t`
+
+        * **Special platforms, road trains, and trailers:** `[From] -> [To], [road train/trailer/scep >19m], [Weight]t, SPS, [import/export]`  
+          *Example:* `Yalama – Absheron, road train, 25t, SPS, import`
 
         ---
-        **⚡ Fast shortcuts for experienced users:**
-        `5+1`, `1+5`, `İZVK`, `VTVK`, `SPS`, `MPS`, `8-axle`, `>19m`.
+
+        ### ⚙️ **Əlavə parametrlər və açar sözlər:**  
+        `5+1` , `1+5` , `thermos` , `İZVK` , `VTVK` , `SPS` , `MPS` , `8-axle` , `>19m` , `road train` , `trailer`
         """)
 
 # --- ПОЛЕ ВВОДА ЗАПРОСА ---
