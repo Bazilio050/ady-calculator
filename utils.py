@@ -53,12 +53,14 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 # ==============================================================================
 
 BORDER_STATION_ESR_OVERRIDE = {
-    "boyuk kesik": "558701",  # Böyük Kəsik (eksport) -> даёт точные 680 км!
-    "yalama": "547508",       # Yalama (eksport) -> даёт точные 680 км!
+    "boyuk kesik": "558701",  # Böyük Kəsik (eksport) -> 680 км
+    "yalama": "547508",       # Yalama (eksport) -> 680 км
     "astara": "554109",       # Astara (eksport)
     "culfa": "550004",        # Culfa (eksport)
     "serur": "550409",        # Şərur (eksport)
-    "alet": "549204"          # Ələt (parom/eksp) -> даёт точные 429 км!
+    "alet": "549204",         # Ələt (parom/eksp) -> 429 км
+    "elet": "549204",         # Ələt транслит
+    "алят": "549204"          # Алят RU
 }
 
 
