@@ -174,6 +174,26 @@ TEST_SUITE = [
             "actual_weight_tons": 15.0, "wagon_type": "transporter", "park_type": "SPS", "explicit_mode": "export"
         },
         "expected_rate": 41.27
+    },
+    {
+        "name": "19. Баладжары -> Ялама (Порожний возврат вагона, 192км, Экспорт)",
+        "raw_text": "Баладжары Ялама порожний возврат",
+        "nlu": {
+            "route_from": "Biləcəri", "route_to": "Yalama", "cargo_gng_code": "99220000",
+            "cargo_name": "Yükdən boşaldılmış vaqonlar", "is_empty": True, "axles_count": 4,
+            "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "export"
+        },
+        "expected_rate": 148.74
+    },
+    {
+        "name": "20. Алят -> Беюк Кясик (Порожний возврат вагона, 429км, Транзит)",
+        "raw_text": "Алят Беюк Кясик порожний вагон",
+        "nlu": {
+            "route_from": "Ələt", "route_to": "Böyük Kəsik", "cargo_gng_code": "99220000",
+            "cargo_name": "Yükdən boşaldılmış vaqonlar", "is_empty": True, "axles_count": 4,
+            "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "transit"
+        },
+        "expected_rate": 265.87
     }
 ]
 
