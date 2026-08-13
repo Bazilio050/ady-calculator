@@ -33,9 +33,6 @@ def get_currency_rate(requested_period: str = None, lang: str = "AZ") -> tuple:
     return rate, label
 
 
-apply_special_exceptions в engine.py на эту версию:
-
-Python
 def apply_special_exceptions(
     nlu_data: dict, 
     shipment_type_code: str, 
@@ -146,7 +143,6 @@ def apply_special_exceptions(
             sps_label = "SPS güzəşti 0.85" if lang == "AZ" else ("Скидка СПС 0.85" if lang == "RU" else "SPS Discount 0.85")
             coeffs.append((sps_label, 0.85))
             
-            # 💡 ТЕПЕРЬ ТЕКСТ ПРИМЕЧАНИЯ ДОБАВЛЯЕТСЯ 100%
             sps_note = (
                 "Xüsusi mülkiyyətdə olan (SPS) vaqonlara 0.85 güzəşt əmsalı tətbiq edilmişdir."
                 if lang == "AZ" else
@@ -155,8 +151,6 @@ def apply_special_exceptions(
                  "SPS discount factor 0.85 applied for private wagons.")
             )
             notes.append(sps_note)
-
-    return coeffs, notes
 
     return coeffs, notes
 
@@ -335,14 +329,13 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     is_ref_type_check = any(k in wagon_type for k in ["ref", "реф", "thermos", "термос", "изотерм"]) or (ref_wagons_cnt is not None)
     
-    # ПЕРЕДАЕМ origin_esr и dest_esr ДЛЯ ТОЧНОГО ОПРЕДЕЛЕНИЯ ГЛОБАЛЬНЫХ КОЭФФИЦИЕНТОВ
     coeffs, notes = apply_special_exceptions(
         nlu_data, shipment_type_code, table_num, is_ref_type_check, act_weight, 
         billable_weight, actual_dist_km, user_input_raw, lang_upper, ui_t, ref_wagons_cnt,
         origin_esr, dest_esr
     )
 
-    # 💡 ДОБАВЛЯЕМ ПРИМЕЧАНИЕ О МИНИМАЛЬНОЙ НОРМЕ ВЕСА ПО ГНГ (ЕСЛИ ФАКТ < НОРМЫ)
+    # 💡 Добавление нормы минимального веса в Qeydlər
     if not is_empty_wagon and act_weight > 0 and act_weight < billable_weight:
         weight_note = (
             f"YHN (GNG) {gng} kodlu yük üçün minimum hesablama çəkisi norması {int(billable_weight)} ton tətbiq olunmuşdur."
@@ -353,7 +346,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         )
         notes.insert(0, weight_note)
 
-    # 💡 ДОБАВЛЯЕМ ПРИМЕЧАНИЕ О ПУНКТЕ 3.2.2 СТРОГО ПРИ ПОРОЖНЕМ ПРОБЕГЕ СПС
+    # 💡 Добавление ссылки на п. 3.2.2 при порожнем СПС
     if is_empty_wagon and clean_gng in EMPTY_SPS_CODES:
         empty_sps_note = (
             "Xüsusi mülkiyyətdə olan (icarəyə verilmiş) boş vaqonların daşınması tarif siyasətinin 3.2.2 bəndinə əsasən (0.10 CHF/ox-km) hesablanmışdır."
