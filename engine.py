@@ -66,7 +66,7 @@ def apply_special_exceptions(
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015 (С 01.04.2026 СТРОГО для всех ГРУЖЁНЫХ вагонов)
+    # 1. ИНДЕКСАЦИЯ 1.015 (Без цифр в названии)
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
@@ -75,10 +75,9 @@ def apply_special_exceptions(
     is_after_april_2026 = target_dt >= datetime(2026, 4, 1)
 
     if not is_empty and is_after_april_2026:
-        ind_label = "Əlavə əmsal 1.015" if lang == "AZ" else ("Индексация 1.015" if lang == "RU" else "Indexation 1.015")
+        ind_label = "Əlavə əmsal" if lang == "AZ" else ("Индексация" if lang == "RU" else "Indexation")
         coeffs.append((ind_label, 1.015))
         
-        # 💡 ТЕКСТ ПРИМЕЧАНИЯ ДЛЯ 1.015
         ind_note = (
             "Yüklü vaqonların daşınmasına 1.015 əlavə əmsalı (indeksasiya) tətbiq olunmuşdur."
             if lang == "AZ" else
@@ -88,15 +87,15 @@ def apply_special_exceptions(
         )
         notes.append(ind_note)
         
-    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50
+    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50 (Без цифр в названии)
     if is_empty and clean_gng in EMPTY_SPS_CODES:
         if shipment_type_code in ["import", "export"]:
-            lbl_150 = "İdxal/İxrac baza 1.50" if lang == "AZ" else ("Импорт/Экспорт база 1.50" if lang == "RU" else "Import/Export base 1.50")
+            lbl_150 = "İdxal/İxrac baza" if lang == "AZ" else ("Импорт/Экспорт база" if lang == "RU" else "Import/Export base")
             coeffs.append((lbl_150, 1.50))
             notes.append("Boş vaqonların İdxal/İxrac daşınmasına 1.50 əmsalı tətbiq olunmuşdur.")
     else:
         if should_apply_150_coeff(shipment_type_code, table_num, gng, wagon_type, park_type):
-            lbl_150 = "İdxal/İxrac baza 1.50" if lang == "AZ" else ("Импорт/Экспорт база 1.50" if lang == "RU" else "Import/Export base 1.50")
+            lbl_150 = "İdxal/İxrac baza" if lang == "AZ" else ("Импорт/Экспорт база" if lang == "RU" else "Import/Export base")
             coeffs.append((lbl_150, 1.50))
             notes.append("Baza tarifinə İdxal/İxrac üzrə 1.50 əmsalı tətbiq olunmuşdur.")
 
@@ -122,14 +121,14 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
 
-    # 3.1.2.7 — Спецплатформы длиннее 19 м
+    # 3.1.2.7 — Спецплатформы длиннее 19 м (Без цифр в названии)
     if is_long_platform_scep(user_input_raw, wagon_type):
         if not is_empty:
-            lbl_19m = "Sintez platforma >19m 1.20" if lang == "AZ" else ("Спецплатформа >19м 1.20" if lang == "RU" else "Special platform >19m 1.20")
+            lbl_19m = "Sintez platforma >19m" if lang == "AZ" else ("Спецплатформа >19м" if lang == "RU" else "Special platform >19m")
             coeffs.append((lbl_19m, 1.20))
             notes.append("Qoşqu oxları 19m-dən artıq olan platformalar üçün 1.20 əmsalı tətbiq edilmişdir.")
         elif park_type == "SPS":
-            lbl_empty_19m = "Boş platforma >19m 0.60" if lang == "AZ" else ("Скидка порожн. >19м 0.60" if lang == "RU" else "Empty platform >19m 0.60")
+            lbl_empty_19m = "Boş platforma >19m" if lang == "AZ" else ("Скидка порожн. >19м" if lang == "RU" else "Empty platform >19m")
             coeffs.append((lbl_empty_19m, 0.60))
 
     # 4. Общие глобальные коэффициенты
@@ -137,7 +136,7 @@ def apply_special_exceptions(
     coeffs.extend(g_coeffs)
     notes.extend(g_notes)
 
-    # 5. СКИДКА СПС (0.85) + ПРИМЕЧАНИЕ
+    # 5. СКИДКА СПС (Без цифр в названии)
     if park_type == "SPS" and not (is_empty and clean_gng in EMPTY_SPS_CODES):
         should_apply_sps = False
         
@@ -150,7 +149,7 @@ def apply_special_exceptions(
                 should_apply_sps = True
 
         if should_apply_sps:
-            sps_label = "SPS güzəşti 0.85" if lang == "AZ" else ("Скидка СПС 0.85" if lang == "RU" else "SPS Discount 0.85")
+            sps_label = "SPS güzəşti" if lang == "AZ" else ("Скидка СПС" if lang == "RU" else "SPS Discount")
             coeffs.append((sps_label, 0.85))
             
             sps_note = (
@@ -345,7 +344,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         origin_esr, dest_esr
     )
 
-    # 💡 Добавление нормы минимального веса в Qeydlər
+    # Добавление нормы минимального веса в Qeydlər
     if not is_empty_wagon and act_weight > 0 and act_weight < billable_weight:
         weight_note = (
             f"YHN (GNG) {gng} kodlu yük üçün minimum hesablama çəkisi norması {int(billable_weight)} ton tətbiq olunmuşdur."
@@ -356,7 +355,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         )
         notes.insert(0, weight_note)
 
-    # 💡 Добавление ссылки на п. 3.2.2 при порожнем СПС
+    # Добавление ссылки на п. 3.2.2 при порожнем СПС
     if is_empty_wagon and clean_gng in EMPTY_SPS_CODES:
         empty_sps_note = (
             "Xüsusi mülkiyyətdə olan (icarəyə verilmiş) boş vaqonların daşınması tarif siyasətinin 3.2.2 bəndinə əsasən (0.10 CHF/ox-km) hesablanmışdır."
