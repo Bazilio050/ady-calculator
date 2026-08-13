@@ -127,7 +127,7 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 4:
-        tbl_coeffs, tbl_notes = get_table_4_coefficients(shipment_type=shipment_type_code, wagon_type=wagon_type, gng=gng, lang=lang, ui_t=ui_t)
+        tbl_coeffs, tbl_notes = get_table_4_coefficients(shipment_type=shipment_type_code, wagon_type=wagon_type, gng_code=gng, lang=lang, ui_t=ui_t)
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 5:
@@ -135,7 +135,7 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 6:
-        tbl_coeffs, tbl_notes = get_table_6_coefficients(shipment_type_code=shipment_type_code, wagon_type=wagon_type, gng=gng, park_type=park_type, lang=lang, ui_t=ui_t)
+        tbl_coeffs, tbl_notes = get_table_6_coefficients(shipment_type_code=shipment_type_code, wagon_type=wagon_type, gng_code=gng, park_type=park_type, lang=lang, ui_t=ui_t)
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 7:
@@ -146,20 +146,21 @@ def apply_special_exceptions(
     # 3.1. ТАБЛИЦА 11 И ПРАВИЛА НЕГАБАРИТА (Пункт 3.5.1)
     oversize_grp = detect_oversize_group(nlu_data, user_input_raw)
     if table_num == 11:
-        if oversize_grp == "deg3_upper":
-            lbl_ov = "Əndazəsizlik (3 yuxarı)" if lang == "AZ" else ("Негабаритность (3 верх.)" if lang == "RU" else "Oversize (3rd upper)")
-            coeffs.append((lbl_ov, 1.50))
-            notes.append("3-cü yuxarı dərəcəli əndazəsiz yüklər üçün Cədvəl 11 tariflərinə 1.50 artırma əmsalı tətbiq olunmuşdur (bənd 3.5.1.2).")
-        else:
-            lbl_ov = "Əndazəsizlik (3-5 aşağı, 4-5 yan)" if lang == "AZ" else ("Негабаритность (3-5 ниж., 4-5 бок.)" if lang == "RU" else "Oversize (3-5 low / 4-5 side)")
-            coeffs.append((lbl_ov, 2.00))
-            notes.append("3-5 aşağı və 4-5 yan dərəcəli əndazəsiz yüklər üçün Cədvəl 11 tariflərinə 2.00 artırma əmsalı tətbiq olunmuşdur (bənd 3.5.1.2).")
+        # ПРИМЕЧАНИЕ: В Таблице 11 повышающие коэффициенты 1.50 и 2.00 уже учтены в базовой сетке (п. 3.5.1.2)
+        note_t11 = (
+            "Əndazəsiz yüklərin daşınma haqqı Cədvəl 11 dərəcələri ilə hesablanmışdır (bənd 3.5.1.2)."
+            if lang == "AZ" else
+            ("Перевозка негабаритного груза рассчитана по ставкам Таблицы 11 (п. 3.5.1.2)."
+             if lang == "RU" else
+             "Oversized cargo movement calculated according to Table 11 rates (clause 3.5.1.2).")
+        )
+        notes.append(note_t11)
 
     elif table_num == 7 and any(k in input_lower for k in ["транспортер", "transportyor", "transporter"]):
         # Негабарит на транспортерах (п. 3.5.1.3 и 3.5.1.5)
         if oversize_grp == "degree_6" or "5 aşağı" in input_lower or "5 yan" in input_lower:
             coeffs.append(("Əndazəsizlik (6-cı dərəcə / 5 aşağı-yan)", 3.00))
-            notes.append("Транспортердә 6-cı dərəcəli və ya 5 aşağı/yan əndazəsiz yükə 3.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3 / 3.5.1.5).")
+            notes.append("Транспортерdə 6-cı dərəcəli və ya 5 aşağı/yan əndazəsiz yükə 3.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3 / 3.5.1.5).")
         elif oversize_grp == "deg3_5_lowside":
             coeffs.append(("Əndazəsizlik (3-4 aşağı, 4 yan)", 2.00))
             notes.append("Транспортерdə 3-4 aşağı və ya 4 yan dərəcəli əndazəsiz yükə 2.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3).")
