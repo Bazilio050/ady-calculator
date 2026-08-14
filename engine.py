@@ -69,7 +69,7 @@ def check_dangerous_goods_rule(gng_code: str, user_input_raw: str, wagon_type: s
             # Исключение: метанол в цистернах (BMT 1230) рассчитывается по базовому тарифу без 2.0
             if "1230" not in clean_gng and "1230" not in inp:
                 apply_double = True
-        elif t_type == "ortulu_konteyner" and ("container" in w_type or "крыт" in w_type or "örtülü" in w_type):
+        elif t_type == "ortulu_konteyner" and any(k in w_type for k in ["container", "крыт", "örtülü", "universal", "платфор"]):
             apply_double = True
 
         return True, apply_double, f"Təhlükəli yük (bənd 3.6.1, Cədvəl 13, BMT {matched_entry[0] if matched_entry else 'spesifik'})"
@@ -279,7 +279,6 @@ def apply_special_exceptions(
     # Вагон прикрытия / Qoruyucu vaqon (п. 3.6.3)
     if any(k in input_lower for k in ["прикрытие", "qoruyucu", "daldalanacaq", "guard_wagon"]):
         cover_rate = 0.30 if park_type == "SPS" else 0.35
-        # Получаем количество осей (по умолчанию 4)
         axles = float(nlu_data.get("axles_count") or 4)
         match_axle = re.search(r'(\d+)\s*(?:oxlu|осн|axle|осей)', input_lower)
         if match_axle:
