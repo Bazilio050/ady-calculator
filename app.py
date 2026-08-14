@@ -265,7 +265,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 with st.expander(t["guide_title"]):
-   if selected_lang == "AZ":
+    if selected_lang == "AZ":
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
             "📦 Ümumi vaqonlar", "📦 Konteynerlər", "❄️ Ref / Termos", "🛢️ Çənlər", 
             "🏗️ Transportyorlar", "🚛 Xüsusi platforma", "📐 Əndazəsiz yüklər", 
