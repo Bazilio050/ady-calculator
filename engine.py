@@ -129,8 +129,13 @@ def apply_special_exceptions(
 
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
+    is_consolidated = bool(nlu_data.get("is_consolidated")) or any(k in input_lower for k in ["yığma", "сборный", "сборная"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015 (Исключаются спецразделы 3.71, 3.72, 3.78)
+    # 0. Коэффициент 1.20 для сборных грузов (п. 3.8)
+    if is_consolidated:
+        coeffs.append(("Yığma göndərmə (bənd 3.8)", 1.20))
+
+    # 1. ИНДЕКСАЦИЯ 1.015 (Исключаются спецразделы 3.72, 3.78)
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
@@ -138,7 +143,7 @@ def apply_special_exceptions(
 
     is_valid_index_period = datetime(2026, 3, 1) <= target_dt <= datetime(2026, 12, 31)
 
-    if not is_empty and is_valid_index_period and table_num not in [3.71, 3.72, 3.78]:
+    if not is_empty and is_valid_index_period and table_num not in [3.72, 3.78]:
         ind_label = "Əlavə əmsal" if lang == "AZ" else ("Индексация" if lang == "RU" else "Indexation")
         coeffs.append((ind_label, 1.015))
         
@@ -389,7 +394,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         weight_display = f"0 t (boş {int(axles)}-oxlu transportyor)"
         billable_weight = 0.0
 
-    # 3.7.1: Перевозка на своих осях (коэф 0.50 к универсальному вагону от баз. нормы 10 т)
+    # 3.7.1: Перевозка на своих осях (коэф 0.50 к графе 10 т универсального вагона)
     elif is_own_axles:
         table_num = 3.71
         is_per_wagon = False
@@ -462,7 +467,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             is_per_wagon = (res_t11["rate_type"] == "per_wagon")
 
         else:
-            # РАЗДЕЛ 3.8: Сборные отправки (мин 10т / в изотермических 25т)
+            # РАЗДЕЛ 3.8: Сборные отправки (мин 10т)
             if is_consolidated:
                 min_cons_weight = 25.0 if is_table_5_object else 10.0
                 billable_weight = max(min_cons_weight, act_weight)
@@ -489,7 +494,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
                 is_transporter or "transporter" in wagon_type
             )
 
-            # Высший приоритет для сборных отправок (п. 3.8)
+            # Высокий приоритет для сборной отправки (п. 3.8)
             if is_consolidated:
                 is_per_wagon = False
                 if shipment_type_code == "transit":
@@ -590,9 +595,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     if is_consolidated:
         cons_note = (
-            "Yığma göndərmə üçün minimum hesablaşma çəkisi norma tətbiq olunmuşdur (bənd 3.8)."
+            "Yığma göndərmə üçün minimum hesablaşma çəkisi norma və 1.20 əmsalı tətbiq olunmuşdur (bənd 3.8)."
             if lang_upper == "AZ" else
-            "Для сборной отправки применена минимальная норма расчётного веса (п. 3.8)."
+            "Для сборной отправки применена минимальная норма расчётного веса и коэффициент 1.20 (п. 3.8)."
         )
         notes.insert(0, cons_note)
 
