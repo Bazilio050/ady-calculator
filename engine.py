@@ -31,9 +31,6 @@ OWN_AXLE_GNG_CODES = ["8601", "8602", "8603", "8604", "8605", "8606", "99211000"
 
 
 def check_dangerous_goods_rule(gng_code: str, user_input_raw: str, wagon_type: str) -> tuple:
-    """
-    Проверяет, относится ли груз к опасным (п. 3.6.1, Cədvəl 13).
-    """
     clean_gng = re.sub(r'\D', '', str(gng_code or "")).zfill(8)
     inp = str(user_input_raw or "").lower()
     w_type = str(wagon_type or "").lower()
@@ -133,7 +130,7 @@ def apply_special_exceptions(
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015
+    # 1. ИНДЕКСАЦИЯ 1.015 (Исключаем п. 3.7.1, 3.7.2, 3.7.8)
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
@@ -154,7 +151,7 @@ def apply_special_exceptions(
         )
         notes.append(ind_note)
         
-    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50
+    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50 (Исключаем спецразделы 3.7)
     if is_empty and clean_gng in EMPTY_SPS_CODES and table_num not in [3.71, 3.72, 3.78]:
         if shipment_type_code in ["import", "export"]:
             lbl_150 = "İdxal/İxrac baza" if lang == "AZ" else ("Импорт/Экспорт база" if lang == "RU" else "Import/Export base")
@@ -231,7 +228,7 @@ def apply_special_exceptions(
     coeffs.extend(g_coeffs)
     notes.extend(g_notes)
 
-    # СКИДКА СПС (0.85 или 0.70) — к п. 3.7.1 также применяется скидка СПС 0.85
+    # СКИДКА СПС (0.85 или 0.70)
     if park_type == "SPS" and table_num not in [3.72, 3.78]:
         sps_val = 0.85
         apply_sps = False
@@ -544,6 +541,10 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
                 table_num = 3
                 is_per_wagon = False
                 base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
+
+            # Сборная отправка всегда оплачивается за тонну (USD/t)
+            if is_consolidated:
+                is_per_wagon = False
 
         act_w_str = f"{int(act_weight) if act_weight.is_integer() else act_weight}"
         bill_w_str = f"{int(billable_weight) if billable_weight.is_integer() else billable_weight}"
