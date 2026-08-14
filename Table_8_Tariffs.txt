@@ -1,7 +1,6 @@
 ### CƏDVAL 8 — İkiyaruslu platformalarda (avtovozlarda) daşınan yüklərin tarif qiymətləri (İsveçrə frankı ilə)
 
 | Məsafə, km | Deg3_Upper 10t (1 vaqon) | Deg3_Upper 10t (1 ton) | Deg3_Upper 15t (1 ton) | Deg3_Upper 20t (1 ton) | Deg3_Upper 25t (1 ton) | Deg3_5_LowSide 10t (1 vaqon) | Deg3_5_LowSide 10t (1 ton) | Deg3_5_LowSide 15t (1 ton) | Deg3_5_LowSide 20t (1 ton) | Deg3_5_LowSide 25t (1 ton) |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **1-10 km** | 16.35 | 1.64 | 1.30 | 1.14 | 0.98 | 21.80 | 2.18 | 1.74 | 1.52 | 1.30 |
 | **11-20 km** | 47.40 | 4.74 | 3.92 | 3.27 | 3.10 | 63.20 | 6.32 | 5.22 | 4.36 | 4.14 |
 | **21-30 km** | 79.95 | 8.00 | 6.69 | 5.38 | 5.05 | 106.60 | 10.66 | 8.92 | 7.18 | 6.74 |
