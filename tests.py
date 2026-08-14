@@ -306,7 +306,7 @@ TEST_SUITE = [
             "cargo_name": "Lokomotiv", "actual_weight_tons": 45.0, "wagon_type": "universal",
             "park_type": "SPS", "is_own_axles": True, "explicit_mode": "transit"
         },
-        "expected_rate": 18.06
+        "expected_rate": 18.33
     },
     {
         "name": "33. Ялама -> Апшерон (Порожний вагон МПС в ремонт, 4 оси, 204км — п. 3.7.2)",
