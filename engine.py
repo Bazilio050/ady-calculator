@@ -130,15 +130,15 @@ def apply_special_exceptions(
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015 (Исключаем спецразделы 3.7: 3.71, 3.72, 3.78)
+    # 1. ИНДЕКСАЦИЯ 1.015 (с 01.03.2026 по 31.12.2026)
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
         target_dt = datetime.now()
 
-    is_after_april_2026 = target_dt >= datetime(2026, 4, 1)
+    is_valid_index_period = datetime(2026, 3, 1) <= target_dt <= datetime(2026, 12, 31)
 
-    if not is_empty and is_after_april_2026 and table_num not in [3.71, 3.72, 3.78]:
+    if not is_empty and is_valid_index_period and table_num not in [3.71, 3.72, 3.78]:
         ind_label = "Əlavə əmsal" if lang == "AZ" else ("Индексация" if lang == "RU" else "Indexation")
         coeffs.append((ind_label, 1.015))
         
