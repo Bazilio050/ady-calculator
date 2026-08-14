@@ -12,10 +12,13 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
         "CRITICAL ESR CODE & GNG INSTRUCTIONS:\n"
         "- Always output the exact standard 6-digit ESR code for each station ('origin_esr', 'dest_esr').\n"
         "- Example ESRs: Yalama=545006, Biləcəri/Баладжары=546808, Abşeron=548004, Böyük Kəsik=558701, Bakı-Yük=547105, Astara=554109.\n"
-        "- Do NOT confuse Biləcəri (546808) with ferry/port codes (547209).\n"
-        "- GNG/NHM cargo codes can be any digit length from 2 to 8 digits (e.g., '78', '72', '0207', '780120', '27130000', '99220000'). ALWAYS output them strictly as strings with leading zeros preserved.\n"
-        "- If a 2-digit group code is provided (like '78' or '72'), set 'gng_code' to string (e.g., \"78\") AND infer the cargo group name for 'gng_name' (e.g., \"Svinç / Əlvan metallar\").\n\n"
-        "EMPTY WAGON RUN (BOŞ VAQON / ПОРОЖНИЙ ПРОБЕГ) INSTRUCTIONS:\n"
+        "- GNG/NHM cargo codes can be any digit length from 2 to 8 digits (e.g., '78', '72', '0207', '8601', '99220000'). ALWAYS output them strictly as strings with leading zeros preserved.\n\n"
+        "SPECIAL SECTION 3.7 & 3.8 INSTRUCTIONS:\n"
+        "- Movement on own axles (öz oxları üzərində / на своих осях): set 'is_own_axles': true. Keywords: 'öz oxları', 'на своих осях', 'локомотив', 'кран', '8601'-'8606'.\n"
+        "- Wagon going to/from repair (təmirə/təmirdən / в ремонт/из ремонта): set 'is_in_repair': true.\n"
+        "- Moving within passenger train (sərnişin qatarı / пассажирский поезд): set 'is_passenger_train': true.\n"
+        "- Consolidated cargo (yığma göndərmə / сборный груз): set 'is_consolidated': true.\n\n"
+        "EMPTY WAGON RUN INSTRUCTIONS:\n"
         "- Detect if user input indicates an empty wagon movement or return (keywords: 'boş', 'порожний', 'возврат', 'empty'). Set 'is_empty': true or false.\n"
         "- If 'is_empty' is true and no GNG code is provided, set 'gng_code': \"99220000\" and 'gng_name': \"Yükdən boşaldılmış vaqonlar\" (or translated equivalent).\n"
         "- For empty wagons, default 'park_type' to \"SPS\" and 'axles_count' to 4 unless specified otherwise.\n\n"
@@ -28,12 +31,16 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
         '  "gng_code": "2, 4, or 8 digit GNG code string or null",\n'
         f'  "gng_name": "Short cargo description in {target_lang}",\n'
         '  "weight_tons": float or null,\n'
-        '  "wagon_type": "universal / tank / ref / thermos / autocarrier",\n'
+        '  "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",\n'
         '  "park_type": "SPS / MPS",\n'
         '  "ref_section_cargo_wagons": integer or null,\n'
         '  "explicit_mode": "import / export / transit or null",\n'
         '  "is_empty": boolean,\n'
-        '  "axles_count": integer or null\n'
+        '  "axles_count": integer or null,\n'
+        '  "is_own_axles": boolean,\n'
+        '  "is_in_repair": boolean,\n'
+        '  "is_passenger_train": boolean,\n'
+        '  "is_consolidated": boolean\n'
         "}\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
@@ -57,11 +64,19 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
 
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(site_lang).upper()
-   
-    # 💡 ПОДСТРАХОВКА: Принудительный поиск порожняка по ключевым словам
+    
+    # 💡 ПОДСТРАХОВКА: Проверка ключевых слов вручную
     input_lower = user_input_text.lower()
     if any(k in input_lower for k in ["boş", "порожн", "empty", "возврат", "qaytar"]):
         result["is_empty"] = True
+    if any(k in input_lower for k in ["öz ox", "на своих осях", "своих осях", "локомотив", "кран"]):
+        result["is_own_axles"] = True
+    if any(k in input_lower for k in ["təmir", "ремонт", "repair"]):
+        result["is_in_repair"] = True
+    if any(k in input_lower for k in ["sərnişin qatar", "пассажирский поезд"]):
+        result["is_passenger_train"] = True
+    if any(k in input_lower for k in ["yığma", "сборный", "сборная", "consolidated"]):
+        result["is_consolidated"] = True
         
     return result
 
@@ -73,12 +88,9 @@ def validate_nlu_input(nlu_res, lang="AZ"):
     missing_items = []
     lang_upper = str(lang).upper()
 
-    # 1. Железобетонная проверка флага is_empty (учитывает bool, string и ключевые слова)
     raw_is_empty = nlu_res.get("is_empty")
-    if isinstance(raw_is_empty, str):
-        is_empty = raw_is_empty.lower() in ["true", "1", "yes"]
-    else:
-        is_empty = bool(raw_is_empty)
+    is_empty = raw_is_empty.lower() in ["true", "1", "yes"] if isinstance(raw_is_empty, str) else bool(raw_is_empty)
+    is_own_axles = bool(nlu_res.get("is_own_axles"))
 
     if is_empty:
         if not nlu_res.get("gng_code"):
@@ -87,8 +99,6 @@ def validate_nlu_input(nlu_res, lang="AZ"):
         nlu_res["park_type"] = "SPS"
         if not nlu_res.get("axles_count"):
             nlu_res["axles_count"] = 4
-
-        # Принудительно гарантируем, что is_empty теперь строго True
         nlu_res["is_empty"] = True
 
     st_from = nlu_res.get("origin_esr") or nlu_res.get("origin_name")
@@ -106,8 +116,8 @@ def validate_nlu_input(nlu_res, lang="AZ"):
             "📍 **Təyinat stansiyası**" if lang_upper == "AZ" else ("📍 **Станция назначения**" if lang_upper == "RU" else "📍 **Destination station**")
         )
     
-    # Для порожнего пробега вес НЕ требуется
-    if not is_empty and (not weight or float(weight) <= 0):
+    # Для порожнего пробега и движения на своих осях вес НЕ является обязательным полем
+    if not is_empty and not is_own_axles and (not weight or float(weight) <= 0):
         missing_items.append(
             "⚖️ **Faktiki çəki (tonla)**" if lang_upper == "AZ" else ("⚖️ **Фактический вес (в тоннах)**" if lang_upper == "RU" else "⚖️ **Actual weight in tons**")
         )
@@ -115,7 +125,7 @@ def validate_nlu_input(nlu_res, lang="AZ"):
     gng_str = str(gng).strip() if gng is not None else ""
     cargo_str = str(cargo_name).strip() if cargo_name is not None else ""
 
-    if not gng_str and not cargo_str:
+    if not gng_str and not cargo_str and not is_own_axles:
         missing_items.append(
             "📦 **Yükün adı və ya GNG/NHM kodu**" if lang_upper == "AZ" else ("📦 **Наименование груза или код ГНГ/NHM**" if lang_upper == "RU" else "📦 **Cargo name or GNG/NHM code**")
         )
