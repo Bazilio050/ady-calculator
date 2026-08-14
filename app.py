@@ -265,11 +265,11 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 with st.expander(t["guide_title"]):
-    if selected_lang == "AZ":
+   if selected_lang == "AZ":
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
             "📦 Ümumi vaqonlar", "📦 Konteynerlər", "❄️ Ref / Termos", "🛢️ Çənlər", 
             "🏗️ Transportyorlar", "🚛 Xüsusi platforma", "📐 Əndazəsiz yüklər", 
-            "⚙️ Öz oxları üzərində (3.7)", "📦 Yığma göndərmə (3.8)", "⚠️ Təhlükəli yüklər"
+            "⚙️ Öz oxları üzərində", "📦 Yığma göndərmə", "⚠️ Təhlükəli yüklər"
         ])
 
         with tab1:
@@ -297,7 +297,7 @@ with st.expander(t["guide_title"]):
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
             "📦 Универсальные", "📦 Контейнеры", "❄️ Реф / Термос", "🛢️ Цистерны", 
             "🏗️ Транспортеры", "🚛 Спецплатформы", "📐 Негабарит", 
-            "⚙️ На своих осях (3.7)", "📦 Сборные грузы (3.8)", "⚠️ Опасные грузы"
+            "⚙️ На своих осях", "📦 Сборные грузы", "⚠️ Опасные грузы"
         ])
 
         with tab1:
@@ -325,7 +325,7 @@ with st.expander(t["guide_title"]):
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
             "📦 Universal", "📦 Containers", "❄️ Ref / Thermos", "🛢️ Tank wagons", 
             "🏗️ Transporters", "🚛 Special platform", "📐 Oversize", 
-            "⚙️ Own axles (3.7)", "📦 Consolidated (3.8)", "⚠️ Dangerous"
+            "⚙️ Own axles", "📦 Consolidated", "⚠️ Dangerous"
         ])
 
         with tab1:
