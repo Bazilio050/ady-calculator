@@ -399,7 +399,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             f"clause 3.6.3 ({cover_rate} CHF × {int(axles)} axles × {actual_dist_km} km)"
         )
         weight_display = "0 t (qoruyucu)" if lang_upper == "AZ" else ("0 т (прикрытие)" if lang_upper == "RU" else "0 t (cover)")
-         billable_weight = 0.0
+        billable_weight = 0.0
 
     # ---------------------------------------------------------
     # ПУНКТ 3.2.2: Порожний приватный вагон СПС (0.10 CHF/ось-км)
