@@ -131,6 +131,7 @@ def apply_special_exceptions(
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
     # 1. ИНДЕКСАЦИЯ 1.015 (с 01.03.2026 по 31.12.2026)
+    # Исключаются ТОЛЬКО порожние спецперевозки (3.72, 3.78). 3.71 (на своих осях) ИНДЕКСИРУЕТСЯ!
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
@@ -138,16 +139,16 @@ def apply_special_exceptions(
 
     is_valid_index_period = datetime(2026, 3, 1) <= target_dt <= datetime(2026, 12, 31)
 
-    if not is_empty and is_valid_index_period and table_num not in [3.71, 3.72, 3.78]:
+    if not is_empty and is_valid_index_period and table_num not in [3.72, 3.78]:
         ind_label = "Əlavə əmsal" if lang == "AZ" else ("Индексация" if lang == "RU" else "Indexation")
         coeffs.append((ind_label, 1.015))
         
         ind_note = (
-            "Yüklü vaqonların daşınmasına 1.015 əlavə əmsalı (indeksasiya) tətbiq olunmuşdur."
+            "Yüklü vaqonların daşınmasına 1.015 əlavə əmsalı (indeksasiya) tətbiq olunmuşdur (01.03.2026 - 31.12.2026)."
             if lang == "AZ" else
-            ("К перевозке гружёных вагонов применён дополнительный коэффициент (индексация) 1.015."
+            ("К перевозке гружёных вагонов применён дополнительный коэффициент (индексация) 1.015 (01.03.2026 - 31.12.2026)."
              if lang == "RU" else
-             "Additional indexation factor 1.015 applied for loaded wagon movement.")
+             "Additional indexation factor 1.015 applied for loaded wagon movement (01.03.2026 - 31.12.2026).")
         )
         notes.append(ind_note)
         
