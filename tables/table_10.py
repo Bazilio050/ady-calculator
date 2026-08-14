@@ -16,7 +16,7 @@ def calculate_table_10_tariff(
     ctype = str(container_type or "").lower()
     clean_gng = re.sub(r'\D', '', str(gng_code or "")).zfill(8)
 
-    # Индексы колонок согласно Cədvəl 10:
+    # Индексы колонок согласно Cədvəl 10 (1-based):
     # 1: Tank 20 fut Yüklü
     # 2: Tank 20 fut Boş
     # 3: Tank 40 fut Yüklü
@@ -58,9 +58,10 @@ def calculate_table_10_tariff(
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 for line in f:
-                    if "|" not in line or "Məsafə" in line:
+                    clean_line = line.replace('*', '').strip()
+                    if "|" not in clean_line or "Məsafə" in clean_line or "CƏDVAL" in clean_line:
                         continue
-                    parts = [p.strip() for p in line.split("|")]
+                    parts = [p.strip() for p in clean_line.split("|") if p.strip() != ""]
                     if len(parts) <= col_idx:
                         continue
                     
