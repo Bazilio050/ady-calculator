@@ -129,11 +129,6 @@ def apply_special_exceptions(
 
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
-    is_consolidated = bool(nlu_data.get("is_consolidated")) or any(k in input_lower for k in ["yığma", "сборный", "сборная"])
-
-    # 0. Коэффициент 1.20 для сборных грузов (п. 3.8)
-    if is_consolidated:
-        coeffs.append(("Yığma göndərmə (bənd 3.8)", 1.20))
 
     # 1. ИНДЕКСАЦИЯ 1.015 (Исключаются спецразделы 3.72, 3.78)
     req_period = nlu_data.get("requested_period")
@@ -399,11 +394,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         table_num = 3.71
         is_per_wagon = False
         billable_weight = 10.0
+        lookup_weight = 10.1  # Точное попадание в графу 10 тонн
         
         if shipment_type_code == "transit":
-            base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, {}, lang_upper)
+            base_chf, table_details = calculate_table_4_base(tariff_dist_km, lookup_weight, {}, lang_upper)
         else:
-            base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
+            base_chf, table_details = calculate_table_3_base(tariff_dist_km, lookup_weight, {}, lang_upper)
 
         base_chf *= 0.50
         table_details = f"bənd 3.7.1 (универсальный вагон × 0.50)"
@@ -494,15 +490,18 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
                 is_transporter or "transporter" in wagon_type
             )
 
+            # Гарантируем точный выбор весовой графы в таблицах 3 и 4
+            lookup_weight = 10.1 if billable_weight == 10.0 else billable_weight
+
             # Высокий приоритет для сборной отправки (п. 3.8)
             if is_consolidated:
                 is_per_wagon = False
                 if shipment_type_code == "transit":
                     table_num = 4
-                    base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, {}, lang_upper)
+                    base_chf, table_details = calculate_table_4_base(tariff_dist_km, lookup_weight, {}, lang_upper)
                 else:
                     table_num = 3
-                    base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
+                    base_chf, table_details = calculate_table_3_base(tariff_dist_km, lookup_weight, {}, lang_upper)
 
             elif is_danger and not is_tanker_type and not is_universal_container:
                 table_num = 12
@@ -551,11 +550,11 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             elif shipment_type_code == "transit":
                 table_num = 4
                 is_per_wagon = False
-                base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, {}, lang_upper)
+                base_chf, table_details = calculate_table_4_base(tariff_dist_km, lookup_weight, {}, lang_upper)
             else:
                 table_num = 3
                 is_per_wagon = False
-                base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
+                base_chf, table_details = calculate_table_3_base(tariff_dist_km, lookup_weight, {}, lang_upper)
 
         act_w_str = f"{int(act_weight) if act_weight.is_integer() else act_weight}"
         bill_w_str = f"{int(billable_weight) if billable_weight.is_integer() else billable_weight}"
@@ -595,9 +594,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     if is_consolidated:
         cons_note = (
-            "Yığma göndərmə üçün minimum hesablaşma çəkisi norma və 1.20 əmsalı tətbiq olunmuşdur (bənd 3.8)."
+            "Yığma göndərmə üçün minimum hesablaşma çəkisi norması tətbiq olunmuşdur (bənd 3.8)."
             if lang_upper == "AZ" else
-            "Для сборной отправки применена минимальная норма расчётного веса и коэффициент 1.20 (п. 3.8)."
+            "Для сборной отправки применена минимальная норма расчётного веса (п. 3.8)."
         )
         notes.insert(0, cons_note)
 
