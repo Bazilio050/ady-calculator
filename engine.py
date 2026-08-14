@@ -130,7 +130,7 @@ def apply_special_exceptions(
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015 (Исключаются ТОЛЬКО порожние спецперевозки 3.72, 3.78)
+    # 1. ИНДЕКСАЦИЯ 1.015 (Исключаются спецразделы 3.71, 3.72, 3.78)
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
@@ -138,7 +138,7 @@ def apply_special_exceptions(
 
     is_valid_index_period = datetime(2026, 3, 1) <= target_dt <= datetime(2026, 12, 31)
 
-    if not is_empty and is_valid_index_period and table_num not in [3.72, 3.78]:
+    if not is_empty and is_valid_index_period and table_num not in [3.71, 3.72, 3.78]:
         ind_label = "Əlavə əmsal" if lang == "AZ" else ("Индексация" if lang == "RU" else "Indexation")
         coeffs.append((ind_label, 1.015))
         
@@ -389,12 +389,11 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         weight_display = f"0 t (boş {int(axles)}-oxlu transportyor)"
         billable_weight = 0.0
 
-    # 3.7.1: Перевозка на своих осях (коэф 0.50 к универсальному вагону)
+    # 3.7.1: Перевозка на своих осях (коэф 0.50 к универсальному вагону от баз. нормы 10 т)
     elif is_own_axles:
         table_num = 3.71
         is_per_wagon = False
-        # По п. 3.7.9 расчетный вес не менее 10 тонн, иначе берутся весовые категории по Таблице 1 (Cədvəl 1)
-        billable_weight = max(10.0, act_weight if act_weight > 0 else 10.0)
+        billable_weight = 10.0
         
         if shipment_type_code == "transit":
             base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, {}, lang_upper)
@@ -403,7 +402,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
         base_chf *= 0.50
         table_details = f"bənd 3.7.1 (универсальный вагон × 0.50)"
-        weight_display = f"{int(billable_weight)} t (öz oxları üzərində)" if lang_upper == "AZ" else f"{int(billable_weight)} т (на своих осях)"
+        weight_display = f"{int(act_weight if act_weight > 0 else 10)} t (öz oxları üzərində)" if lang_upper == "AZ" else f"{int(act_weight if act_weight > 0 else 10)} т (на своих осях)"
 
     # Инвентарный порожний вагон МПС -> Бесплатно (п. 3.1.1)
     elif is_empty_wagon and park_type == "MPS" and not is_cover_wagon:
@@ -490,8 +489,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
                 is_transporter or "transporter" in wagon_type
             )
 
+            # Высший приоритет для сборных отправок (п. 3.8)
             if is_consolidated:
-                # Для сборной отправки берется Таблица 3 (или 4) с расчетной нормой веса billable_weight (мин 10т)
                 is_per_wagon = False
                 if shipment_type_code == "transit":
                     table_num = 4
