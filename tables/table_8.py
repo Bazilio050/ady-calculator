@@ -3,7 +3,7 @@ import re
 
 def calculate_table_8_tariff(
     distance_km: int, 
-    feet_size: int, 
+    feet_size: int = 20, 
     is_empty: bool = False, 
     park_type: str = "SPS",
     is_medium_tonnage: bool = False,
@@ -14,15 +14,15 @@ def calculate_table_8_tariff(
     """
     dist = int(distance_km or 0)
     size = int(feet_size or 20)
-    park = str(park_type or "SPS").strip().upper()
 
-    # Индексы колонок (1-based по части частей в строке)
+    # Защита: крупнотоннажные контейнеры (10, 20, 30, 40, 45 футов) не могут быть среднетоннажными
+    if size in [10, 20, 30, 40, 45]:
+        is_medium_tonnage = False
+
+    # Индексы колонок (1-based после очистки строки)
     # 1: Mid_3t_Y, 2: Mid_5t_Y, 3: Mid_3t_B, 4: Mid_5t_B
     # 5: Inv_10ft_Y, 6: Inv_20ft_Y, 7: Inv_30ft_Y, 8: Inv_40ft_Y, 9: Inv_45ft_Y
     # 10: Ozel_10ft_B, 11: Ozel_20ft_B, 12: Ozel_30ft_B, 13: Ozel_40ft_B, 14: Ozel_45ft_B
-
-    col_idx = 6 # Default 20ft yüklü
-    col_name = "20 fut yüklü"
 
     if is_medium_tonnage:
         if is_empty:
@@ -32,7 +32,7 @@ def calculate_table_8_tariff(
             col_idx = 1 if medium_tons == 3 else 2
             col_name = f"Ortatonnajlı {medium_tons}t yüklü"
     else:
-        # Крупнотоннажные
+        # Крупнотоннажные контейнеры
         size_map = {10: 0, 20: 1, 30: 2, 40: 3, 45: 4}
         offset = size_map.get(size, 1)
 
@@ -51,9 +51,10 @@ def calculate_table_8_tariff(
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 for line in f:
-                    if "|" not in line or "Məsafə" in line:
+                    clean_line = line.replace('*', '').strip()
+                    if "|" not in clean_line or "Məsafə" in clean_line or "CƏDVAL" in clean_line:
                         continue
-                    parts = [p.strip() for p in line.split("|")]
+                    parts = [p.strip() for p in clean_line.split("|") if p.strip() != ""]
                     if len(parts) <= col_idx:
                         continue
                     
