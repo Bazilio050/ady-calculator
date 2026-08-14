@@ -221,6 +221,18 @@ def apply_special_exceptions(
                 )
             notes.append(sps_note)
 
+    # 6. ОПАСНЫЕ ГРУЗЫ И ВАГОНЫ ПРИКРЫТИЯ (Пункт 3.6)
+    is_danger, apply_double, danger_note = check_dangerous_goods_rule(gng, user_input_raw, wagon_type)
+    if is_danger and apply_double:
+        coeffs.append(("Təhlükəli yük əmsalı (x2.00)", 2.00))
+        notes.append("Təhlükəli yüklərin daşınmasına görə tarif dərəcələrinə 2.00 əmsalı tətbiq olunmuşdur (bənd 3.6.1).")
+
+    # Вагон прикрытия / Qoruyucu vaqon (п. 3.6.3)
+    if any(k in input_lower for k in ["прикрытие", "qoruyucu", "daldalanacaq", "guard_wagon"]):
+        cover_rate = 0.30 if park_type == "SPS" else 0.35
+        cover_chf = cover_rate * axles * dist_km
+        notes.append(f"Qoruyucu (daldalanacaq) vaqonunun daşınma haqqı bənd 3.6.3-ə əsasən ({cover_rate} CHF × {int(axles)} ox × {dist_km} km = {cover_chf:.2f} CHF) əlavə olunmuşdur.")
+
     return coeffs, notes
 
 
