@@ -344,7 +344,7 @@ with st.expander(t["guide_title"]):
             📐 **Şablon:** `[Haradan] -> [Haraya], [Çəki]t, [Əndazəsizlik dərəcəsi], [SPS/MPS]`  
             💡 **Nümunə:** `Yalama – Böyük Kəsik, 35t, 3-yuxarı əndazə platforma, SPS`  
             ⚙️ **Açar sözlər:** `3-yuxarı` • `3-5 aşağı` • `4-5 yan` • `6-cı dərəcə`  
-            📌 **Qaydalar:** Cədvəl 11 üzrə hesablanır (bənd 3.5.1.2). 3-yuxarı üçün 1.50, 3-5 aşağı / 4-5 yan üçün 2.00 əmsalı tətbiq edilir (min. çəki 10t).
+            📌 **Qaydalar:** Cədvəl 11 (bənd 3.5.1.2) üzrə hesablanır. 1.50 və 2.00 əmsalları cədvəlin baza tariflərinə artıq daxil edilmişdir (min. çəki 10t).
             """)
 
     elif selected_lang == "RU":
@@ -414,7 +414,7 @@ with st.expander(t["guide_title"]):
             📐 **Шаблон:** `[Откуда] -> [Куда], [Вес]т, [Степень негабаритности], [СПС/МПС]`  
             💡 **Пример:** `Ялама – Беюк Кясик, 35т, 3-верхняя негабаритность, платформа, СПС`  
             ⚙️ **Ключевые слова:** `3-верхняя` • `3-5 нижняя` • `4-5 боковая` • `6 степень`  
-            📌 **Правила:** Расчет по Таблице 11 (п. 3.5.1.2). Для 3 верх. коэфф. 1.50, для 3-5 ниж. / 4-5 бок. — 2.00 (мин. вес 10т).
+            📌 **Правила:** Расчет по Таблице 11 (п. 3.5.1.2). Коэффициенты 1.50 и 2.00 уже включены в базовые тарифы таблицы (мин. вес 10т).
             """)
 
     else:
@@ -484,7 +484,7 @@ with st.expander(t["guide_title"]):
             📐 **Template:** `[From] -> [To], [Weight]t, [Oversize degree], [SPS/MPS]`  
             💡 **Example:** `Yalama – Beyuk Kasik, 35t, 3rd upper oversize platform, SPS`  
             ⚙️ **Keywords:** `3-upper` • `3-5 lower` • `4-5 side` • `degree 6`  
-            📌 **Rules:** Calculated via Table 11 (clause 3.5.1.2). Factor 1.50 for 3rd upper, 2.00 for 3-5 lower / 4-5 side (min weight 10t).
+            📌 **Rules:** Calculated via Table 11 (clause 3.5.1.2). 1.50 and 2.00 factors are already included in base table rates (min weight 10t).
             """)
 
 # --- ПОЛЕ ВВОДА ЗАПРОСА ---
