@@ -1,7 +1,6 @@
 ### CƏDVAL 10 — Xüsusi, tank və refrijerator konteynerlərdə daşınan yüklərin tarif qiymətləri (İsveçrə frankı ilə 1 konteyner üçün)
 
 | Məsafə, km | Tank 20 fut Yüklü | Tank 20 fut Boş | Tank 40 fut Yüklü | Tank 40 fut Boş | Tank Şərab/Şirəsi 20 fut | Tank Şərab/Şirəsi 40 fut | Ref 20 fut Yüklü | Ref 20 fut Boş | Ref 40 fut Yüklü | Ref 40 fut Boş |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **1-10 km** | 14 | 6 | 24 | 13 | 13 | 22 | 14 | 5 | 23 | 12 |
 | **11-20 km** | 39 | 20 | 71 | 36 | 36 | 66 | 38 | 19 | 69 | 35 |
 | **21-30 km** | 67 | 34 | 120 | 59 | 62 | 112 | 65 | 32 | 116 | 57 |
