@@ -155,7 +155,7 @@ def apply_special_exceptions(
         notes.append(ind_note)
         
     # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50
-    if is_empty and clean_gng in EMPTY_SPS_CODES:
+    if is_empty and clean_gng in EMPTY_SPS_CODES and table_num not in [3.71, 3.72, 3.78]:
         if shipment_type_code in ["import", "export"]:
             lbl_150 = "İdxal/İxrac baza" if lang == "AZ" else ("Импорт/Экспорт база" if lang == "RU" else "Import/Export base")
             coeffs.append((lbl_150, 1.50))
@@ -231,12 +231,12 @@ def apply_special_exceptions(
     coeffs.extend(g_coeffs)
     notes.extend(g_notes)
 
-    # СКИДКА СПС (0.85 или 0.70)
-    if park_type == "SPS" and table_num not in [3.71, 3.72, 3.78]:
+    # СКИДКА СПС (0.85 или 0.70) — к п. 3.7.1 также применяется скидка СПС 0.85
+    if park_type == "SPS" and table_num not in [3.72, 3.78]:
         sps_val = 0.85
         apply_sps = False
 
-        if table_num in [3, 4, 5, 7, 8, 10, 11, 12]:
+        if table_num in [3, 4, 5, 7, 8, 10, 11, 12, 3.71]:
             apply_sps = True
         elif table_num == 6:
             from tables.table_6 import determine_table_6_column
@@ -373,8 +373,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     elif is_empty_wagon and ("transporter" in wagon_type or "транспортер" in input_lower or "transportyor" in input_lower):
         table_num = 3.78
         is_per_wagon = True
-        axles = 4
-        match_axle = re.search(r'(\d+)\s*(?:oxlu|осн|axle|осей)', input_lower)
+        axles = int(nlu_data.get("axles_count") or 4)
+        match_axle = re.search(r'(\d+)[-\s]*(?:oxlu|ox|осн|осей|оси|axle|осный)', input_lower)
         if match_axle:
             axles = int(match_axle.group(1))
 
@@ -465,15 +465,14 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             is_per_wagon = (res_t11["rate_type"] == "per_wagon")
 
         else:
-            if oversize_group == "small_deg":
-                billable_weight = max(25.0, act_weight)
-            else:
-                billable_weight = get_min_weight_by_gng(gng, act_weight)
-
             # РАЗДЕЛ 3.8: Сборные отправки (мин 10т / в изотермических 25т)
             if is_consolidated:
                 min_cons_weight = 25.0 if is_table_5_object else 10.0
-                billable_weight = max(min_cons_weight, billable_weight)
+                billable_weight = max(min_cons_weight, act_weight)
+            elif oversize_group == "small_deg":
+                billable_weight = max(25.0, act_weight)
+            else:
+                billable_weight = get_min_weight_by_gng(gng, act_weight)
 
             match_axle = re.search(r'(\d+)\s*(?:oxlu|осн|axle|осей)', input_lower)
             if match_axle:
@@ -566,7 +565,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     is_ref_type_check = (table_num == 5)
     
-    # ВОТ ЗДЕСЬ ВСЕ СКОБКИ СТРОГО ЗАКРЫТЫ:
     coeffs, notes = apply_special_exceptions(
         nlu_data=nlu_data, 
         shipment_type_code=shipment_type_code, 
