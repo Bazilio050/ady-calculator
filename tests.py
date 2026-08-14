@@ -240,7 +240,8 @@ TEST_SUITE = [
             "cargo_name": "Boş kuzov", "is_empty": True, "wagon_type": "kuzov", "park_type": "SPS", "explicit_mode": "import"
         },
         "expected_rate": 450.10
-        {
+    },
+    {
         "name": "26. Ялама -> Апшерон (20-футовый универсальный контейнер гружёный, СПС, Импорт — Cədvəl 8)",
         "raw_text": "Ялама Апшерон 20фут контейнер yüklü SPS idxal",
         "nlu": {
