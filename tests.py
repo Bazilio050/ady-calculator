@@ -267,27 +267,37 @@ TEST_SUITE = [
             "wagon_type": "tank_container", "container_size": 20, "park_type": "SPS", "explicit_mode": "import"
         },
         "expected_rate": 740.21
-        
-        # --- РАЗДЕЛ 3.6: ОПАСНЫЕ ГРУЗЫ (Cədvəl 12, 13 & Qoruyucu vaqon) ---
-    },   
+    },
+    # --- РАЗДЕЛ 3.6: ОПАСНЫЕ ГРУЗЫ (Cədvəl 12, 13 & Qoruyucu vaqon) ---
     {
-        "id": 29,
-        "name": "Ялама → Апшерон (Опасный груз BMT 2927, 35т, СПС, Импорт — Cədvəl 12)",
-        "input_text": "Yalama Abşeron 35t tehlukeli BMT 2927 SPS",
-        "expected_rate": 5777.96,
+        "name": "29. Ялама → Апшерон (Опасный груз BMT 2927, 35т, СПС, Импорт — Cədvəl 12)",
+        "raw_text": "Yalama Abşeron 35t tehlukeli BMT 2927 SPS",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
+            "cargo_name": "Təhlükəli yük BMT 2927", "actual_weight_tons": 35.0,
+            "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "import"
+        },
+        "expected_rate": 5777.96
     },
     {
-        "id": 30,
-        "name": "Ялама → Апшерон (Цистерна Метанол BMT 1230, 50т, СПС — п. 3.6.1 Исключение)",
-        "input_text": "Yalama Abşeron cistern metanol BMT 1230 50t SPS",
-        "expected_rate": 634.92,
+        "name": "30. Ялама → Апшерон (Цистерна Метанол BMT 1230, 50т, СПС — п. 3.6.1 Исключение)",
+        "raw_text": "Yalama Abşeron cistern metanol BMT 1230 50t SPS",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "290511",
+            "cargo_name": "Metanol", "actual_weight_tons": 50.0,
+            "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
+        },
+        "expected_rate": 634.92
     },
     {
-        "id": 31,
-        "name": "Ялама → Апшерон (Вагон прикрытия, 4 оси, СПС — п. 3.6.3)",
-        "input_text": "Yalama Abşeron qoruyucu vaqon 4 ox SPS",
-        "expected_rate": 474.13,
-    
+        "name": "31. Ялама → Апшерон (Вагон прикрытия, 4 оси, СПС — п. 3.6.3)",
+        "raw_text": "Yalama Abşeron qoruyucu vaqon 4 ox SPS",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "99220000",
+            "cargo_name": "Qoruyucu vaqon", "is_empty": True, "axles_count": 4,
+            "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "import"
+        },
+        "expected_rate": 474.13
     }
 ]
 
