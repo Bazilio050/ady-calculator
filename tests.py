@@ -240,6 +240,32 @@ TEST_SUITE = [
             "cargo_name": "Boş kuzov", "is_empty": True, "wagon_type": "kuzov", "park_type": "SPS", "explicit_mode": "import"
         },
         "expected_rate": 450.10
+        {
+        "name": "26. Ялама -> Апшерон (20-футовый универсальный контейнер гружёный, СПС, Импорт — Cədvəl 8)",
+        "raw_text": "Ялама Апшерон 20фут контейнер yüklü SPS idxal",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
+            "wagon_type": "container", "container_size": 20, "park_type": "SPS", "explicit_mode": "import"
+        },
+        "expected_rate": 528.00
+    },
+    {
+        "name": "27. Ялама -> Апшерон (40-футовый универсальный контейнер гружёный, СПС, Импорт — Cədvəl 8)",
+        "raw_text": "Ялама Апшерон 40фут контейнер yüklü SPS idxal",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
+            "wagon_type": "container", "container_size": 40, "park_type": "SPS", "explicit_mode": "import"
+        },
+        "expected_rate": 950.74
+    },
+    {
+        "name": "28. Ялама -> Апшерон (20-футовый танк-контейнер гружёный, СПС, Импорт — Cədvəl 10)",
+        "raw_text": "Ялама Апшерон 20ft tank контейнер yüklü SPS idxal",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
+            "wagon_type": "tank_container", "container_size": 20, "park_type": "SPS", "explicit_mode": "import"
+        },
+        "expected_rate": 740.21
     }
 ]
 
