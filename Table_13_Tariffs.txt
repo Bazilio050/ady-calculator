@@ -1,0 +1,95 @@
+Təhlükəli_yük_adı | BMT_№ | BDYS_2_adı | Sinif | Tətbiq_tipi
+Akvanit | 2927 | Üzvi zəhərli korroziyaedici maye,konkret göstərilməmiş | 6.1 | ortulu_konteyner
+Ammonium perxlorat | 1442 | Ammonium perxlorat | 5.1 | ortulu_konteyner
+Barium sianid | 1565 | Barium sianid | 6.1 | ortulu_konteyner
+Vinil | 3161 | Alışan maye qaz konkret göstərilməmiş | 2 | cen
+Hidrogen peroksid (sabitləşdirilmiş >70%) | 2015 | Hidrogen peroksid sabitləşdirilmiş | 5.1 | hamisi
+Hidrogen peroksid (60-70%) | 2015 | Hidrogen peroksid su məhlulu | 5.1 | ortulu_konteyner
+Heptil | 3286 | Tezalışan zəhərli korroziya edici maye | 3 | hamisi
+Qeyri-simmetrik dimetil hidrozin | 1163 | Qeyri-simmetrik dimetil hidrozin | 6.1 | hamisi
+Diran A | 1992 | Tezalışan zəhərli maye | 3 | ortulu_konteyner
+İZOPROPİLNİTRAT | 1222 | İZOPROPİLNİTRAT | 3 | ortulu_konteyner
+Kadmium sianid | 1588 | Qeyri-üzvi bərk sianidlər | 6.1 | ortulu_konteyner
+Bərk kalium sianid | 1680 | Bərk kalium sianid | 6.1 | ortulu_konteyner
+Kalium sianid məhlulu | 3413 | Kalium sianid məhlulu | 6.1 | ortulu_konteyner
+Kalium sianid | 1575 | Kalium sianid | 6.1 | ortulu_konteyner
+SN Katalizator | 2813 | Su ilə reaksiyaya girən bərk maddə | 4.3 | ortulu_konteyner
+Tüstülənən qırmızı azot turşusu | 2032 | Tüstülənən qırmızı azot turşusu | 8 | hamisi
+Hidrogen sionid su məhlulu (<20%) | 1613 | Hidrogen sionid su məhlulu | 6.1 | ortulu_konteyner
+Luminal A | 0000 | Tezalışan zəhərli korroziyaedici maye | 3 | ortulu_konteyner
+Mis sianid | 1587 | Mis sianid | 6.1 | ortulu_konteyner
+METANOL | 1230 | METANOL | 3 | cen
+Arsen trioksid | 1561 | Arsen trioksid | 6.1 | ortulu_konteyner
+Natrium sionid, bərk | 1689 | Natrium sionid, bərk | 6.1 | ortulu_konteyner
+Natrium sionid, maye | 3414 | Natrium sionid, maye | 6.1 | ortulu_konteyner
+Kimyəvi zəhərli nümunə | 3315 | Kimyəvi zəhərli nümunə | 6.1 | ortulu_konteyner
+Mühərrik yanacağına antidetonasiya əlavəsi | 3483 | Antidetonasiya əlavəsi tezalışan | 6.1 | ortulu_konteyner
+T-185 məhsulu | 1993 | Tezalışan maye | 3 | hamisi
+Pronit | 2810 | Üzvi zəhərli maye | 6.1 | ortulu_konteyner
+Desilin həlledicisi | 1992 | Tezalışan maye | 3 | ortulu_konteyner
+Civə dixlorid | 1624 | Civə dixlorid | 6.1 | ortulu_konteyner
+Sabitləşdirilmiş civə (II) oksianid | 1642 | Sabitləşdirilmiş civə (II) oksianid | 6.1 | ortulu_konteyner
+Civə (II) sianid | 1636 | Civə (II) sianid | 6.1 | ortulu_konteyner
+Civə (II) sulfidi | 2025 | Bərk civə birləşməsi | 6.1 | ortulu_konteyner
+Samin | 1992 | Tezalışan zəhərli maye | 3 | hamisi
+Sintin | 1992 | Tezalışan zəhərli maye | 3 | hamisi
+Qurğuşun sianid | 1620 | Qurğuşun sianid | 6.1 | ortulu_konteyner
+Gümüş sianid | 1684 | Gümüş sianid | 6.1 | ortulu_konteyner
+Strixnin və ya strixnin duzu | 1692 | Strixnin və ya strixnin duzu | 6.1 | ortulu_konteyner
+FOSQEN | 1076 | FOSQEN | 2 | hamisi
+Ağ sarı fosfor (su altında/məhlulda) | 1381 | Ağ sarı fosfor | 4.2 | cen
+Qurğu ağ (sarı) fosfor | 1381 | Qurğu ağ (sarı) fosfor | 4.2 | cen
+Əridilmiş ağ yaxud sarı fosfor | 2447 | Əridilmiş ağ yaxud sarı fosfor | 4.2 | cen
+XLOR | 1017 | XLOR | 2 | cen
+Sabitləşdirilmiş XLORTSİAN | 1589 | Sabitləşdirilmiş XLORTSİAN | 2 | ortulu_konteyner
+SİANİPLAV | 1588 | Qeyri-üzvi SİANİDlər | 4.2 | ortulu_konteyner
+SİANİD məhlulu | 1935 | SİANİD məhlulu | 6.1 | ortulu_konteyner
+SİNK SİANİD | 1713 | SİNK SİANİD | 6.1 | ortulu_konteyner
+Sinxonin | 1544 | Bərk alkaloidlər | 6.1 | ortulu_konteyner
+Enit | 2810 | Zəhərli üzvü maye | 6.1 | ortulu_konteyner
+Soyudulmuş maye etilen | 1038 | Soyudulmuş maye etilen | 2 | cen
+Azot oksidin və diazot tetraoksidin qarışığı | 1975 | Azot oksidi və nitrogen dioksid | 2 | ortulu_konteyner
+Sabitləşdirilmiş Akrolein | 1092 | Sabitləşdirilmiş Akrolein | 6.1 | cen
+ALLİLAMİN | 2334 | ALLİLAMİN | 6.1 | cen
+Sabitləşdirilmiş Vinilpirdin | 3073 | Sabitləşdirilmiş Vinilpirdin | 6.1 | cen
+Sabitləşdirilmiş hidrogen sionid (<3% su) | 1051 | Sabitləşdirilmiş hidrogen sionid | 6.1 | ortulu_konteyner
+Sabitləşdirilmiş hidrogen sionid (inert materialda) | 1614 | Sabitləşdirilmiş hidrogen sionid | 6.1 | ortulu_konteyner
+Hidrogenin sianidin spirtli məhlulu | 3294 | Hidrogenin sianidin spirtli məhlulu | 6.1 | hamisi
+Susuz Hidrazin | 2029 | Susuz Hidrazin | 8 | ortulu_konteyner
+Hidrazin-Hidrat (>37%) | 2030 | Hidrazin-Hidrat | 8 | hamisi
+Hidrazin tezalışan su məhlulu (>37%) | 3484 | Hidrazin tezalışan su məhlulu | 8 | hamisi
+Diazot tetraoksid (AZOT DİOKSİD) | 1067 | Diazot tetraoksid | 2 | hamisi
+Simmetrik dimetilqidrazin | 2382 | Simmetrik dimetilqidrazin | 6.1 | cen
+DİXLORSİLAN | 2189 | DİXLORSİLAN | 2 | cen
+Dəmirli Pentakarbonil | 1994 | Dəmirli Pentakarbonil | 6.1 | cen
+Zəhərli maye oksidləşdirən (LK50 <= 200, buxar >= 500) | 3387 | Zəhərli maye oksidləşdirən | 6.1 | cen
+Zəhərli maye tezalışan (LK50 <= 200, buxar >= 500) | 3383 | Zəhərli maye tezalışan | 6.1 | cen
+Zəhərli maye təhlükəli (LK50 <= 200, buxar >= 500) | 3381 | Zəhərli maye təhlükəli | 6.1 | cen
+Zəhərli maye kəskin (LK50 <= 1000, buxar >= 10) | 3390 | Zəhərli maye kəskin | 6.1 | cen
+Zəhərli maye kəskin (LK50 <= 200, buxar >= 10) | 3389 | Zəhərli maye kəskin | 6.1 | cen
+Zəhərli maye tezalışan (LK50 <= 1000, buxar >= 10) | 3384 | Zəhərli maye tezalışan | 6.1 | cen
+Zəhərli maye zərərli (LK50 <= 1000, buxar >= 10) | 3382 | Zəhərli maye zərərli | 6.1 | cen
+Zəhərli maye oksidləşdirən (LK50 <= 1000, buxar >= 10) | 3388 | Zəhərli maye oksidləşdirən | 6.1 | cen
+Zəhərli maye zərərli suya həssas (LK50 <= 1000, buxar >= 10) | 3386 | Zəhərli maye zərərli suya həssas | 6.1 | cen
+Zəhərli maye zərərli suya həssas (LK50 <= 200, buxar >= 500) | 3385 | Zəhərli maye zərərli suya həssas | 6.1 | cen
+İzopropilnitrat | 2407 | İzopropilnitrat | 6.1 | ortulu_konteyner
+Krotonaldeqid | 1143 | Krotonaldeqid | 6.1 | cen
+Sabitləşdirilmiş Metilvinilketon | 1251 | Sabitləşdirilmiş Metilvinilketon | 6.1 | cen
+Metilqidrazin | 1244 | Metilqidrazin | 6.1 | hamisi
+Metilizosianat | 2480 | Metilizosianat | 6.1 | cen
+Metilortosilikat | 2606 | Metilortosilikat | 6.1 | cen
+Metilxlorformiat | 1238 | Metilxlorformiat | 6.1 | cen
+N-Butilizosianat | 2485 | N-Butilizosianat | 6.1 | cen
+N-Butilxlorformiat | 2743 | N-Butilxlorformiat | 6.1 | cen
+N-Propilizosianat | 2482 | N-Propilizosianat | 6.1 | cen
+N-Propilxlorformiat | 2740 | N-Propilxlorformiat | 6.1 | cen
+Nikel Karbonil | 1259 | Nikel Karbonil | 6.1 | cen
+Zəhərli tezalışan fosforlu birləşmə | 3279 | Zəhərli tezalışan fosforlu birləşmə | 6.1 | cen
+Spirt Alliloviy | 1098 | Spirt Alliloviy | 6.1 | cen
+Tret-Butilizosianat | 2484 | Tret-Butilizosianat | 6.1 | cen
+Trimetilasetilxlorid | 2438 | Trimetilasetilxlorid | 6.1 | hamisi
+Sabitləşdirilmiş Xloraseton | 1695 | Sabitləşdirilmiş Xloraseton | 6.1 | hamisi
+Siklobutilxlorformiat | 2744 | Siklobutilxlorformiat | 6.1 | cen
+Sabitləşdirilmiş Etilenimin | 1185 | Sabitləşdirilmiş Etilenimin | 6.1 | cen
+Etilxlorformiat | 1182 | Etilxlorformiat | 6.1 | cen
+Metilxlormetil efiri | 1239 | Metilxlormetil efiri | 6.1 | cen
