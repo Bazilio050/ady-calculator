@@ -81,7 +81,8 @@ def parse_ref_composition(user_input_str):
 
 def calculate_table_5_base(distance_km, billable_weight_tons, wagon_type, *args, lang="AZ", **kwargs):
     """
-    Расчёт базовой ставки Таблицы 5.
+    Расчёт базовой ставки Таблицы 5 (Спецплатформы, İNV/ANV, Рефрижераторы).
+    Раздел 3.3 (п. 3.3.1 и 3.3.2)
     Возвращает: (base_chf, details_str, is_per_wagon)
     """
     w_type_lower = str(wagon_type or "").lower()
@@ -94,15 +95,22 @@ def calculate_table_5_base(distance_km, billable_weight_tons, wagon_type, *args,
     # Проверка на порожнее состояние
     is_empty_flag = kwargs.get("is_empty", False) or any(k in full_type_str for k in ["boş", "empty", "порожн"])
 
-    # 1. Пункт 3.2.6: Автопоезда, прицепы, полуприцепы, кузова и İNV/ANV -> Col 7 (груженый) / Col 8 (порожний)
+    # 1. Раздел 3.3: Автопоезда, прицепы, полуприцепы, кузова и İNV/ANV
     road_train_keywords = ["avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов", "inv", "anv"]
     is_road_train = any(k in full_type_str for k in road_train_keywords)
 
+    clause_info = ""
     if is_road_train:
         if is_empty_flag:
             col_idx = 6  # Col 8: İNV/ANV / спецплатформы порожний (per wagon)
+            if any(k in full_type_str for k in ["kuzov", "кузов"]):
+                clause_info = "boş kuzov 5t - bənd 3.3.2" if lang == "AZ" else ("порожний кузов 5т - п. 3.3.2" if lang == "RU" else "empty body 5t - cl. 3.3.2")
+            else:
+                clause_info = "boş avtoqatar/qoşqu 7t - bənd 3.3.2" if lang == "AZ" else ("порожний автопоезд/прицеп 7т - п. 3.3.2" if lang == "RU" else "empty road train/trailer 7t - cl. 3.3.2")
         else:
             col_idx = 5  # Col 7: İNV/ANV / спецплатформы гружёный (per wagon)
+            clause_info = "yüklü İNV/ANV min 10t - bənd 3.3.1" if lang == "AZ" else ("гружёный İNV/ANV мин 10т - п. 3.3.1" if lang == "RU" else "loaded İNV/ANV min 10t - cl. 3.3.1")
+        
         is_per_wagon = True
 
     # 2. Термосы и ледники
@@ -146,7 +154,11 @@ def calculate_table_5_base(distance_km, billable_weight_tons, wagon_type, *args,
     if base_chf is None:
         return None, f"{tbl_name}, {distance_km} km", is_per_wagon
 
-    details_str = f"{tbl_name} ({distance_km} km, sütun {col_idx + 2})"
+    if clause_info:
+        details_str = f"{tbl_name} ({distance_km} km, sütun {col_idx + 2}, {clause_info})"
+    else:
+        details_str = f"{tbl_name} ({distance_km} km, sütun {col_idx + 2})"
+
     return base_chf, details_str, is_per_wagon
 
 
