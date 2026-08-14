@@ -130,7 +130,7 @@ def apply_special_exceptions(
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015 (Исключаем п. 3.7.1, 3.7.2, 3.7.8)
+    # 1. ИНДЕКСАЦИЯ 1.015 (Исключаем спецразделы 3.7: 3.71, 3.72, 3.78)
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
