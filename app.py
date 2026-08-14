@@ -253,7 +253,7 @@ with left_col:
     
     ctrl_col, _ = st.columns([1.2, 2.8])
     with ctrl_col:
-        selected_lang = st.selectbox(f"🌐 Dil / Language:", options=["AZ", "RU", "EN"], index=0)
+        selected_lang = st.selectbox("🌐 Dil / Language:", options=["AZ", "RU", "EN"], index=0)
         t = UI_TEXT[selected_lang]
         selected_year = st.selectbox(f"⚙️ {t['year_select']}", options=["2026", "2027"], index=0)
 
@@ -467,4 +467,6 @@ elif st.session_state.calc_result:
 st.markdown(f"""
     <div class="agt-footer">
         <p>{t['footer_owner']}</p>
-        <p class="agt-slogan">
+        <p class="agt-slogan">BE GLOBAL CONNECTED</p>
+    </div>
+""", unsafe_allow_html=True)
