@@ -287,7 +287,7 @@ TEST_SUITE = [
         "name": "Ялама → Апшерон (Вагон прикрытия, 4 оси, СПС — п. 3.6.3)",
         "input_text": "Yalama Abşeron qoruyucu vaqon 4 ox SPS",
         "expected_rate": 474.13,
-    },
+    
     }
 ]
 
