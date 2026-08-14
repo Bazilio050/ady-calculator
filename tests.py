@@ -196,7 +196,7 @@ TEST_SUITE = [
         "expected_rate": 265.87
     },
     {
-        "name": "21. Ялама -> Апшерон (Автопоезд на спецплатформе, 25т, СПС, Импорт — п. 3.2.6)",
+        "name": "21. Ялама -> Апшерон (Автопоезд на спецплатформе, 25т, СПС, Импорт — п. 3.3.1)",
         "raw_text": "Ялама Апшерон avtoqatar 25t SPS idxal",
         "nlu": {
             "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
@@ -205,7 +205,7 @@ TEST_SUITE = [
         "expected_rate": 652.65
     },
     {
-        "name": "22. Ялама -> Апшерон (Прицеп qoşqu порожний на платформе, СПС, Экспорт — п. 3.2.6)",
+        "name": "22. Ялама -> Апшерон (Прицеп qoşqu порожний на платформе, СПС, Экспорт — п. 3.3.2)",
         "raw_text": "Ялама Апшерон qoşqu boş SPS ixrac",
         "nlu": {
             "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "99220000",
@@ -231,6 +231,15 @@ TEST_SUITE = [
             "park_type": "SPS", "oversize_group": "deg3_upper", "explicit_mode": "import"
         },
         "expected_rate": 51.25
+    },
+    {
+        "name": "25. Ялама -> Апшерон (Порожний кузов kuzov на платформе, СПС, Импорт — п. 3.3.2, абз. 2)",
+        "raw_text": "Ялама Апшерон kuzov boş SPS idxal",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "99220000",
+            "cargo_name": "Boş kuzov", "is_empty": True, "wagon_type": "kuzov", "park_type": "SPS", "explicit_mode": "import"
+        },
+        "expected_rate": 450.10
     }
 ]
 
