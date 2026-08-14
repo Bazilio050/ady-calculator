@@ -130,8 +130,7 @@ def apply_special_exceptions(
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015 (с 01.03.2026 по 31.12.2026)
-    # Исключаются ТОЛЬКО порожние спецперевозки (3.72, 3.78). 3.71 (на своих осях) ИНДЕКСИРУЕТСЯ!
+    # 1. ИНДЕКСАЦИЯ 1.015 (Исключаем спецразделы 3.7: 3.71, 3.72, 3.78)
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
@@ -139,7 +138,7 @@ def apply_special_exceptions(
 
     is_valid_index_period = datetime(2026, 3, 1) <= target_dt <= datetime(2026, 12, 31)
 
-    if not is_empty and is_valid_index_period and table_num not in [3.72, 3.78]:
+    if not is_empty and is_valid_index_period and table_num not in [3.71, 3.72, 3.78]:
         ind_label = "Əlavə əmsal" if lang == "AZ" else ("Индексация" if lang == "RU" else "Indexation")
         coeffs.append((ind_label, 1.015))
         
@@ -490,7 +489,17 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
                 is_transporter or "transporter" in wagon_type
             )
 
-            if is_danger and not is_tanker_type and not is_universal_container:
+            if is_consolidated:
+                # Для сборной отправки берется Таблица 3 (или 4) с расчетной нормой веса billable_weight (мин 10т)
+                is_per_wagon = False
+                if shipment_type_code == "transit":
+                    table_num = 4
+                    base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, {}, lang_upper)
+                else:
+                    table_num = 3
+                    base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
+
+            elif is_danger and not is_tanker_type and not is_universal_container:
                 table_num = 12
                 is_per_wagon = False
                 base_chf, table_details = calculate_table_12_base(tariff_dist_km, billable_weight)
@@ -542,10 +551,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
                 table_num = 3
                 is_per_wagon = False
                 base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
-
-            # Сборная отправка всегда оплачивается за тонну (USD/t)
-            if is_consolidated:
-                is_per_wagon = False
 
         act_w_str = f"{int(act_weight) if act_weight.is_integer() else act_weight}"
         bill_w_str = f"{int(billable_weight) if billable_weight.is_integer() else billable_weight}"
