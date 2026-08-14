@@ -24,8 +24,57 @@ from tables.table_7 import calculate_table_7_base, get_table_7_coefficients
 from tables.table_8 import calculate_table_8_tariff
 from tables.table_10 import calculate_table_10_tariff
 from tables.table_11 import calculate_table_11_tariff
+from tables.table_12 import calculate_table_12_base
 
 EMPTY_SPS_CODES = ["99210000", "99213000", "99220000", "99223000"]
+
+
+def check_dangerous_goods_rule(gng_code: str, user_input_raw: str, wagon_type: str) -> tuple:
+    """
+    Проверяет, относится ли груз к опасным (п. 3.6.1, Cədvəl 13).
+    Возвращает: (is_dangerous, apply_double_coeff, rule_note)
+    """
+    clean_gng = re.sub(r'\D', '', str(gng_code or "")).zfill(8)
+    inp = str(user_input_raw or "").lower()
+    w_type = str(wagon_type or "").lower()
+    
+    # Прямое указание тега опасности в запросе
+    is_danger_flag = any(k in inp for k in ["опасный", "təhlükəli", "dangerous", "bmt", "un_code", "класс 1", "класс 5", "класс 6", "класс 7"])
+
+    file_path = "Table_13_Tariffs.txt" if os.path.exists("Table_13_Tariffs.txt") else None
+    matched_entry = None
+
+    if file_path:
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if "|" not in line or "Təhlükəli" in line:
+                        continue
+                    parts = [p.strip() for p in line.split("|")]
+                    if len(parts) >= 5:
+                        cargo_name, bmt_no, bdys_name, sinif, tətbiq_tipi = parts[0], parts[1], parts[2], parts[3], parts[4]
+                        if (bmt_no != "0000" and bmt_no in inp) or (clean_gng != "00000000" and bmt_no in clean_gng):
+                            matched_entry = (bmt_no, tətbiq_tipi)
+                            break
+        except Exception as e:
+            print(f"Error checking Table 13: {e}")
+
+    if matched_entry or is_danger_flag:
+        apply_double = False
+        t_type = matched_entry[1] if matched_entry else "hamisi"
+
+        if t_type == "hamisi":
+            apply_double = True
+        elif t_type == "cen" and any(k in w_type for k in ["cistern", "цистерн", "tank", "çən", "bunker"]):
+            # Исключение: метанол в цистернах (BMT 1230) рассчитывается по базовому тарифу без 2.0
+            if "1230" not in clean_gng and "1230" not in inp:
+                apply_double = True
+        elif t_type == "ortulu_konteyner" and ("container" in w_type or "крыт" in w_type or "örtülü" in w_type):
+            apply_double = True
+
+        return True, apply_double, f"Təhlükəli yük (bənd 3.6.1, Cədvəl 13, BMT {matched_entry[0] if matched_entry else 'spesifik'})"
+
+    return False, False, ""
 
 
 def detect_oversize_group(nlu_data: dict, user_input_raw: str) -> str:
@@ -188,7 +237,7 @@ def apply_special_exceptions(
         sps_val = 0.85
         apply_sps = False
 
-        if table_num in [3, 4, 5, 7, 8, 10, 11]:
+        if table_num in [3, 4, 5, 7, 8, 10, 11, 12]:
             apply_sps = True
         elif table_num == 6:
             from tables.table_6 import determine_table_6_column
@@ -230,6 +279,11 @@ def apply_special_exceptions(
     # Вагон прикрытия / Qoruyucu vaqon (п. 3.6.3)
     if any(k in input_lower for k in ["прикрытие", "qoruyucu", "daldalanacaq", "guard_wagon"]):
         cover_rate = 0.30 if park_type == "SPS" else 0.35
+        # Получаем количество осей (по умолчанию 4)
+        axles = float(nlu_data.get("axles_count") or 4)
+        match_axle = re.search(r'(\d+)\s*(?:oxlu|осн|axle|осей)', input_lower)
+        if match_axle:
+            axles = int(match_axle.group(1))
         cover_chf = cover_rate * axles * dist_km
         notes.append(f"Qoruyucu (daldalanacaq) vaqonunun daşınma haqqı bənd 3.6.3-ə əsasən ({cover_rate} CHF × {int(axles)} ox × {dist_km} km = {cover_chf:.2f} CHF) əlavə olunmuşdur.")
 
@@ -299,12 +353,15 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     input_lower = user_input_raw.lower()
     is_empty_wagon = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
+    # Проверка на вагон прикрытия (п. 3.6.3 / 3.5.3)
+    is_cover_wagon = any(k in input_lower for k in ["прикрытие", "qoruyucu", "daldalanacaq", "guard_wagon"])
+
     # Определение спецплатформ, автопоездов и прицепов (Таблица 5, п. 3.2.6)
     table_5_keywords = ["ref", "реф", "thermos", "термос", "изотерм", "auto", "авто", "avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов", "inv", "anv"]
     is_table_5_object = any(k in wagon_type for k in table_5_keywords) or (ref_wagons_cnt is not None) or any(k in input_lower for k in table_5_keywords)
 
     # Инвентарный порожний вагон МПС -> Бесплатно (п. 3.1.1)
-    if is_empty_wagon and park_type == "MPS":
+    if is_empty_wagon and park_type == "MPS" and not is_cover_wagon:
         empty_note = {
             "AZ": "İnventar parka mənsub olan boş vaqonlar boşaldıqdan sonra mensub olduqları ölkələrə qaytarıldıqları zaman daşıma haqqı hesablanmır (bənd 3.1.1).",
             "RU": "Возврат порожних инвентарных вагонов (МПС) к месту приписки осуществляется бесплатно (п. 3.1.1).",
@@ -325,10 +382,29 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         }
 
     # ---------------------------------------------------------
-    # ПУНКТ 3.2.2: Порожний приватный вагон СПС (0.10 CHF/ось-км)
-    # Исключение: спецплатформы с прицепами/автопоездами идут в Таблицу 5!
+    # ВАГОН ПРИКРЫТИЯ (п. 3.6.3 / 3.5.3)
     # ---------------------------------------------------------
-    if is_empty_wagon and clean_gng in EMPTY_SPS_CODES and not is_table_5_object and "container" not in wagon_type:
+    if is_cover_wagon:
+        table_num = 3.63
+        is_per_wagon = True
+        axles = float(nlu_data.get("axles_count") or 4)
+        match_axle = re.search(r'(\d+)\s*(?:oxlu|осн|axle|осей)', input_lower)
+        if match_axle:
+            axles = int(match_axle.group(1))
+        
+        cover_rate = 0.30 if park_type == "SPS" else 0.35
+        base_chf = cover_rate * axles * actual_dist_km
+        table_details = f"bənd 3.6.3 ({cover_rate} CHF × {int(axles)} ox × {actual_dist_km} km)" if lang_upper == "AZ" else (
+            f"п. 3.6.3 ({cover_rate} CHF × {int(axles)} осей × {actual_dist_km} км)" if lang_upper == "RU" else
+            f"clause 3.6.3 ({cover_rate} CHF × {int(axles)} axles × {actual_dist_km} km)"
+        )
+        weight_display = "0 t (qoruyucu)" if lang_upper == "AZ" else ("0 т (прикрытие)" if lang_upper == "RU" else "0 t (cover)")
+         billable_weight = 0.0
+
+    # ---------------------------------------------------------
+    # ПУНКТ 3.2.2: Порожний приватный вагон СПС (0.10 CHF/ось-км)
+    # ---------------------------------------------------------
+    elif is_empty_wagon and clean_gng in EMPTY_SPS_CODES and not is_table_5_object and "container" not in wagon_type:
         table_num = 3.22
         is_per_wagon = True
         axles = float(nlu_data.get("axles_count") or 4)
@@ -343,22 +419,22 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     else:
         # ---------------------------------------------------------
-        # РАСЧЁТ НЕГАБАРИТА И ВЫБОР ТАБЛИЦЫ 11 (п. 3.5.1.2)
+        # РАСЧЁТ ОПАСНЫХ ГРУЗОВ (Cədvəl 12) ИЛИ ДРУГИХ ТАБЛИЦ
         # ---------------------------------------------------------
+        is_danger, _, _ = check_dangerous_goods_rule(gng, user_input_raw, wagon_type)
+        is_tanker_type = any(k in wagon_type for k in ["cistern", "цистерн", "tank", "çən", "bunker", "бункер"]) and "container" not in wagon_type
+
         oversize_group = detect_oversize_group(nlu_data, user_input_raw)
 
-        # 1. Если определена 3-я верхняя или 3-5 нижняя/боковая негабаритность -> Таблица 11!
         if oversize_group in ["deg3_upper", "deg3_5_lowside"]:
             table_num = 11
             billable_weight = max(10.0, act_weight)
-            
             res_t11 = calculate_table_11_tariff(tariff_dist_km, billable_weight, oversize_group)
             base_chf = res_t11["base_chf"]
             table_details = f"Cədvəl 11 ({res_t11['column_info']})"
             is_per_wagon = (res_t11["rate_type"] == "per_wagon")
 
         else:
-            # 2. Обычные стандарты веса
             if oversize_group == "small_deg":
                 billable_weight = max(25.0, act_weight)
             else:
@@ -369,9 +445,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
                 axles = int(match_axle.group(1))
                 billable_weight = get_transporter_min_weight(axles, billable_weight)
 
-            is_tanker_type = any(k in wagon_type for k in ["cistern", "цистерн", "tank", "çən", "bunker", "бункер"]) and "container" not in wagon_type
             is_transporter = any(k in input_lower for k in ["транспортер", "transportyor", "transporter"])
-
             feet_size = int(nlu_data.get("container_size") or 20)
             is_tank_container = any(k in wagon_type for k in ["tank_container", "tank_konteyner"]) or ("container" in wagon_type and "tank" in input_lower)
             is_ref_container = any(k in wagon_type for k in ["ref_container", "ref_konteyner"]) or ("container" in wagon_type and "ref" in input_lower)
@@ -385,15 +459,18 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             )
 
             # --- МАРШРУТИЗАЦИЯ ТАБЛИЦ ---
-            if is_tank_container or is_ref_container:
+            if is_danger and not is_tanker_type and not is_universal_container:
+                # Опасные грузы в универсальных и специализированных вагонах (кроме цистерн и контейнеров) -> Cədvəl 12
+                table_num = 12
+                is_per_wagon = False
+                base_chf, table_details = calculate_table_12_base(tariff_dist_km, billable_weight)
+
+            elif is_tank_container or is_ref_container:
                 table_num = 10
                 is_per_wagon = True
                 res_t10 = calculate_table_10_tariff(
-                    distance_km=tariff_dist_km,
-                    container_type=wagon_type,
-                    feet_size=feet_size,
-                    is_empty=is_empty_wagon,
-                    gng_code=clean_gng
+                    distance_km=tariff_dist_km, container_type=wagon_type, feet_size=feet_size,
+                    is_empty=is_empty_wagon, gng_code=clean_gng
                 )
                 base_chf = res_t10["base_chf"]
                 table_details = res_t10["details_label"]
@@ -403,14 +480,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
                 is_per_wagon = True
                 is_mid = bool(nlu_data.get("is_medium_tonnage", False)) or act_weight <= 5.0
                 mid_tons = int(nlu_data.get("medium_tons") or (3 if act_weight <= 3.0 else 5))
-                
                 res_t8 = calculate_table_8_tariff(
-                    distance_km=tariff_dist_km,
-                    feet_size=feet_size,
-                    is_empty=is_empty_wagon,
-                    park_type=park_type,
-                    is_medium_tonnage=is_mid,
-                    medium_tons=mid_tons
+                    distance_km=tariff_dist_km, feet_size=feet_size, is_empty=is_empty_wagon,
+                    park_type=park_type, is_medium_tonnage=is_mid, medium_tons=mid_tons
                 )
                 base_chf = res_t8["base_chf"]
                 table_details = res_t8["details_label"]
@@ -419,14 +491,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
                 table_num = 7
                 is_per_wagon = False
                 base_chf, table_details = calculate_table_7_base(
-                    distance_km=tariff_dist_km,
-                    billable_weight_tons=billable_weight,
-                    wagon_type=wagon_type,
-                    container_type=nlu_data.get("container_type"),
-                    is_empty=is_empty_wagon,
-                    gng_code=clean_gng,
-                    lang=lang_upper,
-                    user_input_raw=user_input_raw
+                    distance_km=tariff_dist_km, billable_weight_tons=billable_weight, wagon_type=wagon_type,
+                    container_type=nlu_data.get("container_type"), is_empty=is_empty_wagon,
+                    gng_code=clean_gng, lang=lang_upper, user_input_raw=user_input_raw
                 )
             elif is_tanker_type:
                 table_num = 6
@@ -482,15 +549,15 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         )
         notes.insert(0, weight_note)
 
-    if is_empty_wagon and clean_gng in EMPTY_SPS_CODES and not is_table_5_object and table_num == 3.22:
-        empty_sps_note = (
-            "Xüsusi mülkiyyətdə olan (icarəyə verilmiş) boş vaqonların daşınması tarif siyasətinin 3.2.2 bəndinə əsasən (0.10 CHF/ox-km) hesablanmışdır."
+    if is_cover_wagon:
+        cover_sps_note = (
+            "Qoruyucu vaqonun daşınma haqqı bənd 3.6.3-ə əsasən hesablanmışdır."
             if lang_upper == "AZ" else
-            ("Перевозка порожних приватных (арендованных) вагонов рассчитана согласно п. 3.2.2 Тарифной политики (0.10 CHF/ось-км)."
+            ("Плата за перевозку вагона прикрытия рассчитана согласно п. 3.6.3."
              if lang_upper == "RU" else
-             "Empty private/leased wagon movement is calculated according to clause 3.2.2 of the Tariff Policy (0.10 CHF/axle-km).")
+             "Cover wagon charge calculated according to clause 3.6.3.")
         )
-        notes.insert(0, empty_sps_note)
+        notes.insert(0, cover_sps_note)
 
     final_rate = base_chf / usd_rate
     formula_parts = [f"{base_chf:.2f} / {usd_rate:.2f}"]
@@ -504,8 +571,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     park_display = "SPS" if park_type == "SPS" else "MPS"
     sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
 
-    if is_empty_wagon and clean_gng in EMPTY_SPS_CODES and not is_table_5_object and table_num == 3.22:
+    if is_cover_wagon:
+        wagon_disp_name = "Qoruyucu vaqon" if lang_upper == "AZ" else ("Вагон прикрытия" if lang_upper == "RU" else "Cover wagon")
+    elif is_empty_wagon and clean_gng in EMPTY_SPS_CODES and not is_table_5_object and table_num == 3.22:
         wagon_disp_name = "Boş vaqon" if lang_upper == "AZ" else ("Порожний вагон" if lang_upper == "RU" else "Empty wagon")
+    elif table_num == 12:
+        wagon_disp_name = "Təhlükəli yük vaqonu (Cədvəl 12)" if lang_upper == "AZ" else ("Вагон с опасным грузом (Таблица 12)" if lang_upper == "RU" else "Dangerous cargo wagon (Table 12)")
     elif table_num == 10:
         wagon_disp_name = "Xüsusi/Tank/Ref konteyner (Cədvəl 10)" if lang_upper == "AZ" else ("Спец/Танк/Реф контейнер (Таблица 10)" if lang_upper == "RU" else "Special/Tank/Ref container (Table 10)")
     elif table_num == 8:
