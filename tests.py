@@ -267,6 +267,27 @@ TEST_SUITE = [
             "wagon_type": "tank_container", "container_size": 20, "park_type": "SPS", "explicit_mode": "import"
         },
         "expected_rate": 740.21
+        
+        # --- РАЗДЕЛ 3.6: ОПАСНЫЕ ГРУЗЫ (Cədvəl 12, 13 & Qoruyucu vaqon) ---
+    },   
+    {
+        "id": 29,
+        "name": "Ялама → Апшерон (Опасный груз BMT 2927, 35т, СПС, Импорт — Cədvəl 12)",
+        "input_text": "Yalama Abşeron 35t tehlukeli BMT 2927 SPS",
+        "expected_rate": 5777.96,
+    },
+    {
+        "id": 30,
+        "name": "Ялама → Апшерон (Цистерна Метанол BMT 1230, 50т, СПС — п. 3.6.1 Исключение)",
+        "input_text": "Yalama Abşeron cistern metanol BMT 1230 50t SPS",
+        "expected_rate": 634.92,
+    },
+    {
+        "id": 31,
+        "name": "Ялама → Апшерон (Вагон прикрытия, 4 оси, СПС — п. 3.6.3)",
+        "input_text": "Yalama Abşeron qoruyucu vaqon 4 ox SPS",
+        "expected_rate": 474.13,
+    },
     }
 ]
 
