@@ -278,9 +278,11 @@ st.markdown(f"""
 # --- ИНТЕРАКТИВНАЯ ШПАРГАЛКА В ВИДЕ ВКЛАДОК ---
 with st.expander(t["guide_title"]):
     if selected_lang == "AZ":
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-            "📦 Ümumi vaqonlar", "❄️ Refseksiyalar", "🌡️ Vaqon-termoslar", 
-            "🛢️ Neft çənləri", "🧪 Kimyəvi çənlər", "🏗️ Transportyorlar", "🚛 Xüsusi platformalar", "📐 Əndazəsiz yüklər"
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = st.tabs([
+            "📦 Ümumi vaqonlar", "📦 Konteynerlər 20'/40'", "🧪 Tank/Ref Konteyner", 
+            "❄️ Refseksiyalar", "🌡️ Vaqon-termoslar", "🛢️ Neft çənləri", 
+            "🧪 Kimyəvi çənlər", "🏗️ Transportyorlar", "🚛 Xüsusi platformalar", 
+            "📐 Əndazəsiz yüklər", "⚠️ Təhlükəli yüklər", "🔄 Boş vaqon / Qoruyucu"
         ])
 
         with tab1:
@@ -293,64 +295,99 @@ with st.expander(t["guide_title"]):
 
         with tab2:
             st.markdown("""
-            📐 **Şablon:** `[Haradan] -> [Haraya], [GNG], [Sxem], [Çəki]t, SPS`  
-            💡 **Nümunə:** `Yalama – Biləcəri, 0207, 5+1, 35t, SPS`  
-            ⚙️ **Açar sözlər:** `5+1` • `1+5` • `4+1` • `3+1` • `SPS`  
-            📌 **Qaydalar:** Cədvəl 5 üzrə hesablanır. Seksiyanın tərkibinə uyğun koeffisient avtomatik tətbiq olunur (məs: 5+1 → 0.85).
+            📐 **Şablon:** `[Haradan] -> [Haraya], [20/40]fut konteyner, [yüklü/boş], SPS`  
+            💡 **Nümunə:** `Yalama – Abşeron, 40-futluq konteyner, yüklü, SPS, idxal`  
+            ⚙️ **Açar sözlər:** `20fut` • `40fut` • `konteyner` • `yüklü` • `boş`  
+            📌 **Qaydalar:** Cədvəl 8 (bənd 3.3) üzrə vaqonbaşı/konteynerbaşına hesablanır.
             """)
 
         with tab3:
             st.markdown("""
-            📐 **Şablon:** `[Haradan] -> [Haraya], thermos, [Çəki]t, SPS`  
-            💡 **Nümunə:** `Yalama – Biləcəri, thermos, 30t, SPS`  
-            ⚙️ **Açar sözlər:** `thermos` • `termos` • `lednik` • `SPS`  
-            📌 **Qaydalar:** Cədvəl 5 (4-cü və 5-ci sütunlar) üzrə hesablanır. 25 tonadək vaqonbaşı, 25 tondan yuxarı tonbaşına dərəcə götürülür.
+            📐 **Şablon:** `[Haradan] -> [Haraya], [20/40]ft [tank/ref] konteyner, SPS`  
+            💡 **Nümunə:** `Yalama – Abşeron, 20-fut tank konteyner, yüklü, SPS`  
+            ⚙️ **Açar sözlər:** `tank konteyner` • `ref konteyner` • `tank_container`  
+            📌 **Qaydalar:** Cədvəl 10 üzrə xüsusi konteyner dərəcələri ilə hesablanır.
             """)
 
         with tab4:
             st.markdown("""
-            📐 **Şablon:** `[Haradan] -> [Haraya], [GNG], çən vaqonu, [Çəki]t, SPS`  
-            💡 **Nümunə:** `Yalama – Güzdək, 2713, çən vaqonu, 60t, SPS`  
-            ⚙️ **Açar sözlər:** `2713` • `2710` • `çən vaqonu` • `SPS`  
-            📌 **Qaydalar:** Cədvəl 6 (2-ci sütun) üzrə neft və neft məhsulları tarifi ilə hesablanır.
+            📐 **Şablon:** `[Haradan] -> [Haraya], [GNG], [Sxem], [Çəki]t, SPS`  
+            💡 **Nümunə:** `Yalama – Biləcəri, 0207, 5+1, 35t, SPS`  
+            ⚙️ **Açar sözlər:** `5+1` • `1+5` • `4+1` • `3+1` • `SPS`  
+            📌 **Qaydalar:** Cədvəl 5 üzrə hesablanır. Seksiyanın tərkibinə uyğun koeffisient tətbiq olunur (məs: 5+1 → 0.85).
             """)
 
         with tab5:
             st.markdown("""
-            📐 **Şablon:** `[Haradan] -> [Haraya], [GNG], çən vaqonu, [Çəki]t, SPS`  
-            💡 **Nümunə:** `Yalama – Siyəzən, 27071, çən vaqonu, 55t, SPS`  
-            ⚙️ **Açar sözlər:** `27071` • `2902` • `çən vaqonu` • `SPS`  
-            📌 **Qaydalar:** Cədvəl 6 (8-ci sütun) üzrə hesablanır. Özəl (xüsusi) çənlərdə kimyəvi və aromatik yüklər üçün **0.70 güzəşt əmsalı** (bənd 3.2.5) tətbiq edilir.
+            📐 **Şablon:** `[Haradan] -> [Haraya], thermos, [Çəki]t, SPS`  
+            💡 **Nümunə:** `Yalama – Biləcəri, thermos, 30t, SPS`  
+            ⚙️ **Açar sözlər:** `thermos` • `termos` • `lednik` • `SPS`  
+            📌 **Qaydalar:** Cədvəl 5 (4 və 5-ci sütunlar) üzrə hesablanır. 25t-dək vaqonbaşı, >=25t tonbaşına dərəcə götürülür.
             """)
 
         with tab6:
             st.markdown("""
-            📐 **Şablon:** `[Haradan] -> [Haraya], [Ox sayı]-oxlu transportyor, [Çəki]t`  
-            💡 **Nümunə:** `Astara – Yalama, 8-oxlu transportyor, 15t`  
-            ⚙️ **Açar sözlər:** `4-oxlu` • `6-oxlu` • `8-oxlu` • `transportyor`  
-            📌 **Qaydalar:** Cədvəl 7 üzrə hesablanır. Hər oxa düşən minimum hesablaşma çəkisi 5 ton götürülür.
+            📐 **Şablon:** `[Haradan] -> [Haraya], [GNG], çən vaqonu, [Çəki]t, SPS`  
+            💡 **Nümunə:** `Yalama – Güzdək, 2713, çən vaqonu, 60t, SPS`  
+            ⚙️ **Açar sözlər:** `2713` • `2710` • `çən vaqonu` • `SPS`  
+            📌 **Qaydalar:** Cədvəl 6 (2-ci sütun) üzrə neft məhsulları tarifi ilə hesablanır.
             """)
 
         with tab7:
             st.markdown("""
-            📐 **Şablon:** `[Haradan] -> [Haraya], [avtoqatar/qoşqu/scep >19m], [Çəki]t, SPS, [idxal/ixrac]`  
-            💡 **Nümunə:** `Yalama – Abşeron, avtoqatar, 25t, SPS, idxal`  
-            ⚙️ **Açar sözlər:** `avtoqatar` • `qoşqu` • `yarımqoşqu` • `>19m` • `scep`  
-            📌 **Qaydalar:** Avtoqatar və qoşqular Cədvəl 5 (bənd 3.2.6) üzrə vaqonbaşı hesablanır. Qabarixdan kənar sseplər (>19m) üçün 1.20 / 0.60 əmsalı tətbiq edilir.
+            📐 **Şablon:** `[Haradan] -> [Haraya], [GNG], çən vaqonu, [Çəki]t, SPS`  
+            💡 **Nümunə:** `Yalama – Siyəzən, 27071, çən vaqonu, 55t, SPS`  
+            ⚙️ **Açar sözlər:** `27071` • `2902` • `çən vaqonu` • `SPS`  
+            📌 **Qaydalar:** Cədvəl 6 (8-ci sütun) üzrə hesablanır. Özəl çənlərdə kimyəvi yüklər üçün **0.70 güzəşt əmsalı** (bənd 3.2.5) tətbiq edilir.
             """)
 
         with tab8:
             st.markdown("""
+            📐 **Şablon:** `[Haradan] -> [Haraya], [Ox sayı]-oxlu transportyor, [Çəki]t`  
+            💡 **Nümunə:** `Astara – Yalama, 8-oxlu transportyor, 15t`  
+            ⚙️ **Açar sözlər:** `4-oxlu` • `6-oxlu` • `8-oxlu` • `transportyor`  
+            📌 **Qaydalar:** Cədvəl 7 üzrə hesablanır. Hər oxa düşən minimum çəki 5 ton götürülür.
+            """)
+
+        with tab9:
+            st.markdown("""
+            📐 **Şablon:** `[Haradan] -> [Haraya], [avtoqatar/qoşqu/scep >19m], [Çəki]t, SPS, [idxal/ixrac]`  
+            💡 **Nümunə:** `Yalama – Abşeron, avtoqatar, 25t, SPS, idxal`  
+            ⚙️ **Açar sözlər:** `avtoqatar` • `qoşqu` • `yarımqoşqu` • `>19m` • `scep`  
+            📌 **Qaydalar:** Cədvəl 5 (bənd 3.2.6) üzrə vaqonbaşı hesablanır. Qabarixdan kənar sseplər (>19m) üçün 1.20 / 0.60 əmsalı tətbiq edilir.
+            """)
+
+        with tab10:
+            st.markdown("""
             📐 **Şablon:** `[Haradan] -> [Haraya], [Çəki]t, [Əndazəsizlik dərəcəsi], [SPS/MPS]`  
             💡 **Nümunə:** `Yalama – Böyük Kəsik, 35t, 3-yuxarı əndazə platforma, SPS`  
             ⚙️ **Açar sözlər:** `3-yuxarı` • `3-5 aşağı` • `4-5 yan` • `6-cı dərəcə`  
-            📌 **Qaydalar:** Cədvəl 11 (bənd 3.5.1.2) üzrə hesablanır. 1.50 və 2.00 əmsalları cədvəlin baza tariflərinə artıq daxil edilmişdir (min. çəki 10t).
+            📌 **Qaydalar:** Cədvəl 11 (bənd 3.5.1.2) üzrə hesablanır (min. çəki 10t).
+            """)
+
+        with tab11:
+            st.markdown("""
+            📐 **Şablon:** `[Haradan] -> [Haraya], [BMT Kodu], [Çəki]t, [Vaqon növü], SPS`  
+            💡 **Nümunə:** `Yalama – Abşeron, 35t, təhlükəli BMT 2927, SPS`  
+            ⚙️ **Açar sözlər:** `təhlükəli` • `BMT` • `UN` • `класс 1-7`  
+            📌 **Qaydalar:** Cədvəl 12 üzrə və ya x2.00 əmsalı (Cədvəl 13 / bənd 3.6.1) ilə hesablanır.
+            """)
+
+        with tab12:
+            st.markdown("""
+            📐 **Şablon:** `[Haradan] -> [Haraya], [boş vaqon / qoruyucu vaqon], [Ox sayı], SPS`  
+            💡 **Nümunə 1:** `Yalama – Abşeron, qoruyucu vaqon, 4-oxlu, SPS`  
+            💡 **Nümunə 2:** `Biləcəri – Yalama, boş vaqon qaytarılması`  
+            ⚙️ **Açar sözlər:** `qoruyucu` • `boş` • `порожний` • `0.10 CHF`  
+            📌 **Qaydalar:** Boş SPS vaqonlar 0.10 CHF/ox-km (bənd 3.2.2), Qoruyucu vaqonlar 0.30/0.35 CHF/ox-km (bənd 3.6.3) üzrə hesablanır.
             """)
 
     elif selected_lang == "RU":
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-            "📦 Универсальные", "❄️ Рефсекции", "🌡️ Термосы", 
-            "🛢️ Нефтецистерны", "🧪 Химцистерны", "🏗️ Транспортер", "🚛 Спецплатформы", "📐 Негабарит"
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = st.tabs([
+            "📦 Универсальные", "📦 Контейнеры 20'/40'", "🧪 Танк/Реф Контейнер", 
+            "❄️ Рефсекции", "🌡️ Термосы", "🛢️ Нефтецистерны", 
+            "🧪 Химцистерны", "🏗️ Транспортер", "🚛 Спецплатформы", 
+            "📐 Негабарит", "⚠️ Опасные грузы", "🔄 Порожний / Прикрытие"
         ])
 
         with tab1:
@@ -363,13 +400,29 @@ with st.expander(t["guide_title"]):
 
         with tab2:
             st.markdown("""
-            📐 **Шаблон:** `[Откуда] -> [Куда], [ГНГ], [Схема], [Вес]т, СПС`  
-            💡 **Пример:** `Ялама – Баладжары, 0207, 5+1, 35т, СПС`  
-            ⚙️ **Ключевые слова:** `5+1` • `1+5` • `4+1` • `3+1` • `СПС`  
-            📌 **Правила:** Расчет по Таблице 5. Коэффициент составности применяется автоматически (напр: 5+1 → 0.85).
+            📐 **Шаблон:** `[Откуда] -> [Куда], [20/40]фут контейнер, [гружёный/порожний], СПС`  
+            💡 **Пример:** `Ялама – Апшерон, 40-футовый контейнер гружёный, СПС, импорт`  
+            ⚙️ **Ключевые слова:** `20фут` • `40фут` • `контейнер` • `гружёный`  
+            📌 **Правила:** Расчет по Таблице 8 (п. 3.3) за вагон/контейнер.
             """)
 
         with tab3:
+            st.markdown("""
+            📐 **Шаблон:** `[Откуда] -> [Куда], [20/40]фут [танк/реф] контейнер, СПС`  
+            💡 **Пример:** `Ялама – Апшерон, 20-фут танк-контейнер гружёный, СПС`  
+            ⚙️ **Ключевые слова:** `танк-контейнер` • `реф-контейнер` • `tank_container`  
+            📌 **Правила:** Расчет по Таблице 10 для специализированных контейнеров.
+            """)
+
+        with tab4:
+            st.markdown("""
+            📐 **Шаблон:** `[Откуда] -> [Куда], [ГНГ], [Схема], [Вес]т, СПС`  
+            💡 **Пример:** `Ялама – Баладжары, 0207, 5+1, 35т, СПС`  
+            ⚙️ **Ключевые слова:** `5+1` • `1+5` • `4+1` • `3+1` • `СПС`  
+            📌 **Правила:** Расчет по Таблице 5. Коэффициент составности применяется автоматически (5+1 → 0.85).
+            """)
+
+        with tab5:
             st.markdown("""
             📐 **Шаблон:** `[Откуда] -> [Куда], термос, [Вес]т, СПС`  
             💡 **Пример:** `Ялама – Баладжары, термос, 30т, СПС`  
@@ -377,7 +430,7 @@ with st.expander(t["guide_title"]):
             📌 **Правила:** Расчет по Таблице 5 (Ст. 4/5). При весе <25т берется ставка за вагон, >=25т — за тонну.
             """)
 
-        with tab4:
+        with tab6:
             st.markdown("""
             📐 **Шаблон:** `[Откуда] -> [Куда], [ГНГ], цистерна, [Вес]т, СПС`  
             💡 **Пример:** `Ялама – Гюздек, 2713, цистерна, 60т, СПС`  
@@ -385,7 +438,7 @@ with st.expander(t["guide_title"]):
             📌 **Правила:** Расчет по Таблице 6 (Столбец 2).
             """)
 
-        with tab5:
+        with tab7:
             st.markdown("""
             📐 **Шаблон:** `[Откуда] -> [Куда], [ГНГ], цистерна, [Вес]т, СПС`  
             💡 **Пример:** `Ялама – Сиязань, 27071, цистерна, 55т, СПС`  
@@ -393,7 +446,7 @@ with st.expander(t["guide_title"]):
             📌 **Правила:** Расчет по Таблице 6 (Столбец 8). Для приватных цистерн применяется **скидка 0.70** (п. 3.2.5).
             """)
 
-        with tab6:
+        with tab8:
             st.markdown("""
             📐 **Шаблон:** `[Откуда] -> [Куда], [Осей]-осный транспортер, [Вес]т`  
             💡 **Пример:** `Астара – Ялама, 8-осный транспортер, 15т`  
@@ -401,7 +454,7 @@ with st.expander(t["guide_title"]):
             📌 **Правила:** Расчет по Таблице 7 с нормативной загрузкой не менее 5 тонн на каждую ось.
             """)
 
-        with tab7:
+        with tab9:
             st.markdown("""
             📐 **Шаблон:** `[Откуда] -> [Куда], [автопоезд/прицеп/сцеп >19м], [Вес]т, СПС, [импорт/экспорт]`  
             💡 **Пример:** `Ялама – Апшерон, автопоезд, 25т, СПС, импорт`  
@@ -409,18 +462,37 @@ with st.expander(t["guide_title"]):
             📌 **Правила:** Автопоезда и прицепы считаются по Таблице 5 (п. 3.2.6) за вагон. Сцепы >19м идут с коэффициентом 1.20 / 0.60.
             """)
 
-        with tab8:
+        with tab10:
             st.markdown("""
             📐 **Шаблон:** `[Откуда] -> [Куда], [Вес]т, [Степень негабаритности], [СПС/МПС]`  
             💡 **Пример:** `Ялама – Беюк Кясик, 35т, 3-верхняя негабаритность, платформа, СПС`  
             ⚙️ **Ключевые слова:** `3-верхняя` • `3-5 нижняя` • `4-5 боковая` • `6 степень`  
-            📌 **Правила:** Расчет по Таблице 11 (п. 3.5.1.2). Коэффициенты 1.50 и 2.00 уже включены в базовые тарифы таблицы (мин. вес 10т).
+            📌 **Правила:** Расчет по Таблице 11 (п. 3.5.1.2) (мин. вес 10т).
+            """)
+
+        with tab11:
+            st.markdown("""
+            📐 **Шаблон:** `[Откуда] -> [Куда], [Код ООН/BMT], [Вес]т, [Тип вагона], СПС`  
+            💡 **Пример:** `Ялама – Апшерон, 35т, опасный BMT 2927, СПС`  
+            ⚙️ **Ключевые слова:** `опасный` • `BMT` • `UN` • `класс 1-7`  
+            📌 **Правила:** Расчет по Таблице 12 или с коэффициентом x2.00 (Таблица 13 / п. 3.6.1).
+            """)
+
+        with tab12:
+            st.markdown("""
+            📐 **Шаблон:** `[Откуда] -> [Куда], [порожний возврат / вагон прикрытия], [Осей], СПС`  
+            💡 **Пример 1:** `Ялама – Апшерон, вагон прикрытия, 4 оси, СПС`  
+            💡 **Пример 2:** `Баладжары – Ялама, порожний возврат`  
+            ⚙️ **Ключевые слова:** `прикрытие` • `порожний` • `возврат` • `0.10 CHF`  
+            📌 **Правила:** Порожние СПС — 0.10 CHF/ось-км (п. 3.2.2), Прикрытие — 0.30/0.35 CHF/ось-км (п. 3.6.3).
             """)
 
     else:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-            "📦 Universal", "❄️ Ref section", "🌡️ Thermos", 
-            "🛢️ Oil tanks", "🧪 Chemical tanks", "🏗️ Transporter", "🚛 Special platform", "📐 Oversized cargo"
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12 = st.tabs([
+            "📦 Universal", "📦 Containers 20'/40'", "🧪 Tank/Ref Container", 
+            "❄️ Ref section", "🌡️ Thermos", "🛢️ Oil tanks", 
+            "🧪 Chemical tanks", "🏗️ Transporter", "🚛 Special platform", 
+            "📐 Oversized cargo", "⚠️ Dangerous cargo", "🔄 Empty / Cover wagon"
         ])
 
         with tab1:
@@ -433,13 +505,29 @@ with st.expander(t["guide_title"]):
 
         with tab2:
             st.markdown("""
-            📐 **Template:** `[From] -> [To], [NHM], [Scheme], [Weight]t, SPS`  
-            💡 **Example:** `Yalama – Bilajari, 0207, 5+1, 35t, SPS`  
-            ⚙️ **Keywords:** `5+1` • `1+5` • `4+1` • `3+1` • `SPS`  
-            📌 **Rules:** Calculated via Table 5. Composition coefficient applied automatically (e.g., 5+1 → 0.85).
+            📐 **Template:** `[From] -> [To], [20/40]ft container, [loaded/empty], SPS`  
+            💡 **Example:** `Yalama – Absheron, 40ft container, loaded, SPS, import`  
+            ⚙️ **Keywords:** `20ft` • `40ft` • `container` • `loaded`  
+            📌 **Rules:** Calculated via Table 8 per wagon/container.
             """)
 
         with tab3:
+            st.markdown("""
+            📐 **Template:** `[From] -> [To], [20/40]ft [tank/ref] container, SPS`  
+            💡 **Example:** `Yalama – Absheron, 20ft tank container, loaded, SPS`  
+            ⚙️ **Keywords:** `tank container` • `ref container` • `tank_container`  
+            📌 **Rules:** Calculated via Table 10 rates for specialized containers.
+            """)
+
+        with tab4:
+            st.markdown("""
+            📐 **Template:** `[From] -> [To], [NHM], [Scheme], [Weight]t, SPS`  
+            💡 **Example:** `Yalama – Bilajari, 0207, 5+1, 35t, SPS`  
+            ⚙️ **Keywords:** `5+1` • `1+5` • `4+1` • `3+1` • `SPS`  
+            📌 **Rules:** Calculated via Table 5. Composition coefficient applied automatically (5+1 → 0.85).
+            """)
+
+        with tab5:
             st.markdown("""
             📐 **Template:** `[From] -> [To], thermos, [Weight]t, SPS`  
             💡 **Example:** `Yalama – Bilajari, thermos, 30t, SPS`  
@@ -447,7 +535,7 @@ with st.expander(t["guide_title"]):
             📌 **Rules:** Calculated via Table 5 (Col 4/5). Per wagon for <25t, per ton for >=25t.
             """)
 
-        with tab4:
+        with tab6:
             st.markdown("""
             📐 **Template:** `[From] -> [To], [NHM], tank wagon, [Weight]t, SPS`  
             💡 **Example:** `Yalama – Guzdek, 2713, tank wagon, 60t, SPS`  
@@ -455,7 +543,7 @@ with st.expander(t["guide_title"]):
             📌 **Rules:** Calculated via Table 6 (Column 2).
             """)
 
-        with tab5:
+        with tab7:
             st.markdown("""
             📐 **Template:** `[From] -> [To], [NHM], tank wagon, [Weight]t, SPS`  
             💡 **Example:** `Yalama – Siyazan, 27071, tank wagon, 55t, SPS`  
@@ -463,7 +551,7 @@ with st.expander(t["guide_title"]):
             📌 **Rules:** Calculated via Table 6 (Column 8). **0.70 discount** applied for private tanks (clause 3.2.5).
             """)
 
-        with tab6:
+        with tab8:
             st.markdown("""
             📐 **Template:** `[From] -> [To], [Axles]-axle transporter, [Weight]t`  
             💡 **Example:** `Astara – Yalama, 8-axle transporter, 15t`  
@@ -471,20 +559,37 @@ with st.expander(t["guide_title"]):
             📌 **Rules:** Calculated via Table 7 with a minimum billable weight of 5 tons per axle.
             """)
 
-        with tab7:
+        with tab9:
             st.markdown("""
             📐 **Template:** `[From] -> [To], [road train/trailer/scep >19m], [Weight]t, SPS, [import/export]`  
             💡 **Example:** `Yalama – Absheron, road train, 25t, SPS, import`  
             ⚙️ **Keywords:** `road train` • `trailer` • `semitrailer` • `>19m` • `scep`  
-            📌 **Rules:** Road trains/trailers are charged per wagon via Table 5 (clause 3.2.6). Sceps >19m get 1.20 / 0.60 factors.
+            📌 **Rules:** Road trains/trailers charged via Table 5 (clause 3.2.6). Sceps >19m get 1.20 / 0.60 factors.
             """)
 
-        with tab8:
+        with tab10:
             st.markdown("""
             📐 **Template:** `[From] -> [To], [Weight]t, [Oversize degree], [SPS/MPS]`  
             💡 **Example:** `Yalama – Beyuk Kasik, 35t, 3rd upper oversize platform, SPS`  
             ⚙️ **Keywords:** `3-upper` • `3-5 lower` • `4-5 side` • `degree 6`  
-            📌 **Rules:** Calculated via Table 11 (clause 3.5.1.2). 1.50 and 2.00 factors are already included in base table rates (min weight 10t).
+            📌 **Rules:** Calculated via Table 11 (clause 3.5.1.2) (min weight 10t).
+            """)
+
+        with tab11:
+            st.markdown("""
+            📐 **Template:** `[From] -> [To], [UN Code], [Weight]t, [Wagon type], SPS`  
+            💡 **Example:** `Yalama – Absheron, 35t, dangerous UN 2927, SPS`  
+            ⚙️ **Keywords:** `dangerous` • `UN` • `class 1-7`  
+            📌 **Rules:** Calculated via Table 12 or with x2.00 factor (Table 13 / clause 3.6.1).
+            """)
+
+        with tab12:
+            st.markdown("""
+            📐 **Template:** `[From] -> [To], [empty return / cover wagon], [Axles], SPS`  
+            💡 **Example 1:** `Yalama – Absheron, cover wagon, 4 axles, SPS`  
+            💡 **Example 2:** `Bilajari – Yalama, empty wagon return`  
+            ⚙️ **Keywords:** `cover` • `empty` • `return` • `0.10 CHF`  
+            📌 **Rules:** Empty SPS — 0.10 CHF/axle-km (clause 3.2.2), Cover wagon — 0.30/0.35 CHF/axle-km (clause 3.6.3).
             """)
 
 # --- ПОЛЕ ВВОДА ЗАПРОСА ---
