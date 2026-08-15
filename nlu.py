@@ -152,31 +152,23 @@ def validate_nlu_input(nlu_res, lang="AZ"):
 
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
-    Принимает байты аудиозаписи, выполняет транскрибацию и полный NLU-анализ ж/д терминов 
-    с привязкой кодов ЕСР в один проход через Gemini.
+    Принимает байты аудиозаписи, выполняет транскрибацию и NLU-анализ ж/д терминов 
+    в один проход через актуальную модель Gemini.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
 
     prompt = f"""
     You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
-    Listen carefully to the audio input containing a freight shipment request (in Russian, Azerbaijani, or English).
+    Listen carefully to the audio input containing a freight shipment request.
 
     Tasks:
     1. Transcribe the spoken text accurately into the 'transcript' field.
-    2. Parse shipment parameters into a JSON object matching the schema below.
-    
-    CRITICAL ESR CODE & GNG INSTRUCTIONS:
-    - Always output the exact standard 6-digit ESR code for each station ('origin_esr', 'dest_esr').
-    - Example ESRs: Yalama=545006, Biləcəri/Баладжары=546808, Abşeron/Апшерон=548004, Böyük Kəsik=558701, Bakı-Yük=547105, Astara=554109.
-    - GNG/NHM codes can be 2 to 8 digits (e.g. '3407', '72', '0207'). Keep leading zeros.
+    2. Extract shipment parameters into a JSON object matching the schema below.
 
-    SPECIAL SECTION 3.7, 3.8 & 3.9 INSTRUCTIONS:
-    - Movement on own axles: set 'is_own_axles': true.
-    - Wagon in repair: set 'is_in_repair': true.
-    - Consolidated cargo (yığma / сборный): set 'is_consolidated': true.
-    - Section 3.9 Escort / Attendants: extract integer 'escort_count' (default 0).
-    - Section 3.9 Teplushka: set 'has_teplushka': true.
+    CRITICAL RULES FOR GNG & ESR CODES:
+    - ALWAYS extract any spoken cargo numeric code into 'gng_code' (e.g. if user says "4407" or "GNG 4407", set 'gng_code': "4407"). Never put text descriptions into 'gng_code'!
+    - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
 
     EXPECTED JSON STRUCTURE:
     {{
@@ -185,8 +177,8 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
       "origin_name": "Station name in {target_lang}",
       "dest_esr": "6-digit ESR string or null",
       "dest_name": "Station name in {target_lang}",
-      "gng_code": "GNG code string or null",
-      "gng_name": "Short cargo description in {target_lang}",
+      "gng_code": "Numeric GNG code string only (e.g., '4407', '2713') or null",
+      "gng_name": "Cargo name in {target_lang}",
       "weight_tons": float or null,
       "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
       "park_type": "SPS / MPS",
@@ -228,7 +220,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(lang).upper()
 
-    # Защита от отсутствующих/пустых ключей
+    # Защита от отсутствующих полей
     if "escort_count" not in result or result["escort_count"] is None:
         result["escort_count"] = 0
     if "has_teplushka" not in result or result["has_teplushka"] is None:
