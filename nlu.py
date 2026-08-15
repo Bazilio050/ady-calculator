@@ -149,8 +149,6 @@ def validate_nlu_input(nlu_res, lang="AZ"):
 
     return missing_items
 
-    from google.genai import types
-import json
 
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
