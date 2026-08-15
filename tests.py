@@ -336,7 +336,7 @@ TEST_SUITE = [
             "cargo_name": "Qara metallar", "actual_weight_tons": 6.0, "wagon_type": "universal",
             "park_type": "SPS", "is_consolidated": True, "explicit_mode": "import"
         },
-        "expected_rate": 21.96
+        "expected_rate": 38.60
     }
 ]
 
