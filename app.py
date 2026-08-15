@@ -24,6 +24,8 @@ if "nlu_res" not in st.session_state:
     st.session_state.nlu_res = None
 if "missing_data" not in st.session_state:
     st.session_state.missing_data = None
+if "input_text_val" not in st.session_state:
+    st.session_state.input_text_val = ""
 
 st.markdown("""
     <style>
@@ -524,7 +526,13 @@ with st.expander(t["guide_title"]):
             📌 **Rules:** Attendants: 12 CHF/person per 100 km. Teplushka (empty): 0.20-0.35 CHF/axle-km (clause 3.9). Indexation 1.015 and SPS discount do not apply.
             """)
 
-user_input = st.text_area(t["input_header"], height=120, placeholder=t["input_placeholder"])
+user_input = st.text_area(
+    t["input_header"], 
+    value=st.session_state.input_text_val,
+    height=120, 
+    placeholder=t["input_placeholder"],
+    key="main_input_area"
+)
 
 user_api_key = os.environ.get("GEMINI_API_KEY", "")
 if not user_api_key and "GEMINI_API_KEY" in st.secrets:
@@ -557,7 +565,8 @@ if audio_file:
                 
                 transcription = nlu_res.get("transcript", "")
                 if transcription:
-                    st.info(f"🗣️ **Распознанная речь:** {transcription}")
+                    st.session_state.input_text_val = transcription
+                    st.session_state.main_input_area = transcription
                 
                 gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
                 cargo_val = str(nlu_res.get("gng_name") or nlu_res.get("cargo_name") or "").strip()
@@ -591,7 +600,8 @@ if audio_file:
                 st.error(f"Ошибка распознавания аудио: {str(e)}")
 
 if st.button(t["calc_btn"], type="primary"):
-    if not user_input.strip():
+    current_input = st.session_state.get("main_input_area", user_input)
+    if not current_input.strip():
         st.warning(t["warning_empty"])
         st.session_state.calc_result = None
     elif not user_api_key.strip():
@@ -610,7 +620,7 @@ if st.button(t["calc_btn"], type="primary"):
 
         try:
             client = genai.Client(api_key=user_api_key.strip())
-            nlu_res = call_gemini_nlu(client, user_input, selected_lang)
+            nlu_res = call_gemini_nlu(client, current_input, selected_lang)
             
             gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
             cargo_val = str(nlu_res.get("gng_name") or nlu_res.get("cargo_name") or "").strip()
@@ -640,7 +650,7 @@ if st.button(t["calc_btn"], type="primary"):
                 st.session_state.calc_result = None
             else:
                 st.session_state.missing_data = None
-                st.session_state.calc_result = process_full_calculation(nlu_res, user_input, selected_lang, selected_year, t)
+                st.session_state.calc_result = process_full_calculation(nlu_res, current_input, selected_lang, selected_year, t)
                 st.session_state.nlu_res = nlu_res
 
         except Exception as e:
