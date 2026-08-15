@@ -111,6 +111,27 @@ st.markdown("""
         color: #ff5500;
         margin-bottom: 15px;
     }
+
+    /* Увеличение и подсветка блока голосового ввода */
+    div[data-testid="stAudioInput"] {
+        border: 2px solid #ff5500 !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
+        background-color: #0e2a4708 !important;
+        transform: scale(1.02);
+        margin: 12px 0;
+    }
+    div[data-testid="stAudioInput"] button {
+        width: 52px !important;
+        height: 52px !important;
+    }
+    .audio-limit-note {
+        font-size: 0.82rem;
+        color: #ff5500;
+        font-weight: 600;
+        margin-top: -6px;
+        margin-bottom: 10px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -158,7 +179,8 @@ UI_TEXT = {
         "table_name": "Cədvəl", 
         "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:",
         "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur.",
-        "guide_title": "💡 Daxiletmə nümunələri və dəmir yolu terminləri (Açmaq üçün basın)"
+        "guide_title": "💡 Daxiletmə nümunələri və dəmir yolu terminləri (Açmaq üçün basın)",
+        "audio_note": "⏱️ Maksimum səs yazısı müddəti: 50 saniyə. Danışdıqdan sonra dayandırmaq üçün düyməni yenidən basın."
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
@@ -203,7 +225,8 @@ UI_TEXT = {
         "table_name": "Таблица", 
         "missing_title": "⚠️ Для точного расчета не хватает следующих данных:",
         "footer_owner": "Данный проект принадлежит компании **AGT Cargo**.",
-        "guide_title": "💡 Шаблоны запросов и справочник сокращений (Нажмите для просмотра)"
+        "guide_title": "💡 Шаблоны запросов и справочник сокращений (Нажмите для просмотра)",
+        "audio_note": "⏱️ Максимальная длительность записи: 50 секунд. По завершении нажмите кнопку повторно."
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
@@ -248,7 +271,8 @@ UI_TEXT = {
         "table_name": "Table", 
         "missing_title": "⚠️ Required parameters missing:",
         "footer_owner": "This project belongs to **AGT Cargo**.",
-        "guide_title": "💡 Quick Templates & Railway Glossary (Click to expand)"
+        "guide_title": "💡 Quick Templates & Railway Glossary (Click to expand)",
+        "audio_note": "⏱️ Maximum audio length: 50 seconds. Press button again to stop recording when finished."
     }
 }
 
@@ -544,14 +568,22 @@ if not user_api_key and "GEMINI_API_KEY" in st.secrets:
     user_api_key = st.secrets["GEMINI_API_KEY"]
 
 st.markdown("🎙️ **Göləs ilə daxil etmə / Голосовой ввод:**")
-audio_file = st.audio_input("Нажмите на микрофон для записи запроса")
+st.markdown(f"<div class='audio-limit-note'>{t['audio_note']}</div>", unsafe_allow_html=True)
+audio_file = st.audio_input("🔴 Нажмите на микрофон для записи")
+
+MAX_AUDIO_SIZE_MB = 1.0  # Технический лимит: 1 МБ (~60 секунд запаса)
 
 if audio_file:
     audio_bytes = audio_file.read()
     mime_type = audio_file.type if hasattr(audio_file, "type") and audio_file.type else "audio/wav"
     
     if st.button("🎧 Səsi tanınsın və hesablasın / Распознать и рассчитать голос", type="secondary"):
-        if not user_api_key.strip():
+        file_size_mb = len(audio_bytes) / (1024 * 1024)
+        
+        # 🛡️ ПРОВЕРКА ДЛИТЕЛЬНОСТИ
+        if file_size_mb > MAX_AUDIO_SIZE_MB:
+            st.error("🛑 Səs yazısı çox uzundur (50 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın. / Запись превышает 50 секунд! Пожалуйста, повторите кратко.")
+        elif not user_api_key.strip():
             st.error(t["api_warning"])
         else:
             loader_placeholder = st.empty()
@@ -570,7 +602,6 @@ if audio_file:
                 
                 transcription = nlu_res.get("transcript", "")
                 if transcription:
-                    # Передаем транскрипт через буфер для следующего прогона
                     st.session_state.pending_transcript = transcription
 
                 gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
