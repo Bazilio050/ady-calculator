@@ -389,17 +389,16 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         weight_display = f"0 t (boş {int(axles)}-oxlu transportyor)"
         billable_weight = 0.0
 
-    # 3.7.1: Перевозка на своих осях (коэф 0.50 к графе 10 т универсального вагона)
+    # 3.7.1: Перевозка на своих осях (коэф 0.50 к универсальному вагону от фактического веса)
     elif is_own_axles:
         table_num = 3.71
         is_per_wagon = False
-        billable_weight = 10.0
-        lookup_weight = 10.1  # Точное попадание в графу 10 тонн
+        billable_weight = max(10.0, act_weight)  # <--- Передаём реальный вес локомотива (45т)
         
         if shipment_type_code == "transit":
-            base_chf, table_details = calculate_table_4_base(tariff_dist_km, lookup_weight, {}, lang_upper)
+            base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, {}, lang_upper)
         else:
-            base_chf, table_details = calculate_table_3_base(tariff_dist_km, lookup_weight, {}, lang_upper)
+            base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
 
         base_chf *= 0.50
         table_details = f"bənd 3.7.1 (универсальный вагон × 0.50)"
