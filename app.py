@@ -562,12 +562,10 @@ if audio_file:
                 gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
                 cargo_val = str(nlu_res.get("gng_name") or nlu_res.get("cargo_name") or "").strip()
 
-                is_default_or_empty = (
-                    not gng_val or gng_val in ["00000000", "0000", "0"] or
-                    not cargo_val or "Aşırılan" in cargo_val or "Ümumi" in cargo_val
-                )
+                has_valid_gng = bool(gng_val and gng_val not in ["00000000", "0000", "0"])
+                has_valid_cargo = bool(cargo_val and "Aşırılan" not in cargo_val and "Ümumi" not in cargo_val)
 
-                if is_default_or_empty:
+                if not has_valid_gng and not has_valid_cargo:
                     nlu_res["gng_code"] = "00000000"
                     cargo_defaults = {"AZ": "Aşırılan yük", "RU": "Общий / Генеральный груз", "EN": "General cargo"}
                     localized_cargo = cargo_defaults.get(selected_lang, "Aşırılan yük")
@@ -617,12 +615,10 @@ if st.button(t["calc_btn"], type="primary"):
             gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
             cargo_val = str(nlu_res.get("gng_name") or nlu_res.get("cargo_name") or "").strip()
 
-            is_default_or_empty = (
-                not gng_val or gng_val in ["00000000", "0000", "0"] or
-                not cargo_val or "Aşırılan" in cargo_val or "Ümumi" in cargo_val
-            )
+            has_valid_gng = bool(gng_val and gng_val not in ["00000000", "0000", "0"])
+            has_valid_cargo = bool(cargo_val and "Aşırılan" not in cargo_val and "Ümumi" not in cargo_val)
 
-            if is_default_or_empty:
+            if not has_valid_gng and not has_valid_cargo:
                 nlu_res["gng_code"] = "00000000"
                 nlu_res["cargo_gng_code"] = "00000000"
                 
