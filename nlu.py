@@ -152,32 +152,58 @@ def validate_nlu_input(nlu_res, lang="AZ"):
 
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
-    Принимает байты аудиозаписи, выполняет транскрибацию и NLU-анализ ж/д терминов 
-    в один проход через модель Gemini.
+    Принимает байты аудиозаписи, выполняет транскрибацию и полный NLU-анализ ж/д терминов 
+    с привязкой кодов ЕСР в один проход через Gemini.
     """
+    lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
+    target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
+
     prompt = f"""
     You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
-    Listen carefully to the audio input containing a freight shipment request (it can be in Russian, Azerbaijani, or English).
+    Listen carefully to the audio input containing a freight shipment request (in Russian, Azerbaijani, or English).
 
     Tasks:
     1. Transcribe the spoken text accurately into the 'transcript' field.
-    2. Extract shipment entities according to the NLU schema:
-       - 'transcript': Exact transcribed text spoken by user
-       - 'origin_name': Departure station name
-       - 'dest_name': Destination station name
-       - 'weight_tons': Weight in metric tons (float)
-       - 'gng_code': Cargo GNG/NHM code (keep leading zeros if present)
-       - 'cargo_name': Name of cargo
-       - 'wagon_type': Wagon type (universal, cistern, ref, container, platform, transporter, etc.)
-       - 'park_type': 'SPS' or 'MPS'
-       - 'is_empty': boolean (true if empty return/run)
-       - 'is_own_axles': boolean (movement on own axles / locomotive / crane)
-       - 'has_teplushka': boolean
-       - 'escort_count': integer (count of attendants/conductors)
-       - 'is_consolidated': boolean (sborny / yığma cargo)
-       - 'explicit_mode': 'import', 'export', 'transit' or null
+    2. Parse shipment parameters into a JSON object matching the schema below.
+    
+    CRITICAL ESR CODE & GNG INSTRUCTIONS:
+    - Always output the exact standard 6-digit ESR code for each station ('origin_esr', 'dest_esr').
+    - Example ESRs: Yalama=545006, Biləcəri/Баладжары=546808, Abşeron/Апшерон=548004, Böyük Kəsik=558701, Bakı-Yük=547105, Astara=554109.
+    - GNG/NHM codes can be 2 to 8 digits (e.g. '3407', '72', '0207'). Keep leading zeros.
 
-    Return ONLY a valid JSON object matching this schema. UI language context: {lang}.
+    SPECIAL SECTION 3.7, 3.8 & 3.9 INSTRUCTIONS:
+    - Movement on own axles: set 'is_own_axles': true.
+    - Wagon in repair: set 'is_in_repair': true.
+    - Consolidated cargo (yığma / сборный): set 'is_consolidated': true.
+    - Section 3.9 Escort / Attendants: extract integer 'escort_count' (default 0).
+    - Section 3.9 Teplushka: set 'has_teplushka': true.
+
+    EXPECTED JSON STRUCTURE:
+    {{
+      "transcript": "Exact transcribed text spoken by user",
+      "origin_esr": "6-digit ESR string or null",
+      "origin_name": "Station name in {target_lang}",
+      "dest_esr": "6-digit ESR string or null",
+      "dest_name": "Station name in {target_lang}",
+      "gng_code": "GNG code string or null",
+      "gng_name": "Short cargo description in {target_lang}",
+      "weight_tons": float or null,
+      "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
+      "park_type": "SPS / MPS",
+      "ref_section_cargo_wagons": integer or null,
+      "explicit_mode": "import / export / transit or null",
+      "is_empty": boolean,
+      "axles_count": integer or null,
+      "is_own_axles": boolean,
+      "is_in_repair": boolean,
+      "is_passenger_train": boolean,
+      "is_consolidated": boolean,
+      "escort_count": integer or 0,
+      "has_teplushka": boolean,
+      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"
+    }}
+
+    Return ONLY a valid JSON object. UI language context: {target_lang}.
     """
 
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
@@ -186,8 +212,32 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
         model="gemini-3.5-flash-lite",
         contents=[audio_part, prompt],
         config=types.GenerateContentConfig(
+            temperature=0.0,
             response_mime_type="application/json"
         )
     )
 
-    return json.loads(response.text)
+    raw_text = response.text.strip()
+    if raw_text.startswith("```json"):
+        raw_text = raw_text[7:]
+    elif raw_text.startswith("```"):
+        raw_text = raw_text[3:]
+    if raw_text.endswith("```"):
+        raw_text = raw_text[:-3]
+
+    result = json.loads(raw_text.strip())
+    result["site_lang"] = str(lang).upper()
+
+    # Защита от отсутствующих/пустых ключей
+    if "escort_count" not in result or result["escort_count"] is None:
+        result["escort_count"] = 0
+    if "has_teplushka" not in result or result["has_teplushka"] is None:
+        result["has_teplushka"] = False
+    if "teplushka_type" not in result or not result["teplushka_type"]:
+        result["teplushka_type"] = "freight_sps"
+    if "is_empty" not in result or result["is_empty"] is None:
+        result["is_empty"] = False
+    if "is_own_axles" not in result or result["is_own_axles"] is None:
+        result["is_own_axles"] = False
+
+    return result
