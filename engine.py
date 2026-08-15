@@ -131,9 +131,8 @@ def apply_special_exceptions(
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
     is_consolidated = bool(nlu_data.get("is_consolidated")) or any(k in input_lower for k in ["yığma", "сборный", "сборная"])
 
-    # 0. Коэффициент 1.20 для сборных грузов (п. 3.8)
-    if is_consolidated:
-        coeffs.append(("Yığma göndərmə (bənd 3.8)", 1.20))
+    # ПРИМЕЧАНИЕ 3.8: Коэффициент 1.20 для сборных грузов удален согласно тарифной политике. 
+    # Применяется только норма минимального веса (см. process_full_calculation).
 
     # 1. ИНДЕКСАЦИЯ 1.015 (Применяется ко всем гружёным перевозкам, кроме порожних 3.72, 3.78)
     req_period = nlu_data.get("requested_period")
