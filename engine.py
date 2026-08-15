@@ -1,5 +1,6 @@
 import os
 import re
+import math
 from datetime import datetime
 from utils import (
     get_distance_by_esr,
@@ -129,12 +130,8 @@ def apply_special_exceptions(
 
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
-    is_consolidated = bool(nlu_data.get("is_consolidated")) or any(k in input_lower for k in ["yığma", "сборный", "сборная"])
 
-    # ПРИМЕЧАНИЕ 3.8: Коэффициент 1.20 для сборных грузов удален согласно тарифной политике. 
-    # Применяется только норма минимального веса (см. process_full_calculation).
-
-    # 1. ИНДЕКСАЦИЯ 1.015 (Применяется ко всем гружёным перевозкам, кроме порожних 3.72, 3.78)
+    # 1. ИНДЕКСАЦИЯ 1.015 (Не применяется к порожним пробегам 3.72, 3.78, а также проезду проводников и теплушкам 3.9)
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
@@ -142,7 +139,7 @@ def apply_special_exceptions(
 
     is_valid_index_period = datetime(2026, 3, 1) <= target_dt <= datetime(2026, 12, 31)
 
-    if not is_empty and is_valid_index_period and table_num not in [3.72, 3.78]:
+    if not is_empty and is_valid_index_period and table_num not in [3.72, 3.78, 3.9, 3.91]:
         ind_label = "Əlavə əmsal" if lang == "AZ" else ("Индексация" if lang == "RU" else "Indexation")
         coeffs.append((ind_label, 1.015))
         
@@ -218,7 +215,7 @@ def apply_special_exceptions(
             notes.append("Транспортерdə 3-cü yuxarı dərəcəli əndazəsiz yükə 1.50 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3).")
 
     # Спецплатформы длиннее 19 м
-    if table_num not in [5, 11, 3.71, 3.72, 3.78] and is_long_platform_scep(user_input_raw, wagon_type):
+    if table_num not in [5, 11, 3.71, 3.72, 3.78, 3.9, 3.91] and is_long_platform_scep(user_input_raw, wagon_type):
         if not is_empty:
             lbl_19m = "Sintez platforma >19m" if lang == "AZ" else ("Спецплатформа >19м" if lang == "RU" else "Special platform >19m")
             coeffs.append((lbl_19m, 1.20))
@@ -232,8 +229,8 @@ def apply_special_exceptions(
     coeffs.extend(g_coeffs)
     notes.extend(g_notes)
 
-    # СКИДКА СПС (0.85 или 0.70)
-    if park_type == "SPS" and table_num not in [3.72, 3.78]:
+    # СКИДКА СПС (0.85 или 0.70) — не применяется к пп. 3.7.2, 3.7.8, 3.9
+    if park_type == "SPS" and table_num not in [3.72, 3.78, 3.9, 3.91]:
         sps_val = 0.85
         apply_sps = False
 
@@ -353,11 +350,51 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     is_in_repair = bool(nlu_data.get("is_in_repair")) or any(k in input_lower for k in ["təmir", "ремонт", "repair"])
     is_consolidated = bool(nlu_data.get("is_consolidated")) or any(k in input_lower for k in ["yığma", "сборный", "сборная"])
 
+    # Параметры Пункта 3.9 (Проводники и теплушки)
+    escort_count = int(nlu_data.get("escort_count") or 0)
+    match_escort = re.search(r'(\d+)\s*(?:bələdçi|проводник|проводника|водител)', input_lower)
+    if match_escort and escort_count == 0:
+        escort_count = int(match_escort.group(1))
+
+    has_teplushka = bool(nlu_data.get("has_teplushka")) or any(k in input_lower for k in ["tepluşka", "теплушка", "вагон сопровождения"])
+    teplushka_type = str(nlu_data.get("teplushka_type") or "freight_sps").lower()
+
     table_5_keywords = ["ref", "реф", "thermos", "термос", "изотерм", "auto", "авто", "avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов", "inv", "anv"]
     is_table_5_object = any(k in wagon_type for k in table_5_keywords) or (ref_wagons_cnt is not None) or any(k in input_lower for k in table_5_keywords)
 
+    # 3.9: Теплушка / Вагон сопровождения без груза (по осям)
+    if has_teplushka:
+        table_num = 3.9
+        is_per_wagon = True
+        axles = float(nlu_data.get("axles_count") or 4)
+        match_axle = re.search(r'(\d+)\s*(?:oxlu|осн|axle|осей)', input_lower)
+        if match_axle:
+            axles = int(match_axle.group(1))
+
+        teplushka_rates = {
+            "freight_mps": 0.23,
+            "freight_sps": 0.20,
+            "passenger_mps": 0.35,
+            "passenger_sps": 0.30
+        }
+        rate_per_axle_km = teplushka_rates.get(teplushka_type, 0.20)
+        base_chf = rate_per_axle_km * axles * tariff_dist_km
+        table_details = f"bənd 3.9 ({rate_per_axle_km:.2f} CHF × {int(axles)} ox × {tariff_dist_km} km)"
+        weight_display = "0 t (tepluşka)" if lang_upper == "AZ" else "0 т (теплушка)"
+        billable_weight = 0.0
+
+    # 3.9: Проезд проводников и водителей (по 100 км блокам)
+    elif escort_count > 0 and act_weight == 0:
+        table_num = 3.91
+        is_per_wagon = True
+        units_100km = math.ceil(tariff_dist_km / 100.0)
+        base_chf = escort_count * units_100km * 12.00
+        table_details = f"bənd 3.9 ({escort_count} bələdçi × {units_100km} × 100km × 12.00 CHF)"
+        weight_display = f"{escort_count} bələdçi" if lang_upper == "AZ" else f"{escort_count} проводник(ов)"
+        billable_weight = 0.0
+
     # 3.7.2: Порожние вагоны МПС в ремонт / из ремонта (0.10 CHF/ось-км)
-    if is_own_axles and is_in_repair and park_type == "MPS":
+    elif is_own_axles and is_in_repair and park_type == "MPS":
         table_num = 3.72
         is_per_wagon = True
         axles = float(nlu_data.get("axles_count") or 4)
@@ -619,7 +656,11 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     park_display = "SPS" if park_type == "SPS" else "MPS"
     sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
 
-    if is_own_axles:
+    if table_num == 3.9:
+        wagon_disp_name = "Tepluşka (vaqon müşayiəti)" if lang_upper == "AZ" else "Теплушка (вагон сопровождения)"
+    elif table_num == 3.91:
+        wagon_disp_name = "Yük müşayiəti (bələdçi)" if lang_upper == "AZ" else "Сопровождение груза (проводники)"
+    elif is_own_axles:
         wagon_disp_name = "Öz oxları üzərində" if lang_upper == "AZ" else "На своих осях"
     elif is_cover_wagon:
         wagon_disp_name = "Qoruyucu vaqon" if lang_upper == "AZ" else "Вагон прикрытия"
