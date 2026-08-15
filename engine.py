@@ -192,7 +192,7 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 4:
-        tbl_coeffs, tbl_notes = get_table_4_coefficients(shipment_type=shipment_type_code, wagon_type=wagon_type, gng_code=gng, lang=lang, ui_t=ui_t)
+        tbl_coeffs, tbl_notes = get_table_4_coefficients(shipment_type_code=shipment_type_code, wagon_type=wagon_type, gng_code=gng, lang=lang, ui_t=ui_t)
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
     elif table_num == 5:
@@ -528,7 +528,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             },
             "part3": {
                 "formula": "0.00 CHF / USD", "net_ady_rate": "0.00 USD",
-                "express_rate": "0.00 USD", "notes": [empty_note.get(lang_upper, empty_note["AZ"])]
+                "express_rate": "0.00 USD", "guard_rate": "0.00 USD", "notes": [empty_note.get(lang_upper, empty_note["AZ"])]
             }
         }
 
@@ -756,7 +756,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     elif table_num == 12:
         wagon_disp_name = "Təhlükəli yük vaqonu (Cədvəl 12)" if lang_upper == "AZ" else ("Вагон с опасным грузом (Таблица 12)" if lang_upper == "RU" else "Dangerous cargo wagon (Table 12)")
     elif table_num == 10:
-        wagon_disp_name = "Xüsusi/Tank/Ref konteyner (Cədvəl 10)" if lang_upper == "AZ" else ("Спец/Танк/Реф контейнер (Таблица 10)" if lang_upper == "RU" else "Special/Tank/Ref container (Table 10)")
+        wagon_disp_name = "Xüsusi/Tank/Ref konteyner (Cədvəl 10)" if lang_upper == "AZ" else ("Спец/Танк/Ref контейнер (Таблица 10)" if lang_upper == "RU" else "Special/Tank/Ref container (Table 10)")
     elif table_num == 8:
         wagon_disp_name = "Konteyner (Cədvəl 8)" if lang_upper == "AZ" else ("Контейнер (Таблица 8)" if lang_upper == "RU" else "Container (Table 8)")
     elif table_num == 11:
