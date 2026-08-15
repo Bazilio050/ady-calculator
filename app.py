@@ -18,14 +18,20 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Инициализация состояния
 if "calc_result" not in st.session_state:
     st.session_state.calc_result = None
 if "nlu_res" not in st.session_state:
     st.session_state.nlu_res = None
 if "missing_data" not in st.session_state:
     st.session_state.missing_data = None
-if "input_text_val" not in st.session_state:
-    st.session_state.input_text_val = ""
+if "pending_transcript" not in st.session_state:
+    st.session_state.pending_transcript = None
+
+# Безопасное обновление текста ввода ДО отрисовки st.text_area
+if st.session_state.pending_transcript:
+    st.session_state.main_input_area = st.session_state.pending_transcript
+    st.session_state.pending_transcript = None
 
 st.markdown("""
     <style>
@@ -528,7 +534,6 @@ with st.expander(t["guide_title"]):
 
 user_input = st.text_area(
     t["input_header"], 
-    value=st.session_state.input_text_val,
     height=120, 
     placeholder=t["input_placeholder"],
     key="main_input_area"
@@ -565,9 +570,9 @@ if audio_file:
                 
                 transcription = nlu_res.get("transcript", "")
                 if transcription:
-                    st.session_state.input_text_val = transcription
-                    st.session_state.main_input_area = transcription
-                
+                    # Передаем транскрипт через буфер для следующего прогона
+                    st.session_state.pending_transcript = transcription
+
                 gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
                 cargo_val = str(nlu_res.get("gng_name") or nlu_res.get("cargo_name") or "").strip()
 
