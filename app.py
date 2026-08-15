@@ -105,6 +105,7 @@ st.markdown("""
         top: 6px;
         white-space: nowrap;
         animation: trainDrive 2.2s linear infinite;
+        transform: scaleX(-1); /* 👈 ЗЕРКАЛЬНО РАЗВОРАЧИВАЕМ ПАРОВОЗ ВПЕРЕД! */
     }
     .train-loader-text {
         text-align: center;
