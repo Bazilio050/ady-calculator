@@ -129,8 +129,13 @@ def apply_special_exceptions(
 
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
+    is_consolidated = bool(nlu_data.get("is_consolidated")) or any(k in input_lower for k in ["yığma", "сборный", "сборная"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015 (Исключаются спецразделы 3.72, 3.78)
+    # 0. Коэффициент 1.20 для сборных грузов (п. 3.8)
+    if is_consolidated:
+        coeffs.append(("Yığma göndərmə (bənd 3.8)", 1.20))
+
+    # 1. ИНДЕКСАЦИЯ 1.015 (Применяется ко всем гружёным перевозкам, кроме порожних 3.72, 3.78)
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
@@ -233,7 +238,7 @@ def apply_special_exceptions(
         sps_val = 0.85
         apply_sps = False
 
-        if table_num in [3, 4, 5, 7, 8, 10, 11, 12, 3.71]:
+        if table_num in [3, 4, 5, 7, 8, 10, 11, 12, 3.71, 3.8]:
             apply_sps = True
         elif table_num == 6:
             from tables.table_6 import determine_table_6_column
@@ -389,11 +394,11 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         weight_display = f"0 t (boş {int(axles)}-oxlu transportyor)"
         billable_weight = 0.0
 
-    # 3.7.1: Перевозка на своих осях (коэф 0.50 к универсальному вагону от фактического веса)
+    # 3.7.1: Перевозка на своих осях (коэф 0.50 к универсальному вагону от фактического веса, мин 10т)
     elif is_own_axles:
         table_num = 3.71
         is_per_wagon = False
-        billable_weight = max(10.0, act_weight)  # <--- Передаём реальный вес локомотива (45т)
+        billable_weight = max(10.0, act_weight)
         
         if shipment_type_code == "transit":
             base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, {}, lang_upper)
@@ -489,18 +494,14 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
                 is_transporter or "transporter" in wagon_type
             )
 
-            # Гарантируем точный выбор весовой графы в таблицах 3 и 4
-            lookup_weight = 10.1 if billable_weight == 10.0 else billable_weight
-
-            # Высокий приоритет для сборной отправки (п. 3.8)
+            # Выбор тарифной таблицы по роду отправки
             if is_consolidated:
+                table_num = 3.8
                 is_per_wagon = False
                 if shipment_type_code == "transit":
-                    table_num = 4
-                    base_chf, table_details = calculate_table_4_base(tariff_dist_km, lookup_weight, {}, lang_upper)
+                    base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, {}, lang_upper)
                 else:
-                    table_num = 3
-                    base_chf, table_details = calculate_table_3_base(tariff_dist_km, lookup_weight, {}, lang_upper)
+                    base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
 
             elif is_danger and not is_tanker_type and not is_universal_container:
                 table_num = 12
@@ -549,11 +550,11 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             elif shipment_type_code == "transit":
                 table_num = 4
                 is_per_wagon = False
-                base_chf, table_details = calculate_table_4_base(tariff_dist_km, lookup_weight, {}, lang_upper)
+                base_chf, table_details = calculate_table_4_base(tariff_dist_km, billable_weight, {}, lang_upper)
             else:
                 table_num = 3
                 is_per_wagon = False
-                base_chf, table_details = calculate_table_3_base(tariff_dist_km, lookup_weight, {}, lang_upper)
+                base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
 
         act_w_str = f"{int(act_weight) if act_weight.is_integer() else act_weight}"
         bill_w_str = f"{int(billable_weight) if billable_weight.is_integer() else billable_weight}"
@@ -646,7 +647,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         if any(k in input_lower or k in wagon_type for k in ["avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов"]):
             wagon_disp_name = "Xüsusi platforma (avtoqatar/qoşqu)" if lang_upper == "AZ" else "Спецплатформа (автопоезд/прицеп)"
         else:
-            wagon_disp_name = f"İzotermik vaqon{sec_info}" if lang_upper == "AZ" else f"Изотермический вагон{sec_info}"
+            wagon_disp_name = f"İzotermik vaqon{sec_info}" if lang_upper == "AZ" else f"İzotermik vaqon{sec_info}"
     else:
         wagon_disp_name = "Universal vaqon" if lang_upper == "AZ" else "Универсальный вагон"
 
