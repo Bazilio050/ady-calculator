@@ -22,6 +22,7 @@ from tables.table_4 import calculate_table_4_base, get_table_4_coefficients
 from tables.table_5 import calculate_table_5_base, get_table_5_coefficients
 from tables.table_6 import calculate_table_6_base, get_table_6_coefficients
 from tables.table_7 import calculate_table_7_base, get_table_7_coefficients
+from guarded_codes import is_cargo_guarded
 from tables.table_8 import calculate_table_8_tariff
 from tables.table_10 import calculate_table_10_tariff
 from tables.table_11 import calculate_table_11_tariff
