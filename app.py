@@ -27,6 +27,8 @@ if "missing_data" not in st.session_state:
     st.session_state.missing_data = None
 if "pending_transcript" not in st.session_state:
     st.session_state.pending_transcript = None
+if "preview_nlu" not in st.session_state:
+    st.session_state.preview_nlu = None
 
 # Безопасное обновление текста ввода ДО отрисовки st.text_area
 if st.session_state.pending_transcript:
@@ -118,20 +120,50 @@ st.markdown("""
         border-radius: 12px !important;
         padding: 12px !important;
         background-color: #0e2a4708 !important;
-        transform: scale(1.02);
-        margin: 12px 0;
+        transform: scale(1.01);
+        margin: 10px 0;
     }
     div[data-testid="stAudioInput"] button {
-        width: 52px !important;
-        height: 52px !important;
+        width: 50px !important;
+        height: 50px !important;
     }
     .audio-limit-note {
         font-size: 0.82rem;
         color: #ff5500;
         font-weight: 600;
         margin-top: -6px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }
+
+    /* Стили для карточки экспресс-проверки */
+    .preview-card {
+        background-color: #f0f4f8;
+        border-left: 5px solid #0e2a47;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin: 12px 0;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .preview-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #0e2a47;
+        margin-bottom: 8px;
+    }
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-right: 6px;
+        margin-bottom: 6px;
+    }
+    .badge-route { background-color: #e3f2fd; color: #0d47a1; }
+    .badge-gng-ok { background-color: #e8f5e9; color: #1b5e20; }
+    .badge-gng-warn { background-color: #ffebee; color: #b71c1c; border: 1px solid #ef5350; }
+    .badge-weight { background-color: #fff3e0; color: #e65100; }
+    .badge-wagon { background-color: #f3e5f5; color: #4a148c; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -144,6 +176,7 @@ UI_TEXT = {
         "input_header": "Daşıma parametrlərini daxil edin:",
         "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
         "calc_btn": "🚀 Tarifi hesabla", 
+        "transcribe_btn": "✍️ Səsi mətnə çevir və yoxla",
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
         "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...", 
         "success": "Hesablama uğurla tamamlandı! (ADY Policy {})",
@@ -190,6 +223,7 @@ UI_TEXT = {
         "input_header": "Введите данные по перевозке:",
         "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
         "calc_btn": "🚀 Рассчитать тариф", 
+        "transcribe_btn": "✍️ Перевести голос в текст и проверить",
         "warning_empty": "Пожалуйста, введите условия расчета.",
         "spinner_text": "Считаем тариф согласно Тарифной политике {}...", 
         "success": "Расчет успешно выполнен! (Тарифная политика {})",
@@ -236,6 +270,7 @@ UI_TEXT = {
         "input_header": "Enter shipment details:",
         "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
         "calc_btn": "🚀 Calculate Freight Rate", 
+        "transcribe_btn": "✍️ Transcribe audio & verify",
         "warning_empty": "Please enter shipment requirements.",
         "spinner_text": "Calculating rates according to Tariff Policy {}...", 
         "success": "Calculation completed successfully! (Tariff Policy {})",
@@ -563,6 +598,30 @@ user_input = st.text_area(
     key="main_input_area"
 )
 
+# Отрисовка Карточки Экспресс-Проверки (если она есть)
+if st.session_state.preview_nlu:
+    pn = st.session_state.preview_nlu
+    route_str = f"{pn.get('origin_name') or '---'} ➔ {pn.get('dest_name') or '---'}"
+    gng_code = str(pn.get('gng_code') or '').strip()
+    gng_name = str(pn.get('gng_name') or '').strip()
+    weight = pn.get('weight_tons')
+    weight_str = f"{weight} t" if weight else "--- t"
+    wagon_str = f"{pn.get('wagon_type') or 'Vaqon'} ({pn.get('park_type') or 'SPS'})"
+
+    is_gng_ok = bool(gng_code and gng_code.isdigit() and len(gng_code) >= 2)
+    gng_badge_class = "badge-gng-ok" if is_gng_ok else "badge-gng-warn"
+    gng_display = f"GNG: {gng_code} ({gng_name})" if is_gng_ok else f"⚠️ GNG: {gng_code or gng_name or 'Dəqiqləşdirilməli'}"
+
+    st.markdown(f"""
+        <div class="preview-card">
+            <div class="preview-title">🔍 Səs yazısından oxunan parametrlər (Yoxlayın):</div>
+            <span class="badge badge-route">📍 {route_str}</span>
+            <span class="badge {gng_badge_class}">{gng_display}</span>
+            <span class="badge badge-weight">⚖️ {weight_str}</span>
+            <span class="badge badge-wagon">🚃 {wagon_str}</span>
+        </div>
+    """, unsafe_allow_html=True)
+
 user_api_key = os.environ.get("GEMINI_API_KEY", "")
 if not user_api_key and "GEMINI_API_KEY" in st.secrets:
     user_api_key = st.secrets["GEMINI_API_KEY"]
@@ -571,16 +630,16 @@ st.markdown("🎙️ **Göləs ilə daxil etmə / Голосовой ввод:**
 st.markdown(f"<div class='audio-limit-note'>{t['audio_note']}</div>", unsafe_allow_html=True)
 audio_file = st.audio_input("🔴 Нажмите на микрофон для записи")
 
-MAX_AUDIO_SIZE_MB = 1.0  # Технический лимит: 1 МБ (~60 секунд запаса)
+MAX_AUDIO_SIZE_MB = 1.0  # Технический лимит 1 МБ (~60 секунд запаса)
 
 if audio_file:
     audio_bytes = audio_file.read()
     mime_type = audio_file.type if hasattr(audio_file, "type") and audio_file.type else "audio/wav"
     
-    if st.button("🎧 Səsi tanınsın və hesablasın / Распознать и рассчитать голос", type="secondary"):
+    # КНОПКА 1: Перевод голоса в текст и карточку
+    if st.button(t["transcribe_btn"], type="secondary"):
         file_size_mb = len(audio_bytes) / (1024 * 1024)
         
-        # 🛡️ ПРОВЕРКА ДЛИТЕЛЬНОСТИ
         if file_size_mb > MAX_AUDIO_SIZE_MB:
             st.error("🛑 Səs yazısı çox uzundur (50 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın. / Запись превышает 50 секунд! Пожалуйста, повторите кратко.")
         elif not user_api_key.strip():
@@ -592,7 +651,7 @@ if audio_file:
                     <div class="train-emoji">🚂🚃🚃🚃💨</div>
                 </div>
                 <div class="train-loader-text">
-                    ⏳ Səs yazısı tanınır və ADY Policy {selected_year} tarifləri üzrə hesablanır...
+                    ⏳ Səs yazısı tanınır...
                 </div>
             """, unsafe_allow_html=True)
 
@@ -603,38 +662,16 @@ if audio_file:
                 transcription = nlu_res.get("transcript", "")
                 if transcription:
                     st.session_state.pending_transcript = transcription
+                    st.session_state.preview_nlu = nlu_res
 
-                gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
-                cargo_val = str(nlu_res.get("gng_name") or nlu_res.get("cargo_name") or "").strip()
-
-                has_valid_gng = bool(gng_val and gng_val not in ["00000000", "0000", "0"])
-                has_valid_cargo = bool(cargo_val and "Aşırılan" not in cargo_val and "Ümumi" not in cargo_val)
-
-                if not has_valid_gng and not has_valid_cargo:
-                    nlu_res["gng_code"] = "00000000"
-                    cargo_defaults = {"AZ": "Aşırılan yük", "RU": "Общий / Генеральный груз", "EN": "General cargo"}
-                    localized_cargo = cargo_defaults.get(selected_lang, "Aşırılan yük")
-                    nlu_res["cargo_name"] = localized_cargo
-                    nlu_res["gng_name"] = localized_cargo
-
-                missing = validate_nlu_input(nlu_res, selected_lang)
                 loader_placeholder.empty()
-
-                if missing:
-                    st.session_state.missing_data = missing
-                    st.session_state.calc_result = None
-                else:
-                    st.session_state.missing_data = None
-                    st.session_state.calc_result = process_full_calculation(
-                        nlu_res, transcription or "Голосовой запрос", selected_lang, selected_year, t
-                    )
-                    st.session_state.nlu_res = nlu_res
-                    st.rerun()
+                st.rerun()
 
             except Exception as e:
                 loader_placeholder.empty()
                 st.error(f"Ошибка распознавания аудио: {str(e)}")
 
+# КНОПКА 2: Наша любимая и волшебная кнопка расчета!
 if st.button(t["calc_btn"], type="primary"):
     current_input = st.session_state.get("main_input_area", user_input)
     if not current_input.strip():
