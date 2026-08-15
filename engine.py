@@ -143,7 +143,7 @@ def apply_special_exceptions(
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015 (Не применяется к порожним пробегам 3.72, 3.78, а также проезду проводников и теплушкам 3.9)
+    # 1. ИНДЕКСАЦИЯ 1.015
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
@@ -164,7 +164,7 @@ def apply_special_exceptions(
         )
         notes.append(ind_note)
         
-    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50 (Исключаем спецразделы 3.7)
+    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50
     if is_empty and clean_gng in EMPTY_SPS_CODES and table_num not in [3.71, 3.72, 3.78]:
         if shipment_type_code in ["import", "export"]:
             lbl_150 = "İdxal/İxrac baza" if lang == "AZ" else ("Импорт/Экспорт база" if lang == "RU" else "Import/Export base")
@@ -280,7 +280,7 @@ def apply_special_exceptions(
     coeffs.extend(g_coeffs)
     notes.extend(g_notes)
 
-    # СКИДКА СПС (0.85 или 0.70) — не применяется к пп. 3.7.2, 3.7.8, 3.9
+    # СКИДКА СПС
     if park_type == "SPS" and table_num not in [3.72, 3.78, 3.9, 3.91]:
         sps_val = 0.85
         apply_sps = False
@@ -318,7 +318,7 @@ def apply_special_exceptions(
                 )
             notes.append(sps_note)
 
-    # ОПАСНЫЕ ГРУЗЫ И ВАГОНЫ ПРИКРЫТИЯ (Пункт 3.6)
+    # ОПАСНЫЕ ГРУЗЫ
     is_danger, apply_double, danger_note = check_dangerous_goods_rule(gng, user_input_raw, wagon_type, lang)
     if is_danger and apply_double:
         danger_lbl = "Təhlükəli yük əmsalı (x2.00)" if lang == "AZ" else ("Опасный груз (x2.00)" if lang == "RU" else "Dangerous goods (x2.00)")
@@ -330,7 +330,7 @@ def apply_special_exceptions(
         )
         notes.append(danger_note_str)
 
-    # Вагон прикрытия / Qoruyucu vaqon (п. 3.6.3)
+    # Вагон прикрытия (п. 3.6.3)
     if any(k in input_lower for k in ["прикрытие", "qoruyucu", "daldalanacaq", "guard_wagon"]):
         cover_rate = 0.30 if park_type == "SPS" else 0.35
         axles = float(nlu_data.get("axles_count") or 4)
@@ -416,7 +416,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     is_in_repair = bool(nlu_data.get("is_in_repair")) or any(k in input_lower for k in ["təmir", "ремонт", "repair"])
     is_consolidated = bool(nlu_data.get("is_consolidated")) or any(k in input_lower for k in ["yığma", "сборный", "сборная"])
 
-    # Параметры Пункта 3.9 (Проводники и теплушки)
     escort_count = int(nlu_data.get("escort_count") or 0)
     match_escort = re.search(r'(\d+)\s*(?:bələdçi|проводник|проводника|водител)', input_lower)
     if match_escort and escort_count == 0:
@@ -431,7 +430,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     sec_word = "bənd" if lang_upper == "AZ" else ("п." if lang_upper == "RU" else "cl.")
     axle_word = "ox" if lang_upper == "AZ" else ("ось" if lang_upper == "RU" else "axle")
 
-    # 3.9: Теплушка / Вагон сопровождения без груза (по осям)
     if has_teplushka:
         table_num = 3.9
         is_per_wagon = True
@@ -452,7 +450,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         weight_display = "0 t (tepluşka)" if lang_upper == "AZ" else ("0 т (теплушка)" if lang_upper == "RU" else "0 t (escort wagon)")
         billable_weight = 0.0
 
-    # 3.9: Проезд проводников и водителей (по 100 км блокам)
     elif escort_count > 0 and act_weight == 0:
         table_num = 3.91
         is_per_wagon = True
@@ -464,7 +461,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         weight_display = f"{escort_count} bələdçi" if lang_upper == "AZ" else (f"{escort_count} проводник(ов)" if lang_upper == "RU" else f"{escort_count} attendant(s)")
         billable_weight = 0.0
 
-    # 3.7.2: Порожние вагоны МПС в ремонт / из ремонта (0.10 CHF/ось-км)
     elif is_own_axles and is_in_repair and park_type == "MPS":
         table_num = 3.72
         is_per_wagon = True
@@ -478,7 +474,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         weight_display = "0 t (təmirə/təmirdən)" if lang_upper == "AZ" else ("0 т (в/из ремонта)" if lang_upper == "RU" else "0 t (to/from repair)")
         billable_weight = 0.0
 
-    # 3.7.8: Перегонка порожних транспортеров по количеству осей
     elif is_empty_wagon and ("transporter" in wagon_type or "транспортер" in input_lower or "transportyor" in input_lower):
         table_num = 3.78
         is_per_wagon = True
@@ -501,7 +496,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         weight_display = f"0 t (boş {int(axles)}-oxlu transportyor)" if lang_upper == "AZ" else (f"0 т (порожний {int(axles)}-осный транспортер)" if lang_upper == "RU" else f"0 t (empty {int(axles)}-axle transporter)")
         billable_weight = 0.0
 
-    # 3.7.1: Перевозка на своих осях (коэф 0.50 к универсальному вагону от фактического веса, мин 10т)
     elif is_own_axles:
         table_num = 3.71
         is_per_wagon = False
@@ -517,7 +511,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         table_details = f"{sec_word} 3.7.1 ({u_wagon_str} × 0.50)"
         weight_display = f"{int(act_weight if act_weight > 0 else 10)} t (öz oxları üzərində)" if lang_upper == "AZ" else (f"{int(act_weight if act_weight > 0 else 10)} т (на своих осях)" if lang_upper == "RU" else f"{int(act_weight if act_weight > 0 else 10)} t (on own axles)")
 
-    # Инвентарный порожний вагон МПС -> Бесплатно (п. 3.1.1)
     elif is_empty_wagon and park_type == "MPS" and not is_cover_wagon:
         empty_note = {
             "AZ": "İnventar parka mənsub olan boş vaqonlar boşaldıqdan sonra mensub olduqları ölkələrə qaytarıldıqları zaman daşıma haqqı hesablanmır (bənd 3.1.1).",
@@ -577,7 +570,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             is_per_wagon = (res_t11["rate_type"] == "per_wagon")
 
         else:
-            # РАЗДЕЛ 3.8: Сборные отправки (мин 10т)
             if is_consolidated:
                 min_cons_weight = 25.0 if is_table_5_object else 10.0
                 billable_weight = max(min_cons_weight, act_weight)
@@ -604,7 +596,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
                 is_transporter or "transporter" in wagon_type
             )
 
-            # Выбор тарифной таблицы по роду отправки
             if is_consolidated:
                 table_num = 3.8
                 is_per_wagon = False
@@ -730,6 +721,25 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit_str}"
     express_rate_str = f"{final_rate * 1.02:.2f} {unit_str}"
 
+    # --- РАСЧЕТ СБОРА ЗА ОХРАНУ (Транзит: км * 0.1 AZN / 1.7 + 2%) ---
+    cargo_is_guarded = is_cargo_guarded(gng)
+    guard_fee_express_usd = 0.0
+
+    if cargo_is_guarded and shipment_type_code == "transit":
+        base_guard = (actual_dist_km * 0.1) / 1.7
+        guard_fee_express_usd = round(base_guard * 1.02, 2)
+        
+        notes.append(
+            "Yük ADY-nin siyahısına əsasən mühafizəyə tabedir (Tranzit: km * 0.1 AZN / 1.7 + 2%)." 
+            if lang_upper == "AZ" else 
+            "Груз подлежит охране согласно списку ADY (Транзит: км * 0.1 AZN / 1.7 + 2%)."
+        )
+
+    no_guard_msg = (
+        "Mühafizə tələb olunmur" if lang_upper == "AZ" 
+        else ("Охрана не требуется" if lang_upper == "RU" else "Guard not required")
+    )
+
     park_display = "SPS" if park_type == "SPS" else "MPS"
     sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
 
@@ -790,6 +800,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             "formula": formula_str, 
             "net_ady_rate": f"{final_rate:.2f} {unit_str}",
             "express_rate": express_rate_str, 
+            "guard_rate": f"{guard_fee_express_usd:.2f} USD" if guard_fee_express_usd > 0 else no_guard_msg,
             "notes": notes
         }
     }
