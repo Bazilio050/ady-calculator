@@ -105,7 +105,7 @@ st.markdown("""
         top: 6px;
         white-space: nowrap;
         animation: trainDrive 2.2s linear infinite;
-        transform: scaleX(-1); /* 👈 ЗЕРКАЛЬНО РАЗВОРАЧИВАЕМ ПАРОВОЗ ВПЕРЕД! */
+        transform: scaleX(-1);
     }
     .train-loader-text {
         text-align: center;
@@ -115,7 +115,6 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* Увеличение и подсветка блока голосового ввода */
     div[data-testid="stAudioInput"] {
         border: 2px solid #ff5500 !important;
         border-radius: 12px !important;
@@ -136,7 +135,6 @@ st.markdown("""
         margin-bottom: 8px;
     }
 
-    /* Стили для карточки экспресс-проверки */
     .preview-card {
         background-color: #f0f4f8;
         border-left: 5px solid #0e2a47;
@@ -203,6 +201,7 @@ UI_TEXT = {
         "lbl_base_rate": "Baza tarifi",
         "lbl_net_rate": "Yekün ADY tarifi", 
         "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
+        "lbl_guard_express_rate": "Mühafizə haqqı (ADY Express +2% daxil)",
         "api_warning": "⚠️ Serverdə GEMINI_API_KEY tapılmadı. Xahiş olunur, sistem tənzimləmələrini yoxlayın.", 
         "api_label": "Gemini API Key:",
         "type_import": "İdxal daşınması", 
@@ -250,6 +249,7 @@ UI_TEXT = {
         "lbl_base_rate": "Базовый тариф",
         "lbl_net_rate": "Итоговый тариф", 
         "lbl_express_rate": "Итоговый тариф (включая ADY Express +2%)",
+        "lbl_guard_express_rate": "Сбор за охрану (включая ADY Express +2%)",
         "api_warning": "⚠️ На сервере не найден GEMINI_API_KEY. Пожалуйста, проверьте настройки системы.", 
         "api_label": "Gemini API Key:",
         "type_import": "Импортная перевозка", 
@@ -297,6 +297,7 @@ UI_TEXT = {
         "lbl_base_rate": "Base Tariff",
         "lbl_net_rate": "Final Tariff", 
         "lbl_express_rate": "Final Tariff (incl. ADY Express +2%)",
+        "lbl_guard_express_rate": "Guard fee (incl. ADY Express +2%)",
         "api_warning": "⚠️ GEMINI_API_KEY not found on server. Please check system configuration.", 
         "api_label": "Gemini API Key:",
         "type_import": "Import shipment", 
@@ -637,7 +638,6 @@ if audio_file:
     audio_bytes = audio_file.read()
     mime_type = audio_file.type if hasattr(audio_file, "type") and audio_file.type else "audio/wav"
     
-    # КНОПКА 1: Перевод голоса в текст и карточку
     if st.button(t["transcribe_btn"], type="secondary"):
         file_size_mb = len(audio_bytes) / (1024 * 1024)
         
@@ -672,7 +672,6 @@ if audio_file:
                 loader_placeholder.empty()
                 st.error(f"Ошибка распознавания аудио: {str(e)}")
 
-# КНОПКА 2: Наша любимая и волшебная кнопка расчета!
 if st.button(t["calc_btn"], type="primary"):
     current_input = st.session_state.get("main_input_area", user_input)
     if not current_input.strip():
@@ -773,7 +772,8 @@ elif st.session_state.calc_result:
         f"| {t['col_rate_type']} | {t['col_amount']} |\n"
         f"| :--- | :--- |\n"
         f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |\n"
-        f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |"
+        f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |\n"
+        f"| **{t['lbl_guard_express_rate']}** | **{p3['guard_rate']}** |"
     )
 
     if p3.get("notes"):
