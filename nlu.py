@@ -148,3 +148,48 @@ def validate_nlu_input(nlu_res, lang="AZ"):
         )
 
     return missing_items
+
+    from google.genai import types
+import json
+
+def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
+    """
+    Принимает байты аудиозаписи, выполняет транскрибацию и NLU-анализ ж/д терминов 
+    в один проход через мультимодальную модель Gemini.
+    """
+    prompt = f"""
+    You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
+    Listen carefully to the audio input containing a freight shipment request (it can be in Russian, Azerbaijani, or English).
+
+    Tasks:
+    1. Transcribe the spoken text accurately into the 'transcript' field.
+    2. Extract shipment entities according to the NLU schema:
+       - 'transcript': Exact transcribed text spoken by user
+       - 'origin_name': Departure station name
+       - 'dest_name': Destination station name
+       - 'weight_tons': Weight in metric tons (float)
+       - 'gng_code': Cargo GNG/NHM code (keep leading zeros if present)
+       - 'cargo_name': Name of cargo
+       - 'wagon_type': Wagon type (universal, cistern, ref, container, platform, transporter, etc.)
+       - 'park_type': 'SPS' or 'MPS'
+       - 'is_empty': boolean (true if empty return/run)
+       - 'is_own_axles': boolean (movement on own axles / locomotive / crane)
+       - 'has_teplushka': boolean
+       - 'escort_count': integer (count of attendants/conductors)
+       - 'is_consolidated': boolean (sborny / yığma cargo)
+       - 'explicit_mode': 'import', 'export', 'transit' or null
+
+    Return ONLY a valid JSON object matching this schema. UI language context: {lang}.
+    """
+
+    audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=[audio_part, prompt],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json"
+        )
+    )
+
+    return json.loads(response.text)
