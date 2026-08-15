@@ -31,10 +31,11 @@ EMPTY_SPS_CODES = ["99210000", "99213000", "99220000", "99223000"]
 OWN_AXLE_GNG_CODES = ["8601", "8602", "8603", "8604", "8605", "8606", "99211000", "99212000", "99214000", "99221000", "99222000", "99224000"]
 
 
-def check_dangerous_goods_rule(gng_code: str, user_input_raw: str, wagon_type: str) -> tuple:
+def check_dangerous_goods_rule(gng_code: str, user_input_raw: str, wagon_type: str, lang: str = "AZ") -> tuple:
     clean_gng = re.sub(r'\D', '', str(gng_code or "")).zfill(8)
     inp = str(user_input_raw or "").lower()
     w_type = str(wagon_type or "").lower()
+    lang_upper = str(lang or "AZ").upper()
     
     is_danger_flag = any(k in inp for k in ["опасный", "təhlükəli", "dangerous", "un_code", "класс 1", "класс 5", "класс 6", "класс 7"])
 
@@ -68,7 +69,17 @@ def check_dangerous_goods_rule(gng_code: str, user_input_raw: str, wagon_type: s
         elif t_type == "ortulu_konteyner" and any(k in w_type for k in ["container", "крыт", "örtülü", "universal", "платфор"]):
             apply_double = True
 
-        return True, apply_double, f"Təhlükəli yük (bənd 3.6.1, Cədvəl 13, BMT {matched_entry[0] if matched_entry else 'spesifik'})"
+        sec_word = "bənd" if lang_upper == "AZ" else ("п." if lang_upper == "RU" else "cl.")
+        tbl_word = "Cədvəl" if lang_upper == "AZ" else ("Таблица" if lang_upper == "RU" else "Table")
+        bmt_str = matched_entry[0] if matched_entry else ('spesifik' if lang_upper == "AZ" else ('специфический' if lang_upper == "RU" else 'specific'))
+
+        note_text = (
+            f"Təhlükəli yük ({sec_word} 3.6.1, {tbl_word} 13, BMT {bmt_str})" if lang_upper == "AZ" else
+            (f"Опасный груз ({sec_word} 3.6.1, {tbl_word} 13, ООН {bmt_str})" if lang_upper == "RU" else
+             f"Dangerous cargo ({sec_word} 3.6.1, {tbl_word} 13, UN {bmt_str})")
+        )
+
+        return True, apply_double, note_text
 
     return False, False, ""
 
@@ -157,12 +168,22 @@ def apply_special_exceptions(
         if shipment_type_code in ["import", "export"]:
             lbl_150 = "İdxal/İxrac baza" if lang == "AZ" else ("Импорт/Экспорт база" if lang == "RU" else "Import/Export base")
             coeffs.append((lbl_150, 1.50))
-            notes.append("Boş vaqonların İdxal/İxrac daşınmasına 1.50 əmsalı tətbiq olunmuşdur.")
+            note_150 = (
+                "Boş vaqonların İdxal/İxrac daşınmasına 1.50 əmsalı tətbiq olunmuşdur." if lang == "AZ" else
+                ("К перевозке порожних вагонов на импорт/экспорт применён коэффициент 1.50." if lang == "RU" else
+                 "Base factor 1.50 applied for empty wagon import/export movement.")
+            )
+            notes.append(note_150)
     else:
         if table_num not in [3.71, 3.72, 3.78] and should_apply_150_coeff(shipment_type_code, table_num, gng, wagon_type, park_type):
             lbl_150 = "İdxal/İxrac baza" if lang == "AZ" else ("Импорт/Экспорт база" if lang == "RU" else "Import/Export base")
             coeffs.append((lbl_150, 1.50))
-            notes.append("Baza tarifinə İdxal/İxrac üzrə 1.50 əmsalı tətbiq olunmuşdur.")
+            note_base150 = (
+                "Baza tarifinə İdxal/İxrac üzrə 1.50 əmsalı tətbiq olunmuşdur." if lang == "AZ" else
+                ("К базовому тарифу применён коэффициент импорта/экспорта 1.50." if lang == "RU" else
+                 "Base tariff factor 1.50 applied for import/export movement.")
+            )
+            notes.append(note_base150)
 
     # 3. Специфические коэффициенты конкретных таблиц
     if table_num == 3:
@@ -188,8 +209,14 @@ def apply_special_exceptions(
 
     # 3.7.3 — ПАССАЖИРСКИЙ ПОЕЗД (x2.00)
     if nlu_data.get("is_passenger_train") or "пассажирский поезд" in input_lower or "sərnişin qatarı" in input_lower:
-        coeffs.append(("Sərnişin qatarı əmsalı (bənd 3.7.3)", 2.00))
-        notes.append("Hərəkət tərkibinin sərnişin qatarı tərkibində daşınmasına 2.00 əmsalı tətbiq edilmişdir (bənd 3.7.3).")
+        pass_lbl = "Sərnişin qatarı əmsalı (bənd 3.7.3)" if lang == "AZ" else ("Пассажирский поезд (п. 3.7.3)" if lang == "RU" else "Passenger train (cl. 3.7.3)")
+        coeffs.append((pass_lbl, 2.00))
+        pass_note = (
+            "Hərəkət tərkibinin sərnişin qatarı tərkibində daşınmasına 2.00 əmsalı tətbiq edilmişdir (bənd 3.7.3)." if lang == "AZ" else
+            ("К перевозке подвижного состава в составе пассажирского поезда применён коэффициент 2.00 (п. 3.7.3)." if lang == "RU" else
+             "Factor 2.00 applied for movement within passenger train (clause 3.7.3).")
+        )
+        notes.append(pass_note)
 
     # НЕГАБАРИТ (Пункт 3.5.1)
     oversize_grp = detect_oversize_group(nlu_data, user_input_raw)
@@ -205,21 +232,44 @@ def apply_special_exceptions(
 
     elif table_num == 7 and any(k in input_lower for k in ["транспортер", "transportyor", "transporter"]):
         if oversize_grp == "degree_6" or "5 aşağı" in input_lower or "5 yan" in input_lower:
-            coeffs.append(("Əndazəsizlik (6-cı dərəcə / 5 aşağı-yan)", 3.00))
-            notes.append("Транспортерdə 6-cı dərəcəli və ya 5 aşağı/yan əndazəsiz yükə 3.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3 / 3.5.1.5).")
+            ov_lbl = "Əndazəsizlik (6-cı dərəcə / 5 aşağı-yan)" if lang == "AZ" else ("Негабаритность (6-я степень / 5 нижн-боков)" if lang == "RU" else "Oversize (degree 6 / 5 low-side)")
+            coeffs.append((ov_lbl, 3.00))
+            ov_note = (
+                "Транспортерdə 6-cı dərəcəli və ya 5 aşağı/yan əndazəsiz yükə 3.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3 / 3.5.1.5)." if lang == "AZ" else
+                ("На транспортере для 6-й степени или 5 нижней/боковой негабаритности применён коэффициент 3.00 (п. 3.5.1.3 / 3.5.1.5)." if lang == "RU" else
+                 "Factor 3.00 applied for degree 6 or 5 low/side oversize on transporter (clause 3.5.1.3 / 3.5.1.5).")
+            )
+            notes.append(ov_note)
         elif oversize_grp == "deg3_5_lowside":
-            coeffs.append(("Əndazəsizlik (3-4 aşağı, 4 yan)", 2.00))
-            notes.append("Транспортерdə 3-4 aşağı və ya 4 yan dərəcəli əndazəsiz yükə 2.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3).")
+            ov_lbl = "Əndazəsizlik (3-4 aşağı, 4 yan)" if lang == "AZ" else ("Негабаритность (3-4 нижн, 4 боков)" if lang == "RU" else "Oversize (3-4 lower, 4 side)")
+            coeffs.append((ov_lbl, 2.00))
+            ov_note = (
+                "Транспортерdə 3-4 aşağı və ya 4 yan dərəcəli əndazəsiz yükə 2.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3)." if lang == "AZ" else
+                ("На транспортере для 3-4 нижней или 4 боковой негабаритности применён коэффициент 2.00 (п. 3.5.1.3)." if lang == "RU" else
+                 "Factor 2.00 applied for 3-4 lower or 4 side oversize on transporter (clause 3.5.1.3).")
+            )
+            notes.append(ov_note)
         elif oversize_grp == "deg3_upper":
-            coeffs.append(("Əndazəsizlik (3 yuxarı)", 1.50))
-            notes.append("Транспортерdə 3-cü yuxarı dərəcəli əndazəsiz yükə 1.50 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3).")
+            ov_lbl = "Əndazəsizlik (3 yuxarı)" if lang == "AZ" else ("Негабаритность (3 верхняя)" if lang == "RU" else "Oversize (3rd upper)")
+            coeffs.append((ov_lbl, 1.50))
+            ov_note = (
+                "Транспортерdə 3-cü yuxarı dərəcəli əndazəsiz yükə 1.50 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3)." if lang == "AZ" else
+                ("На транспортере для 3-й верхней негабаритности применён коэффициент 1.50 (п. 3.5.1.3)." if lang == "RU" else
+                 "Factor 1.50 applied for 3rd upper oversize on transporter (clause 3.5.1.3).")
+            )
+            notes.append(ov_note)
 
     # Спецплатформы длиннее 19 м
     if table_num not in [5, 11, 3.71, 3.72, 3.78, 3.9, 3.91] and is_long_platform_scep(user_input_raw, wagon_type):
         if not is_empty:
             lbl_19m = "Sintez platforma >19m" if lang == "AZ" else ("Спецплатформа >19м" if lang == "RU" else "Special platform >19m")
             coeffs.append((lbl_19m, 1.20))
-            notes.append("Qoşqu oxları 19m-dən artıq olan platformalar üçün 1.20 əmsalı tətbiq edilmişdir.")
+            note_19m = (
+                "Qoşqu oxları 19m-dən artıq olan platformalar üçün 1.20 əmsalı tətbiq edilmişdir." if lang == "AZ" else
+                ("Для платформ с базой осей более 19м применён коэффициент 1.20." if lang == "RU" else
+                 "Factor 1.20 applied for platforms with axle distance exceeding 19m.")
+            )
+            notes.append(note_19m)
         elif park_type == "SPS":
             lbl_empty_19m = "Boş platforma >19m" if lang == "AZ" else ("Скидка порожн. >19м" if lang == "RU" else "Empty platform >19m")
             coeffs.append((lbl_empty_19m, 0.60))
@@ -268,10 +318,16 @@ def apply_special_exceptions(
             notes.append(sps_note)
 
     # ОПАСНЫЕ ГРУЗЫ И ВАГОНЫ ПРИКРЫТИЯ (Пункт 3.6)
-    is_danger, apply_double, danger_note = check_dangerous_goods_rule(gng, user_input_raw, wagon_type)
+    is_danger, apply_double, danger_note = check_dangerous_goods_rule(gng, user_input_raw, wagon_type, lang)
     if is_danger and apply_double:
-        coeffs.append(("Təhlükəli yük əmsalı (x2.00)", 2.00))
-        notes.append("Təhlükəli yüklərin daşınmasına görə tarif dərəcələrinə 2.00 əmsalı tətbiq olunmuşdur (bənd 3.6.1).")
+        danger_lbl = "Təhlükəli yük əmsalı (x2.00)" if lang == "AZ" else ("Опасный груз (x2.00)" if lang == "RU" else "Dangerous goods (x2.00)")
+        coeffs.append((danger_lbl, 2.00))
+        danger_note_str = (
+            "Təhlükəli yüklərin daşınmasına görə tarif dərəcələrinə 2.00 əmsalı tətbiq olunmuşdur (bənd 3.6.1)." if lang == "AZ" else
+            ("К тарифным ставкам за перевозку опасных грузов применён коэффициент 2.00 (п. 3.6.1)." if lang == "RU" else
+             "Factor 2.00 applied to tariff rates for dangerous cargo movement (clause 3.6.1).")
+        )
+        notes.append(danger_note_str)
 
     # Вагон прикрытия / Qoruyucu vaqon (п. 3.6.3)
     if any(k in input_lower for k in ["прикрытие", "qoruyucu", "daldalanacaq", "guard_wagon"]):
@@ -281,7 +337,16 @@ def apply_special_exceptions(
         if match_axle:
             axles = int(match_axle.group(1))
         cover_chf = cover_rate * axles * dist_km
-        notes.append(f"Qoruyucu (daldalanacaq) vaqonunun daşınma haqqı bənd 3.6.3-ə əsasən ({cover_rate} CHF × {int(axles)} ox × {dist_km} km = {cover_chf:.2f} CHF) əlavə olunmuşdur.")
+        
+        sec_w = "bənd" if lang == "AZ" else ("п." if lang == "RU" else "cl.")
+        ox_w = "ox" if lang == "AZ" else ("ось" if lang == "RU" else "axle")
+        
+        c_note = (
+            f"Qoruyucu (daldalanacaq) vaqonunun daşınma haqqı {sec_w} 3.6.3-ə əsasən ({cover_rate} CHF × {int(axles)} {ox_w} × {dist_km} km = {cover_chf:.2f} CHF) əlavə olunmuşdur." if lang == "AZ" else
+            (f"Плата за вагон прикрытия начислена согласно {sec_w} 3.6.3 ({cover_rate} CHF × {int(axles)} {ox_w} × {dist_km} км = {cover_chf:.2f} CHF)." if lang == "RU" else
+             f"Guard wagon fee added according to {sec_w} 3.6.3 ({cover_rate} CHF × {int(axles)} {ox_w} × {dist_km} km = {cover_chf:.2f} CHF).")
+        )
+        notes.append(c_note)
 
     return coeffs, notes
 
@@ -362,6 +427,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     table_5_keywords = ["ref", "реф", "thermos", "термос", "изотерм", "auto", "авто", "avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов", "inv", "anv"]
     is_table_5_object = any(k in wagon_type for k in table_5_keywords) or (ref_wagons_cnt is not None) or any(k in input_lower for k in table_5_keywords)
 
+    sec_word = "bənd" if lang_upper == "AZ" else ("п." if lang_upper == "RU" else "cl.")
+    axle_word = "ox" if lang_upper == "AZ" else ("ось" if lang_upper == "RU" else "axle")
+
     # 3.9: Теплушка / Вагон сопровождения без груза (по осям)
     if has_teplushka:
         table_num = 3.9
@@ -379,8 +447,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         }
         rate_per_axle_km = teplushka_rates.get(teplushka_type, 0.20)
         base_chf = rate_per_axle_km * axles * tariff_dist_km
-        table_details = f"bənd 3.9 ({rate_per_axle_km:.2f} CHF × {int(axles)} ox × {tariff_dist_km} km)"
-        weight_display = "0 t (tepluşka)" if lang_upper == "AZ" else "0 т (теплушка)"
+        table_details = f"{sec_word} 3.9 ({rate_per_axle_km:.2f} CHF × {int(axles)} {axle_word} × {tariff_dist_km} km)"
+        weight_display = "0 t (tepluşka)" if lang_upper == "AZ" else ("0 т (теплушка)" if lang_upper == "RU" else "0 t (escort wagon)")
         billable_weight = 0.0
 
     # 3.9: Проезд проводников и водителей (по 100 км блокам)
@@ -389,8 +457,10 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         is_per_wagon = True
         units_100km = math.ceil(tariff_dist_km / 100.0)
         base_chf = escort_count * units_100km * 12.00
-        table_details = f"bənd 3.9 ({escort_count} bələdçi × {units_100km} × 100km × 12.00 CHF)"
-        weight_display = f"{escort_count} bələdçi" if lang_upper == "AZ" else f"{escort_count} проводник(ов)"
+        
+        escort_word = "bələdçi" if lang_upper == "AZ" else ("проводник" if lang_upper == "RU" else "attendant")
+        table_details = f"{sec_word} 3.9 ({escort_count} {escort_word} × {units_100km} × 100km × 12.00 CHF)"
+        weight_display = f"{escort_count} bələdçi" if lang_upper == "AZ" else (f"{escort_count} проводник(ов)" if lang_upper == "RU" else f"{escort_count} attendant(s)")
         billable_weight = 0.0
 
     # 3.7.2: Порожние вагоны МПС в ремонт / из ремонта (0.10 CHF/ось-км)
@@ -403,8 +473,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             axles = int(match_axle.group(1))
         
         base_chf = 0.10 * axles * tariff_dist_km
-        table_details = f"bənd 3.7.2 (0.10 CHF × {int(axles)} ox × {tariff_dist_km} km)"
-        weight_display = "0 t (təmirə/təmirdən)" if lang_upper == "AZ" else "0 т (в/из ремонта)"
+        table_details = f"{sec_word} 3.7.2 (0.10 CHF × {int(axles)} {axle_word} × {tariff_dist_km} km)"
+        weight_display = "0 t (təmirə/təmirdən)" if lang_upper == "AZ" else ("0 т (в/из ремонта)" if lang_upper == "RU" else "0 t (to/from repair)")
         billable_weight = 0.0
 
     # 3.7.8: Перегонка порожних транспортеров по количеству осей
@@ -426,8 +496,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             rate_per_axle_km = 0.40
 
         base_chf = rate_per_axle_km * axles * tariff_dist_km
-        table_details = f"bənd 3.7.8 ({rate_per_axle_km:.2f} CHF × {int(axles)} ox × {tariff_dist_km} km)"
-        weight_display = f"0 t (boş {int(axles)}-oxlu transportyor)"
+        table_details = f"{sec_word} 3.7.8 ({rate_per_axle_km:.2f} CHF × {int(axles)} {axle_word} × {tariff_dist_km} km)"
+        weight_display = f"0 t (boş {int(axles)}-oxlu transportyor)" if lang_upper == "AZ" else (f"0 т (порожний {int(axles)}-осный транспортер)" if lang_upper == "RU" else f"0 t (empty {int(axles)}-axle transporter)")
         billable_weight = 0.0
 
     # 3.7.1: Перевозка на своих осях (коэф 0.50 к универсальному вагону от фактического веса, мин 10т)
@@ -442,8 +512,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
 
         base_chf *= 0.50
-        table_details = f"bənd 3.7.1 (универсальный вагон × 0.50)"
-        weight_display = f"{int(act_weight if act_weight > 0 else 10)} t (öz oxları üzərində)" if lang_upper == "AZ" else f"{int(act_weight if act_weight > 0 else 10)} т (на своих осях)"
+        u_wagon_str = "universal vaqon" if lang_upper == "AZ" else ("универсальный вагон" if lang_upper == "RU" else "universal wagon")
+        table_details = f"{sec_word} 3.7.1 ({u_wagon_str} × 0.50)"
+        weight_display = f"{int(act_weight if act_weight > 0 else 10)} t (öz oxları üzərində)" if lang_upper == "AZ" else (f"{int(act_weight if act_weight > 0 else 10)} т (на своих осях)" if lang_upper == "RU" else f"{int(act_weight if act_weight > 0 else 10)} t (on own axles)")
 
     # Инвентарный порожний вагон МПС -> Бесплатно (п. 3.1.1)
     elif is_empty_wagon and park_type == "MPS" and not is_cover_wagon:
@@ -455,7 +526,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         return {
             "part1": {
                 "route": route_display, "shipment_type": shipment_type_display, "distance": dist_display,
-                "cargo_and_wagon": "Boş MPS vaqon / Порожний вагон МПС", "weight_info": "0 t", "period": f"{year}"
+                "cargo_and_wagon": "Boş MPS vaqon / Порожний вагон МПС" if lang_upper != "EN" else "Empty MPS wagon",
+                "weight_info": "0 t", "period": f"{year}"
             },
             "part2": {
                 "exchange_rate": "0.79 CHF/USD", "base_tariff": "0.00 CHF", "coefficients": []
@@ -476,8 +548,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         
         cover_rate = 0.30 if park_type == "SPS" else 0.35
         base_chf = cover_rate * axles * actual_dist_km
-        table_details = f"bənd 3.6.3 ({cover_rate} CHF × {int(axles)} ox × {actual_dist_km} km)"
-        weight_display = "0 t (qoruyucu)" if lang_upper == "AZ" else "0 т (прикрытие)"
+        table_details = f"{sec_word} 3.6.3 ({cover_rate} CHF × {int(axles)} {axle_word} × {actual_dist_km} km)"
+        weight_display = "0 t (qoruyucu)" if lang_upper == "AZ" else ("0 т (прикрытие)" if lang_upper == "RU" else "0 t (guard wagon)")
         billable_weight = 0.0
 
     elif is_empty_wagon and clean_gng in EMPTY_SPS_CODES and not is_table_5_object and "container" not in wagon_type:
@@ -485,12 +557,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         is_per_wagon = True
         axles = float(nlu_data.get("axles_count") or 4)
         base_chf = 0.10 * axles * tariff_dist_km
-        table_details = f"bənd 3.2.2 (0.10 CHF × {int(axles)} ox × {tariff_dist_km} km)"
-        weight_display = "0 t (boş)" if lang_upper == "AZ" else "0 т (порожний)"
+        table_details = f"{sec_word} 3.2.2 (0.10 CHF × {int(axles)} {axle_word} × {tariff_dist_km} km)"
+        weight_display = "0 t (boş)" if lang_upper == "AZ" else ("0 т (порожний)" if lang_upper == "RU" else "0 t (empty)")
         billable_weight = 0.0
 
     else:
-        is_danger, _, _ = check_dangerous_goods_rule(gng, user_input_raw, wagon_type)
+        is_danger, _, _ = check_dangerous_goods_rule(gng, user_input_raw, wagon_type, lang_upper)
         is_tanker_type = any(k in wagon_type for k in ["cistern", "цистерн", "tank", "çən", "bunker", "бункер"]) and "container" not in wagon_type
         oversize_group = detect_oversize_group(nlu_data, user_input_raw)
 
@@ -499,7 +571,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             billable_weight = max(10.0, act_weight)
             res_t11 = calculate_table_11_tariff(tariff_dist_km, billable_weight, oversize_group)
             base_chf = res_t11["base_chf"]
-            table_details = f"Cədvəl 11 ({res_t11['column_info']})"
+            tbl_word = "Cədvəl" if lang_upper == "AZ" else ("Таблица" if lang_upper == "RU" else "Table")
+            table_details = f"{tbl_word} 11 ({res_t11['column_info']})"
             is_per_wagon = (res_t11["rate_type"] == "per_wagon")
 
         else:
@@ -596,16 +669,17 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         bill_w_str = f"{int(billable_weight) if billable_weight.is_integer() else billable_weight}"
 
         if act_weight < billable_weight:
-            weight_display = f"{act_w_str} t (min. {bill_w_str} t)"
+            weight_display = f"{act_w_str} t (min. {bill_w_str} t)" if lang_upper != "RU" else f"{act_w_str} т (мин. {bill_w_str} т)"
         else:
-            weight_display = f"{act_w_str} t"
+            weight_display = f"{act_w_str} t" if lang_upper != "RU" else f"{act_w_str} т"
 
         if base_chf is None:
             base_chf = 1200.0
-            table_details = "Таблица 3 (базовая)"
+            tbl_word = "Cədvəl" if lang_upper == "AZ" else ("Таблица" if lang_upper == "RU" else "Table")
+            table_details = f"{tbl_word} 3 (baza)" if lang_upper == "AZ" else (f"{tbl_word} 3 (базовая)" if lang_upper == "RU" else f"{tbl_word} 3 (base)")
 
     unit_str = ui_t.get("unit_wagon", "USD/vaqon") if is_per_wagon else ui_t.get("unit_ton", "USD/t")
-    chf_unit = "CHF/вагон" if (is_per_wagon and lang_upper == "RU") else ("CHF/vaqon" if is_per_wagon else ("CHF/т" if lang_upper == "RU" else "CHF/t"))
+    chf_unit = "CHF/вагон" if (is_per_wagon and lang_upper == "RU") else ("CHF/vaqon" if is_per_wagon else ("CHF/т" if lang_upper == "RU" else ("CHF/wagon" if is_per_wagon else "CHF/t")))
 
     base_tariff_display = f"**{base_chf:.2f} {chf_unit}** ({table_details})"
     usd_rate, exchange_display = get_currency_rate(nlu_data.get("requested_period"), lang_upper)
@@ -632,7 +706,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         cons_note = (
             "Yığma göndərmə üçün minimum hesablaşma çəkisi norması tətbiq olunmuşdur (bənd 3.8)."
             if lang_upper == "AZ" else
-            "Для сборной отправки применена минимальная норма расчётного веса (п. 3.8)."
+            ("Для сборной отправки применена минимальная норма расчётного веса (п. 3.8)." if lang_upper == "RU" else
+             "Minimum billable weight norm applied for consolidated shipment (clause 3.8).")
         )
         notes.insert(0, cons_note)
 
@@ -640,7 +715,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         weight_note = (
             f"Minimum hesablama çəkisi norması {int(billable_weight)} ton tətbiq olunmuşdur."
             if lang_upper == "AZ" else
-            f"Применена минимальная норма расчётного веса {int(billable_weight)} тонн."
+            (f"Применена минимальная норма расчётного веса {int(billable_weight)} тонн." if lang_upper == "RU" else
+             f"Minimum billable weight norm {int(billable_weight)} tons applied.")
         )
         notes.insert(0, weight_note)
 
@@ -657,43 +733,43 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
 
     if table_num == 3.9:
-        wagon_disp_name = "Tepluşka (vaqon müşayiəti)" if lang_upper == "AZ" else "Теплушка (вагон сопровождения)"
+        wagon_disp_name = "Tepluşka (vaqon müşayiəti)" if lang_upper == "AZ" else ("Теплушка (вагон сопровождения)" if lang_upper == "RU" else "Teplushka (escort wagon)")
     elif table_num == 3.91:
-        wagon_disp_name = "Yük müşayiəti (bələdçi)" if lang_upper == "AZ" else "Сопровождение груза (проводники)"
+        wagon_disp_name = "Yük müşayiəti (bələdçi)" if lang_upper == "AZ" else ("Сопровождение груза (проводники)" if lang_upper == "RU" else "Cargo escort (attendants)")
     elif is_own_axles:
-        wagon_disp_name = "Öz oxları üzərində" if lang_upper == "AZ" else "На своих осях"
+        wagon_disp_name = "Öz oxları üzərində" if lang_upper == "AZ" else ("На своих осях" if lang_upper == "RU" else "On own axles")
     elif is_cover_wagon:
-        wagon_disp_name = "Qoruyucu vaqon" if lang_upper == "AZ" else "Вагон прикрытия"
+        wagon_disp_name = "Qoruyucu vaqon" if lang_upper == "AZ" else ("Вагон прикрытия" if lang_upper == "RU" else "Guard wagon")
     elif is_empty_wagon and clean_gng in EMPTY_SPS_CODES and not is_table_5_object and table_num == 3.22:
-        wagon_disp_name = "Boş vaqon" if lang_upper == "AZ" else "Порожний вагон"
+        wagon_disp_name = "Boş vaqon" if lang_upper == "AZ" else ("Порожний вагон" if lang_upper == "RU" else "Empty wagon")
     elif table_num == 12:
-        wagon_disp_name = "Təhlükəli yük vaqonu (Cədvəl 12)" if lang_upper == "AZ" else "Вагон с опасным грузом (Таблица 12)"
+        wagon_disp_name = "Təhlükəli yük vaqonu (Cədvəl 12)" if lang_upper == "AZ" else ("Вагон с опасным грузом (Таблица 12)" if lang_upper == "RU" else "Dangerous cargo wagon (Table 12)")
     elif table_num == 10:
-        wagon_disp_name = "Xüsusi/Tank/Ref konteyner (Cədvəl 10)" if lang_upper == "AZ" else "Спец/Танк/Реф контейнер (Таблица 10)"
+        wagon_disp_name = "Xüsusi/Tank/Ref konteyner (Cədvəl 10)" if lang_upper == "AZ" else ("Спец/Танк/Реф контейнер (Таблица 10)" if lang_upper == "RU" else "Special/Tank/Ref container (Table 10)")
     elif table_num == 8:
-        wagon_disp_name = "Konteyner (Cədvəl 8)" if lang_upper == "AZ" else "Контейнер (Таблица 8)"
+        wagon_disp_name = "Konteyner (Cədvəl 8)" if lang_upper == "AZ" else ("Контейнер (Таблица 8)" if lang_upper == "RU" else "Container (Table 8)")
     elif table_num == 11:
-        wagon_disp_name = "Əndazəsiz yük (Cədvəl 11)" if lang_upper == "AZ" else "Негабаритный груз (Таблица 11)"
+        wagon_disp_name = "Əndazəsiz yük (Cədvəl 11)" if lang_upper == "AZ" else ("Негабаритный груз (Таблица 11)" if lang_upper == "RU" else "Oversized cargo (Table 11)")
     elif table_num == 7:
         if any(k in input_lower for k in ["транспортер", "transportyor", "transporter"]) or "transporter" in wagon_type:
-            wagon_disp_name = "Transportyor" if lang_upper == "AZ" else "Транспортер"
+            wagon_disp_name = "Transportyor" if lang_upper == "AZ" else ("Транспортер" if lang_upper == "RU" else "Transporter")
         elif "passenger" in wagon_type or "sərnişin" in wagon_type:
-            wagon_disp_name = "Sərnişin vaqonu" if lang_upper == "AZ" else "Пассажирский вагон"
+            wagon_disp_name = "Sərnişin vaqonu" if lang_upper == "AZ" else ("Пассажирский вагон" if lang_upper == "RU" else "Passenger wagon")
         else:
-            wagon_disp_name = "Xırda göndərmə" if lang_upper == "AZ" else "Малотоннажная отправка"
+            wagon_disp_name = "Xırda göndərmə" if lang_upper == "AZ" else ("Малотоннажная отправка" if lang_upper == "RU" else "Small chunk shipment")
     elif table_num == 6:
-        wagon_disp_name = "Çən vaqonu" if lang_upper == "AZ" else "Вагон-цистерна"
+        wagon_disp_name = "Çən vaqonu" if lang_upper == "AZ" else ("Вагон-цистерна" if lang_upper == "RU" else "Tank wagon")
     elif table_num == 5:
         if any(k in input_lower or k in wagon_type for k in ["avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов"]):
-            wagon_disp_name = "Xüsusi platforma (avtoqatar/qoşqu)" if lang_upper == "AZ" else "Спецплатформа (автопоезд/прицеп)"
+            wagon_disp_name = "Xüsusi platforma (avtoqatar/qoşqu)" if lang_upper == "AZ" else ("Спецплатформа (автопоезд/прицеп)" if lang_upper == "RU" else "Special platform (road train/trailer)")
         else:
-            wagon_disp_name = f"İzotermik vaqon{sec_info}" if lang_upper == "AZ" else f"İzotermik vaqon{sec_info}"
+            wagon_disp_name = f"İzotermik vaqon{sec_info}" if lang_upper == "AZ" else (f"Изотермический вагон{sec_info}" if lang_upper == "RU" else f"Isothermal wagon{sec_info}")
     else:
-        wagon_disp_name = "Universal vaqon" if lang_upper == "AZ" else "Универсальный вагон"
+        wagon_disp_name = "Universal vaqon" if lang_upper == "AZ" else ("Универсальный вагон" if lang_upper == "RU" else "Universal wagon")
 
-    gng_label = "GNG" if lang_upper != "EN" else "NHM"
+    gng_label = "GNG" if lang_upper == "AZ" else ("ГНГ" if lang_upper == "RU" else "NHM")
     cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})" if (cargo_name_nlu and cargo_name_nlu != gng) else (f"{gng_label} {gng}, {wagon_disp_name} ({park_display})" if gng else f"{wagon_disp_name} ({park_display})")
-    period_str = f"{year}-cı fraxt ili" if lang_upper == "AZ" else f"{year} фрахтовый год"
+    period_str = f"{year}-cı fraxt ili" if lang_upper == "AZ" else (f"{year} фрахтовый год" if lang_upper == "RU" else f"{year} freight year")
 
     return {
         "part1": {
