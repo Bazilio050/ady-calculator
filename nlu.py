@@ -13,11 +13,13 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
         "- Always output the exact standard 6-digit ESR code for each station ('origin_esr', 'dest_esr').\n"
         "- Example ESRs: Yalama=545006, Biləcəri/Баладжары=546808, Abşeron=548004, Böyük Kəsik=558701, Bakı-Yük=547105, Astara=554109.\n"
         "- GNG/NHM cargo codes can be any digit length from 2 to 8 digits (e.g., '78', '72', '0207', '8601', '99220000'). ALWAYS output them strictly as strings with leading zeros preserved.\n\n"
-        "SPECIAL SECTION 3.7 & 3.8 INSTRUCTIONS:\n"
+        "SPECIAL SECTION 3.7, 3.8 & 3.9 INSTRUCTIONS:\n"
         "- Movement on own axles (öz oxları üzərində / на своих осях): set 'is_own_axles': true. Keywords: 'öz oxları', 'на своих осях', 'локомотив', 'кран', '8601'-'8606'.\n"
         "- Wagon going to/from repair (təmirə/təmirdən / в ремонт/из ремонта): set 'is_in_repair': true.\n"
         "- Moving within passenger train (sərnişin qatarı / пассажирский поезд): set 'is_passenger_train': true.\n"
-        "- Consolidated cargo (yığma göndərmə / сборный груз): set 'is_consolidated': true.\n\n"
+        "- Consolidated cargo (yığma göndərmə / сборный груз): set 'is_consolidated': true.\n"
+        "- Section 3.9 Escort / Attendants (bələdçi / проводник / водитель): extract integer 'escort_count' (default 0).\n"
+        "- Section 3.9 Teplushka / Escort wagon (tepluşka / теплушка / вагон сопровождения): set 'has_teplushka': true. Determine 'teplushka_type': 'freight_mps' (0.23 CHF/axle-km), 'freight_sps' (0.20 CHF/axle-km), 'passenger_mps' (0.35 CHF/axle-km), 'passenger_sps' (0.30 CHF/axle-km). Default to 'freight_sps'.\n\n"
         "EMPTY WAGON RUN INSTRUCTIONS:\n"
         "- Detect if user input indicates an empty wagon movement or return (keywords: 'boş', 'порожний', 'возврат', 'empty'). Set 'is_empty': true or false.\n"
         "- If 'is_empty' is true and no GNG code is provided, set 'gng_code': \"99220000\" and 'gng_name': \"Yükdən boşaldılmış vaqonlar\" (or translated equivalent).\n"
@@ -40,7 +42,10 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
         '  "is_own_axles": boolean,\n'
         '  "is_in_repair": boolean,\n'
         '  "is_passenger_train": boolean,\n'
-        '  "is_consolidated": boolean\n'
+        '  "is_consolidated": boolean,\n'
+        '  "escort_count": integer or 0,\n'
+        '  "has_teplushka": boolean,\n'
+        '  "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"\n'
         "}\n\n"
         f"USER INPUT:\n{user_input_text}"
     )
@@ -65,6 +70,14 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(site_lang).upper()
     
+    # Дефолтные значения для новых полей пункта 3.9
+    if "escort_count" not in result or result["escort_count"] is None:
+        result["escort_count"] = 0
+    if "has_teplushka" not in result or result["has_teplushka"] is None:
+        result["has_teplushka"] = False
+    if "teplushka_type" not in result or not result["teplushka_type"]:
+        result["teplushka_type"] = "freight_sps"
+
     # 💡 ПОДСТРАХОВКА: Проверка ключевых слов вручную
     input_lower = user_input_text.lower()
     if any(k in input_lower for k in ["boş", "порожн", "empty", "возврат", "qaytar"]):
@@ -77,7 +90,9 @@ def call_gemini_nlu(client, user_input_text, site_lang="AZ"):
         result["is_passenger_train"] = True
     if any(k in input_lower for k in ["yığma", "сборный", "сборная", "consolidated"]):
         result["is_consolidated"] = True
-        
+    if any(k in input_lower for k in ["tepluşka", "теплушка", "вагон сопровождения"]):
+        result["has_teplushka"] = True
+
     return result
 
 
@@ -91,6 +106,8 @@ def validate_nlu_input(nlu_res, lang="AZ"):
     raw_is_empty = nlu_res.get("is_empty")
     is_empty = raw_is_empty.lower() in ["true", "1", "yes"] if isinstance(raw_is_empty, str) else bool(raw_is_empty)
     is_own_axles = bool(nlu_res.get("is_own_axles"))
+    has_teplushka = bool(nlu_res.get("has_teplushka"))
+    escort_count = int(nlu_res.get("escort_count", 0))
 
     if is_empty:
         if not nlu_res.get("gng_code"):
@@ -116,8 +133,8 @@ def validate_nlu_input(nlu_res, lang="AZ"):
             "📍 **Təyinat stansiyası**" if lang_upper == "AZ" else ("📍 **Станция назначения**" if lang_upper == "RU" else "📍 **Destination station**")
         )
     
-    # Для порожнего пробега и движения на своих осях вес НЕ является обязательным полем
-    if not is_empty and not is_own_axles and (not weight or float(weight) <= 0):
+    # Для порожнего пробега, движения на своих осях, проезда проводников или отдельно теплушки вес НЕ является обязательным полем
+    if not is_empty and not is_own_axles and not has_teplushka and escort_count == 0 and (not weight or float(weight) <= 0):
         missing_items.append(
             "⚖️ **Faktiki çəki (tonla)**" if lang_upper == "AZ" else ("⚖️ **Фактический вес (в тоннах)**" if lang_upper == "RU" else "⚖️ **Actual weight in tons**")
         )
@@ -125,7 +142,7 @@ def validate_nlu_input(nlu_res, lang="AZ"):
     gng_str = str(gng).strip() if gng is not None else ""
     cargo_str = str(cargo_name).strip() if cargo_name is not None else ""
 
-    if not gng_str and not cargo_str and not is_own_axles:
+    if not gng_str and not cargo_str and not is_own_axles and not has_teplushka and escort_count == 0:
         missing_items.append(
             "📦 **Yükün adı və ya GNG/NHM kodu**" if lang_upper == "AZ" else ("📦 **Наименование груза или код ГНГ/NHM**" if lang_upper == "RU" else "📦 **Cargo name or GNG/NHM code**")
         )
