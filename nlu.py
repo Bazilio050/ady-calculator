@@ -153,7 +153,7 @@ def validate_nlu_input(nlu_res, lang="AZ"):
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
     Принимает байты аудиозаписи, выполняет транскрибацию и NLU-анализ ж/д терминов 
-    в один проход через мультимодальную модель Gemini.
+    в один проход через модель Gemini.
     """
     prompt = f"""
     You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
@@ -183,7 +183,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.5-flash-lite",
         contents=[audio_part, prompt],
         config=types.GenerateContentConfig(
             response_mime_type="application/json"
