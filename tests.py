@@ -337,6 +337,25 @@ TEST_SUITE = [
             "park_type": "SPS", "is_consolidated": True, "explicit_mode": "import"
         },
         "expected_rate": 38.60
+    },
+    {
+        "name": "36. Ялама -> Апшерон (Проезд 2 проводников, 204км, Импорт — п. 3.9)",
+        "raw_text": "Yalama Abşeron 2 bələdçi idxal 204km",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Abşeron",
+            "escort_count": 2, "explicit_mode": "import"
+        },
+        "expected_rate": 139.44
+    },
+    {
+        "name": "37. Ялама -> Апшерон (Теплушка СПС грузовая, 4 оси, 204км, Импорт — п. 3.9)",
+        "raw_text": "Yalama Abşeron tepluşka SPS 4 ox idxal 204km",
+        "nlu": {
+            "route_from": "Yalama", "route_to": "Abşeron",
+            "has_teplushka": True, "teplushka_type": "freight_sps", "axles_count": 4,
+            "park_type": "SPS", "explicit_mode": "import"
+        },
+        "expected_rate": 316.07
     }
 ]
 
