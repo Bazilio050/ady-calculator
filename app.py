@@ -1,7 +1,8 @@
 import os
 import streamlit as st
 from google import genai
-from nlu import call_gemini_nlu, validate_nlu_input
+from nlu import call_gemini_nlu, call_gemini_audio_nlu, validate_nlu_input
+
 try:
     from engine import process_full_calculation
 except Exception as err:
@@ -529,6 +530,68 @@ user_api_key = os.environ.get("GEMINI_API_KEY", "")
 if not user_api_key and "GEMINI_API_KEY" in st.secrets:
     user_api_key = st.secrets["GEMINI_API_KEY"]
 
+st.markdown("🎙️ **Göləs ilə daxil etmə / Голосовой ввод:**")
+audio_file = st.audio_input("Нажмите на микрофон для записи запроса")
+
+if audio_file:
+    audio_bytes = audio_file.read()
+    mime_type = audio_file.type if hasattr(audio_file, "type") and audio_file.type else "audio/wav"
+    
+    if st.button("🎧 Səsi tanınsın və hesablasın / Распознать и рассчитать голос", type="secondary"):
+        if not user_api_key.strip():
+            st.error(t["api_warning"])
+        else:
+            loader_placeholder = st.empty()
+            loader_placeholder.markdown(f"""
+                <div class="train-track">
+                    <div class="train-emoji">🚂🚃🚃🚃💨</div>
+                </div>
+                <div class="train-loader-text">
+                    ⏳ Səs yazısı tanınır və ADY Policy {selected_year} tarifləri üzrə hesablanır...
+                </div>
+            """, unsafe_allow_html=True)
+
+            try:
+                client = genai.Client(api_key=user_api_key.strip())
+                nlu_res = call_gemini_audio_nlu(client, audio_bytes, mime_type, selected_lang)
+                
+                transcription = nlu_res.get("transcript", "")
+                if transcription:
+                    st.info(f"🗣️ **Распознанная речь:** {transcription}")
+                
+                gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
+                cargo_val = str(nlu_res.get("gng_name") or nlu_res.get("cargo_name") or "").strip()
+
+                is_default_or_empty = (
+                    not gng_val or gng_val in ["00000000", "0000", "0"] or
+                    not cargo_val or "Aşırılan" in cargo_val or "Ümumi" in cargo_val
+                )
+
+                if is_default_or_empty:
+                    nlu_res["gng_code"] = "00000000"
+                    cargo_defaults = {"AZ": "Aşırılan yük", "RU": "Общий / Генеральный груз", "EN": "General cargo"}
+                    localized_cargo = cargo_defaults.get(selected_lang, "Aşırılan yük")
+                    nlu_res["cargo_name"] = localized_cargo
+                    nlu_res["gng_name"] = localized_cargo
+
+                missing = validate_nlu_input(nlu_res, selected_lang)
+                loader_placeholder.empty()
+
+                if missing:
+                    st.session_state.missing_data = missing
+                    st.session_state.calc_result = None
+                else:
+                    st.session_state.missing_data = None
+                    st.session_state.calc_result = process_full_calculation(
+                        nlu_res, transcription or "Голосовой запрос", selected_lang, selected_year, t
+                    )
+                    st.session_state.nlu_res = nlu_res
+                    st.rerun()
+
+            except Exception as e:
+                loader_placeholder.empty()
+                st.error(f"Ошибка распознавания аудио: {str(e)}")
+
 if st.button(t["calc_btn"], type="primary"):
     if not user_input.strip():
         st.warning(t["warning_empty"])
@@ -644,69 +707,3 @@ st.markdown(f"""
         <p class="agt-slogan">BE GLOBAL CONNECTED</p>
     </div>
 """, unsafe_allow_html=True)
-
-# 1. Добавь импорт call_gemini_audio_nlu в начале app.py:
-from nlu import call_gemini_nlu, call_gemini_audio_nlu, validate_nlu_input
-
-# 2. Вставь следующий блок сразу после текстового поля user_input = st.text_area(...):
-
-st.markdown("🎙️ **Göləs ilə daxil etmə / Голосовой ввод:**")
-audio_file = st.audio_input("Нажмите на микрофон для записи запроса")
-
-if audio_file:
-    audio_bytes = audio_file.read()
-    mime_type = audio_file.type if hasattr(audio_file, "type") and audio_file.type else "audio/wav"
-    
-    if st.button("🎧 Səsi tanınsın və hesablasın / Распознать и рассчитать голос", type="secondary"):
-        if not user_api_key.strip():
-            st.error(t["api_warning"])
-        else:
-            loader_placeholder = st.empty()
-            loader_placeholder.markdown(f"""
-                <div class="train-track">
-                    <div class="train-emoji">🚂🚃🚃🚃💨</div>
-                </div>
-                <div class="train-loader-text">
-                    ⏳ Səs yazısı tanınır və ADY Policy {selected_year} tarifləri üzrə hesablanır...
-                </div>
-            """, unsafe_allow_html=True)
-
-            try:
-                client = genai.Client(api_key=user_api_key.strip())
-                nlu_res = call_gemini_audio_nlu(client, audio_bytes, mime_type, selected_lang)
-                
-                transcription = nlu_res.get("transcript", "")
-                if transcription:
-                    st.info(f"🗣️ **Распознанная речь:** {transcription}")
-                
-                gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
-                cargo_val = str(nlu_res.get("gng_name") or nlu_res.get("cargo_name") or "").strip()
-
-                is_default_or_empty = (
-                    not gng_val or gng_val in ["00000000", "0000", "0"] or
-                    not cargo_val or "Aşırılan" in cargo_val or "Ümumi" in cargo_val
-                )
-
-                if is_default_or_empty:
-                    nlu_res["gng_code"] = "00000000"
-                    cargo_defaults = {"AZ": "Aşırılan yük", "RU": "Общий / Генеральный груз", "EN": "General cargo"}
-                    localized_cargo = cargo_defaults.get(selected_lang, "Aşırılan yük")
-                    nlu_res["cargo_name"] = localized_cargo
-                    nlu_res["gng_name"] = localized_cargo
-
-                missing = validate_nlu_input(nlu_res, selected_lang)
-                loader_placeholder.empty()
-
-                if missing:
-                    st.session_state.missing_data = missing
-                    st.session_state.calc_result = None
-                else:
-                    st.session_state.missing_data = None
-                    st.session_state.calc_result = process_full_calculation(
-                        nlu_res, transcription or "Голосовой запрос", selected_lang, selected_year, t
-                    )
-                    st.session_state.nlu_res = nlu_res
-
-            except Exception as e:
-                loader_placeholder.empty()
-                st.error(f"Ошибка распознавания аудио: {str(e)}")
