@@ -115,24 +115,35 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
+    /* Увеличенный массивный блок микрофона под мобильный тач-экран */
     div[data-testid="stAudioInput"] {
         border: 2px solid #ff5500 !important;
-        border-radius: 12px !important;
-        padding: 12px !important;
-        background-color: #0e2a4708 !important;
-        transform: scale(1.01);
-        margin: 10px 0;
+        border-radius: 14px !important;
+        padding: 14px 18px !important;
+        background-color: rgba(255, 85, 0, 0.04) !important;
+        margin: 12px 0 !important;
+        box-shadow: 0 4px 12px rgba(255, 85, 0, 0.08) !important;
     }
     div[data-testid="stAudioInput"] button {
-        width: 50px !important;
-        height: 50px !important;
+        width: 64px !important;
+        height: 64px !important;
+        border-radius: 50% !important;
+        background-color: #ff5500 !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 4px 10px rgba(255, 85, 0, 0.3) !important;
+        transition: transform 0.15s ease, background-color 0.15s ease !important;
+    }
+    div[data-testid="stAudioInput"] button:active {
+        transform: scale(0.92) !important;
+        background-color: #e04b00 !important;
     }
     .audio-limit-note {
-        font-size: 0.82rem;
+        font-size: 0.85rem;
         color: #ff5500;
         font-weight: 600;
-        margin-top: -6px;
-        margin-bottom: 8px;
+        margin-top: -4px;
+        margin-bottom: 10px;
     }
 
     .preview-card {
@@ -213,7 +224,7 @@ UI_TEXT = {
         "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:",
         "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur.",
         "guide_title": "💡 Daxiletmə nümunələri və dəmir yolu terminləri (Açmaq üçün basın)",
-        "audio_note": "⏱️ Maksimum səs yazısı müddəti: 50 saniyə. Danışdıqdan sonra dayandırmaq üçün düyməni yenidən basın."
+        "audio_note": "⏱️ Maksimum səs yazısı müddəti: 30 saniyə. Danışdıqdan sonra dayandırmaq üçün düyməni yenidən basın."
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
@@ -261,7 +272,7 @@ UI_TEXT = {
         "missing_title": "⚠️ Для точного расчета не хватает следующих данных:",
         "footer_owner": "Данный проект принадлежит компании **AGT Cargo**.",
         "guide_title": "💡 Шаблоны запросов и справочник сокращений (Нажмите для просмотра)",
-        "audio_note": "⏱️ Максимальная длительность записи: 50 секунд. По завершении нажмите кнопку повторно."
+        "audio_note": "⏱️ Максимальная длительность записи: 30 секунд. По завершении нажмите кнопку повторно."
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
@@ -309,7 +320,7 @@ UI_TEXT = {
         "missing_title": "⚠️ Required parameters missing:",
         "footer_owner": "This project belongs to **AGT Cargo**.",
         "guide_title": "💡 Quick Templates & Railway Glossary (Click to expand)",
-        "audio_note": "⏱️ Maximum audio length: 50 seconds. Press button again to stop recording when finished."
+        "audio_note": "⏱️ Maximum audio length: 30 seconds. Press button again to stop recording when finished."
     }
 }
 
@@ -632,7 +643,7 @@ st.markdown("🎙️ **Göləs ilə daxil etmə / Голосовой ввод:**
 st.markdown(f"<div class='audio-limit-note'>{t['audio_note']}</div>", unsafe_allow_html=True)
 audio_file = st.audio_input("🔴 Нажмите на микрофон для записи")
 
-MAX_AUDIO_SIZE_MB = 1.0  # Технический лимит 1 МБ (~60 секунд запаса)
+MAX_AUDIO_SIZE_MB = 0.5  # Технический лимит 0.5 МБ (~30 секунд аудио высочайшего качества)
 
 if audio_file:
     audio_bytes = audio_file.read()
@@ -642,7 +653,7 @@ if audio_file:
         file_size_mb = len(audio_bytes) / (1024 * 1024)
         
         if file_size_mb > MAX_AUDIO_SIZE_MB:
-            st.error("🛑 Səs yazısı çox uzundur (50 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın. / Запись превышает 50 секунд! Пожалуйста, повторите кратко.")
+            st.error("🛑 Səs yazısı çox uzundur (30 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın. / Запись превышает 30 секунд! Пожалуйста, повторите кратко.")
         elif not user_api_key.strip():
             st.error(t["api_warning"])
         else:
