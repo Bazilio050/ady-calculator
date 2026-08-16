@@ -31,6 +31,8 @@ if "preview_nlu" not in st.session_state:
     st.session_state.preview_nlu = None
 if "last_processed_audio_hash" not in st.session_state:
     st.session_state.last_processed_audio_hash = None
+if "show_voice_recorder" not in st.session_state:
+    st.session_state.show_voice_recorder = False
 
 # Обновление текста ввода ДО отрисовки st.text_area
 if st.session_state.pending_transcript:
@@ -117,45 +119,14 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* 🔥 ЗАПРЕЩАЕМ STREAMLIT СКЛАДЫВАТЬ КОЛОНКИ НА МОБИЛЬНЫХ УСТРОЙСТВАХ */
-    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stAudioInput"]) {
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        align-items: flex-start !important;
-        gap: 8px !important;
-    }
-
-    /* Настройка пропорций текстового поля и микрофона */
-    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stAudioInput"]) > div[data-testid="column"]:nth-child(1) {
-        flex: 1 1 auto !important;
-        width: 65% !important;
-        min-width: 0 !important;
-    }
-
-    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stAudioInput"]) > div[data-testid="column"]:nth-child(2) {
-        flex: 0 0 auto !important;
-        width: 33% !important;
-        min-width: 110px !important;
-    }
-
-    /* 🔥 ПУТЬ №1: МАКСИМАЛЬНО ЛЕГКИЙ И ПРОЗРАЧНЫЙ БЛОК МИКРОФОНА */
-    div[data-testid="stAudioInput"] {
-        border: none !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        margin-top: 0px !important;
-    }
-
-    /* Стиль самой круглой кнопки микрофона */
-    div[data-testid="stAudioInput"] button {
-        width: 48px !important;
-        height: 48px !important;
-        border-radius: 50% !important;
-        background-color: #ff5500 !important;
-        color: #ffffff !important;
-        border: none !important;
-        box-shadow: 0 3px 10px rgba(255, 85, 0, 0.3) !important;
+    /* Выпадающая панель диктофона */
+    .voice-panel {
+        background: rgba(255, 85, 0, 0.04);
+        border: 2px dashed #ff5500;
+        border-radius: 12px;
+        padding: 12px;
+        margin-top: 10px;
+        margin-bottom: 15px;
     }
 
     .preview-card {
@@ -195,9 +166,11 @@ UI_TEXT = {
         "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili",
         "year_select": "Fraxt ili:", 
         "lang_select": "Dil / Language:", 
-        "input_header": "Daşıma parametrlərini yazın və ya səsləndirin:",
+        "input_header": "Daşıma parametrləri:",
         "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
-        "audio_label": "🎙️ Səsli mesaj",
+        "audio_btn_open": "🎙️ Səsli daxiletmə",
+        "audio_btn_close": "❌ Səsli daxiletməni bağla",
+        "audio_label": "Səs yazısı (Maks 30 san):",
         "audio_limit_error": "🛑 Səs yazısı çox uzundur (30 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın.",
         "stt_loading": "⏳ Səs yazısı tanınır...",
         "preview_title": "🔍 Səs yazısından oxunan parametrlər (Yoxlayın):",
@@ -250,7 +223,9 @@ UI_TEXT = {
         "lang_select": "Язык / Language:", 
         "input_header": "Параметры перевозки:",
         "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
-        "audio_label": "🎙️ Голосовое",
+        "audio_btn_open": "🎙️ Голосовой ввод",
+        "audio_btn_close": "❌ Закрыть голосовой ввод",
+        "audio_label": "Аудиозапись (Макс 30 сек):",
         "audio_limit_error": "🛑 Запись превышает 30 секунд! Пожалуйста, повторите кратко.",
         "stt_loading": "⏳ Распознавание аудиозаписи...",
         "preview_title": "🔍 Параметры из голосового ввода (Проверьте):",
@@ -303,7 +278,9 @@ UI_TEXT = {
         "lang_select": "Language:", 
         "input_header": "Shipment details:",
         "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
-        "audio_label": "🎙️ Voice message",
+        "audio_btn_open": "🎙️ Voice input",
+        "audio_btn_close": "❌ Close voice input",
+        "audio_label": "Voice recording (Max 30 sec):",
         "audio_limit_error": "🛑 Recording exceeds 30 seconds! Please re-record briefly.",
         "stt_loading": "⏳ Transcribing audio...",
         "preview_title": "🔍 Parameters extracted from voice (Check):",
@@ -504,7 +481,7 @@ with st.expander(t["guide_title"]):
             """)
         with tab6:
             st.markdown("""
-            📐 **Шаблон:** `[Откуда] -> [Куда], [автопоезд/прицеп/сцеп >19м], [Вес]т`  
+            📐 **Шаблон:** `[Откуда] -> [Куда], [автопоезд/прицеп/сцеп >19m], [Вес]т`  
             💡 **Пример:** `Ялама – Апшерон, автопоезд, 25т, СПС`  
             ⚙️ **Ключевые слова:** `автопоезд`, `прицеп`, `кузов`, `сцеп 19м`, `ИВ`, `АВ`  
             📌 **Правила:** Автопоезда и прицепы рассчитываются по Таблице 5 (ст. 7/8) (п. 3.3), спецплатформы >19м идет с коэффициентом 1.20 (п. 3.1.2.7).
@@ -633,21 +610,34 @@ with st.expander(t["guide_title"]):
 
 st.markdown(f"**{t['input_header']}**")
 
-# ВЕРСТКА В СТИЛЕ МЕССЕНДЖЕРОВ: ТЕКСТ И ЛЕГКИЙ ПРОЗРАЧНЫЙ МИКРОФОН В ОДНУ СТРОКУ
-text_col, audio_col = st.columns([3.5, 1.5])
+# ТЕКСТОВОЕ ПОЛЕ НА ВСЮ ШИРИНУ
+user_input = st.text_area(
+    "", 
+    height=95, 
+    placeholder=t["input_placeholder"],
+    key="main_input_area",
+    label_visibility="collapsed"
+)
 
-with text_col:
-    user_input = st.text_area(
-        "", 
-        height=100, 
-        placeholder=t["input_placeholder"],
-        key="main_input_area",
-        label_visibility="collapsed"
-    )
+# КНОПКИ В ОДИН РЯД ПОД ТЕКСТОВЫМ ПОЛЕМ
+btn_col1, btn_col2 = st.columns([1, 1])
 
-with audio_col:
+with btn_col1:
+    calc_clicked = st.button(t["calc_btn"], type="primary", use_container_width=True)
+
+with btn_col2:
+    v_btn_label = t["audio_btn_close"] if st.session_state.show_voice_recorder else t["audio_btn_open"]
+    if st.button(v_btn_label, use_container_width=True):
+        st.session_state.show_voice_recorder = not st.session_state.show_voice_recorder
+        st.rerun()
+
+# ВЫПАДАЮЩАЯ ПАНЕЛЬ ДИКТОФОНА (если нажали кнопку "Голосовой ввод")
+audio_file = None
+if st.session_state.show_voice_recorder:
+    st.markdown('<div class="voice-panel">', unsafe_allow_html=True)
     st.markdown(f"**{t['audio_label']}**")
     audio_file = st.audio_input("", label_visibility="collapsed")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Отрисовка Карточки Экспресс-Проверки (если записан голос)
 if st.session_state.preview_nlu:
@@ -717,6 +707,7 @@ if audio_file:
                 st.session_state.missing_data = None
 
                 st.session_state.last_processed_audio_hash = audio_hash
+                st.session_state.show_voice_recorder = False  # Сворачиваем панель после распознавания
                 loader_placeholder.empty()
                 st.rerun()
 
@@ -725,7 +716,7 @@ if audio_file:
                 st.error(f"Error: {str(e)}")
 
 # ЕДИНСТВЕННАЯ ГЛАВНАЯ КНОПКА РАСЧЕТА
-if st.button(t["calc_btn"], type="primary"):
+if calc_clicked:
     current_input = st.session_state.get("main_input_area", user_input)
     if not current_input.strip():
         st.warning(t["warning_empty"])
