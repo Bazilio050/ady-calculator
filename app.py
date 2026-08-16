@@ -117,6 +117,28 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
+    /* Разделитель «ИЛИ» между текстом и голосом */
+    .or-divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        margin: 18px 0;
+        color: #888;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+    .or-divider::before, .or-divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid #444;
+    }
+    .or-divider:not(:empty)::before {
+        margin-right: .5em;
+    }
+    .or-divider:not(:empty)::after {
+        margin-left: .5em;
+    }
+
     div[data-testid="stAudioInput"] {
         border: 2px solid #ff5500 !important;
         border-radius: 14px !important;
@@ -184,8 +206,9 @@ UI_TEXT = {
         "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili",
         "year_select": "Fraxt ili:", 
         "lang_select": "Dil / Language:", 
-        "input_header": "Daşıma parametrlərini daxil edin:",
+        "input_header": "Mətn ilə daxil etmə:",
         "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
+        "or_divider": "VƏ YA SƏS İLƏ DAXİL EDİN",
         "voice_input_header": "🎙️ Səs ilə daxil etmə:",
         "audio_label": "Yazı üçün mikrofona basın",
         "audio_limit_error": "🛑 Səs yazısı çox uzundur (30 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın.",
@@ -239,8 +262,9 @@ UI_TEXT = {
         "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
         "year_select": "Фрахтовый год:", 
         "lang_select": "Язык / Language:", 
-        "input_header": "Введите данные по перевозке:",
+        "input_header": "Ввод текстом:",
         "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
+        "or_divider": "ИЛИ НАДИКТУЙТЕ ГОЛОСОМ",
         "voice_input_header": "🎙️ Голосовой ввод:",
         "audio_label": "Нажмите на микрофон для записи",
         "audio_limit_error": "🛑 Запись превышает 30 секунд! Пожалуйста, повторите кратко.",
@@ -294,8 +318,9 @@ UI_TEXT = {
         "subtitle": "Railway freight tariff calculator for Azerbaijan — {} freight year",
         "year_select": "Freight Year:", 
         "lang_select": "Language:", 
-        "input_header": "Enter shipment details:",
+        "input_header": "Text input:",
         "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
+        "or_divider": "OR RECORD VOICE",
         "voice_input_header": "🎙️ Voice input:",
         "audio_label": "Click microphone to record",
         "audio_limit_error": "🛑 Recording exceeds 30 seconds! Please re-record briefly.",
@@ -626,14 +651,24 @@ with st.expander(t["guide_title"]):
             📌 **Rules:** Attendants: 12 CHF/person per 100 km. Teplushka (empty): 0.20-0.35 CHF/axle-km (clause 3.9). Indexation 1.015 and SPS discount do not apply.
             """)
 
+# Текстовый ввод
+st.markdown(f"**✍️ {t['input_header']}**")
 user_input = st.text_area(
-    t["input_header"], 
-    height=120, 
+    "", 
+    height=100, 
     placeholder=t["input_placeholder"],
     key="main_input_area"
 )
 
-# Отрисовка Карточки Экспресс-Проверки (если она есть)
+# Разделительная полоса «ИЛИ»
+st.markdown(f'<div class="or-divider">{t["or_divider"]}</div>', unsafe_allow_html=True)
+
+# Голосовой ввод
+st.markdown(f"**{t['voice_input_header']}**")
+st.markdown(f"<div class='audio-limit-note'>{t['audio_note']}</div>", unsafe_allow_html=True)
+audio_file = st.audio_input(t["audio_label"])
+
+# Отрисовка Карточки Экспресс-Проверки (показывается только если записали голос)
 if st.session_state.preview_nlu:
     pn = st.session_state.preview_nlu
     route_str = f"{pn.get('origin_name') or '---'} ➔ {pn.get('dest_name') or '---'}"
@@ -661,18 +696,13 @@ user_api_key = os.environ.get("GEMINI_API_KEY", "")
 if not user_api_key and "GEMINI_API_KEY" in st.secrets:
     user_api_key = st.secrets["GEMINI_API_KEY"]
 
-st.markdown(f"**{t['voice_input_header']}**")
-st.markdown(f"<div class='audio-limit-note'>{t['audio_note']}</div>", unsafe_allow_html=True)
-audio_file = st.audio_input(t["audio_label"])
-
 MAX_AUDIO_SIZE_MB = 0.5  # Технический лимит 0.5 МБ (~30 секунд)
 
-# АВТОМАТИЧЕСКАЯ ОБРАБОТКА АУДИО (БЕЗ ДОПОЛНИТЕЛЬНОЙ КНОПКИ)
+# АВТОМАТИЧЕСКАЯ ОБРАБОТКА АУДИО
 if audio_file:
     audio_bytes = audio_file.read()
     audio_hash = hash(audio_bytes)
     
-    # Запускаем обработку, только если этот аудиофайл еще не обрабатывался
     if st.session_state.last_processed_audio_hash != audio_hash:
         mime_type = audio_file.type if hasattr(audio_file, "type") and audio_file.type else "audio/wav"
         file_size_mb = len(audio_bytes) / (1024 * 1024)
@@ -701,7 +731,6 @@ if audio_file:
                     st.session_state.pending_transcript = transcription
                     st.session_state.preview_nlu = nlu_res
 
-                # Мгновенно обнуляем старые результаты расчета при новом голосовом вводе
                 st.session_state.calc_result = None
                 st.session_state.nlu_res = None
                 st.session_state.missing_data = None
@@ -812,13 +841,11 @@ elif st.session_state.calc_result:
     st.markdown(f"#### 📐 {t['sec3_title']}")
     st.code(p3["formula"], language="text")
     
-    # Формируем строки таблицы
     table_rows = [
         f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |",
         f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |"
     ]
     
-    # Строка охраны добавляется ТОЛЬКО если она рассчитана
     if p3.get("guard_rate") is not None:
         table_rows.append(f"| **{t['lbl_guard_express_rate']}** | **{p3['guard_rate']}** |")
 
