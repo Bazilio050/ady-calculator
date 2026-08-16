@@ -128,42 +128,34 @@ st.markdown("""
     /* Настройка пропорций текстового поля и микрофона */
     div[data-testid="stHorizontalBlock"]:has(div[data-testid="stAudioInput"]) > div[data-testid="column"]:nth-child(1) {
         flex: 1 1 auto !important;
-        width: 70% !important;
+        width: 65% !important;
         min-width: 0 !important;
     }
 
     div[data-testid="stHorizontalBlock"]:has(div[data-testid="stAudioInput"]) > div[data-testid="column"]:nth-child(2) {
         flex: 0 0 auto !important;
-        width: 28% !important;
-        min-width: 100px !important;
+        width: 33% !important;
+        min-width: 110px !important;
     }
 
-    /* Компактный стиль микрофона */
+    /* 🔥 ПУТЬ №1: МАКСИМАЛЬНО ЛЕГКИЙ И ПРОЗРАЧНЫЙ БЛОК МИКРОФОНА */
     div[data-testid="stAudioInput"] {
-        border: 2px dashed #ff5500 !important;
-        border-radius: 12px !important;
-        padding: 4px !important;
-        background-color: rgba(255, 85, 0, 0.03) !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
         margin-top: 0px !important;
-        display: flex !important;
-        justify-content: center !important;
     }
+
+    /* Стиль самой круглой кнопки микрофона */
     div[data-testid="stAudioInput"] button {
-        width: 46px !important;
-        height: 46px !important;
+        width: 48px !important;
+        height: 48px !important;
         border-radius: 50% !important;
         background-color: #ff5500 !important;
         color: #ffffff !important;
         border: none !important;
         box-shadow: 0 3px 10px rgba(255, 85, 0, 0.3) !important;
-    }
-
-    .audio-limit-note {
-        font-size: 0.75rem;
-        color: #ff5500;
-        font-weight: 600;
-        margin-top: 2px;
-        text-align: center;
     }
 
     .preview-card {
@@ -249,8 +241,7 @@ UI_TEXT = {
         "table_name": "Cədvəl", 
         "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:",
         "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur.",
-        "guide_title": "💡 Daxiletmə nümunələri və dəmir yolu terminləri (Açmaq üçün basın)",
-        "audio_note": "⏱️ Maks 30 san"
+        "guide_title": "💡 Daxiletmə nümunələri və dəmir yolu terminləri (Açmaq üçün basın)"
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
@@ -303,8 +294,7 @@ UI_TEXT = {
         "table_name": "Таблица", 
         "missing_title": "⚠️ Для точного расчета не хватает следующих данных:",
         "footer_owner": "Данный проект принадлежит компании **AGT Cargo**.",
-        "guide_title": "💡 Шаблоны запросов и справочник сокращений (Нажмите для просмотра)",
-        "audio_note": "⏱️ Макс 30 сек"
+        "guide_title": "💡 Шаблоны запросов и справочник сокращений (Нажмите для просмотра)"
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
@@ -357,8 +347,7 @@ UI_TEXT = {
         "table_name": "Table", 
         "missing_title": "⚠️ Required parameters missing:",
         "footer_owner": "This project belongs to **AGT Cargo**.",
-        "guide_title": "💡 Quick Templates & Railway Glossary (Click to expand)",
-        "audio_note": "⏱️ Max 30 sec"
+        "guide_title": "💡 Quick Templates & Railway Glossary (Click to expand)"
     }
 }
 
@@ -644,7 +633,7 @@ with st.expander(t["guide_title"]):
 
 st.markdown(f"**{t['input_header']}**")
 
-# ВЕРСТКА В СТИЛЕ МЕССЕНДЖЕРОВ: ТЕКСТ И МИКРОФОН СТРОГО В ОДНУ СТРОКУ (И НА ПК, И НА СМАРТФОНАХ)
+# ВЕРСТКА В СТИЛЕ МЕССЕНДЖЕРОВ: ТЕКСТ И ЛЕГКИЙ ПРОЗРАЧНЫЙ МИКРОФОН В ОДНУ СТРОКУ
 text_col, audio_col = st.columns([3.5, 1.5])
 
 with text_col:
@@ -659,7 +648,6 @@ with text_col:
 with audio_col:
     st.markdown(f"**{t['audio_label']}**")
     audio_file = st.audio_input("", label_visibility="collapsed")
-    st.markdown(f"<div class='audio-limit-note'>{t['audio_note']}</div>", unsafe_allow_html=True)
 
 # Отрисовка Карточки Экспресс-Проверки (если записан голос)
 if st.session_state.preview_nlu:
