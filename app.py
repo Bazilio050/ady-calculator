@@ -117,7 +117,6 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* Увеличенный массивный блок микрофона под мобильный тач-экран */
     div[data-testid="stAudioInput"] {
         border: 2px solid #ff5500 !important;
         border-radius: 14px !important;
@@ -187,6 +186,14 @@ UI_TEXT = {
         "lang_select": "Dil / Language:", 
         "input_header": "Daşıma parametrlərini daxil edin:",
         "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
+        "voice_input_header": "🎙️ Səs ilə daxil etmə:",
+        "audio_label": "Yazı üçün mikrofona basın",
+        "audio_limit_error": "🛑 Səs yazısı çox uzundur (30 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın.",
+        "stt_loading": "⏳ Səs yazısı tanınır...",
+        "preview_title": "🔍 Səs yazısından oxunan parametrlər (Yoxlayın):",
+        "wagon_default": "Vaqon",
+        "clarify_needed": "Dəqiqləşdirilməli",
+        "json_expander": "🔍 Gemini NLU JSON (Tanınmanın yoxlanılması üçün)",
         "calc_btn": "🚀 Tarifi hesabla", 
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
         "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...", 
@@ -234,6 +241,14 @@ UI_TEXT = {
         "lang_select": "Язык / Language:", 
         "input_header": "Введите данные по перевозке:",
         "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
+        "voice_input_header": "🎙️ Голосовой ввод:",
+        "audio_label": "Нажмите на микрофон для записи",
+        "audio_limit_error": "🛑 Запись превышает 30 секунд! Пожалуйста, повторите кратко.",
+        "stt_loading": "⏳ Распознавание аудиозаписи...",
+        "preview_title": "🔍 Параметры из голосового ввода (Проверьте):",
+        "wagon_default": "Вагон",
+        "clarify_needed": "Уточнить",
+        "json_expander": "🔍 Gemini NLU JSON (Для проверки распознавания)",
         "calc_btn": "🚀 Рассчитать тариф", 
         "warning_empty": "Пожалуйста, введите условия расчета.",
         "spinner_text": "Считаем тариф согласно Тарифной политике {}...", 
@@ -281,6 +296,14 @@ UI_TEXT = {
         "lang_select": "Language:", 
         "input_header": "Enter shipment details:",
         "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
+        "voice_input_header": "🎙️ Voice input:",
+        "audio_label": "Click microphone to record",
+        "audio_limit_error": "🛑 Recording exceeds 30 seconds! Please re-record briefly.",
+        "stt_loading": "⏳ Transcribing audio...",
+        "preview_title": "🔍 Parameters extracted from voice (Check):",
+        "wagon_default": "Wagon",
+        "clarify_needed": "To be specified",
+        "json_expander": "🔍 Gemini NLU JSON (For recognition check)",
         "calc_btn": "🚀 Calculate Freight Rate", 
         "warning_empty": "Please enter shipment requirements.",
         "spinner_text": "Calculating rates according to Tariff Policy {}...", 
@@ -618,15 +641,15 @@ if st.session_state.preview_nlu:
     gng_name = str(pn.get('gng_name') or '').strip()
     weight = pn.get('weight_tons')
     weight_str = f"{weight} t" if weight else "--- t"
-    wagon_str = f"{pn.get('wagon_type') or 'Vaqon'} ({pn.get('park_type') or 'SPS'})"
+    wagon_str = f"{pn.get('wagon_type') or t['wagon_default']} ({pn.get('park_type') or 'SPS'})"
 
     is_gng_ok = bool(gng_code and gng_code.isdigit() and len(gng_code) >= 2)
     gng_badge_class = "badge-gng-ok" if is_gng_ok else "badge-gng-warn"
-    gng_display = f"GNG: {gng_code} ({gng_name})" if is_gng_ok else f"⚠️ GNG: {gng_code or gng_name or 'Dəqiqləşdirilməli'}"
+    gng_display = f"GNG: {gng_code} ({gng_name})" if is_gng_ok else f"⚠️ GNG: {gng_code or gng_name or t['clarify_needed']}"
 
     st.markdown(f"""
         <div class="preview-card">
-            <div class="preview-title">🔍 Səs yazısından oxunan parametrlər (Yoxlayın):</div>
+            <div class="preview-title">{t['preview_title']}</div>
             <span class="badge badge-route">📍 {route_str}</span>
             <span class="badge {gng_badge_class}">{gng_display}</span>
             <span class="badge badge-weight">⚖️ {weight_str}</span>
@@ -638,9 +661,9 @@ user_api_key = os.environ.get("GEMINI_API_KEY", "")
 if not user_api_key and "GEMINI_API_KEY" in st.secrets:
     user_api_key = st.secrets["GEMINI_API_KEY"]
 
-st.markdown("🎙️ **Göləs ilə daxil etmə / Голосовой ввод:**")
+st.markdown(f"**{t['voice_input_header']}**")
 st.markdown(f"<div class='audio-limit-note'>{t['audio_note']}</div>", unsafe_allow_html=True)
-audio_file = st.audio_input("🔴 Нажмите на микрофон для записи")
+audio_file = st.audio_input(t["audio_label"])
 
 MAX_AUDIO_SIZE_MB = 0.5  # Технический лимит 0.5 МБ (~30 секунд)
 
@@ -655,7 +678,7 @@ if audio_file:
         file_size_mb = len(audio_bytes) / (1024 * 1024)
         
         if file_size_mb > MAX_AUDIO_SIZE_MB:
-            st.error("🛑 Səs yazısı çox uzundur (30 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın. / Запись превышает 30 секунд! Пожалуйста, повторите кратко.")
+            st.error(t["audio_limit_error"])
         elif not user_api_key.strip():
             st.error(t["api_warning"])
         else:
@@ -665,7 +688,7 @@ if audio_file:
                     <div class="train-emoji">🚂🚃🚃🚃💨</div>
                 </div>
                 <div class="train-loader-text">
-                    ⏳ Səs yazısı tanınır...
+                    {t['stt_loading']}
                 </div>
             """, unsafe_allow_html=True)
 
@@ -678,7 +701,7 @@ if audio_file:
                     st.session_state.pending_transcript = transcription
                     st.session_state.preview_nlu = nlu_res
 
-                # 💡 МГНОВЕННО ОБНУЛЯЕМ СТАРАЫЕ РЕЗУЛЬТАТЫ РАСЧЕТА ПРИ НОВОМ ГОЛОСЕ
+                # Мгновенно обнуляем старые результаты расчета при новом голосовом вводе
                 st.session_state.calc_result = None
                 st.session_state.nlu_res = None
                 st.session_state.missing_data = None
@@ -689,7 +712,7 @@ if audio_file:
 
             except Exception as e:
                 loader_placeholder.empty()
-                st.error(f"Ошибка распознавания аудио: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
 # ЕДИНСТВЕННАЯ ГЛАВНАЯ КНОПКА РАСЧЕТА
 if st.button(t["calc_btn"], type="primary"):
@@ -760,7 +783,7 @@ elif st.session_state.calc_result:
     data = st.session_state.calc_result
     st.success(t["success"].format(selected_year))
     
-    with st.expander("🔍 Gemini NLU JSON (Для проверки распознавания)"):
+    with st.expander(t["json_expander"]):
         st.json(st.session_state.nlu_res)
 
     p1, p2, p3 = data["part1"], data["part2"], data["part3"]
