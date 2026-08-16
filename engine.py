@@ -722,7 +722,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     express_rate_str = f"{final_rate * 1.02:.2f} {unit_str}"
 
     # --- РАСЧЕТ СБОРА ЗА ОХРАНУ (Транзит: км * 0.1 AZN / 1.7 + 2%) ---
-    cargo_is_guarded = is_cargo_guarded(gng)
+    # Проверка охраны по 4-значной группе ГНГ (1001), 8-значному коду и исходной строке
+    clean_gng_4 = clean_gng[:4] if len(clean_gng) >= 4 else clean_gng
+    cargo_is_guarded = is_cargo_guarded(clean_gng_4) or is_cargo_guarded(clean_gng) or is_cargo_guarded(gng)
     guard_fee_express_usd = 0.0
 
     if cargo_is_guarded and shipment_type_code == "transit":
