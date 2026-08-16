@@ -32,7 +32,7 @@ if "preview_nlu" not in st.session_state:
 if "last_processed_audio_hash" not in st.session_state:
     st.session_state.last_processed_audio_hash = None
 
-# Безопасное обновление текста ввода ДО отрисовки st.text_area
+# Обновление текста ввода ДО отрисовки st.text_area
 if st.session_state.pending_transcript:
     st.session_state.main_input_area = st.session_state.pending_transcript
     st.session_state.pending_transcript = None
@@ -117,56 +117,31 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* Разделитель «ИЛИ» между текстом и голосом */
-    .or-divider {
-        display: flex;
-        align-items: center;
-        text-align: center;
-        margin: 18px 0;
-        color: #888;
-        font-weight: 700;
-        font-size: 0.85rem;
-    }
-    .or-divider::before, .or-divider::after {
-        content: '';
-        flex: 1;
-        border-bottom: 1px solid #444;
-    }
-    .or-divider:not(:empty)::before {
-        margin-right: .5em;
-    }
-    .or-divider:not(:empty)::after {
-        margin-left: .5em;
-    }
-
+    /* Выравнивание и компактный стиль микрофона */
     div[data-testid="stAudioInput"] {
-        border: 2px solid #ff5500 !important;
-        border-radius: 14px !important;
-        padding: 14px 18px !important;
-        background-color: rgba(255, 85, 0, 0.04) !important;
-        margin: 12px 0 !important;
-        box-shadow: 0 4px 12px rgba(255, 85, 0, 0.08) !important;
+        border: 2px dashed #ff5500 !important;
+        border-radius: 12px !important;
+        padding: 6px !important;
+        background-color: rgba(255, 85, 0, 0.03) !important;
+        margin-top: 2px !important;
+        display: flex !important;
+        justify-content: center !important;
     }
     div[data-testid="stAudioInput"] button {
-        width: 64px !important;
-        height: 64px !important;
+        width: 52px !important;
+        height: 52px !important;
         border-radius: 50% !important;
         background-color: #ff5500 !important;
         color: #ffffff !important;
         border: none !important;
-        box-shadow: 0 4px 10px rgba(255, 85, 0, 0.3) !important;
-        transition: transform 0.15s ease, background-color 0.15s ease !important;
+        box-shadow: 0 3px 10px rgba(255, 85, 0, 0.3) !important;
     }
-    div[data-testid="stAudioInput"] button:active {
-        transform: scale(0.92) !important;
-        background-color: #e04b00 !important;
-    }
+
     .audio-limit-note {
-        font-size: 0.85rem;
+        font-size: 0.78rem;
         color: #ff5500;
         font-weight: 600;
-        margin-top: -4px;
-        margin-bottom: 10px;
+        margin-top: 4px;
     }
 
     .preview-card {
@@ -206,11 +181,9 @@ UI_TEXT = {
         "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili",
         "year_select": "Fraxt ili:", 
         "lang_select": "Dil / Language:", 
-        "input_header": "Mətn ilə daxil etmə:",
+        "input_header": "Daşıma parametrlərini yazın və ya səsləndirin:",
         "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
-        "or_divider": "VƏ YA SƏS İLƏ DAXİL EDİN",
-        "voice_input_header": "🎙️ Səs ilə daxil etmə:",
-        "audio_label": "Yazı üçün mikrofona basın",
+        "audio_label": "🎙️ Səsli mesaj",
         "audio_limit_error": "🛑 Səs yazısı çox uzundur (30 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın.",
         "stt_loading": "⏳ Səs yazısı tanınır...",
         "preview_title": "🔍 Səs yazısından oxunan parametrlər (Yoxlayın):",
@@ -255,18 +228,16 @@ UI_TEXT = {
         "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:",
         "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur.",
         "guide_title": "💡 Daxiletmə nümunələri və dəmir yolu terminləri (Açmaq üçün basın)",
-        "audio_note": "⏱️ Maksimum 30 saniyə. Danışdıqdan sonra dayandırın — mətn avtomatik daxil ediləcək."
+        "audio_note": "⏱️ Maks 30 san"
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
         "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
         "year_select": "Фрахтовый год:", 
         "lang_select": "Язык / Language:", 
-        "input_header": "Ввод текстом:",
+        "input_header": "Параметры перевозки:",
         "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
-        "or_divider": "ИЛИ НАДИКТУЙТЕ ГОЛОСОМ",
-        "voice_input_header": "🎙️ Голосовой ввод:",
-        "audio_label": "Нажмите на микрофон для записи",
+        "audio_label": "🎙️ Голосовое",
         "audio_limit_error": "🛑 Запись превышает 30 секунд! Пожалуйста, повторите кратко.",
         "stt_loading": "⏳ Распознавание аудиозаписи...",
         "preview_title": "🔍 Параметры из голосового ввода (Проверьте):",
@@ -311,18 +282,16 @@ UI_TEXT = {
         "missing_title": "⚠️ Для точного расчета не хватает следующих данных:",
         "footer_owner": "Данный проект принадлежит компании **AGT Cargo**.",
         "guide_title": "💡 Шаблоны запросов и справочник сокращений (Нажмите для просмотра)",
-        "audio_note": "⏱️ Максимум 30 секунд. Нажмите стоп — текст автоматически подставится в поле."
+        "audio_note": "⏱️ Макс 30 сек"
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
         "subtitle": "Railway freight tariff calculator for Azerbaijan — {} freight year",
         "year_select": "Freight Year:", 
         "lang_select": "Language:", 
-        "input_header": "Text input:",
+        "input_header": "Shipment details:",
         "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
-        "or_divider": "OR RECORD VOICE",
-        "voice_input_header": "🎙️ Voice input:",
-        "audio_label": "Click microphone to record",
+        "audio_label": "🎙️ Voice message",
         "audio_limit_error": "🛑 Recording exceeds 30 seconds! Please re-record briefly.",
         "stt_loading": "⏳ Transcribing audio...",
         "preview_title": "🔍 Parameters extracted from voice (Check):",
@@ -367,7 +336,7 @@ UI_TEXT = {
         "missing_title": "⚠️ Required parameters missing:",
         "footer_owner": "This project belongs to **AGT Cargo**.",
         "guide_title": "💡 Quick Templates & Railway Glossary (Click to expand)",
-        "audio_note": "⏱️ Maximum 30 seconds. Stop recording to automatically populate the input field."
+        "audio_note": "⏱️ Max 30 sec"
     }
 }
 
@@ -651,24 +620,26 @@ with st.expander(t["guide_title"]):
             📌 **Rules:** Attendants: 12 CHF/person per 100 km. Teplushka (empty): 0.20-0.35 CHF/axle-km (clause 3.9). Indexation 1.015 and SPS discount do not apply.
             """)
 
-# Текстовый ввод
-st.markdown(f"**✍️ {t['input_header']}**")
-user_input = st.text_area(
-    "", 
-    height=100, 
-    placeholder=t["input_placeholder"],
-    key="main_input_area"
-)
+st.markdown(f"**{t['input_header']}**")
 
-# Разделительная полоса «ИЛИ»
-st.markdown(f'<div class="or-divider">{t["or_divider"]}</div>', unsafe_allow_html=True)
+# ВЕРСТКА В СТИЛЕ МЕССЕНДЖЕРОВ: ТЕКСТ И МИКРОФОН В ОДНОЙ СТРОКЕ
+text_col, audio_col = st.columns([3.5, 1.5])
 
-# Голосовой ввод
-st.markdown(f"**{t['voice_input_header']}**")
-st.markdown(f"<div class='audio-limit-note'>{t['audio_note']}</div>", unsafe_allow_html=True)
-audio_file = st.audio_input(t["audio_label"])
+with text_col:
+    user_input = st.text_area(
+        "", 
+        height=100, 
+        placeholder=t["input_placeholder"],
+        key="main_input_area",
+        label_visibility="collapsed"
+    )
 
-# Отрисовка Карточки Экспресс-Проверки (показывается только если записали голос)
+with audio_col:
+    st.markdown(f"**{t['audio_label']}**")
+    audio_file = st.audio_input("", label_visibility="collapsed")
+    st.markdown(f"<div class='audio-limit-note'>{t['audio_note']}</div>", unsafe_allow_html=True)
+
+# Отрисовка Карточки Экспресс-Проверки (если записан голос)
 if st.session_state.preview_nlu:
     pn = st.session_state.preview_nlu
     route_str = f"{pn.get('origin_name') or '---'} ➔ {pn.get('dest_name') or '---'}"
@@ -696,7 +667,7 @@ user_api_key = os.environ.get("GEMINI_API_KEY", "")
 if not user_api_key and "GEMINI_API_KEY" in st.secrets:
     user_api_key = st.secrets["GEMINI_API_KEY"]
 
-MAX_AUDIO_SIZE_MB = 0.5  # Технический лимит 0.5 МБ (~30 секунд)
+MAX_AUDIO_SIZE_MB = 0.5  # Лимит 0.5 МБ (~30 секунд)
 
 # АВТОМАТИЧЕСКАЯ ОБРАБОТКА АУДИО
 if audio_file:
