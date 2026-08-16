@@ -117,17 +117,34 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* Наглядный блок голосового ввода */
+    /* 🔥 Стиль диктофона: пунктир и большая удобная кнопка записи */
     div[data-testid="stAudioInput"] {
         border: 2px dashed #ff5500 !important;
         border-radius: 12px !important;
-        padding: 8px 12px !important;
-        background-color: rgba(255, 85, 0, 0.03) !important;
+        padding: 10px 14px !important;
+        background-color: rgba(255, 85, 0, 0.04) !important;
         margin-top: 4px !important;
         margin-bottom: 12px !important;
     }
 
-    /* Красивый разделитель "ИЛИ" */
+    /* Увеличиваем кнопку Старт/Стоп записи */
+    div[data-testid="stAudioInput"] button {
+        width: 48px !important;
+        height: 48px !important;
+        border-radius: 50% !important;
+        background-color: #ff5500 !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 3px 10px rgba(255, 85, 0, 0.4) !important;
+    }
+
+    div[data-testid="stAudioInput"] button svg {
+        fill: #ffffff !important;
+        width: 22px !important;
+        height: 22px !important;
+    }
+
+    /* Разделитель "ИЛИ" */
     .or-divider {
         display: flex;
         align-items: center;
@@ -189,7 +206,7 @@ UI_TEXT = {
         "input_header": "Daşıma parametrlərini yazın:",
         "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
         "or_text": "VƏ YA SƏSLƏNDİRİN",
-        "audio_label": "🎙️ Səsli mesaj yazın (Maks 30 san):",
+        "audio_label": "🎙️ Düyməyə basıb danışın (Maks 30 san):",
         "audio_limit_error": "🛑 Səs yazısı çox uzundur (30 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın.",
         "stt_loading": "⏳ Səs yazısı tanınır...",
         "preview_title": "🔍 Səs yazısından oxunan parametrlər (Yoxlayın):",
@@ -243,7 +260,7 @@ UI_TEXT = {
         "input_header": "Введите данные текстом:",
         "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
         "or_text": "ИЛИ НАДИКТУЙТЕ ГОЛОСОМ",
-        "audio_label": "🎙️ Запишите голосовое сообщение (Макс 30 сек):",
+        "audio_label": "🎙️ Нажмите на кнопку для записи (Макс 30 сек):",
         "audio_limit_error": "🛑 Запись превышает 30 секунд! Пожалуйста, повторите кратко.",
         "stt_loading": "⏳ Распознавание аудиозаписи...",
         "preview_title": "🔍 Параметры из голосового ввода (Проверьте):",
@@ -297,7 +314,7 @@ UI_TEXT = {
         "input_header": "Enter details as text:",
         "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
         "or_text": "OR DICTATE BY VOICE",
-        "audio_label": "🎙️ Record voice message (Max 30 sec):",
+        "audio_label": "🎙️ Click button to record (Max 30 sec):",
         "audio_limit_error": "🛑 Recording exceeds 30 seconds! Please re-record briefly.",
         "stt_loading": "⏳ Transcribing audio...",
         "preview_title": "🔍 Parameters extracted from voice (Check):",
@@ -638,7 +655,7 @@ user_input = st.text_area(
 # 2. РАЗДЕЛИТЕЛЬ "ИЛИ"
 st.markdown(f'<div class="or-divider">{t["or_text"]}</div>', unsafe_allow_html=True)
 
-# 3. ГОЛОСОВОЙ ВВОД (Всегда доступный и видимый)
+# 3. ГОЛОСОВОЙ ВВОД (С крупной оранжевой кнопкой микрофона)
 audio_file = st.audio_input(t["audio_label"])
 
 # Отрисовка Карточки Экспресс-Проверки (если записан голос)
