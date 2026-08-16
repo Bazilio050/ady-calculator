@@ -119,14 +119,37 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* Выпадающая панель диктофона */
+    /* 🔥 Зажимаем две главные кнопки в одну строчку ДАЖЕ НА ТЕЛЕФОНЕ */
+    div[data-testid="stHorizontalBlock"]:has(button[kind="primary"]) {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(button[kind="primary"]) > div[data-testid="column"] {
+        width: 50% !important;
+        flex: 1 1 50% !important;
+        min-width: 0 !important;
+    }
+
+    /* 🔥 Стиль панели диктофона с БОЛЬШОЙ ОРАНЖЕВОЙ КНОПКОЙ */
     div[data-testid="stAudioInput"] {
         border: 2px dashed #ff5500 !important;
         border-radius: 12px !important;
-        padding: 10px !important;
-        background-color: rgba(255, 85, 0, 0.03) !important;
-        margin-top: 5px !important;
+        padding: 12px !important;
+        background-color: rgba(255, 85, 0, 0.05) !important;
+        margin-top: 10px !important;
         margin-bottom: 15px !important;
+    }
+
+    /* Делаем кнопку записи круглой, крупной и оранжевой */
+    div[data-testid="stAudioInput"] button {
+        width: 56px !important;
+        height: 56px !important;
+        border-radius: 50% !important;
+        background-color: #ff5500 !important;
+        color: #ffffff !important;
+        border: none !important;
+        box-shadow: 0 4px 12px rgba(255, 85, 0, 0.4) !important;
     }
 
     .preview-card {
@@ -169,8 +192,8 @@ UI_TEXT = {
         "input_header": "Daşıma parametrləri:",
         "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
         "audio_btn_open": "🎙️ Səsli daxiletmə",
-        "audio_btn_close": "❌ Səsli daxiletməni bağla",
-        "audio_label": "🎙️ Mikrofona basaraq danışın (Maks 30 san):",
+        "audio_btn_close": "❌ Bağla",
+        "audio_label": "🎙️ Düyməyə basıb danışın (Maks 30 san):",
         "audio_limit_error": "🛑 Səs yazısı çox uzundur (30 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın.",
         "stt_loading": "⏳ Səs yazısı tanınır...",
         "preview_title": "🔍 Səs yazısından oxunan parametrlər (Yoxlayın):",
@@ -224,8 +247,8 @@ UI_TEXT = {
         "input_header": "Параметры перевозки:",
         "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
         "audio_btn_open": "🎙️ Голосовой ввод",
-        "audio_btn_close": "❌ Закрыть голосовой ввод",
-        "audio_label": "🎙️ Нажмите на микрофон для записи (Макс 30 сек):",
+        "audio_btn_close": "❌ Закрыть",
+        "audio_label": "🎙️ Нажмите на кнопку и говорите (Макс 30 сек):",
         "audio_limit_error": "🛑 Запись превышает 30 секунд! Пожалуйста, повторите кратко.",
         "stt_loading": "⏳ Распознавание аудиозаписи...",
         "preview_title": "🔍 Параметры из голосового ввода (Проверьте):",
@@ -279,8 +302,8 @@ UI_TEXT = {
         "input_header": "Shipment details:",
         "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
         "audio_btn_open": "🎙️ Voice input",
-        "audio_btn_close": "❌ Close voice input",
-        "audio_label": "🎙️ Click microphone to record (Max 30 sec):",
+        "audio_btn_close": "❌ Close",
+        "audio_label": "🎙️ Press button to record (Max 30 sec):",
         "audio_limit_error": "🛑 Recording exceeds 30 seconds! Please re-record briefly.",
         "stt_loading": "⏳ Transcribing audio...",
         "preview_title": "🔍 Parameters extracted from voice (Check):",
@@ -619,7 +642,7 @@ user_input = st.text_area(
     label_visibility="collapsed"
 )
 
-# КНОПКИ В ОДИН РЯД ПОД ТЕКСТОВЫМ ПОЛЕМ
+# 🔥 КНОПКИ В ОДИН РЯД И НА СМАРТФОНАХ, И НА ПК
 btn_col1, btn_col2 = st.columns([1, 1])
 
 with btn_col1:
@@ -631,7 +654,7 @@ with btn_col2:
         st.session_state.show_voice_recorder = not st.session_state.show_voice_recorder
         st.rerun()
 
-# ВЫПАДАЮЩАЯ ПАНЕЛЬ ДИКТОФОНА
+# ВЫПАДАЮЩАЯ ПАНЕЛЬ ДИКТОФОНА (с яркой оранжевой кнопкой микрофона)
 audio_file = None
 if st.session_state.show_voice_recorder:
     audio_file = st.audio_input(t["audio_label"])
