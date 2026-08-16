@@ -377,6 +377,10 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     clean_gng = format_clean_gng(gng)
     cargo_name_nlu = str(nlu_data.get("gng_name") or nlu_data.get("cargo_name") or "").strip()
 
+    # Если в gng_name ошибочно сохранились типы вагонов, очищаем
+    if any(w in cargo_name_nlu.lower() for w in ["qapalı vaqon", "крытый вагон", "полувагон", "платформа"]):
+        cargo_name_nlu = "Buğda" if gng == "1001" else ""
+
     act_weight = float(nlu_data.get("weight_tons") or nlu_data.get("actual_weight_tons") or 0.0)
     park_type = str(nlu_data.get("park_type", "SPS") or "SPS").upper()
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
@@ -801,7 +805,13 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         wagon_disp_name = "Universal vaqon" if lang_upper == "AZ" else ("Универсальный вагон" if lang_upper == "RU" else "Universal wagon")
 
     gng_label = "GNG" if lang_upper == "AZ" else ("ГНГ" if lang_upper == "RU" else "NHM")
-    cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})" if (cargo_name_nlu and cargo_name_nlu != gng) else (f"{gng_label} {gng}, {wagon_disp_name} ({park_display})" if gng else f"{wagon_disp_name} ({park_display})")
+
+    # Корректно формируем строку Yük / Vəziyyət без дублирования типов вагонов
+    if cargo_name_nlu and cargo_name_nlu.lower() != wagon_disp_name.lower():
+        cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})"
+    else:
+        cargo_wagon_display = f"{gng_label} {gng}, {wagon_disp_name} ({park_display})" if gng else f"{wagon_disp_name} ({park_display})"
+
     period_str = f"{year}-cı fraxt ili" if lang_upper == "AZ" else (f"{year} фрахтовый год" if lang_upper == "RU" else f"{year} freight year")
 
     return {
