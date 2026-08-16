@@ -17,7 +17,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 
     CRITICAL RULES FOR GNG & ESR CODES:
     - ALWAYS extract any cargo numeric code into 'gng_code' (e.g. if query contains "4407" or "GNG 4407", set 'gng_code': "4407").
-    - Never put text descriptions into 'gng_code'!
+    - NEVER put text descriptions into 'gng_code'! Keep 'gng_code' STRICTLY NUMERIC.
     - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
 
     EXPECTED JSON STRUCTURE:
@@ -67,6 +67,10 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(lang).upper()
+
+    # Жесткая очистка gng_code до чистых цифр
+    if "gng_code" in result and result["gng_code"]:
+        result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
 
     # Защита полей
     if "escort_count" not in result or result["escort_count"] is None:
@@ -152,6 +156,10 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
 
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(lang).upper()
+
+    # Жесткая очистка gng_code до чистых цифр
+    if "gng_code" in result and result["gng_code"]:
+        result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
 
     if "escort_count" not in result or result["escort_count"] is None:
         result["escort_count"] = 0
