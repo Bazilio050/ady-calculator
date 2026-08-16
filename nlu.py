@@ -1,6 +1,7 @@
 import json
 import re
 from google.genai import types
+from rail_glossary import get_rail_vocabulary
 
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
@@ -8,16 +9,21 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
+    rail_vocab = get_rail_vocabulary()
 
     prompt = f"""
     You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
     Analyze the user text query containing a freight shipment request.
+
+    ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
+    {rail_vocab}
 
     Extract parameters into a JSON object matching the schema below.
 
     CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
     - ALWAYS extract any cargo numeric code into 'gng_code' (e.g. if query contains "1001" or "GNG 1001", set 'gng_code': "1001").
     - NEVER put text descriptions or wagon terms into 'gng_code'! Keep 'gng_code' STRICTLY NUMERIC.
+    - STRICT PRIORITY RULE FOR GNG: The abbreviation 'GNG', 'NHM' or 'ГНГ' followed by numbers represents strictly a cargo nomenclature code. It is STRICTLY FORBIDDEN to interpret 'GNG' as the city of Ganja (Gəncə) or any other similar-sounding word.
     - TERMS LIKE "qapalı vaqon", "крытый вагон", "полувагон", "платформа", "цистерна", "çən", "cistern" ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
     - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
     - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
@@ -98,10 +104,14 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
+    rail_vocab = get_rail_vocabulary()
 
     prompt = f"""
     You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
     Listen carefully to the audio input containing a freight shipment request.
+
+    ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
+    {rail_vocab}
 
     Tasks:
     1. Transcribe the spoken text accurately into the 'transcript' field.
@@ -109,6 +119,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
 
     CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
     - ALWAYS extract any spoken cargo numeric code into 'gng_code' (e.g. if user says "1001" or "GNG 1001", set 'gng_code': "1001"). Never put text descriptions into 'gng_code'!
+    - STRICT PRIORITY RULE FOR GNG: Spoken 'GNG', 'NHM' or 'ГНГ' followed by numbers represents strictly a cargo nomenclature code. It is STRICTLY FORBIDDEN to interpret 'GNG' as the city of Ganja (Gəncə) or any other similar-sounding word.
     - TERMS LIKE "qapalı vaqon", "крытый вагон", "полувагон", "платформа", "цистерна", "çən", "cistern" ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
     - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
     - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
