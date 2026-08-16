@@ -120,13 +120,13 @@ st.markdown("""
     }
 
     /* Выпадающая панель диктофона */
-    .voice-panel {
-        background: rgba(255, 85, 0, 0.04);
-        border: 2px dashed #ff5500;
-        border-radius: 12px;
-        padding: 12px;
-        margin-top: 10px;
-        margin-bottom: 15px;
+    div[data-testid="stAudioInput"] {
+        border: 2px dashed #ff5500 !important;
+        border-radius: 12px !important;
+        padding: 10px !important;
+        background-color: rgba(255, 85, 0, 0.03) !important;
+        margin-top: 5px !important;
+        margin-bottom: 15px !important;
     }
 
     .preview-card {
@@ -170,7 +170,7 @@ UI_TEXT = {
         "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
         "audio_btn_open": "🎙️ Səsli daxiletmə",
         "audio_btn_close": "❌ Səsli daxiletməni bağla",
-        "audio_label": "Səs yazısı (Maks 30 san):",
+        "audio_label": "🎙️ Mikrofona basaraq danışın (Maks 30 san):",
         "audio_limit_error": "🛑 Səs yazısı çox uzundur (30 saniyədən çoxdur)! Lütfən, sorğunu daha qısa şəkildə yenidən yazın.",
         "stt_loading": "⏳ Səs yazısı tanınır...",
         "preview_title": "🔍 Səs yazısından oxunan parametrlər (Yoxlayın):",
@@ -225,7 +225,7 @@ UI_TEXT = {
         "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
         "audio_btn_open": "🎙️ Голосовой ввод",
         "audio_btn_close": "❌ Закрыть голосовой ввод",
-        "audio_label": "Аудиозапись (Макс 30 сек):",
+        "audio_label": "🎙️ Нажмите на микрофон для записи (Макс 30 сек):",
         "audio_limit_error": "🛑 Запись превышает 30 секунд! Пожалуйста, повторите кратко.",
         "stt_loading": "⏳ Распознавание аудиозаписи...",
         "preview_title": "🔍 Параметры из голосового ввода (Проверьте):",
@@ -280,7 +280,7 @@ UI_TEXT = {
         "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
         "audio_btn_open": "🎙️ Voice input",
         "audio_btn_close": "❌ Close voice input",
-        "audio_label": "Voice recording (Max 30 sec):",
+        "audio_label": "🎙️ Click microphone to record (Max 30 sec):",
         "audio_limit_error": "🛑 Recording exceeds 30 seconds! Please re-record briefly.",
         "stt_loading": "⏳ Transcribing audio...",
         "preview_title": "🔍 Parameters extracted from voice (Check):",
@@ -481,7 +481,7 @@ with st.expander(t["guide_title"]):
             """)
         with tab6:
             st.markdown("""
-            📐 **Шаблон:** `[Откуда] -> [Куда], [автопоезд/прицеп/сцеп >19m], [Вес]т`  
+            📐 **Шаблон:** `[Откуда] -> [Куда], [автопоезд/прицеп/сцеп >19м], [Вес]т`  
             💡 **Пример:** `Ялама – Апшерон, автопоезд, 25т, СПС`  
             ⚙️ **Ключевые слова:** `автопоезд`, `прицеп`, `кузов`, `сцеп 19м`, `ИВ`, `АВ`  
             📌 **Правила:** Автопоезда и прицепы рассчитываются по Таблице 5 (ст. 7/8) (п. 3.3), спецплатформы >19м идет с коэффициентом 1.20 (п. 3.1.2.7).
@@ -631,13 +631,10 @@ with btn_col2:
         st.session_state.show_voice_recorder = not st.session_state.show_voice_recorder
         st.rerun()
 
-# ВЫПАДАЮЩАЯ ПАНЕЛЬ ДИКТОФОНА (если нажали кнопку "Голосовой ввод")
+# ВЫПАДАЮЩАЯ ПАНЕЛЬ ДИКТОФОНА
 audio_file = None
 if st.session_state.show_voice_recorder:
-    st.markdown('<div class="voice-panel">', unsafe_allow_html=True)
-    st.markdown(f"**{t['audio_label']}**")
-    audio_file = st.audio_input("", label_visibility="collapsed")
-    st.markdown('</div>', unsafe_allow_html=True)
+    audio_file = st.audio_input(t["audio_label"])
 
 # Отрисовка Карточки Экспресс-Проверки (если записан голос)
 if st.session_state.preview_nlu:
@@ -707,7 +704,7 @@ if audio_file:
                 st.session_state.missing_data = None
 
                 st.session_state.last_processed_audio_hash = audio_hash
-                st.session_state.show_voice_recorder = False  # Сворачиваем панель после распознавания
+                st.session_state.show_voice_recorder = False  # Автоматически сворачиваем панель после распознавания
                 loader_placeholder.empty()
                 st.rerun()
 
