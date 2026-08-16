@@ -15,9 +15,11 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 
     Extract parameters into a JSON object matching the schema below.
 
-    CRITICAL RULES FOR GNG & ESR CODES:
-    - ALWAYS extract any cargo numeric code into 'gng_code' (e.g. if query contains "4407" or "GNG 4407", set 'gng_code': "4407").
-    - NEVER put text descriptions into 'gng_code'! Keep 'gng_code' STRICTLY NUMERIC.
+    CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
+    - ALWAYS extract any cargo numeric code into 'gng_code' (e.g. if query contains "1001" or "GNG 1001", set 'gng_code': "1001").
+    - NEVER put text descriptions or wagon terms into 'gng_code'! Keep 'gng_code' STRICTLY NUMERIC.
+    - TERMS LIKE "qapalı vaqon", "крытый вагон", "полувагон", "платформа", "цистерна", "çən", "cistern" ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
+    - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda (Zəli)".
     - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
 
     EXPECTED JSON STRUCTURE:
@@ -26,7 +28,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
       "origin_name": "Station name in {target_lang}",
       "dest_esr": "6-digit ESR string or null",
       "dest_name": "Station name in {target_lang}",
-      "gng_code": "Numeric GNG code string only (e.g., '4407', '2713') or null",
+      "gng_code": "Numeric GNG code string only (e.g., '1001', '4407') or null",
       "gng_name": "Cargo name in {target_lang}",
       "weight_tons": float or null,
       "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
@@ -68,11 +70,17 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(lang).upper()
 
-    # Жесткая очистка gng_code до чистых цифр
+    # Извлекаем строго цифры в gng_code
     if "gng_code" in result and result["gng_code"]:
         result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
 
-    # Защита полей
+    # Если gng_name случайно получил названия типов вагонов, очищаем его
+    wagon_words = ["qapalı vaqon", "крытый вагон", "крытый", "qapalı", "полувагон", "платформа"]
+    if "gng_name" in result and result["gng_name"]:
+        if any(w in str(result["gng_name"]).lower() for w in wagon_words):
+            result["gng_name"] = "Buğda" if result.get("gng_code") == "1001" else ""
+
+    # Защита базовых полей
     if "escort_count" not in result or result["escort_count"] is None:
         result["escort_count"] = 0
     if "has_teplushka" not in result or result["has_teplushka"] is None:
@@ -102,9 +110,10 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     1. Transcribe the spoken text accurately into the 'transcript' field.
     2. Extract shipment parameters into a JSON object matching the schema below.
 
-    CRITICAL RULES FOR GNG & ESR CODES:
-    - ALWAYS extract any spoken cargo numeric code into 'gng_code' (e.g. if user says "4407" or "GNG 4407", set 'gng_code': "4407"). Never put text descriptions into 'gng_code'!
-    - If user speaks numbers phonetically or with noise (e.g. "sorğu 07" for 4407), do your best to extract the numeric GNG code.
+    CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
+    - ALWAYS extract any spoken cargo numeric code into 'gng_code' (e.g. if user says "1001" or "GNG 1001", set 'gng_code': "1001"). Never put text descriptions into 'gng_code'!
+    - TERMS LIKE "qapalı vaqon", "крытый вагон", "полувагон", "платформа", "цистерна", "çən", "cistern" ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
+    - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda (Zəli)".
     - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
 
     EXPECTED JSON STRUCTURE:
@@ -114,7 +123,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
       "origin_name": "Station name in {target_lang}",
       "dest_esr": "6-digit ESR string or null",
       "dest_name": "Station name in {target_lang}",
-      "gng_code": "Numeric GNG code string only (e.g., '4407', '2713') or null",
+      "gng_code": "Numeric GNG code string only (e.g., '1001', '2713') or null",
       "gng_name": "Cargo name in {target_lang}",
       "weight_tons": float or null,
       "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
@@ -151,42 +160,4 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
         raw_text = raw_text[7:]
     elif raw_text.startswith("```"):
         raw_text = raw_text[3:]
-    if raw_text.endswith("```"):
-        raw_text = raw_text[:-3]
-
-    result = json.loads(raw_text.strip())
-    result["site_lang"] = str(lang).upper()
-
-    # Жесткая очистка gng_code до чистых цифр
-    if "gng_code" in result and result["gng_code"]:
-        result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
-
-    if "escort_count" not in result or result["escort_count"] is None:
-        result["escort_count"] = 0
-    if "has_teplushka" not in result or result["has_teplushka"] is None:
-        result["has_teplushka"] = False
-    if "teplushka_type" not in result or not result["teplushka_type"]:
-        result["teplushka_type"] = "freight_sps"
-    if "is_empty" not in result or result["is_empty"] is None:
-        result["is_empty"] = False
-    if "is_own_axles" not in result or result["is_own_axles"] is None:
-        result["is_own_axles"] = False
-
-    return result
-
-
-def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
-    """
-    Проверяет минимально необходимые данные для расчета.
-    """
-    missing = []
-    
-    origin = nlu_data.get("origin_name") or nlu_data.get("origin_esr")
-    dest = nlu_data.get("dest_name") or nlu_data.get("dest_esr")
-    
-    if not origin:
-        missing.append("Məlumat yoxdur: Göndərmə stansiyası" if lang == "AZ" else "Отсутствует станция отправления")
-    if not dest:
-        missing.append("Məlumat yoxdur: Təyinat stansiyası" if lang == "AZ" else "Отсутствует станция назначения")
-        
-    return missing
+    if raw_text.endswith("
