@@ -32,8 +32,18 @@ EMPTY_SPS_CODES = ["99210000", "99213000", "99220000", "99223000"]
 OWN_AXLE_GNG_CODES = ["8601", "8602", "8603", "8604", "8605", "8606", "99211000", "99212000", "99214000", "99221000", "99222000", "99224000"]
 
 
+def format_clean_gng(gng_code: str) -> str:
+    """Корректно форматирует код ГНГ: дополняет нулями СПРАВА до 8 цифр."""
+    digits = re.sub(r'\D', '', str(gng_code or ""))
+    if not digits:
+        return ""
+    if len(digits) < 8:
+        return digits.ljust(8, '0')
+    return digits[:8]
+
+
 def check_dangerous_goods_rule(gng_code: str, user_input_raw: str, wagon_type: str, lang: str = "AZ") -> tuple:
-    clean_gng = re.sub(r'\D', '', str(gng_code or "")).zfill(8)
+    clean_gng = format_clean_gng(gng_code)
     inp = str(user_input_raw or "").lower()
     w_type = str(wagon_type or "").lower()
     lang_upper = str(lang or "AZ").upper()
@@ -130,7 +140,7 @@ def apply_special_exceptions(
 
     park_type = str(nlu_data.get("park_type", "SPS") or "SPS").upper()
     gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
-    clean_gng = re.sub(r'\D', '', gng).zfill(8)
+    clean_gng = format_clean_gng(gng)
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
     
     if not origin_esr:
@@ -362,7 +372,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     dest_esr = resolve_esr_by_station_name(st_to_raw) or str(nlu_data.get("dest_esr") or "")
 
     gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
-    clean_gng = re.sub(r'\D', '', gng).zfill(8)
+    clean_gng = format_clean_gng(gng)
     cargo_name_nlu = str(nlu_data.get("gng_name") or nlu_data.get("cargo_name") or "").strip()
 
     act_weight = float(nlu_data.get("weight_tons") or nlu_data.get("actual_weight_tons") or 0.0)
@@ -725,7 +735,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     gng_digits = re.sub(r'\D', '', str(gng or ""))
     gng_4 = gng_digits[:4] if len(gng_digits) >= 4 else gng_digits
     
-    cargo_is_guarded = is_cargo_guarded(gng_4) or is_cargo_guarded(gng_digits) or is_cargo_guarded(gng)
+    cargo_is_guarded = (
+        is_cargo_guarded(gng) 
+        or is_cargo_guarded(clean_gng) 
+        or is_cargo_guarded(gng_digits) 
+        or is_cargo_guarded(gng_4)
+    )
     guard_fee_express_usd = 0.0
 
     if cargo_is_guarded and shipment_type_code == "transit":
