@@ -139,7 +139,8 @@ def apply_special_exceptions(
     notes = []
 
     park_type = str(nlu_data.get("park_type", "SPS") or "SPS").upper()
-    gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
+    raw_gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
+    gng = re.sub(r'\D', '', raw_gng)
     clean_gng = format_clean_gng(gng)
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
     
@@ -371,7 +372,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     origin_esr = resolve_esr_by_station_name(st_from_raw) or str(nlu_data.get("origin_esr") or "")
     dest_esr = resolve_esr_by_station_name(st_to_raw) or str(nlu_data.get("dest_esr") or "")
 
-    gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
+    raw_gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
+    gng = re.sub(r'\D', '', raw_gng)
     clean_gng = format_clean_gng(gng)
     cargo_name_nlu = str(nlu_data.get("gng_name") or nlu_data.get("cargo_name") or "").strip()
 
@@ -734,12 +736,16 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     # --- РАСЧЕТ СБОРА ЗА ОХРАНУ (Транзит: км * 0.1 AZN / 1.7 + 2%) ---
     gng_digits = re.sub(r'\D', '', str(gng or ""))
     gng_4 = gng_digits[:4] if len(gng_digits) >= 4 else gng_digits
-    
+    gng_8_right = gng_digits.ljust(8, '0')[:8] if gng_digits else ""
+    gng_8_left = gng_digits.zfill(8) if gng_digits else ""
+
     cargo_is_guarded = (
         is_cargo_guarded(gng) 
         or is_cargo_guarded(clean_gng) 
         or is_cargo_guarded(gng_digits) 
         or is_cargo_guarded(gng_4)
+        or is_cargo_guarded(gng_8_right)
+        or is_cargo_guarded(gng_8_left)
     )
     guard_fee_express_usd = 0.0
 
