@@ -768,12 +768,21 @@ elif st.session_state.calc_result:
 
     st.markdown(f"#### 📐 {t['sec3_title']}")
     st.code(p3["formula"], language="text")
+    
+    # Формируем строки таблицы
+    table_rows = [
+        f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |",
+        f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |"
+    ]
+    
+    # Строка охраны добавляется ТОЛЬКО если охрана есть и рассчитана
+    if p3.get("guard_rate") and str(p3["guard_rate"]).lower() != "none":
+        table_rows.append(f"| **{t['lbl_guard_express_rate']}** | **{p3['guard_rate']}** |")
+
     st.markdown(
         f"| {t['col_rate_type']} | {t['col_amount']} |\n"
-        f"| :--- | :--- |\n"
-        f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |\n"
-        f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |\n"
-        f"| **{t['lbl_guard_express_rate']}** | **{p3['guard_rate']}** |"
+        f"| :--- | :--- |\n" +
+        "\n".join(table_rows)
     )
 
     if p3.get("notes"):
