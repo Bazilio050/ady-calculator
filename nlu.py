@@ -5,7 +5,7 @@ from rail_glossary import get_rail_vocabulary
 
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
-    Анализирует текстовый запрос пользователя и возвращает JSON с параметрами перевозки.
+    Анализирует текстовый запрос пользователя через быструю модель gemini-3.5-flash-lite.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -100,7 +100,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
-    Принимает байты аудиозаписи, выполняет транскрибацию и предварительный NLU-анализ.
+    Принимает байты аудиозаписи и выполняет распознавание через мощную мультимодальную модель gemini-3.6-flash.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -155,7 +155,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
 
     response = client.models.generate_content(
-        model="gemini-3.5-flash-lite",
+        model="gemini-3.6-flash",
         contents=[audio_part, prompt],
         config=types.GenerateContentConfig(
             temperature=0.0,
