@@ -29,6 +29,8 @@ if "pending_transcript" not in st.session_state:
     st.session_state.pending_transcript = None
 if "preview_nlu" not in st.session_state:
     st.session_state.preview_nlu = None
+if "last_processed_audio_hash" not in st.session_state:
+    st.session_state.last_processed_audio_hash = None
 
 # Безопасное обновление текста ввода ДО отрисовки st.text_area
 if st.session_state.pending_transcript:
@@ -186,7 +188,6 @@ UI_TEXT = {
         "input_header": "Daşıma parametrlərini daxil edin:",
         "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
         "calc_btn": "🚀 Tarifi hesabla", 
-        "transcribe_btn": "✍️ Səsi mətnə çevir və yoxla",
         "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
         "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...", 
         "success": "Hesablama uğurla tamamlandı! (ADY Policy {})",
@@ -224,7 +225,7 @@ UI_TEXT = {
         "missing_title": "⚠️ Hesablama üçün aşağıdakı məlumatlar çatışmır:",
         "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur.",
         "guide_title": "💡 Daxiletmə nümunələri və dəmir yolu terminləri (Açmaq üçün basın)",
-        "audio_note": "⏱️ Maksimum səs yazısı müddəti: 30 saniyə. Danışdıqdan sonra dayandırmaq üçün düyməni yenidən basın."
+        "audio_note": "⏱️ Maksimum 30 saniyə. Danışdıqdan sonra dayandırın — mətn avtomatik daxil ediləcək."
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
@@ -234,7 +235,6 @@ UI_TEXT = {
         "input_header": "Введите данные по перевозке:",
         "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
         "calc_btn": "🚀 Рассчитать тариф", 
-        "transcribe_btn": "✍️ Перевести голос в текст и проверить",
         "warning_empty": "Пожалуйста, введите условия расчета.",
         "spinner_text": "Считаем тариф согласно Тарифной политике {}...", 
         "success": "Расчет успешно выполнен! (Тарифная политика {})",
@@ -272,7 +272,7 @@ UI_TEXT = {
         "missing_title": "⚠️ Для точного расчета не хватает следующих данных:",
         "footer_owner": "Данный проект принадлежит компании **AGT Cargo**.",
         "guide_title": "💡 Шаблоны запросов и справочник сокращений (Нажмите для просмотра)",
-        "audio_note": "⏱️ Максимальная длительность записи: 30 секунд. По завершении нажмите кнопку повторно."
+        "audio_note": "⏱️ Максимум 30 секунд. Нажмите стоп — текст автоматически подставится в поле."
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
@@ -282,7 +282,6 @@ UI_TEXT = {
         "input_header": "Enter shipment details:",
         "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
         "calc_btn": "🚀 Calculate Freight Rate", 
-        "transcribe_btn": "✍️ Transcribe audio & verify",
         "warning_empty": "Please enter shipment requirements.",
         "spinner_text": "Calculating rates according to Tariff Policy {}...", 
         "success": "Calculation completed successfully! (Tariff Policy {})",
@@ -320,7 +319,7 @@ UI_TEXT = {
         "missing_title": "⚠️ Required parameters missing:",
         "footer_owner": "This project belongs to **AGT Cargo**.",
         "guide_title": "💡 Quick Templates & Railway Glossary (Click to expand)",
-        "audio_note": "⏱️ Maximum audio length: 30 seconds. Press button again to stop recording when finished."
+        "audio_note": "⏱️ Maximum 30 seconds. Stop recording to automatically populate the input field."
     }
 }
 
@@ -643,13 +642,16 @@ st.markdown("🎙️ **Göləs ilə daxil etmə / Голосовой ввод:**
 st.markdown(f"<div class='audio-limit-note'>{t['audio_note']}</div>", unsafe_allow_html=True)
 audio_file = st.audio_input("🔴 Нажмите на микрофон для записи")
 
-MAX_AUDIO_SIZE_MB = 0.5  # Технический лимит 0.5 МБ (~30 секунд аудио высочайшего качества)
+MAX_AUDIO_SIZE_MB = 0.5  # Технический лимит 0.5 МБ (~30 секунд)
 
+# АВТОМАТИЧЕСКАЯ ОБРАБОТКА АУДИО (БЕЗ ДОПОЛНИТЕЛЬНОЙ КНОПКИ)
 if audio_file:
     audio_bytes = audio_file.read()
-    mime_type = audio_file.type if hasattr(audio_file, "type") and audio_file.type else "audio/wav"
+    audio_hash = hash(audio_bytes)
     
-    if st.button(t["transcribe_btn"], type="secondary"):
+    # Запускаем обработку, только если этот аудиофайл еще не обрабатывался
+    if st.session_state.last_processed_audio_hash != audio_hash:
+        mime_type = audio_file.type if hasattr(audio_file, "type") and audio_file.type else "audio/wav"
         file_size_mb = len(audio_bytes) / (1024 * 1024)
         
         if file_size_mb > MAX_AUDIO_SIZE_MB:
@@ -676,6 +678,7 @@ if audio_file:
                     st.session_state.pending_transcript = transcription
                     st.session_state.preview_nlu = nlu_res
 
+                st.session_state.last_processed_audio_hash = audio_hash
                 loader_placeholder.empty()
                 st.rerun()
 
@@ -683,6 +686,7 @@ if audio_file:
                 loader_placeholder.empty()
                 st.error(f"Ошибка распознавания аудио: {str(e)}")
 
+# ЕДИНСТВЕННАЯ ГЛАВНАЯ КНОПКА РАСЧЕТА
 if st.button(t["calc_btn"], type="primary"):
     current_input = st.session_state.get("main_input_area", user_input)
     if not current_input.strip():
