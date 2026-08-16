@@ -276,11 +276,6 @@ GUARDED_LOOKUP_SET = _build_lookup_set()
 
 
 def is_cargo_guarded(gng_code: str) -> bool:
-    """
-    Автономная O(1) проверка:
-    Возвращает True, если код ГНГ (в любом формате: '1001', '10010000', 'GNG 1001', '48030031')
-    входит в полный перечень 6 866 охраняемых грузов ADY.
-    """
     if not gng_code:
         return False
 
@@ -288,11 +283,12 @@ def is_cargo_guarded(gng_code: str) -> bool:
     if not clean_input:
         return False
 
-    padded_input = clean_input.zfill(8)
+    # Дополняем нулями СПРАВА для 4-значных кодов (1001 -> 10010000)
+    padded_right = clean_input.ljust(8, '0')
+    prefix_4 = clean_input[:4]
 
     return (
         clean_input in GUARDED_LOOKUP_SET
-        or padded_input in GUARDED_LOOKUP_SET
-        or clean_input[:4] in GUARDED_LOOKUP_SET
-        or padded_input[:4] in GUARDED_LOOKUP_SET
+        or padded_right in GUARDED_LOOKUP_SET
+        or prefix_4 in GUARDED_LOOKUP_SET
     )
