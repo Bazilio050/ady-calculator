@@ -117,19 +117,40 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* Выравнивание и компактный стиль микрофона */
+    /* 🔥 ЗАПРЕЩАЕМ STREAMLIT СКЛАДЫВАТЬ КОЛОНКИ НА МОБИЛЬНЫХ УСТРОЙСТВАХ */
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stAudioInput"]) {
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+
+    /* Настройка пропорций текстового поля и микрофона */
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stAudioInput"]) > div[data-testid="column"]:nth-child(1) {
+        flex: 1 1 auto !important;
+        width: 70% !important;
+        min-width: 0 !important;
+    }
+
+    div[data-testid="stHorizontalBlock"]:has(div[data-testid="stAudioInput"]) > div[data-testid="column"]:nth-child(2) {
+        flex: 0 0 auto !important;
+        width: 28% !important;
+        min-width: 100px !important;
+    }
+
+    /* Компактный стиль микрофона */
     div[data-testid="stAudioInput"] {
         border: 2px dashed #ff5500 !important;
         border-radius: 12px !important;
-        padding: 6px !important;
+        padding: 4px !important;
         background-color: rgba(255, 85, 0, 0.03) !important;
-        margin-top: 2px !important;
+        margin-top: 0px !important;
         display: flex !important;
         justify-content: center !important;
     }
     div[data-testid="stAudioInput"] button {
-        width: 52px !important;
-        height: 52px !important;
+        width: 46px !important;
+        height: 46px !important;
         border-radius: 50% !important;
         background-color: #ff5500 !important;
         color: #ffffff !important;
@@ -138,10 +159,11 @@ st.markdown("""
     }
 
     .audio-limit-note {
-        font-size: 0.78rem;
+        font-size: 0.75rem;
         color: #ff5500;
         font-weight: 600;
-        margin-top: 4px;
+        margin-top: 2px;
+        text-align: center;
     }
 
     .preview-card {
@@ -622,7 +644,7 @@ with st.expander(t["guide_title"]):
 
 st.markdown(f"**{t['input_header']}**")
 
-# ВЕРСТКА В СТИЛЕ МЕССЕНДЖЕРОВ: ТЕКСТ И МИКРОФОН В ОДНОЙ СТРОКЕ
+# ВЕРСТКА В СТИЛЕ МЕССЕНДЖЕРОВ: ТЕКСТ И МИКРОФОН СТРОГО В ОДНУ СТРОКУ (И НА ПК, И НА СМАРТФОНАХ)
 text_col, audio_col = st.columns([3.5, 1.5])
 
 with text_col:
