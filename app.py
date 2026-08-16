@@ -775,8 +775,8 @@ elif st.session_state.calc_result:
         f"| **{t['lbl_express_rate']}** | **{p3['express_rate']}** |"
     ]
     
-    # Строка охраны добавляется ТОЛЬКО если охрана есть и рассчитана
-    if p3.get("guard_rate") and str(p3["guard_rate"]).lower() != "none":
+    # Строка охраны добавляется ТОЛЬКО если она рассчитана
+    if p3.get("guard_rate") is not None:
         table_rows.append(f"| **{t['lbl_guard_express_rate']}** | **{p3['guard_rate']}** |")
 
     st.markdown(
