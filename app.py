@@ -678,6 +678,11 @@ if audio_file:
                     st.session_state.pending_transcript = transcription
                     st.session_state.preview_nlu = nlu_res
 
+                # 💡 МГНОВЕННО ОБНУЛЯЕМ СТАРАЫЕ РЕЗУЛЬТАТЫ РАСЧЕТА ПРИ НОВОМ ГОЛОСЕ
+                st.session_state.calc_result = None
+                st.session_state.nlu_res = None
+                st.session_state.missing_data = None
+
                 st.session_state.last_processed_audio_hash = audio_hash
                 loader_placeholder.empty()
                 st.rerun()
