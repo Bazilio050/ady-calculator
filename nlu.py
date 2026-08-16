@@ -57,7 +57,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
 
     response = client.models.generate_content(
-        model="gemini-3.6-flash",
+        model="gemini-3.5-flash-lite",
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.0,
@@ -155,7 +155,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
 
     response = client.models.generate_content(
-        model="gemini-3.6-flash",
+        model="gemini-3.5-flash-lite",
         contents=[audio_part, prompt],
         config=types.GenerateContentConfig(
             temperature=0.0,
