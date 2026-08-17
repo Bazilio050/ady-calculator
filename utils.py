@@ -34,10 +34,8 @@ def is_border_esr(esr_code: str) -> bool:
 
 
 def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "AZ") -> str:
-    """Форматирует название станции для итогового отчёта согласно справочнику ADY."""
     clean_esr = re.sub(r'\D', '', str(esr_code or ""))
     
-    # Точные официальные наименования для паромных станций Алята
     special_names = {
         "549204": "Ələt eksport-Aktau",
         "553002": "Ələt eksport-Kurik",
@@ -49,17 +47,15 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
     if clean_esr in special_names:
         return f"{special_names[clean_esr]} ({clean_esr})"
 
+    # Если это транзитный Алят по умолчанию (без фиксированного кода)
+    if not clean_esr and "Ələt" in str(raw_name):
+        return "Ələt-eksp."
+
     st_name = str(raw_name or "").strip()
 
     if is_border_esr(clean_esr):
         lang_upper = str(site_lang or "AZ").upper()
-        if lang_upper == "RU":
-            suffix = "-эксп."
-        elif lang_upper == "EN":
-            suffix = "-exp."
-        else:
-            suffix = "-eksp."
-
+        suffix = "-эксп." if lang_upper == "RU" else ("-exp." if lang_upper == "EN" else "-eksp.")
         if not st_name.endswith(suffix):
             st_name = f"{st_name}{suffix}"
 
