@@ -35,6 +35,7 @@ OWN_AXLE_GNG_CODES = ["8601", "8602", "8603", "8604", "8605", "8606", "99211000"
 
 
 def format_clean_gng(gng_code: str) -> str:
+    """Корректно форматирует код ГНГ: дополняет нулями СПРАВА до 8 цифр."""
     digits = re.sub(r'\D', '', str(gng_code or ""))
     if not digits:
         return ""
@@ -366,88 +367,40 @@ def apply_special_exceptions(
 
 def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, year: str, ui_t: dict) -> dict:
     lang_upper = str(lang or "AZ").upper()
-    input_lower = str(user_input_raw or "").lower()
     
-    # --- ДИНАМИЧЕСКОЕ ОПРЕДЕЛЕНИЕ СТАНЦИЙ ПО ПОЗИЦИЯМ В ТЕКСТЕ ---
-    known_stations = [
-        (r'б[её]юк\s*к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', "Böyük Kəsik", "558701"),
-        (r'ялама|yalama', "Yalama", "545006"),
-        (r'астара|astara', "Astara", "554109"),
-        (r'курык|kuryk|kurik|quruq', "Ələt eksport-Kurik", "553002"),
-        (r'актау|aktau|aqtau', "Ələt eksport-Aktau", "549204"),
-        (r'туркменбаши|turkmenbashi|türkmenbaşı|trk|трк', "Ələt eksport-Türk.", "548803"),
-        (r'алят|alat|ələt', "Ələt", "548502")
-    ]
-
-    matches = []
-    for pattern, name, esr in known_stations:
-        m = re.search(pattern, input_lower)
-        if m:
-            matches.append((m.start(), name, esr))
-
-    # Сортируем найденные станции строго по хронологии появления в тексте
-    matches.sort(key=lambda x: x[0])
-
-    if len(matches) >= 2:
-        nlu_data["origin_name"], nlu_data["origin_esr"] = matches[0][1], matches[0][2]
-        nlu_data["dest_name"], nlu_data["dest_esr"] = matches[1][1], matches[1][2]
-    elif len(matches) == 1:
-        nlu_data["origin_name"], nlu_data["origin_esr"] = matches[0][1], matches[0][2]
-
+    # 1. Извлекаем названия станций напрямую из NLU
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
 
-    origin_esr = str(nlu_data.get("origin_esr") or resolve_esr_by_station_name(st_from_raw, user_input_raw) or "")
-    dest_esr = str(nlu_data.get("dest_esr") or resolve_esr_by_station_name(st_to_raw, user_input_raw) or "")
+    # 2. Поиск ESR-кодов в вашей базе/функции resolve
+    origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
+    dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
 
-    # Флаг паромной переправы ASCO
-    ferry_ports = ["553002", "549204", "548803"]
-    if origin_esr in ferry_ports or dest_esr in ferry_ports:
-        nlu_data["is_asco_ferry"] = True
+    # 3. ТОЧЕЧНЫЙ ПАРОМНЫЙ БЛОК (Срабатывает ТОЛЬКО при наличии паромных портов)
+    ferry_ports_map = [
+        (r'курык|kuryk|kurik|quruq', "Ələt eksport-Kurik", "553002"),
+        (r'актау|aktau|aqtau', "Ələt eksport-Aktau", "549204"),
+        (r'туркменбаши|turkmenbashi|türkmenbaşı|\bтрк\b|\btrk\b', "Ələt eksport-Türk.", "548803")
+    ]
 
-    # --- ЛОГИКА ОПРЕДЕЛЕНИЯ РЕЖИМОВ DAŞINMA И НАЗВАНИЙ СТАНЦИЙ ---
-    has_explicit_import = any(k in input_lower for k in ["import", "idxal", "импорт"])
-    has_explicit_export = any(k in input_lower for k in ["export", "ixrac", "экспорт"])
+    for pattern, p_name, p_esr in ferry_ports_map:
+        if re.search(pattern, st_from_raw.lower()) or origin_esr == p_esr:
+            st_from_raw, origin_esr = p_name, p_esr
+            nlu_data["is_asco_ferry"] = True
+            break
 
-    is_alat_dest = any(k in st_to_raw.lower() or k in input_lower for k in ["alet", "əlaət", "əlat", "алят"])
-
-    explicit_mode = nlu_data.get("explicit_mode")
-    if explicit_mode in ["import", "export", "transit"]:
-        shipment_type_code = explicit_mode
-    else:
-        shipment_type_code = None
-
-    if origin_esr in ferry_ports or dest_esr in ferry_ports:
-        shipment_type_code = shipment_type_code or "transit"
-    elif (has_explicit_import or has_explicit_export) and is_alat_dest:
-        dest_esr, st_to_raw = "548502", "Ələt"
-        shipment_type_code = "import" if has_explicit_import else "export"
-    elif ("558701" in origin_esr or "558631" in origin_esr or "boyuk" in st_from_raw.lower() or "böyük" in st_from_raw.lower()) and is_alat_dest:
-        dest_esr, st_to_raw = "", "Ələt"
-        shipment_type_code = "transit"
-
-    if shipment_type_code == "transit":
-        shipment_type_display = ui_t.get("type_transit", "Tranzit daşınması" if lang_upper == "AZ" else ("Транзитная перевозка" if lang_upper == "RU" else "Transit shipment"))
-    elif shipment_type_code == "import":
-        shipment_type_display = ui_t.get("type_import", "İdxal daşınması" if lang_upper == "AZ" else ("Импортная перевозка" if lang_upper == "RU" else "Import shipment"))
-    elif shipment_type_code == "export":
-        shipment_type_display = ui_t.get("type_export", "İxrac daşınması" if lang_upper == "AZ" else ("Экспортная перевозка" if lang_upper == "RU" else "Export shipment"))
-    else:
-        if is_border_esr(origin_esr) and is_border_esr(dest_esr):
-            shipment_type_code, shipment_type_display = "transit", ui_t.get("type_transit", "Tranzit daşınması")
-        elif is_border_esr(origin_esr):
-            shipment_type_code, shipment_type_display = "import", ui_t.get("type_import", "İdxal daşınması")
-        elif is_border_esr(dest_esr):
-            shipment_type_code, shipment_type_display = "export", ui_t.get("type_export", "İxrac daşınması")
-        else:
-            shipment_type_code = "local"
-            shipment_type_display = "Daxili daşınma" if lang_upper == "AZ" else ("Внутренняя перевозка" if lang_upper == "RU" else "Domestic shipment")
+    for pattern, p_name, p_esr in ferry_ports_map:
+        if re.search(pattern, st_to_raw.lower()) or dest_esr == p_esr:
+            st_to_raw, dest_esr = p_name, p_esr
+            nlu_data["is_asco_ferry"] = True
+            break
 
     raw_gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
     gng = re.sub(r'\D', '', raw_gng)
     clean_gng = format_clean_gng(gng)
     cargo_name_nlu = str(nlu_data.get("gng_name") or nlu_data.get("cargo_name") or "").strip()
 
+    # Если в gng_name ошибочно сохранились типы вагонов, очищаем
     if any(w in cargo_name_nlu.lower() for w in ["qapalı vaqon", "крытый вагон", "полувагон", "платформа"]):
         cargo_name_nlu = "Buğda" if gng == "1001" else ""
 
@@ -462,22 +415,39 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         if match_plus:
             ref_wagons_cnt = int(match_plus.group(1) or match_plus.group(2))
 
+    explicit_mode = nlu_data.get("explicit_mode")
+
     display_from = format_station_display_name(st_from_raw, origin_esr, lang_upper)
     display_to = format_station_display_name(st_to_raw, dest_esr, lang_upper)
     route_display = f"{display_from} – {display_to}"
 
-    raw_dist = get_distance_by_esr(origin_esr, dest_esr or "549204")
+    if explicit_mode in ["import", "export", "transit"]:
+        shipment_type_code = explicit_mode
+        shipment_type_display = ui_t.get(f"type_{explicit_mode}", explicit_mode.capitalize())
+    else:
+        if is_border_esr(origin_esr) and is_border_esr(dest_esr):
+            shipment_type_code, shipment_type_display = "transit", ui_t["type_transit"]
+        elif is_border_esr(origin_esr):
+            shipment_type_code, shipment_type_display = "import", ui_t["type_import"]
+        elif is_border_esr(dest_esr):
+            shipment_type_code, shipment_type_display = "export", ui_t["type_export"]
+        else:
+            shipment_type_code = "local"
+            shipment_type_display = "Daxili daşınma" if lang_upper == "AZ" else ("Внутренняя перевозка" if lang_upper == "RU" else "Domestic shipment")
+
+    raw_dist = get_distance_by_esr(origin_esr, dest_esr)
     try:
         actual_dist_km = int(raw_dist) if raw_dist is not None else 0
     except (ValueError, TypeError):
         actual_dist_km = 0
 
     if actual_dist_km <= 0 or actual_dist_km > 5000:
-        actual_dist_km = 425 if ("558701" in origin_esr or "558631" in origin_esr) and is_alat_dest else 300
+        actual_dist_km = 300
 
     tariff_dist_km = get_calculation_distance(actual_dist_km, shipment_type_code)
     dist_display = f"{actual_dist_km} km (min. {tariff_dist_km} km)" if tariff_dist_km != actual_dist_km else f"{actual_dist_km} km"
 
+    input_lower = user_input_raw.lower()
     is_empty_wagon = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
     is_cover_wagon = any(k in input_lower for k in ["прикрытие", "qoruyucu", "daldalanacaq", "guard_wagon"])
 
@@ -597,7 +567,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             },
             "part3": {
                 "formula": "0.00 CHF / USD", "net_ady_rate": "0.00 USD",
-                "express_rate": "0.00 USD", "guard_rate": None, "asco_ferry": None, "notes": [empty_note.get(lang_upper, empty_note["AZ"])]
+                "express_rate": "0.00 USD", "guard_rate": None, "notes": [empty_note.get(lang_upper, empty_note["AZ"])]
             }
         }
 
@@ -866,6 +836,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     gng_label = "GNG" if lang_upper == "AZ" else ("ГНГ" if lang_upper == "RU" else "NHM")
 
+    # Корректно формируем строку Yük / Vəziyyət без дублирования типов вагонов
     if cargo_name_nlu and cargo_name_nlu.lower() != wagon_disp_name.lower():
         cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})"
     else:
@@ -891,7 +862,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             "formula": formula_str, 
             "net_ady_rate": f"{final_rate:.2f} {unit_str}",
             "express_rate": express_rate_str, 
-            "guard_rate": f"{guard_fee_express_usd:.2f} USD/vaqon" if (guard_fee_express_usd > 0 and lang_upper == "AZ") else (f"{guard_fee_express_usd:.2f} USD/вагон" if guard_fee_express_usd > 0 else None),
+            "guard_rate": f"{guard_fee_express_usd:.2f} USD" if guard_fee_express_usd > 0 else None,
             "asco_ferry": asco_result,
             "notes": notes
         }
