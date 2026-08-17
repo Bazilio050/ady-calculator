@@ -796,7 +796,14 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         asco_data = calculate_asco_ferry_tariff(nlu_data, user_input_raw)
         if asco_data:
             ferry_usd = asco_data.get("ferry_rate_usd", 1200.0)
-            asco_result_display = f"{ferry_usd:.2f} USD/vaqon" if lang_upper == "AZ" else (f"{ferry_usd:.2f} USD/вагон" if lang_upper == "RU" else f"{ferry_usd:.2f} USD/wagon")
+            unit_str_asco = "USD/vaqon" if lang_upper == "AZ" else ("USD/вагон" if lang_upper == "RU" else "USD/wagon")
+            
+            # app.py ожидает именно словарь с ключами line_title и rate:
+            asco_result_display = {
+                "line_title": "ASCO Bərə daşıma haqqı" if lang_upper == "AZ" else ("Морской фрахт ASCO" if lang_upper == "RU" else "ASCO Ferry rate"),
+                "rate": f"{ferry_usd:.2f} {unit_str_asco}",
+                "value": ferry_usd
+            }
             if asco_data.get("note"):
                 notes.append(asco_data["note"])
 
