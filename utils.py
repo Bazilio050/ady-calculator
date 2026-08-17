@@ -247,6 +247,40 @@ def format_station_display_name(raw_name: str, esr: str = "", lang: str = "AZ") 
     return f"{name} ({esr})" if esr else name
 
 
+def extract_gng_digits(gng_code: str) -> str:
+    """Извлекает только цифры из кода ГНГ."""
+    return re.sub(r'\D', '', str(gng_code or ""))
+
+
+def get_weight_column_index(weight_tons: float) -> int:
+    """Возвращает индекс колонки веса для тарифных таблиц."""
+    w = float(weight_tons or 0)
+    if w <= 10:
+        return 0
+    elif w <= 15:
+        return 1
+    elif w <= 20:
+        return 2
+    elif w <= 25:
+        return 3
+    elif w <= 30:
+        return 4
+    elif w <= 35:
+        return 5
+    elif w <= 40:
+        return 6
+    elif w <= 45:
+        return 7
+    elif w <= 50:
+        return 8
+    elif w <= 55:
+        return 9
+    elif w <= 60:
+        return 10
+    else:
+        return 11
+
+
 def get_min_weight_by_gng(gng_code: str, actual_weight: float) -> float:
     """Возвращает минимальную расчетную норму веса по коду ГНГ."""
     if actual_weight <= 0:
