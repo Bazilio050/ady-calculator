@@ -1,5 +1,6 @@
 import os
 import re
+import math
 from datetime import datetime
 
 # ==============================================================================
@@ -454,3 +455,135 @@ def is_long_platform_scep(raw_text: str, wagon_type: str = "") -> bool:
         if re.search(pattern, text_lower):
             return True
     return False
+
+
+# ==============================================================================
+# 7. ПАСПОРТ И РАСЧЕТ ТАРИФОВ ПАРОМА ASCO (Каспийская переправа)
+# ==============================================================================
+
+ASCO_FERRY_RATES = {
+    # 1. Алят - Туркменбаши - Алят
+    "turkmenbashi": {
+        "general": {"loaded": 45.0, "empty": 36.0},      # Поз 1: Прочие грузы (Базовый)
+        "oil_tank": {"loaded": 70.0, "empty": 32.0},     # Поз 2: Нефть в цистернах (13м)
+        "oil_covered": {"loaded": 70.0, "empty": 36.0},  # Поз 3: Нефть в крытых (15м)
+        "alcohol": {"loaded": 72.0, "empty": 36.0},      # Поз 4: Спирт и напитки
+        "lpg": {"loaded": 119.0, "empty": 36.0},         # Поз 5: Сжиженный газ
+        "dangerous": {"loaded": 50.0, "empty": 36.0},   # Поз 6: Опасные (4,5,6,8,9)
+        "export_az": {"loaded": 43.0, "empty": 36.0}    # Поз 7: Экспорт из Азербайджана
+    },
+    # 2. Алят - Курык / Актау - Алят
+    "kuryk_aktau": {
+        "general": {"loaded": 50.0, "empty": 41.0},      # Поз 1: Прочие грузы (Базовый)
+        "oil_tank": {"loaded": 83.0, "empty": 37.0},     # Поз 2: Нефть в цистернах (13м)
+        "oil_covered": {"loaded": 83.0, "empty": 41.0},  # Поз 3: Нефть в крытых (15м)
+        "alcohol": {"loaded": 77.0, "empty": 41.0},      # Поз 4: Спирт и напитки
+        "lpg": {"loaded": 135.0, "empty": 41.0},         # Поз 5: Сжиженный газ
+        "dangerous": {"loaded": 55.0, "empty": 41.0},   # Поз 6: Опасные (4,5,6,8,9)
+        "export_az": {"loaded": 48.0, "empty": 41.0}    # Поз 7: Экспорт из Азербайджана
+    }
+}
+
+
+def is_asco_ferry_route(origin_esr: str, dest_esr: str, origin_name: str = "", dest_name: str = "") -> bool:
+    """Проверяет, содержит ли маршрут морскую паромную переправу ASCO."""
+    text = (str(origin_name or "") + " " + str(dest_name or "")).lower()
+    ferry_keywords = ["quruq", "kuryk", "курык", "aqtau", "aktau", "актау", "türkmenbaşı", "turkmenbashi", "туркменбаши", "trk", "трк", "bərə", "паром", "ferry"]
+    return any(k in text for k in ferry_keywords)
+
+
+def get_asco_route_key(origin_name: str = "", dest_name: str = "") -> str:
+    """Определяет порт назначения для выбора тарифной сетки ASCO."""
+    text = (str(origin_name or "") + " " + str(dest_name or "")).lower()
+    if any(k in text for k in ["türkmenbaşı", "turkmenbashi", "туркменбаши", "trk", "трк"]):
+        return "turkmenbashi"
+    return "kuryk_aktau"
+
+
+def calculate_asco_ferry_tariff(nlu_data: dict) -> dict:
+    """
+    Рассчитывает стоимость паромной переправы ASCO в USD за 1 вагон.
+    """
+    orig_name = nlu_data.get("origin_name", "")
+    dest_name = nlu_data.get("dest_name", "")
+    gng_code = extract_gng_digits(nlu_data.get("gng_code"))
+    wagon_type = str(nlu_data.get("wagon_type") or "").lower()
+    is_empty = bool(nlu_data.get("is_empty", False))
+    raw_length = nlu_data.get("wagon_length_meters")
+    explicit_mode = str(nlu_data.get("explicit_mode") or "").lower()
+    lang = str(nlu_data.get("site_lang") or "AZ").upper()
+
+    route_key = get_asco_route_key(orig_name, dest_name)
+    rates_db = ASCO_FERRY_RATES.get(route_key, ASCO_FERRY_RATES["kuryk_aktau"])
+
+    # --- 1. Определение категории груза и норматива длины ---
+    cargo_category = "general"
+    billable_length = 0.0
+    is_fixed_length = False
+
+    # Нефть и нефтепродукты (ГНГ 2709, 2710, 2712, 2713)
+    is_oil = any(gng_code.startswith(pfx) for pfx in ["2709", "2710", "2712", "2713"])
+    
+    if is_oil:
+        if "tank" in wagon_type or "çən" in wagon_type or "цистерн" in wagon_type:
+            cargo_category = "oil_tank"
+            billable_length = 13.0
+            is_fixed_length = True
+        else:
+            cargo_category = "oil_covered"
+            billable_length = 15.0
+            is_fixed_length = True
+    elif gng_code.startswith("2711"):
+        cargo_category = "lpg"
+    elif any(gng_code.startswith(pfx) for pfx in ["2207", "2208"]):
+        cargo_category = "alcohol"
+    elif any(k in str(nlu_data.get("gng_name", "")).lower() for k in ["dönərmə", "danger", "опасн", "tehlukeli"]):
+        cargo_category = "dangerous"
+    elif "ixrac" in explicit_mode or "export" in explicit_mode:
+        cargo_category = "export_az"
+
+    # --- 2. Округление метража (math.ceil) ---
+    if not is_fixed_length:
+        length_val = float(raw_length or 15.0)
+        billable_length = float(math.ceil(length_val))
+
+    # --- 3. Базовая ставка за погонный метр ---
+    state_key = "empty" if is_empty else "loaded"
+    rate_per_meter = rates_db[cargo_category][state_key]
+
+    # --- 4. Повышающие коэффициенты ASCO ---
+    coeff_length = 1.3 if (billable_length > 15.0 and not is_fixed_length) else 1.0
+    
+    # Негабарит по ширине (если указан)
+    coeff_oversize = 1.0
+    width_m = float(nlu_data.get("wagon_width_meters") or 0.0)
+    if width_m >= 4.0:
+        coeff_oversize = 2.0
+    elif width_m >= 3.25 or "locomotive" in wagon_type:
+        coeff_oversize = 1.4
+
+    # --- 5. Итоговый расчет за 1 вагон ---
+    total_usd = billable_length * rate_per_meter * coeff_length * coeff_oversize
+
+    # --- 6. Текстовое наименование строки и примечание ---
+    if lang == "RU":
+        line_title = "Сбор за паромную переправу ASCO"
+        route_str = "Алят – Туркменбаши" if route_key == "turkmenbashi" else "Алят – Курык"
+        note_str = f"Сбор за паромную переправу (ASCO): Маршрут {route_str}, {int(billable_length)} м × {rate_per_meter:.2f} USD/м = {total_usd:.2f} USD/вагон (Длина вагона: {int(billable_length)} м)."
+    elif lang == "EN":
+        line_title = "ASCO Ferry Freight Fee"
+        route_str = "Alat – Turkmenbashi" if route_key == "turkmenbashi" else "Alat – Kuryk"
+        note_str = f"ASCO Ferry Freight Fee: Route {route_str}, {int(billable_length)} m × {rate_per_meter:.2f} USD/m = {total_usd:.2f} USD/wagon (Wagon length: {int(billable_length)} m)."
+    else:
+        line_title = "ASCO Bərə daşıma haqqı"
+        route_str = "Ələt – Türkmenbaşı" if route_key == "turkmenbashi" else "Ələt – Quruq"
+        note_str = f"Bərə daşıma haqqı (ASCO): {route_str} marşrutu üzrə {int(billable_length)} m × {rate_per_meter:.2f} USD/m = {total_usd:.2f} USD/vaqon (Vaqonun uzunluğu: {int(billable_length)} m)."
+
+    return {
+        "line_title": line_title,
+        "rate_per_meter": rate_per_meter,
+        "billable_length": billable_length,
+        "total_usd": total_usd,
+        "unit": "USD/vaqon" if lang == "AZ" else ("USD/вагон" if lang == "RU" else "USD/wagon"),
+        "note": note_str
+    }
