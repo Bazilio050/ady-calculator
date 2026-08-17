@@ -1,4 +1,5 @@
 import os
+import re
 import streamlit as st
 from google import genai
 from nlu import call_gemini_nlu, call_gemini_audio_nlu, validate_nlu_input
@@ -758,13 +759,13 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             input_lower = current_input.lower()
 
             # --- 1. ПРИНУДИТЕЛЬНОЕ ОПРЕДЕЛЕНИЕ СТАНЦИИ ОТПРАВЛЕНИЯ (ORIGIN) ---
-            if any(k in input_lower for k in ["беюк кясик", "böyük kəsik", "beyuk kasik", "boyuk kesik"]):
+            if re.search(r'б[её]юк\s+к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', input_lower):
                 nlu_res["origin_name"] = "Böyük Kəsik"
                 nlu_res["origin_esr"] = "558701"
-            elif any(k in input_lower for k in ["yalama"]):
+            elif "yalama" in input_lower:
                 nlu_res["origin_name"] = "Yalama"
                 nlu_res["origin_esr"] = "545006"
-            elif any(k in input_lower for k in ["astara"]):
+            elif "astara" in input_lower:
                 nlu_res["origin_name"] = "Astara"
                 nlu_res["origin_esr"] = "554109"
 
