@@ -88,7 +88,7 @@ def calculate_rail_distance(origin_esr: str, dest_esr: str) -> int:
 # Главная функция расчета тарифа
 # -------------------------------------------------------------------------
 
-ddef process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
+def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
     """
     Принимает любое количество аргументов (от 1 до 5+), чтобы не ломать вызовы из app.py.
     """
