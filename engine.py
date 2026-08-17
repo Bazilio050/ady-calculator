@@ -143,6 +143,7 @@ def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
         "origin_esr": origin_esr,
         "dest_name": dest_name,
         "dest_esr": dest_esr,
+        "route": f"{origin_name} ({origin_esr}) – {dest_name} ({dest_esr})",
         "route_text": f"{origin_name} ({origin_esr}) – {dest_name} ({dest_esr})",
         "distance_km": distance_km,
         "transport_type": transport_type
