@@ -498,4 +498,3 @@ def calculate_asco_ferry_tariff(nlu_data: dict, user_input_raw: str) -> dict:
         "ferry_rate_usd": round(total_usd, 2),
         "note": f"ASCO bərə daşıma tarifi ({route_str}): {wagon_length_m}m × ${rate_per_m}/m{coeff_str} = ${round(total_usd, 2)}"
     }
-    }
