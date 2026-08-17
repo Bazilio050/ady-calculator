@@ -570,7 +570,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             },
             "part3": {
                 "formula": "0.00 CHF / USD", "net_ady_rate": "0.00 USD",
-                "express_rate": "0.00 USD", "guard_rate": None, "notes": [empty_note.get(lang_upper, empty_note["AZ"])]
+                "express_rate": "0.00 USD", "guard_rate": None,
+                "asco_ferry": None,
+                "notes": [empty_note.get(lang_upper, empty_note["AZ"])]
             }
         }
 
@@ -798,7 +800,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             ferry_usd = asco_data.get("ferry_rate_usd", 1200.0)
             unit_str_asco = "USD/vaqon" if lang_upper == "AZ" else ("USD/вагон" if lang_upper == "RU" else "USD/wagon")
             
-            # app.py ожидает именно словарь с ключами line_title и rate:
             asco_result_display = {
                 "line_title": "ASCO Bərə daşıma haqqı" if lang_upper == "AZ" else ("Морской фрахт ASCO" if lang_upper == "RU" else "ASCO Ferry rate"),
                 "rate": f"{ferry_usd:.2f} {unit_str_asco}",
