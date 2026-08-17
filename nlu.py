@@ -238,65 +238,50 @@ Return ONLY a valid JSON object. UI language context: {target_lang}.
     return result
 
 
-def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
-    """
-    Проверяет данные, принудительно разделяет станции и предотвращает совпадение origin == dest.
-    """
+def validate_nlu_input(nlu_res: dict, lang: str = "AZ") -> list:
     missing = []
-    input_text = str(nlu_data.get("user_input_raw") or "").lower()
-
-    # 1. Гибкий поиск станции отправления (Origin) через регулярные выражения
-    if re.search(r'б[её]юк\s+к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', input_text):
-        nlu_data["origin_name"] = "Böyük Kəsik"
-        nlu_data["origin_esr"] = "558701"
-    elif "yalama" in input_text:
-        nlu_data["origin_name"] = "Yalama"
-        nlu_data["origin_esr"] = "545006"
-    elif "astara" in input_text:
-        nlu_data["origin_name"] = "Astara"
-        nlu_data["origin_esr"] = "554109"
-
-    # 2. Определение порта назначения (Dest)
-    if any(k in input_text for k in ["kuryk", "kurik", "quruq", "курык"]):
-        nlu_data["dest_name"] = "Ələt eksport-Kurik"
-        nlu_data["dest_esr"] = "553002"
-        nlu_data["is_asco_ferry"] = True
-    elif any(k in input_text for k in ["aktau", "aqtau", "актау"]):
-        nlu_data["dest_name"] = "Ələt eksport-Aktau"
-        nlu_data["dest_esr"] = "549204"
-        nlu_data["is_asco_ferry"] = True
-    elif any(k in input_text for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"]):
-        nlu_data["dest_name"] = "Ələt eksport-Türk."
-        nlu_data["dest_esr"] = "548803"
-        nlu_data["is_asco_ferry"] = True
-
-    # 3. Страховка: Если origin и dest совпали, сбрасываем origin на реальную входную станцию
-    if nlu_data.get("origin_esr") == nlu_data.get("dest_esr"):
-        if re.search(r'б[её]юк\s+к[аяе]сик|beyuk|boyuk', input_text):
-            nlu_data["origin_name"] = "Böyük Kəsik"
-            nlu_data["origin_esr"] = "558701"
-        elif "yalama" in input_text:
-            nlu_data["origin_name"] = "Yalama"
-            nlu_data["origin_esr"] = "545006"
-
-    origin = nlu_data.get("origin_name") or nlu_data.get("origin_esr")
-    dest = nlu_data.get("dest_name") or nlu_data.get("dest_esr")
     
-    if not origin:
+    # Извлекаем весь исходный текст
+    raw_input = str(nlu_res.get("user_input_raw") or "").lower()
+
+    # 1. Жесткая привязка станции отправления (Origin)
+    if re.search(r'б[её]юк\s*к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', raw_input):
+        nlu_res["origin_name"] = "Böyük Kəsik"
+        nlu_res["origin_esr"] = "558701"
+    elif "yalama" in raw_input:
+        nlu_res["origin_name"] = "Yalama"
+        nlu_res["origin_esr"] = "545006"
+    elif "astara" in raw_input:
+        nlu_res["origin_name"] = "Astara"
+        nlu_res["origin_esr"] = "554109"
+
+    # 2. Жесткая привязка паромного порта назначения (Dest)
+    if any(k in raw_input for k in ["kuryk", "kurik", "quruq", "курык"]):
+        nlu_res["dest_name"] = "Ələt eksport-Kurik"
+        nlu_res["dest_esr"] = "553002"
+        nlu_res["is_asco_ferry"] = True
+    elif any(k in raw_input for k in ["aktau", "aqtau", "актау"]):
+        nlu_res["dest_name"] = "Ələt eksport-Aktau"
+        nlu_res["dest_esr"] = "549204"
+        nlu_res["is_asco_ferry"] = True
+    elif any(k in raw_input for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"]):
+        nlu_res["dest_name"] = "Ələt eksport-Türk."
+        nlu_res["dest_esr"] = "548803"
+        nlu_res["is_asco_ferry"] = True
+
+    # 3. Защитный сброс, если NLU все равно поставил одинаковые станции
+    if nlu_res.get("origin_esr") == nlu_res.get("dest_esr"):
+        if re.search(r'б[её]юк\s*к[аяе]сик|beyuk|boyuk', raw_input):
+            nlu_res["origin_name"] = "Böyük Kəsik"
+            nlu_res["origin_esr"] = "558701"
+        elif "yalama" in raw_input:
+            nlu_res["origin_name"] = "Yalama"
+            nlu_res["origin_esr"] = "545006"
+
+    # Проверка обязательных полей
+    if not nlu_res.get("origin_esr") and not nlu_res.get("origin_name"):
         missing.append("Məlumat yoxdur: Göndərmə stansiyası" if lang == "AZ" else "Отсутствует станция отправления")
-    if not dest:
+    if not nlu_res.get("dest_esr") and not nlu_res.get("dest_name"):
         missing.append("Məlumat yoxdur: Təyinat stansiyası" if lang == "AZ" else "Отсутствует станция назначения")
 
-    if nlu_data.get("is_asco_ferry"):
-        gng = str(nlu_data.get("gng_code") or "")
-        is_fixed_oil = any(gng.startswith(prefix) for prefix in ["2709", "2710", "2712", "2713"])
-        
-        if not is_fixed_oil and not nlu_data.get("wagon_length_meters"):
-            msg = (
-                "⚠️ Məlumat yoxdur: Bərə daşıması üçün vaqonun uzunluğu (metr) qeyd olunmalıdır (məsələn: 15m, 17m, 19m, 22m)."
-                if lang == "AZ" else
-                "⚠️ Отсутствует длина вагона: Для расчета паромной переправы необходимо обязательно указать длину вагона в метрах (например: 15м, 17м, 19м, 22м)."
-            )
-            missing.append(msg)
-        
     return missing
