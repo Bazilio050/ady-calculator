@@ -47,7 +47,6 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
     if clean_esr in special_names:
         return f"{special_names[clean_esr]} ({clean_esr})"
 
-    # Если это транзитный Алят по умолчанию (без фиксированного кода)
     if not clean_esr and "Ələt" in str(raw_name):
         return "Ələt-eksp."
 
