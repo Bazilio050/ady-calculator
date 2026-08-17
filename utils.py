@@ -16,7 +16,7 @@ BORDER_ESR_CODES = {
 }
 
 BORDER_STATION_ESR_OVERRIDE = {
-   # Пограничные и базовые узлы
+  # Пограничные и базовые узлы
     "boyuk kesik": "558701",
     "beyuk kasik": "558701",
     "böyük kəsik": "558701",
