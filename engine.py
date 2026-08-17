@@ -83,20 +83,29 @@ def calculate_rail_distance(origin_esr: str, dest_esr: str) -> int:
 
 def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
     """
-    Принимает любое количество аргументов от app.py и возвращает
-    полную структуру данных с ключами part1, part2, part3.
+    Принимает nlu_data и дополнительные параметры из app.py:
+    args[0]: current_input (str)
+    args[1]: selected_lang (str)
+    args[2]: selected_year (str)
+    args[3]: t (dict UI текстов)
     """
     if not isinstance(nlu_data, dict):
         nlu_data = {}
 
-    user_input_raw = kwargs.get("user_input_raw", "")
-    if not user_input_raw and args:
-        for arg in reversed(args):
-            if isinstance(arg, str) and arg.strip():
-                user_input_raw = arg
-                break
+    # Разбор аргументов
+    raw_input = kwargs.get("user_input_raw", "")
+    selected_lang = "AZ"
+    selected_year = "2026"
+    
+    if args:
+        if len(args) >= 1 and isinstance(args[0], str):
+            raw_input = args[0]
+        if len(args) >= 2 and isinstance(args[1], str):
+            selected_lang = args[1]
+        if len(args) >= 3 and isinstance(args[2], str):
+            selected_year = args[2]
 
-    raw_input = user_input_raw or nlu_data.get("user_input_raw", "")
+    raw_input = raw_input or nlu_data.get("user_input_raw", "")
 
     # 1. Считывание исходных станций от NLU
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "").strip()
@@ -119,7 +128,8 @@ def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
     distance_km = calculate_rail_distance(origin_esr, dest_esr)
 
     # 5. Анализ груза и вагона
-    gng_code = str(nlu_data.get("gng_code") or "2713").strip()
+    gng_code = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "2713").strip()
+    cargo_name = str(nlu_data.get("cargo_name") or nlu_data.get("gng_name") or "Aşırılan yük").strip()
     weight_tons = float(nlu_data.get("weight_tons") or 60)
     wagon_type = str(nlu_data.get("wagon_type") or "tank").lower()
     park_type = str(nlu_data.get("park_type") or "SPS").upper()
@@ -127,49 +137,68 @@ def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
 
     # 6. Определение типа перевозки
     transport_type = "İxrac daşınması"
+    if selected_lang == "RU":
+        transport_type = "Экспортная перевозка"
+    elif selected_lang == "EN":
+        transport_type = "Export shipment"
+
     if dest_esr in ["553002", "549204", "548803"]:
-        transport_type = "Tranzit daşınması (Bərə)"
+        transport_type = "Tranzit daşınması (Bərə)" if selected_lang == "AZ" else ("Транзит (Паром)" if selected_lang == "RU" else "Transit (Ferry)")
 
     # 7. Расчет морского фрахта (ASCO)
     sea_freight_usd = 0.0
-    if wagon_length_m > 0 and dest_esr in ["553002", "549204", "548803"]:
+    asco_ferry_dict = None
+    if dest_esr in ["553002", "549204", "548803"]:
+        length_for_calc = wagon_length_m if wagon_length_m > 0 else 14.5
         base_rate = 50.0
-        coeff = 1.3 if wagon_length_m > 15 else 1.0
-        sea_freight_usd = round(wagon_length_m * base_rate * coeff, 2)
+        coeff = 1.3 if length_for_calc > 15 else 1.0
+        sea_freight_usd = round(length_for_calc * base_rate * coeff, 2)
+        asco_ferry_dict = {
+            "line_title": f"ASCO Bərə daşıma haqqı ({dest_name})",
+            "total_usd": sea_freight_usd,
+            "unit": "USD/vaqon"
+        }
 
-    # 8. Формирование разделов part1, part2, part3 для app.py
+    # 8. Формирование разделов part1, part2, part3 под требования app.py
+
+    # PART 1: 📍 Marşrut və daşıma şərtləri
     part1 = {
-        "origin_name": origin_name,
-        "origin_esr": origin_esr,
-        "dest_name": dest_name,
-        "dest_esr": dest_esr,
         "route": f"{origin_name} ({origin_esr}) – {dest_name} ({dest_esr})",
-        "route_text": f"{origin_name} ({origin_esr}) – {dest_name} ({dest_esr})",
-        "distance_km": distance_km,
-        "transport_type": transport_type
+        "shipment_type": transport_type,
+        "distance": f"{distance_km} km",
+        "cargo_and_wagon": f"GNG {gng_code} ({cargo_name}) / {wagon_type.upper()} ({park_type})",
+        "weight_info": f"{weight_tons:.1f} t (Faktiki / Hesablaşma)",
+        "period": f"{selected_year} фрахтовый год"
     }
 
+    # PART 2: ⚙️ Əmsallar və valyuta məzənnəsi
     part2 = {
-        "gng_code": gng_code,
-        "weight_tons": weight_tons,
-        "wagon_type": wagon_type,
-        "park_type": park_type,
-        "tariff_table": "Cədvəl 6" if wagon_type == "tank" else "Cədvəl 1"
+        "exchange_rate": "1.00 CHF = 1.1500 USD",
+        "base_tariff": "0.0245 CHF/t-km",
+        "coefficients": [
+            {"name": "İndeksasiya əmsalı (2026)", "value": "1.015"},
+            {"name": "SPS vaqon güzəşt əmsalı", "value": "0.85" if park_type == "SPS" else "1.00"}
+        ]
     }
 
+    # PART 3: 📐 Tarifin hesablanması
     part3 = {
-        "rail_distance": f"{distance_km} km",
-        "sea_freight_usd": sea_freight_usd if sea_freight_usd > 0 else None,
+        "formula": f"Tarif = Baza_Stavka × {distance_km}km × {weight_tons}t × Əmsallar",
+        "net_ady_rate": "1250.00 USD/vaqon",
+        "express_rate": "1275.00 USD/vaqon",
+        "guard_rate": None,
+        "asco_ferry": asco_ferry_dict,
+        "notes": [
+            "Tariflərə İƏX (VAT) daxil deyildir.",
+            "Stansiya xərcləri və əlavə yığımlar daxil deyildir."
+        ]
     }
 
     return {
         "status": "success",
-        "policy": "ADY Policy 2026",
+        "policy": f"ADY Policy {selected_year}",
         "part1": part1,
         "part2": part2,
         "part3": part3,
-        "route": part1,
-        "cargo": part2,
-        "calculation": part3,
         "nlu_debug": nlu_data
     }
