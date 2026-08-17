@@ -12,8 +12,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
     rail_vocab = get_rail_vocabulary()
 
-    prompt = f"""
-You are an expert railway & Caspian ferry freight NLU assistant for Azerbaijan Railways (ADY) and ASCO.
+    prompt = f"""You are an expert railway & Caspian ferry freight NLU assistant for Azerbaijan Railways (ADY) and ASCO.
 Analyze the user text query containing a freight shipment request.
 
 ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
@@ -122,8 +121,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
     rail_vocab = get_rail_vocabulary()
 
-    prompt = f"""
-You are an expert railway & Caspian ferry freight NLU assistant for Azerbaijan Railways (ADY) and ASCO.
+    prompt = f"""You are an expert railway & Caspian ferry freight NLU assistant for Azerbaijan Railways (ADY) and ASCO.
 Listen carefully to the audio input containing a freight shipment request.
 
 ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
@@ -159,35 +157,4 @@ EXPECTED JSON STRUCTURE:
   "ref_section_cargo_wagons": integer or null,
   "explicit_mode": "import / export / transit or null",
   "is_empty": boolean,
-  "axles_count": integer or null,
-  "is_own_axles": boolean,
-  "is_in_repair": boolean,
-  "is_passenger_train": boolean,
-  "is_consolidated": boolean,
-  "escort_count": integer or 0,
-  "has_teplushka": boolean,
-  "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null",
-  "is_asco_ferry": boolean,
-  "wagon_length_meters": float or null
-}}
-
-Return ONLY a valid JSON object. UI language context: {target_lang}.
-"""
-
-    audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
-
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=[audio_part, prompt],
-        config=types.GenerateContentConfig(
-            temperature=0.0,
-            response_mime_type="application/json"
-        )
-    )
-
-    raw_text = response.text.strip()
-    if raw_text.startswith("```json"):
-        raw_text = raw_text[7:]
-    elif raw_text.startswith("```"):
-        raw_text = raw_text[3:]
-    if raw_text.endswith("
+  "axles_
