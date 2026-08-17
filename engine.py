@@ -146,30 +146,39 @@ def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
         coeff = 1.3 if wagon_length_m > 15 else 1.0
         sea_freight_usd = round(wagon_length_m * base_rate * coeff, 2)
 
-    # 8. Формирование итогового ответа
+   # 8. Формирование итогового ответа (со структурами part1, part2, part3 для app.py)
+    part1 = {
+        "origin_name": origin_name,
+        "origin_esr": origin_esr,
+        "dest_name": dest_name,
+        "dest_esr": dest_esr,
+        "route_text": f"{origin_name} ({origin_esr}) – {dest_name} ({dest_esr})",
+        "distance_km": distance_km,
+        "transport_type": transport_type
+    }
+
+    part2 = {
+        "gng_code": gng_code,
+        "weight_tons": weight_tons,
+        "wagon_type": wagon_type,
+        "park_type": park_type,
+        "tariff_table": "Cədvəl 6" if wagon_type == "tank" else "Cədvəl 1"
+    }
+
+    part3 = {
+        "rail_distance": f"{distance_km} km",
+        "sea_freight_usd": sea_freight_usd if sea_freight_usd > 0 else None,
+    }
+
     result = {
         "status": "success",
         "policy": "ADY Policy 2026",
-        "route": {
-            "origin_name": origin_name,
-            "origin_esr": origin_esr,
-            "dest_name": dest_name,
-            "dest_esr": dest_esr,
-            "route_text": f"{origin_name} ({origin_esr}) – {dest_name} ({dest_esr})",
-            "distance_km": distance_km,
-            "transport_type": transport_type
-        },
-        "cargo": {
-            "gng_code": gng_code,
-            "weight_tons": weight_tons,
-            "wagon_type": wagon_type,
-            "park_type": park_type,
-            "tariff_table": "Cədvəl 6" if wagon_type == "tank" else "Cədvəl 1"
-        },
-        "calculation": {
-            "rail_distance": f"{distance_km} km",
-            "sea_freight_usd": sea_freight_usd if sea_freight_usd > 0 else None,
-        },
+        "part1": part1,
+        "part2": part2,
+        "part3": part3,
+        "route": part1,
+        "cargo": part2,
+        "calculation": part3,
         "nlu_debug": nlu_data
     }
 
