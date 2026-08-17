@@ -148,10 +148,10 @@ def apply_special_exceptions(
     
     if not origin_esr:
         st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
-        origin_esr = resolve_esr_by_station_name(st_from_raw) or str(nlu_data.get("origin_esr") or "")
+        origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
     if not dest_esr:
         st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
-        dest_esr = resolve_esr_by_station_name(st_to_raw) or str(nlu_data.get("dest_esr") or "")
+        dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
 
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
@@ -371,15 +371,14 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
 
-    origin_esr = resolve_esr_by_station_name(st_from_raw) or str(nlu_data.get("origin_esr") or "")
-    dest_esr = resolve_esr_by_station_name(st_to_raw) or str(nlu_data.get("dest_esr") or "")
+    origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
+    dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
 
     raw_gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
     gng = re.sub(r'\D', '', raw_gng)
     clean_gng = format_clean_gng(gng)
     cargo_name_nlu = str(nlu_data.get("gng_name") or nlu_data.get("cargo_name") or "").strip()
 
-    # Если в gng_name ошибочно сохранились типы вагонов, очищаем
     if any(w in cargo_name_nlu.lower() for w in ["qapalı vaqon", "крытый вагон", "полувагон", "платформа"]):
         cargo_name_nlu = "Buğda" if gng == "1001" else ""
 
@@ -400,16 +399,24 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     display_to = format_station_display_name(st_to_raw, dest_esr, lang_upper)
     route_display = f"{display_from} – {display_to}"
 
+    # --- АВТО-ОПРЕДЕЛЕНИЕ ТИПА ПЕРЕВОЗКИ (ИМПОРТ / ЭКСПОРТ / ТРАНЗИТ) ---
     if explicit_mode in ["import", "export", "transit"]:
         shipment_type_code = explicit_mode
         shipment_type_display = ui_t.get(f"type_{explicit_mode}", explicit_mode.capitalize())
     else:
-        if is_border_esr(origin_esr) and is_border_esr(dest_esr):
-            shipment_type_code, shipment_type_display = "transit", ui_t["type_transit"]
-        elif is_border_esr(origin_esr):
-            shipment_type_code, shipment_type_display = "import", ui_t["type_import"]
+        shipment_type_code = None
+
+    # Приоритетное автоопределение ТРАНЗИТА для паромных и пограничных маршрутов
+    if is_border_esr(origin_esr) and is_border_esr(dest_esr) and origin_esr != dest_esr:
+        shipment_type_code = "transit"
+        shipment_type_display = ui_t.get("type_transit", "Tranzit daşınması" if lang_upper == "AZ" else ("Транзитная перевозка" if lang_upper == "RU" else "Transit shipment"))
+    elif not shipment_type_code:
+        if is_border_esr(origin_esr):
+            shipment_type_code = "import"
+            shipment_type_display = ui_t.get("type_import", "İdxal daşınması" if lang_upper == "AZ" else ("Импортная перевозка" if lang_upper == "RU" else "Import shipment"))
         elif is_border_esr(dest_esr):
-            shipment_type_code, shipment_type_display = "export", ui_t["type_export"]
+            shipment_type_code = "export"
+            shipment_type_display = ui_t.get("type_export", "İxrac daşınması" if lang_upper == "AZ" else ("Экспортная перевозка" if lang_upper == "RU" else "Export shipment"))
         else:
             shipment_type_code = "local"
             shipment_type_display = "Daxili daşınma" if lang_upper == "AZ" else ("Внутренняя перевозка" if lang_upper == "RU" else "Domestic shipment")
@@ -815,7 +822,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     gng_label = "GNG" if lang_upper == "AZ" else ("ГНГ" if lang_upper == "RU" else "NHM")
 
-    # Корректно формируем строку Yük / Vəziyyət без дублирования типов вагонов
     if cargo_name_nlu and cargo_name_nlu.lower() != wagon_disp_name.lower():
         cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})"
     else:
