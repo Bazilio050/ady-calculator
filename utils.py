@@ -18,20 +18,37 @@ BORDER_ESR_CODES = {
     "550004", "550108", "550803",
     # Шарур
     "550502", "550409",
-    # Алят (Паром / Бакинский Порт / Ələt yeni)
-    "549204", "553002", "548803", "547302", "547406", "547209", "548502", "548703"
+    # Алят (Паромные транзитные/экспортные пункты ASCO)
+    "549204",  # Ələt eksport-Aktau
+    "553002",  # Ələt eksport-Kurik
+    "548803",  # Ələt eksport-Türk.
+    "547302", "547406", "547209"
+    # Обратите внимание: Внутренние станции Ələt (548502) и Ələt yeni (548703) убраны из погранреестра
 }
 
 
 def is_border_esr(esr_code: str) -> bool:
-    """Проверяет, является ли код ЕСР пограничным переходом."""
+    """Проверяет, является ли код ЕСР пограничным или паромным переходом."""
     clean_esr = re.sub(r'\D', '', str(esr_code or ""))
     return clean_esr in BORDER_ESR_CODES
 
 
 def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "AZ") -> str:
-    """Форматирует название станции для итогового отчёта (прибавляет суффикс погранперехода)."""
+    """Форматирует название станции для итогового отчёта согласно справочнику ADY."""
     clean_esr = re.sub(r'\D', '', str(esr_code or ""))
+    
+    # Точные официальные наименования для паромных станций Алята
+    special_names = {
+        "549204": "Ələt eksport-Aktau",
+        "553002": "Ələt eksport-Kurik",
+        "548803": "Ələt eksport-Türk.",
+        "548502": "Ələt",
+        "548703": "Ələt yeni"
+    }
+    
+    if clean_esr in special_names:
+        return f"{special_names[clean_esr]} ({clean_esr})"
+
     st_name = str(raw_name or "").strip()
 
     if is_border_esr(clean_esr):
@@ -54,30 +71,43 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 # ==============================================================================
 
 BORDER_STATION_ESR_OVERRIDE = {
-    "boyuk kesik": "558701",  # Böyük Kəsik (eksport) -> 680 км
-    "yalama": "547508",       # Yalama (eksport) -> 680 км
+    "boyuk kesik": "558701",  # Böyük Kəsik (eksport)
+    "yalama": "547508",       # Yalama (eksport)
     "astara": "554109",       # Astara (eksport)
     "culfa": "550004",        # Culfa (eksport)
     "serur": "550409",        # Şərur (eksport)
-    "alet": "549204",         # Ələt (parom/eksp) -> 429 км
-    "elet": "549204",         # Ələt транслит
-    "алят": "549204"          # Алят RU
+    "alet yeni": "548703",    # Внутренняя станция Алят ени
+    "elet yeni": "548703",
+    "алят ени": "548703",
+    "alet": "548502",         # Внутренняя станция Алят (для импорта/экспорта по умолчанию)
+    "elet": "548502",
+    "алят": "548502"
 }
 
 
-def resolve_esr_by_station_name(station_name: str) -> str:
+def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "") -> str:
     """
-    Сканирует Distances.txt и возвращает точный 6-значный ЕСР по названию станции.
-    Для пограничных станций приоритет отдаётся экспортным кодам.
+    Сканирует названия станций и Distances.txt.
+    Привязывает паромные направления к соответствующим ЕСР-кодам Алята.
     """
     if not station_name:
         return ""
+
+    text = (str(station_name) + " " + str(user_input_raw)).lower()
+
+    # Если в запросе фигурирует паром / Каспийские порты:
+    if any(k in text for k in ["aktau", "aqtau", "актау"]):
+        return "549204"  # Ələt eksport-Aktau
+    if any(k in text for k in ["kuryk", "kurik", "quruq", "курык"]):
+        return "553002"  # Ələt eksport-Kurik
+    if any(k in text for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"]):
+        return "548803"  # Ələt eksport-Türk.
 
     clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(station_name), flags=re.IGNORECASE).strip().lower()
     clean_norm = clean.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
 
     for b_name, b_esr in BORDER_STATION_ESR_OVERRIDE.items():
-        if b_name in clean_norm or clean_norm in b_name:
+        if b_name == clean_norm or b_name in clean_norm:
             return b_esr
 
     possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
@@ -298,7 +328,7 @@ def is_alat_boyuk_kesik_route(origin_esr: str, dest_esr: str, shipment_type: str
     o_esr = re.sub(r'\D', '', str(origin_esr or ""))
     d_esr = re.sub(r'\D', '', str(dest_esr or ""))
 
-    alat_codes = ["549204", "553002", "548803", "547302", "547406", "547209", "548502", "548703"]
+    alat_codes = ["549204", "553002", "548803", "547302", "547406", "547209"]
     boyuk_kesik_codes = ["558631", "558701", "558504", "558400"]
 
     is_alat_to_bk = any(o_esr == c for c in alat_codes) and any(d_esr == c for c in boyuk_kesik_codes)
@@ -511,7 +541,6 @@ def calculate_asco_ferry_tariff(nlu_data: dict, user_input_raw: str = "") -> dic
     is_empty = bool(nlu_data.get("is_empty", False))
     raw_length = nlu_data.get("wagon_length_meters")
 
-    # Если в NLU длина не вытащилась, ищем число с буквой "м" в сыром тексте (например "15м")
     if not raw_length and user_input_raw:
         match_len = re.search(r'(\d+(?:\.\d+)?)\s*(?:m|м)\b', str(user_input_raw).lower())
         if match_len:
@@ -523,7 +552,6 @@ def calculate_asco_ferry_tariff(nlu_data: dict, user_input_raw: str = "") -> dic
     route_key = get_asco_route_key(orig_name, dest_name, user_input_raw)
     rates_db = ASCO_FERRY_RATES.get(route_key, ASCO_FERRY_RATES["kuryk_aktau"])
 
-    # --- 1. Определение категории груза и норматива длины ---
     cargo_category = "general"
     billable_length = 0.0
     is_fixed_length = False
@@ -548,16 +576,13 @@ def calculate_asco_ferry_tariff(nlu_data: dict, user_input_raw: str = "") -> dic
     elif "ixrac" in explicit_mode or "export" in explicit_mode:
         cargo_category = "export_az"
 
-    # --- 2. Округление метража (math.ceil) ---
     if not is_fixed_length:
         length_val = float(raw_length or 15.0)
         billable_length = float(math.ceil(length_val))
 
-    # --- 3. Базовая ставка за погонный метр ---
     state_key = "empty" if is_empty else "loaded"
     rate_per_meter = rates_db[cargo_category][state_key]
 
-    # --- 4. Повышающие коэффициенты ASCO ---
     coeff_length = 1.3 if (billable_length > 15.0 and not is_fixed_length) else 1.0
     
     coeff_oversize = 1.0
@@ -567,10 +592,8 @@ def calculate_asco_ferry_tariff(nlu_data: dict, user_input_raw: str = "") -> dic
     elif width_m >= 3.25 or "locomotive" in wagon_type:
         coeff_oversize = 1.4
 
-    # --- 5. Итоговый расчет за 1 вагон ---
     total_usd = billable_length * rate_per_meter * coeff_length * coeff_oversize
 
-    # --- 6. Текстовое наименование строки и примечание ---
     if lang == "RU":
         line_title = "Сбор за паромную переправу ASCO"
         route_str = "Алят – Туркменбаши" if route_key == "turkmenbashi" else "Алят – Курык"
