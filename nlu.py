@@ -12,7 +12,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     rail_vocab = get_rail_vocabulary()
 
     prompt = f"""
-    You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
+    You are an expert railway & Caspian ferry freight NLU assistant for Azerbaijan Railways (ADY) and ASCO.
     Analyze the user text query containing a freight shipment request.
 
     ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
@@ -26,7 +26,11 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     - STRICT PRIORITY RULE FOR GNG: The abbreviation 'GNG', 'NHM' or 'ГНГ' followed by numbers represents strictly a cargo nomenclature code. It is STRICTLY FORBIDDEN to interpret 'GNG' as the city of Ganja (Gəncə) or any other similar-sounding word.
     - TERMS LIKE "qapalı vaqon", "крытый вагон", "полувагон", "платформа", "цистерна", "çən", "cistern" ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
     - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
-    - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
+    - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109, Ələt (Bərə/Паром)=549204.
+
+    CRITICAL RULES FOR ASCO CASSPIAN FERRY:
+    - Set 'is_asco_ferry': true if the request mentions ferry crossing or Caspian sea ports: "Quruq", "Kuryk", "Курык", "Aqtau", "Aktau", "Актау", "Türkmenbaşı", "Turkmenbashi", "Туркменбаши", "TRK", "ТРК", "bərə", "паром", "ferry".
+    - Extract wagon length in meters into 'wagon_length_meters' as a float (e.g. "15m", "17 м", "16.97m" -> 15.0, 17.0, 16.97). If not explicitly mentioned, set 'wagon_length_meters': null.
 
     EXPECTED JSON STRUCTURE:
     {{
@@ -49,7 +53,9 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
       "is_consolidated": boolean,
       "escort_count": integer or 0,
       "has_teplushka": boolean,
-      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"
+      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null",
+      "is_asco_ferry": boolean,
+      "wagon_length_meters": float or null
     }}
 
     Return ONLY a valid JSON object. User language context: {target_lang}.
@@ -94,6 +100,10 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
         result["is_empty"] = False
     if "is_own_axles" not in result or result["is_own_axles"] is None:
         result["is_own_axles"] = False
+    if "is_asco_ferry" not in result or result["is_asco_ferry"] is None:
+        result["is_asco_ferry"] = False
+    if "wagon_length_meters" not in result:
+        result["wagon_length_meters"] = None
 
     return result
 
@@ -107,7 +117,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     rail_vocab = get_rail_vocabulary()
 
     prompt = f"""
-    You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
+    You are an expert railway & Caspian ferry freight NLU assistant for Azerbaijan Railways (ADY) and ASCO.
     Listen carefully to the audio input containing a freight shipment request.
 
     ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
@@ -122,7 +132,11 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     - STRICT PRIORITY RULE FOR GNG: Spoken 'GNG', 'NHM' or 'ГНГ' followed by numbers represents strictly a cargo nomenclature code. It is STRICTLY FORBIDDEN to interpret 'GNG' as the city of Ganja (Gəncə) or any other similar-sounding word.
     - TERMS LIKE "qapalı vaqon", "крытый вагон", "полувагон", "платформа", "цистерна", "çən", "cistern" ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
     - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
-    - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
+    - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109, Ələt (Bərə/Паром)=549204.
+
+    CRITICAL RULES FOR ASCO CASPIAN FERRY:
+    - Set 'is_asco_ferry': true if the request mentions ferry crossing or Caspian sea ports: "Quruq", "Kuryk", "Курык", "Aqtau", "Aktau", "Актау", "Türkmenbaşı", "Turkmenbashi", "Туркменбаши", "TRK", "ТРК", "bərə", "паром", "ferry".
+    - Extract wagon length in meters into 'wagon_length_meters' as a float (e.g. "15m", "17 м", "16.97m" -> 15.0, 17.0, 16.97). If not explicitly mentioned, set 'wagon_length_meters': null.
 
     EXPECTED JSON STRUCTURE:
     {{
@@ -146,7 +160,9 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
       "is_consolidated": boolean,
       "escort_count": integer or 0,
       "has_teplushka": boolean,
-      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"
+      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null",
+      "is_asco_ferry": boolean,
+      "wagon_length_meters": float or null
     }}
 
     Return ONLY a valid JSON object. UI language context: {target_lang}.
@@ -168,46 +184,4 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
         raw_text = raw_text[7:]
     elif raw_text.startswith("```"):
         raw_text = raw_text[3:]
-    if raw_text.endswith("```"):
-        raw_text = raw_text[:-3]
-
-    result = json.loads(raw_text.strip())
-    result["site_lang"] = str(lang).upper()
-
-    if "gng_code" in result and result["gng_code"]:
-        result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
-
-    wagon_words = ["qapalı vaqon", "крытый вагон", "крытый", "qapalı", "полувагон", "платформа"]
-    if "gng_name" in result and result["gng_name"]:
-        if any(w in str(result["gng_name"]).lower() for w in wagon_words):
-            result["gng_name"] = "Buğda" if result.get("gng_code") == "1001" else ""
-
-    if "escort_count" not in result or result["escort_count"] is None:
-        result["escort_count"] = 0
-    if "has_teplushka" not in result or result["has_teplushka"] is None:
-        result["has_teplushka"] = False
-    if "teplushka_type" not in result or not result["teplushka_type"]:
-        result["teplushka_type"] = "freight_sps"
-    if "is_empty" not in result or result["is_empty"] is None:
-        result["is_empty"] = False
-    if "is_own_axles" not in result or result["is_own_axles"] is None:
-        result["is_own_axles"] = False
-
-    return result
-
-
-def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
-    """
-    Проверяет минимально необходимые данные для расчета.
-    """
-    missing = []
-    
-    origin = nlu_data.get("origin_name") or nlu_data.get("origin_esr")
-    dest = nlu_data.get("dest_name") or nlu_data.get("dest_esr")
-    
-    if not origin:
-        missing.append("Məlumat yoxdur: Göndərmə stansiyası" if lang == "AZ" else "Отсутствует станция отправления")
-    if not dest:
-        missing.append("Məlumat yoxdur: Təyinat stansiyası" if lang == "AZ" else "Отсутствует станция назначения")
-        
-    return missing
+    if raw_text.endswith("
