@@ -800,10 +800,14 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             ferry_usd = asco_data.get("ferry_rate_usd", 1200.0)
             unit_str_asco = "USD/vaqon" if lang_upper == "AZ" else ("USD/вагон" if lang_upper == "RU" else "USD/wagon")
             
+            # Передаем значение под всеми возможными ключами для app.py
             asco_result_display = {
                 "line_title": "ASCO Bərə daşıma haqqı" if lang_upper == "AZ" else ("Морской фрахт ASCO" if lang_upper == "RU" else "ASCO Ferry rate"),
                 "rate": f"{ferry_usd:.2f} {unit_str_asco}",
-                "value": ferry_usd
+                "value": ferry_usd,
+                "ferry_rate_usd": ferry_usd,
+                "amount": ferry_usd,
+                "cost": ferry_usd
             }
             if asco_data.get("note"):
                 notes.append(asco_data["note"])
