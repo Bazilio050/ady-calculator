@@ -369,13 +369,24 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     lang_upper = str(lang or "AZ").upper()
     input_lower = str(user_input_raw or "").lower()
     
+    # --- ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ СТАНЦИИ ОТПРАВЛЕНИЯ (ORIGIN) ИЗ ТЕКСТА ---
+    if re.search(r'б[её]юк\s*к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', input_lower):
+        nlu_data["origin_name"] = "Böyük Kəsik"
+        nlu_data["origin_esr"] = "558701"
+    elif "yalama" in input_lower:
+        nlu_data["origin_name"] = "Yalama"
+        nlu_data["origin_esr"] = "545006"
+    elif "astara" in input_lower:
+        nlu_data["origin_name"] = "Astara"
+        nlu_data["origin_esr"] = "554109"
+
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
 
     origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
     dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
 
-    # --- ЛОГИКА ОПРЕДЕЛЕНИЯ ПАРТОМНЫХ И ВНУТРЕННИХ СТАНЦИЙ АЛЯТА И РЕЖИМОВ DAŞINMA ---
+    # --- ЛОГИКА ОПРЕДЕЛЕНИЯ ПАРОМНЫХ И ВНУТРЕННИХ СТАНЦИЙ АЛЯТА И РЕЖИМОВ DAŞINMA ---
     has_kuryk = any(k in input_lower for k in ["kuryk", "kurik", "quruq", "курык"])
     has_aktau = any(k in input_lower for k in ["aktau", "aqtau", "актау"])
     has_trk = any(k in input_lower for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"])
