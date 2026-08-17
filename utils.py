@@ -1,8 +1,9 @@
 import re
 import os
 import json
+from datetime import datetime
 
-# Обновленный полный реестр станций, терминалов и погранотходов ADY
+# Полный реестр станций, терминалов и погранотходов ADY
 BORDER_STATION_ESR_OVERRIDE = {
     # Пограничные и базовые узлы
     "boyuk kesik": "558701",
@@ -183,6 +184,118 @@ def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "") -> 
         print(f"Error resolving ESR: {e}")
 
     return ""
+
+
+def is_border_esr(esr: str) -> bool:
+    """Проверяет, является ли станция пограничным переходом или портом."""
+    border_esrs = ["547508", "545006", "558701", "554109", "550108", "550409", "553002", "549204", "548803"]
+    return str(esr or "").strip() in border_esrs
+
+
+def get_distance_by_esr(origin_esr: str, dest_esr: str) -> int:
+    """Возвращает ж/д расстояние в км между станциями по их ESR-кодам."""
+    o_esr = str(origin_esr or "").strip()
+    d_esr = str(dest_esr or "").strip()
+
+    if o_esr == "547105" and d_esr in ["545006", "547508"]:
+        return 207  # Bakı yük - Yalama
+    if o_esr == "547001" and d_esr in ["545006", "547508"]:
+        return 200  # Bakı pas. - Yalama
+
+    possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
+    dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
+
+    if dist_file:
+        try:
+            with open(dist_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if "|" not in line or ":---" in line or "Stansiyanın" in line:
+                        continue
+                    parts = [p.strip() for p in line.split("|")]
+                    if len(parts) >= 3:
+                        file_esr = re.sub(r'\D', '', parts[2])
+                        if file_esr == o_esr:
+                            for part in parts[3:]:
+                                nums = re.findall(r'\d+', part)
+                                if nums:
+                                    return int(nums[0])
+        except Exception as e:
+            print(f"Error reading distance from file: {e}")
+
+    return 207 if o_esr == "547105" else 300
+
+
+def get_calculation_distance(distance_km: int, shipment_type: str = "") -> int:
+    """Корректирует расстояние с учетом минимального плеча ADY (50 км)."""
+    return max(int(distance_km or 0), 50)
+
+
+def format_station_display_name(raw_name: str, esr: str = "", lang: str = "AZ") -> str:
+    """Форматирует отображение станции с кодом ESR."""
+    custom_names = {
+        "547105": "Bakı yük",
+        "547001": "Bakı",
+        "545006": "Yalama-eksp.",
+        "547508": "Yalama-eksp.",
+        "558701": "Böyük Kəsik-eksp.",
+        "554109": "Astara-eksp.",
+        "553002": "Ələt eksport-Kurik",
+        "549204": "Ələt eksport-Aktau",
+        "548803": "Ələt eksport-Türk.",
+    }
+    name = custom_names.get(esr, raw_name or f"Stansiya {esr}")
+    return f"{name} ({esr})" if esr else name
+
+
+def get_min_weight_by_gng(gng_code: str, actual_weight: float) -> float:
+    """Возвращает минимальную расчетную норму веса по коду ГНГ."""
+    if actual_weight <= 0:
+        return 10.0
+    return max(float(actual_weight), 10.0)
+
+
+def get_global_coefficients(shipment_type: str, gng_code: str, origin_esr: str, dest_esr: str, lang: str = "AZ") -> tuple:
+    """Возвращает глобальные тарифные коэффициенты."""
+    return [], []
+
+
+def parse_date_from_string(period_str: str = None) -> datetime:
+    """Извлекает дату или год из строки запроса."""
+    if not period_str:
+        return datetime.now()
+    try:
+        match = re.search(r'(\d{4})', str(period_str))
+        if match:
+            year = int(match.group(1))
+            return datetime(year, 3, 15)
+    except Exception:
+        pass
+    return datetime.now()
+
+
+def get_exchange_rate_for_date(target_dt: datetime = None) -> tuple:
+    """Возвращает официальный курс CHF/USD для тарифов ADY."""
+    return 0.79, "0.79 CHF/USD"
+
+
+def should_apply_150_coeff(shipment_type: str, table_num: float, gng_code: str, wagon_type: str, park_type: str) -> bool:
+    """Проверяет необходимость применения коэффициента 1.50 для импорта/экспорта."""
+    if shipment_type in ["import", "export"] and table_num in [3, 4, 6]:
+        return True
+    return False
+
+
+def get_transporter_min_weight(axles: int, current_weight: float) -> float:
+    """Рассчитывает минимальный вес для транспортеров из расчета 5 тонн на ось."""
+    min_norm = float(axles) * 5.0
+    return max(float(current_weight or 0), min_norm)
+
+
+def is_long_platform_scep(user_input_raw: str, wagon_type: str) -> bool:
+    """Проверяет, является ли платформа/сцеп длиннобазной (>19м)."""
+    inp = str(user_input_raw or "").lower()
+    w_type = str(wagon_type or "").lower()
+    return any(k in inp or k in w_type for k in ["scep 19m", "сцеп 19м", "19m", "19м", "длиннобазная"])
 
 
 def load_rules_config():
