@@ -3,7 +3,6 @@ import re
 from google.genai import types
 from rail_glossary import get_rail_vocabulary
 
-
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
     Анализирует текстовый запрос пользователя через быструю модель gemini-3.5-flash-lite.
@@ -13,61 +12,55 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     rail_vocab = get_rail_vocabulary()
 
     prompt = f"""
-You are an expert railway & Caspian ferry freight NLU assistant for Azerbaijan Railways (ADY) and ASCO.
-Analyze the user text query containing a freight shipment request.
+    You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
+    Analyze the user text query containing a freight shipment request.
 
-ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
-{rail_vocab}
+    ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
+    {rail_vocab}
 
-Extract parameters into a JSON object matching the schema below.
+    Extract parameters into a JSON object matching the schema below.
 
-CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
-- ALWAYS extract any cargo numeric code into 'gng_code' (e.g. if query contains "1001" or "GNG 1001", set 'gng_code': "1001").
-- NEVER put text descriptions or wagon terms into 'gng_code'! Keep 'gng_code' STRICTLY NUMERIC.
-- STRICT PRIORITY RULE FOR GNG: The abbreviation 'GNG', 'NHM' or 'ГНГ' followed by numbers represents strictly a cargo nomenclature code. It is STRICTLY FORBIDDEN to interpret 'GNG' as the city of Ganja (Gəncə) or any other similar-sounding word.
-- TERMS LIKE 'qapalı vaqon', 'крытый вагон', 'полувагон', 'платформа', 'цистерна', 'çən', 'cistern' ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
-- If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
-- Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109, Ələt (Bərə/Паром)=549204.
+    CRITICAL RULES FOR STATIONS & ROUTING:
+    - STRICT ORDER RULE: The FIRST station or Caspian ferry port mentioned in the text MUST ALWAYS be assigned to 'origin_name'. The SECOND station/port MUST ALWAYS be assigned to 'dest_name'.
+    - NEVER swap origin and destination stations!
+    - Station ESR codes mapping: 
+      Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109,
+      Kurik/Kuryk/Курык=553002, Aktau/Актау=549204, Türkmenbaşı/Turkmenbashi/TRK/ТРК=548803.
 
-CRITICAL RULES FOR CASPIAN FERRY PORTS & ROUTE SEPARATION:
-- NEVER assign ferry ports ("Kuryk", "Aktau", "Turkmenbashi") to origin_name or origin_esr.
-- Origin station is the entry border/station (e.g. "Böyük Kəsik" -> origin_esr: "558701", "Yalama" -> origin_esr: "545006").
-- If the request mentions Caspian ferry ports, bind them STRICTLY to 'dest_name' & 'dest_esr':
-  * "Quruq", "Kuryk", "Курык" -> dest_name: "Ələt eksport-Kurik", dest_esr: "553002"
-  * "Aqtau", "Aktau", "Актау" -> dest_name: "Ələt eksport-Aktau", dest_esr: "549204"
-  * "Türkmenbaşı", "Turkmenbashi", "Туркменбаши", "TRK", "ТРК" -> dest_name: "Ələt eksport-Türk.", dest_esr: "548803"
-- Set 'is_asco_ferry': true if any ferry crossing or Caspian sea port is mentioned.
-- Extract wagon length in meters into 'wagon_length_meters' as a float (e.g. "15m", "17 м", "16.97m" -> 15.0, 17.0, 16.97). If not explicitly mentioned, set 'wagon_length_meters': null.
+    CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
+    - ALWAYS extract any cargo numeric code into 'gng_code' (e.g. if query contains "1001" or "GNG 1001", set 'gng_code': "1001").
+    - NEVER put text descriptions or wagon terms into 'gng_code'! Keep 'gng_code' STRICTLY NUMERIC.
+    - STRICT PRIORITY RULE FOR GNG: The abbreviation 'GNG', 'NHM' or 'ГНГ' followed by numbers represents strictly a cargo nomenclature code. It is STRICTLY FORBIDDEN to interpret 'GNG' as the city of Ganja (Gəncə) or any other similar-sounding word.
+    - TERMS LIKE "qapalı vaqon", "крытый вагон", "полувагон", "платформа", "цистерна", "çən", "cistern" ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
+    - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
 
-EXPECTED JSON STRUCTURE:
-{{
-  "origin_esr": "6-digit ESR string or null",
-  "origin_name": "Station name in {target_lang}",
-  "dest_esr": "6-digit ESR string or null",
-  "dest_name": "Station name in {target_lang}",
-  "gng_code": "Numeric GNG code string only (e.g., '1001', '4407') or null",
-  "gng_name": "Cargo name in {target_lang}",
-  "weight_tons": float or null,
-  "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
-  "park_type": "SPS / MPS",
-  "ref_section_cargo_wagons": integer or null,
-  "explicit_mode": "import / export / transit or null",
-  "is_empty": boolean,
-  "axles_count": integer or null,
-  "is_own_axles": boolean,
-  "is_in_repair": boolean,
-  "is_passenger_train": boolean,
-  "is_consolidated": boolean,
-  "escort_count": integer or 0,
-  "has_teplushka": boolean,
-  "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null",
-  "is_asco_ferry": boolean,
-  "wagon_length_meters": float or null
-}}
+    EXPECTED JSON STRUCTURE:
+    {{
+      "origin_esr": "6-digit ESR string or null",
+      "origin_name": "Station name in {target_lang}",
+      "dest_esr": "6-digit ESR string or null",
+      "dest_name": "Station name in {target_lang}",
+      "gng_code": "Numeric GNG code string only (e.g., '1001', '4407') or null",
+      "gng_name": "Cargo name in {target_lang}",
+      "weight_tons": float or null,
+      "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
+      "park_type": "SPS / MPS",
+      "ref_section_cargo_wagons": integer or null,
+      "explicit_mode": "import / export / transit or null",
+      "is_empty": boolean,
+      "axles_count": integer or null,
+      "is_own_axles": boolean,
+      "is_in_repair": boolean,
+      "is_passenger_train": boolean,
+      "is_consolidated": boolean,
+      "escort_count": integer or 0,
+      "has_teplushka": boolean,
+      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"
+    }}
 
-Return ONLY a valid JSON object. User language context: {target_lang}.
-Query: "{user_input}"
-"""
+    Return ONLY a valid JSON object. User language context: {target_lang}.
+    Query: "{user_input}"
+    """
 
     response = client.models.generate_content(
         model="gemini-3.5-flash-lite",
@@ -88,7 +81,6 @@ Query: "{user_input}"
 
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(lang).upper()
-    result["user_input_raw"] = user_input
 
     if "gng_code" in result and result["gng_code"]:
         result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
@@ -108,81 +100,69 @@ Query: "{user_input}"
         result["is_empty"] = False
     if "is_own_axles" not in result or result["is_own_axles"] is None:
         result["is_own_axles"] = False
-    if "is_asco_ferry" not in result or result["is_asco_ferry"] is None:
-        result["is_asco_ferry"] = False
-    if "wagon_length_meters" not in result:
-        result["wagon_length_meters"] = None
-
-    ferry_keywords = ["quruq", "kuryk", "курык", "aqtau", "aktau", "актау", "türkmenbaşı", "turkmenbashi", "туркменбаши", "trk", "трк", "bərə", "паром", "ferry"]
-    if any(k in str(user_input).lower() for k in ferry_keywords):
-        result["is_asco_ferry"] = True
 
     return result
 
 
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
-    Принимает байты аудиозаписи и выполняет распознавание через мультимодальную модель gemini-3.6-flash.
+    Принимает байты аудиозаписи и выполняет распознавание через мощную мультимодальную модель gemini-3.6-flash.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
     rail_vocab = get_rail_vocabulary()
 
     prompt = f"""
-You are an expert railway & Caspian ferry freight NLU assistant for Azerbaijan Railways (ADY) and ASCO.
-Listen carefully to the audio input containing a freight shipment request.
+    You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
+    Listen carefully to the audio input containing a freight shipment request.
 
-ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
-{rail_vocab}
+    ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
+    {rail_vocab}
 
-Tasks:
-1. Transcribe the spoken text accurately into the 'transcript' field.
-2. Extract shipment parameters into a JSON object matching the schema below.
+    Tasks:
+    1. Transcribe the spoken text accurately into the 'transcript' field.
+    2. Extract shipment parameters into a JSON object matching the schema below.
 
-CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
-- ALWAYS extract any spoken cargo numeric code into 'gng_code' (e.g. if user says "1001" or "GNG 1001", set 'gng_code': "1001"). Never put text descriptions into 'gng_code'!
-- STRICT PRIORITY RULE FOR GNG: Spoken 'GNG', 'NHM' or 'ГНГ' followed by numbers represents strictly a cargo nomenclature code. It is STRICTLY FORBIDDEN to interpret 'GNG' as the city of Ganja (Gəncə) or any other similar-sounding word.
-- TERMS LIKE 'qapalı vaqon', 'крытый вагон', 'полувагон', 'платформа', 'цистерна', 'çən', 'cistern' ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
-- If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
-- Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109, Ələt (Bərə/Паром)=549204.
+    CRITICAL RULES FOR STATIONS & ROUTING:
+    - STRICT ORDER RULE: The FIRST station or Caspian ferry port mentioned in the audio MUST ALWAYS be assigned to 'origin_name'. The SECOND station/port MUST ALWAYS be assigned to 'dest_name'.
+    - NEVER swap origin and destination stations!
+    - Station ESR codes mapping: 
+      Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109,
+      Kurik/Kuryk/Курык=553002, Aktau/Актау=549204, Türkmenbaşı/Turkmenbashi/TRK/ТРК=548803.
 
-CRITICAL RULES FOR CASPIAN FERRY PORTS & DESTINATION STATIONS:
-- If spoken text mentions Caspian ferry ports, bind them strictly to the corresponding Alat ferry ESR station codes as dest_name & dest_esr:
-  * "Quruq", "Kuryk", "Курык" -> dest_name: "Ələt eksport-Kurik", dest_esr: "553002"
-  * "Aqtau", "Aktau", "Актау" -> dest_name: "Ələt eksport-Aktau", dest_esr: "549204"
-  * "Türkmenbaşı", "Turkmenbashi", "Туркменбаши", "TRK", "ТРК" -> dest_name: "Ələt eksport-Türk.", dest_esr: "548803"
-- Set 'is_asco_ferry': true if any ferry crossing or Caspian sea port is mentioned.
-- Extract wagon length in meters into 'wagon_length_meters' as a float (e.g. "15m", "17 м", "16.97m" -> 15.0, 17.0, 16.97). If not explicitly mentioned, set 'wagon_length_meters': null.
+    CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
+    - ALWAYS extract any spoken cargo numeric code into 'gng_code' (e.g. if user says "1001" or "GNG 1001", set 'gng_code': "1001"). Never put text descriptions into 'gng_code'!
+    - STRICT PRIORITY RULE FOR GNG: Spoken 'GNG', 'NHM' or 'ГНГ' followed by numbers represents strictly a cargo nomenclature code. It is STRICTLY FORBIDDEN to interpret 'GNG' as the city of Ganja (Gəncə) or any other similar-sounding word.
+    - TERMS LIKE "qapalı vaqon", "крытый вагон", "полувагон", "платформа", "цистерна", "çən", "cistern" ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
+    - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
 
-EXPECTED JSON STRUCTURE:
-{{
-  "transcript": "Exact transcribed text spoken by user",
-  "origin_esr": "6-digit ESR string or null",
-  "origin_name": "Station name in {target_lang}",
-  "dest_esr": "6-digit ESR string or null",
-  "dest_name": "Station name in {target_lang}",
-  "gng_code": "Numeric GNG code string only (e.g., '1001', '2713') or null",
-  "gng_name": "Cargo name in {target_lang}",
-  "weight_tons": float or null,
-  "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
-  "park_type": "SPS / MPS",
-  "ref_section_cargo_wagons": integer or null,
-  "explicit_mode": "import / export / transit or null",
-  "is_empty": boolean,
-  "axles_count": integer or null,
-  "is_own_axles": boolean,
-  "is_in_repair": boolean,
-  "is_passenger_train": boolean,
-  "is_consolidated": boolean,
-  "escort_count": integer or 0,
-  "has_teplushka": boolean,
-  "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null",
-  "is_asco_ferry": boolean,
-  "wagon_length_meters": float or null
-}}
+    EXPECTED JSON STRUCTURE:
+    {{
+      "transcript": "Exact transcribed text spoken by user",
+      "origin_esr": "6-digit ESR string or null",
+      "origin_name": "Station name in {target_lang}",
+      "dest_esr": "6-digit ESR string or null",
+      "dest_name": "Station name in {target_lang}",
+      "gng_code": "Numeric GNG code string only (e.g., '1001', '2713') or null",
+      "gng_name": "Cargo name in {target_lang}",
+      "weight_tons": float or null,
+      "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
+      "park_type": "SPS / MPS",
+      "ref_section_cargo_wagons": integer or null,
+      "explicit_mode": "import / export / transit or null",
+      "is_empty": boolean,
+      "axles_count": integer or null,
+      "is_own_axles": boolean,
+      "is_in_repair": boolean,
+      "is_passenger_train": boolean,
+      "is_consolidated": boolean,
+      "escort_count": integer or 0,
+      "has_teplushka": boolean,
+      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"
+    }}
 
-Return ONLY a valid JSON object. UI language context: {target_lang}.
-"""
+    Return ONLY a valid JSON object. UI language context: {target_lang}.
+    """
 
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
 
@@ -205,7 +185,6 @@ Return ONLY a valid JSON object. UI language context: {target_lang}.
 
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(lang).upper()
-    result["user_input_raw"] = result.get("transcript", "")
 
     if "gng_code" in result and result["gng_code"]:
         result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
@@ -225,63 +204,22 @@ Return ONLY a valid JSON object. UI language context: {target_lang}.
         result["is_empty"] = False
     if "is_own_axles" not in result or result["is_own_axles"] is None:
         result["is_own_axles"] = False
-    if "is_asco_ferry" not in result or result["is_asco_ferry"] is None:
-        result["is_asco_ferry"] = False
-    if "wagon_length_meters" not in result:
-        result["wagon_length_meters"] = None
-
-    ferry_keywords = ["quruq", "kuryk", "курык", "aqtau", "aktau", "актау", "türkmenbaşı", "turkmenbashi", "туркменбаши", "trk", "трк", "bərə", "паром", "ferry"]
-    spoken_text = str(result.get("transcript") or "").lower()
-    if any(k in spoken_text for k in ferry_keywords):
-        result["is_asco_ferry"] = True
 
     return result
 
 
-def validate_nlu_input(nlu_res: dict, lang: str = "AZ") -> list:
+def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
+    """
+    Проверяет минимально необходимые данные для расчета.
+    """
     missing = []
     
-    # Извлекаем весь исходный текст
-    raw_input = str(nlu_res.get("user_input_raw") or "").lower()
-
-    # 1. Жесткая привязка станции отправления (Origin)
-    if re.search(r'б[её]юк\s*к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', raw_input):
-        nlu_res["origin_name"] = "Böyük Kəsik"
-        nlu_res["origin_esr"] = "558701"
-    elif "yalama" in raw_input:
-        nlu_res["origin_name"] = "Yalama"
-        nlu_res["origin_esr"] = "545006"
-    elif "astara" in raw_input:
-        nlu_res["origin_name"] = "Astara"
-        nlu_res["origin_esr"] = "554109"
-
-    # 2. Жесткая привязка паромного порта назначения (Dest)
-    if any(k in raw_input for k in ["kuryk", "kurik", "quruq", "курык"]):
-        nlu_res["dest_name"] = "Ələt eksport-Kurik"
-        nlu_res["dest_esr"] = "553002"
-        nlu_res["is_asco_ferry"] = True
-    elif any(k in raw_input for k in ["aktau", "aqtau", "актау"]):
-        nlu_res["dest_name"] = "Ələt eksport-Aktau"
-        nlu_res["dest_esr"] = "549204"
-        nlu_res["is_asco_ferry"] = True
-    elif any(k in raw_input for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"]):
-        nlu_res["dest_name"] = "Ələt eksport-Türk."
-        nlu_res["dest_esr"] = "548803"
-        nlu_res["is_asco_ferry"] = True
-
-    # 3. Защитный сброс, если NLU все равно поставил одинаковые станции
-    if nlu_res.get("origin_esr") == nlu_res.get("dest_esr"):
-        if re.search(r'б[её]юк\s*к[аяе]сик|beyuk|boyuk', raw_input):
-            nlu_res["origin_name"] = "Böyük Kəsik"
-            nlu_res["origin_esr"] = "558701"
-        elif "yalama" in raw_input:
-            nlu_res["origin_name"] = "Yalama"
-            nlu_res["origin_esr"] = "545006"
-
-    # Проверка обязательных полей
-    if not nlu_res.get("origin_esr") and not nlu_res.get("origin_name"):
+    origin = nlu_data.get("origin_name") or nlu_data.get("origin_esr")
+    dest = nlu_data.get("dest_name") or nlu_data.get("dest_esr")
+    
+    if not origin:
         missing.append("Məlumat yoxdur: Göndərmə stansiyası" if lang == "AZ" else "Отсутствует станция отправления")
-    if not nlu_res.get("dest_esr") and not nlu_res.get("dest_name"):
+    if not dest:
         missing.append("Məlumat yoxdur: Təyinat stansiyası" if lang == "AZ" else "Отсутствует станция назначения")
-
+        
     return missing
