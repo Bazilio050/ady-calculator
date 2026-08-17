@@ -369,7 +369,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     lang_upper = str(lang or "AZ").upper()
     input_lower = str(user_input_raw or "").lower()
     
-    # --- ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ СТАНЦИИ ОТПРАВЛЕНИЯ (ORIGIN) ИЗ ТЕКСТА ---
+    # 1. Принудительный перехват станции отправления по ключевым словам
     if re.search(r'б[её]юк\s*к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', input_lower):
         nlu_data["origin_name"] = "Böyük Kəsik"
         nlu_data["origin_esr"] = "558701"
@@ -380,11 +380,16 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         nlu_data["origin_name"] = "Astara"
         nlu_data["origin_esr"] = "554109"
 
+    # 2. Приоритет отдаётся прямому значению из nlu_data (чтобы resolve_esr_by_station_name не сбивал ESR)
+    origin_esr = str(nlu_data.get("origin_esr") or "").strip()
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
-    st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
+    if not origin_esr:
+        origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or ""
 
-    origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
-    dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
+    dest_esr = str(nlu_data.get("dest_esr") or "").strip()
+    st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
+    if not dest_esr:
+        dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or ""
 
     # --- ЛОГИКА ОПРЕДЕЛЕНИЯ ПАРОМНЫХ И ВНУТРЕННИХ СТАНЦИЙ АЛЯТА И РЕЖИМОВ DAŞINMA ---
     has_kuryk = any(k in input_lower for k in ["kuryk", "kurik", "quruq", "курык"])
@@ -402,7 +407,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     else:
         shipment_type_code = None
 
-    # 1. Если указан конкретный Каспийский паромный порт:
+    # Назначение порта назначения
     if has_kuryk:
         dest_esr, st_to_raw = "553002", "Ələt eksport-Kurik"
         shipment_type_code = "transit"
@@ -412,11 +417,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     elif has_trk:
         dest_esr, st_to_raw = "548803", "Ələt eksport-Türk."
         shipment_type_code = "transit"
-    # 2. Если запрос к Аляту содержит явное слово Импорт или Экспорт:
     elif (has_explicit_import or has_explicit_export) and is_alat_dest:
         dest_esr, st_to_raw = "548502", "Ələt"
         shipment_type_code = "import" if has_explicit_import else "export"
-    # 3. Бёюк Кясик — Алят по умолчанию (Транзит, Ələt-eksp. без вывода кода):
     elif ("558701" in origin_esr or "558631" in origin_esr or "boyuk" in st_from_raw.lower() or "böyük" in st_from_raw.lower()) and is_alat_dest:
         dest_esr, st_to_raw = "", "Ələt"
         shipment_type_code = "transit"
