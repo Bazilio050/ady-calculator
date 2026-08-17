@@ -791,11 +791,14 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         )
         notes.append(guard_note_text)
 
-    asco_result = None
+    asco_result_display = None
     if nlu_data.get("is_asco_ferry") or is_asco_ferry_route(origin_esr, dest_esr, st_from_raw, st_to_raw, user_input_raw):
-        asco_result = calculate_asco_ferry_tariff(nlu_data, user_input_raw)
-        if asco_result and asco_result.get("note"):
-            notes.append(asco_result["note"])
+        asco_data = calculate_asco_ferry_tariff(nlu_data, user_input_raw)
+        if asco_data:
+            ferry_usd = asco_data.get("ferry_rate_usd", 1200.0)
+            asco_result_display = f"{ferry_usd:.2f} USD/vaqon" if lang_upper == "AZ" else (f"{ferry_usd:.2f} USD/вагон" if lang_upper == "RU" else f"{ferry_usd:.2f} USD/wagon")
+            if asco_data.get("note"):
+                notes.append(asco_data["note"])
 
     park_display = "SPS" if park_type == "SPS" else "MPS"
     sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
@@ -863,7 +866,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             "net_ady_rate": f"{final_rate:.2f} {unit_str}",
             "express_rate": express_rate_str, 
             "guard_rate": f"{guard_fee_express_usd:.2f} USD" if guard_fee_express_usd > 0 else None,
-            "asco_ferry": asco_result,
+            "asco_ferry": asco_result_display,
             "notes": notes
         }
     }
