@@ -753,6 +753,23 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
         try:
             client = genai.Client(api_key=user_api_key.strip())
             nlu_res = call_gemini_nlu(client, current_input, selected_lang)
+            nlu_res["user_input_raw"] = current_input
+
+            # --- АВТОПОДСТАНОВКА ПАРОМНОЙ СТАНЦИИ, ЕСЛИ NLU ПРОПУСТИЛ ---
+            input_lower = current_input.lower()
+            if not nlu_res.get("dest_name") and not nlu_res.get("dest_esr"):
+                if any(k in input_lower for k in ["kuryk", "kurik", "quruq", "курык"]):
+                    nlu_res["dest_name"] = "Ələt eksport-Kurik"
+                    nlu_res["dest_esr"] = "553002"
+                    nlu_res["is_asco_ferry"] = True
+                elif any(k in input_lower for k in ["aktau", "aqtau", "актау"]):
+                    nlu_res["dest_name"] = "Ələt eksport-Aktau"
+                    nlu_res["dest_esr"] = "549204"
+                    nlu_res["is_asco_ferry"] = True
+                elif any(k in input_lower for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"]):
+                    nlu_res["dest_name"] = "Ələt eksport-Türk."
+                    nlu_res["dest_esr"] = "548803"
+                    nlu_res["is_asco_ferry"] = True
             
             gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
             cargo_val = str(nlu_res.get("gng_name") or nlu_res.get("cargo_name") or "").strip()
