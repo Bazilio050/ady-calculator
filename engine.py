@@ -375,7 +375,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         (r'астара|astara', "Astara", "554109"),
         (r'курык|kuryk|kurik|quruq', "Ələt eksport-Kurik", "553002"),
         (r'актау|aktau|aqtau', "Ələt eksport-Aktau", "549204"),
-        (r'туркменбаши|turkmenbashi|türkmenbaşı|trk|трк', "Ələt eksport-Türk.", "548803")
+        (r'туркменбаши|turkmenbashi|türkmenbaşı|trk|трк', "Ələt eksport-Türk.", "548803"),
+        (r'алят|alat|ələt', "Ələt", "548502")
     ]
 
     matches = []
@@ -384,6 +385,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         if m:
             matches.append((m.start(), name, esr))
 
+    # Сортируем найденные станции строго по хронологии появления в тексте
     matches.sort(key=lambda x: x[0])
 
     if len(matches) >= 2:
@@ -398,15 +400,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     origin_esr = str(nlu_data.get("origin_esr") or resolve_esr_by_station_name(st_from_raw, user_input_raw) or "")
     dest_esr = str(nlu_data.get("dest_esr") or resolve_esr_by_station_name(st_to_raw, user_input_raw) or "")
 
-    # Флаг паромной переправы
-    if dest_esr in ["553002", "549204", "548803"]:
+    # Флаг паромной переправы ASCO
+    ferry_ports = ["553002", "549204", "548803"]
+    if origin_esr in ferry_ports or dest_esr in ferry_ports:
         nlu_data["is_asco_ferry"] = True
 
-    # --- ЛОГИКА ОПРЕДЕЛЕНИЯ ПАРОМНЫХ И ВНУТРЕННИХ СТАНЦИЙ АЛЯТА И РЕЖИМОВ DAŞINMA ---
-    has_kuryk = "553002" in dest_esr or any(k in input_lower for k in ["kuryk", "kurik", "quruq", "курык"])
-    has_aktau = "549204" in dest_esr or any(k in input_lower for k in ["aktau", "aqtau", "актау"])
-    has_trk = "548803" in dest_esr or any(k in input_lower for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"])
-    
+    # --- ЛОГИКА ОПРЕДЕЛЕНИЯ РЕЖИМОВ DAŞINMA И НАЗВАНИЙ СТАНЦИЙ ---
     has_explicit_import = any(k in input_lower for k in ["import", "idxal", "импорт"])
     has_explicit_export = any(k in input_lower for k in ["export", "ixrac", "экспорт"])
 
@@ -418,15 +417,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     else:
         shipment_type_code = None
 
-    if has_kuryk:
-        dest_esr, st_to_raw = "553002", "Ələt eksport-Kurik"
-        shipment_type_code = "transit"
-    elif has_aktau:
-        dest_esr, st_to_raw = "549204", "Ələt eksport-Aktau"
-        shipment_type_code = "transit"
-    elif has_trk:
-        dest_esr, st_to_raw = "548803", "Ələt eksport-Türk."
-        shipment_type_code = "transit"
+    if origin_esr in ferry_ports or dest_esr in ferry_ports:
+        shipment_type_code = shipment_type_code or "transit"
     elif (has_explicit_import or has_explicit_export) and is_alat_dest:
         dest_esr, st_to_raw = "548502", "Ələt"
         shipment_type_code = "import" if has_explicit_import else "export"
