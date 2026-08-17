@@ -29,8 +29,12 @@ CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
 - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
 - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109, Ələt (Bərə/Паром)=549204.
 
-CRITICAL RULES FOR ASCO CASPIAN FERRY:
-- Set 'is_asco_ferry': true if the request mentions ferry crossing or Caspian sea ports: "Quruq", "Kuryk", "Курык", "Aqtau", "Aktau", "Актау", "Türkmenbaşı", "Turkmenbashi", "Туркменбаши", "TRK", "ТРК", "bərə", "паром", "ferry".
+CRITICAL RULES FOR CASPIAN FERRY PORTS & DESTINATION STATIONS:
+- If the request mentions Caspian ferry ports, bind them strictly to the corresponding Alat ferry ESR station codes as dest_name & dest_esr:
+  * "Quruq", "Kuryk", "Курык" -> dest_name: "Ələt eksport-Kurik", dest_esr: "553002"
+  * "Aqtau", "Aktau", "Актау" -> dest_name: "Ələt eksport-Aktau", dest_esr: "549204"
+  * "Türkmenbaşı", "Turkmenbashi", "Туркменбаши", "TRK", "ТРК" -> dest_name: "Ələt eksport-Türk.", dest_esr: "548803"
+- Set 'is_asco_ferry': true if any ferry crossing or Caspian sea port is mentioned.
 - Extract wagon length in meters into 'wagon_length_meters' as a float (e.g. "15m", "17 м", "16.97m" -> 15.0, 17.0, 16.97). If not explicitly mentioned, set 'wagon_length_meters': null.
 
 EXPECTED JSON STRUCTURE:
@@ -82,6 +86,7 @@ Query: "{user_input}"
 
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(lang).upper()
+    result["user_input_raw"] = user_input
 
     if "gng_code" in result and result["gng_code"]:
         result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
@@ -139,8 +144,12 @@ CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
 - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
 - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109, Ələt (Bərə/Паром)=549204.
 
-CRITICAL RULES FOR ASCO CASPIAN FERRY:
-- Set 'is_asco_ferry': true if the request mentions ferry crossing or Caspian sea ports: "Quruq", "Kuryk", "Курык", "Aqtau", "Aktau", "Актау", "Türkmenbaşı", "Turkmenbashi", "Туркменбаши", "TRK", "ТРК", "bərə", "паром", "ferry".
+CRITICAL RULES FOR CASPIAN FERRY PORTS & DESTINATION STATIONS:
+- If spoken text mentions Caspian ferry ports, bind them strictly to the corresponding Alat ferry ESR station codes as dest_name & dest_esr:
+  * "Quruq", "Kuryk", "Курык" -> dest_name: "Ələt eksport-Kurik", dest_esr: "553002"
+  * "Aqtau", "Aktau", "Актау" -> dest_name: "Ələt eksport-Aktau", dest_esr: "549204"
+  * "Türkmenbaşı", "Turkmenbashi", "Туркменбаши", "TRK", "ТРК" -> dest_name: "Ələt eksport-Türk.", dest_esr: "548803"
+- Set 'is_asco_ferry': true if any ferry crossing or Caspian sea port is mentioned.
 - Extract wagon length in meters into 'wagon_length_meters' as a float (e.g. "15m", "17 м", "16.97m" -> 15.0, 17.0, 16.97). If not explicitly mentioned, set 'wagon_length_meters': null.
 
 EXPECTED JSON STRUCTURE:
@@ -189,67 +198,4 @@ Return ONLY a valid JSON object. UI language context: {target_lang}.
         raw_text = raw_text[7:]
     elif raw_text.startswith("```"):
         raw_text = raw_text[3:]
-    if raw_text.endswith("```"):
-        raw_text = raw_text[:-3]
-
-    result = json.loads(raw_text.strip())
-    result["site_lang"] = str(lang).upper()
-
-    if "gng_code" in result and result["gng_code"]:
-        result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
-
-    wagon_words = ["qapalı vaqon", "крытый вагон", "крытый", "qapalı", "полувагон", "платформа"]
-    if "gng_name" in result and result["gng_name"]:
-        if any(w in str(result["gng_name"]).lower() for w in wagon_words):
-            result["gng_name"] = "Buğda" if result.get("gng_code") == "1001" else ""
-
-    if "escort_count" not in result or result["escort_count"] is None:
-        result["escort_count"] = 0
-    if "has_teplushka" not in result or result["has_teplushka"] is None:
-        result["has_teplushka"] = False
-    if "teplushka_type" not in result or not result["teplushka_type"]:
-        result["teplushka_type"] = "freight_sps"
-    if "is_empty" not in result or result["is_empty"] is None:
-        result["is_empty"] = False
-    if "is_own_axles" not in result or result["is_own_axles"] is None:
-        result["is_own_axles"] = False
-    if "is_asco_ferry" not in result or result["is_asco_ferry"] is None:
-        result["is_asco_ferry"] = False
-    if "wagon_length_meters" not in result:
-        result["wagon_length_meters"] = None
-
-    ferry_keywords = ["quruq", "kuryk", "курык", "aqtau", "aktau", "актау", "türkmenbaşı", "turkmenbashi", "туркменбаши", "trk", "трк", "bərə", "паром", "ferry"]
-    spoken_text = str(result.get("transcript") or "").lower()
-    if any(k in spoken_text for k in ferry_keywords):
-        result["is_asco_ferry"] = True
-
-    return result
-
-
-def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
-    """
-    Проверяет минимально необходимые данные для расчета.
-    """
-    missing = []
-    
-    origin = nlu_data.get("origin_name") or nlu_data.get("origin_esr")
-    dest = nlu_data.get("dest_name") or nlu_data.get("dest_esr")
-    
-    if not origin:
-        missing.append("Məlumat yoxdur: Göndərmə stansiyası" if lang == "AZ" else "Отсутствует станция отправления")
-    if not dest:
-        missing.append("Məlumat yoxdur: Təyinat stansiyası" if lang == "AZ" else "Отсутствует станция назначения")
-
-    if nlu_data.get("is_asco_ferry"):
-        gng = str(nlu_data.get("gng_code") or "")
-        is_fixed_oil = any(gng.startswith(prefix) for prefix in ["2709", "2710", "2712", "2713"])
-        
-        if not is_fixed_oil and not nlu_data.get("wagon_length_meters"):
-            msg = (
-                "⚠️ Məlumat yoxdur: Bərə daşıması üçün vaqonun uzunluğu (metr) qeyd olunmalıdır (məsələn: 15m, 17m, 19m, 22m)."
-                if lang == "AZ" else
-                "⚠️ Отсутствует длина вагона: Для расчета паромной переправы необходимо обязательно указать длину вагона в метрах (например: 15м, 17м, 19м, 22м)."
-            )
-            missing.append(msg)
-        
-    return missing
+    if raw_text.endswith("
