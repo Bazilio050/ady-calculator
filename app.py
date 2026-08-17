@@ -117,7 +117,6 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* 🔥 Стиль диктофона: пунктир и большая удобная кнопка записи */
     div[data-testid="stAudioInput"] {
         border: 2px dashed #ff5500 !important;
         border-radius: 12px !important;
@@ -127,7 +126,6 @@ st.markdown("""
         margin-bottom: 12px !important;
     }
 
-    /* Увеличиваем кнопку Старт/Стоп записи */
     div[data-testid="stAudioInput"] button {
         width: 48px !important;
         height: 48px !important;
@@ -144,7 +142,6 @@ st.markdown("""
         height: 22px !important;
     }
 
-    /* Разделитель "ИЛИ" */
     .or-divider {
         display: flex;
         align-items: center;
@@ -655,7 +652,7 @@ user_input = st.text_area(
 # 2. РАЗДЕЛИТЕЛЬ "ИЛИ"
 st.markdown(f'<div class="or-divider">{t["or_text"]}</div>', unsafe_allow_html=True)
 
-# 3. ГОЛОСОВОЙ ВВОД (С крупной оранжевой кнопкой микрофона)
+# 3. ГОЛОСОВОЙ ВВОД
 audio_file = st.audio_input(t["audio_label"])
 
 # Отрисовка Карточки Экспресс-Проверки (если записан голос)
@@ -838,6 +835,13 @@ elif st.session_state.calc_result:
     
     if p3.get("guard_rate") is not None:
         table_rows.append(f"| **{t['lbl_guard_express_rate']}** | **{p3['guard_rate']}** |")
+
+    # Отображение строки Паромной переправы ASCO
+    if p3.get("asco_ferry"):
+        asco = p3["asco_ferry"]
+        asco_title = asco.get("line_title", "ASCO Bərə daşıma haqqı")
+        asco_val = f"{asco.get('total_usd', 0.0):.2f} {asco.get('unit', 'USD/vaqon')}"
+        table_rows.append(f"| **{asco_title}** | **{asco_val}** |")
 
     st.markdown(
         f"| {t['col_rate_type']} | {t['col_amount']} |\n"
