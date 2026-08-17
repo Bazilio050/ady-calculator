@@ -161,6 +161,11 @@ def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
 
     # 8. Формирование разделов part1, part2, part3 под требования app.py
 
+    # Расчет ставок в USD за 1 тонну (USD/t)
+    # Пример расчёта итоговой ставки за тонну:
+    net_rate_per_ton = 25.00  # Подставьте вашу итоговую переменную ставки за тонну
+    express_rate_per_ton = round(net_rate_per_ton * 1.02, 2)  # +2% ADY Express
+
     # PART 1: 📍 Marşrut və daşıma şərtləri
     part1 = {
         "route": f"{origin_name} ({origin_esr}) – {dest_name} ({dest_esr})",
@@ -184,10 +189,16 @@ def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
     # PART 3: 📐 Tarifin hesablanması
     part3 = {
         "formula": f"Tarif = Baza_Stavka × {distance_km}km × {weight_tons}t × Əmsallar",
-        "net_ady_rate": "1250.00 USD/vaqon",
-        "express_rate": "1275.00 USD/vaqon",
-        "guard_rate": None,
+        # АЗЖД и ADY Express строгов USD/t (за 1 тонну)
+        "net_ady_rate": f"{net_rate_per_ton:.2f} USD/t",
+        "express_rate": f"{express_rate_per_ton:.2f} USD/t",
+        
+        # Охрана строгов USD/vaqon (за 1 вагон)
+        "guard_rate": "15.00 USD/vaqon" if nlu_data.get("has_guard") else None,
+        
+        # Паром ASCO строгов USD/vaqon (за 1 вагон)
         "asco_ferry": asco_ferry_dict,
+        
         "notes": [
             "Tariflərə İƏX (VAT) daxil deyildir.",
             "Stansiya xərcləri və əlavə yığımlar daxil deyildir."
