@@ -156,7 +156,6 @@ def apply_special_exceptions(
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
 
-    # 1. ИНДЕКСАЦИЯ 1.015
     req_period = nlu_data.get("requested_period")
     target_dt = parse_date_from_string(req_period) if req_period else None
     if not target_dt:
@@ -177,7 +176,6 @@ def apply_special_exceptions(
         )
         notes.append(ind_note)
         
-    # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50
     if is_empty and clean_gng in EMPTY_SPS_CODES and table_num not in [3.71, 3.72, 3.78]:
         if shipment_type_code in ["import", "export"]:
             lbl_150 = "İdxal/İxrac baza" if lang == "AZ" else ("Импорт/Экспорт база" if lang == "RU" else "Import/Export base")
@@ -199,7 +197,6 @@ def apply_special_exceptions(
             )
             notes.append(note_base150)
 
-    # 3. Специфические коэффициенты конкретных таблиц
     if table_num == 3:
         tbl_coeffs, tbl_notes = get_table_3_coefficients(shipment_type_code=shipment_type_code, wagon_type=wagon_type, gng_code=gng, lang=lang, ui_t=ui_t)
         coeffs.extend(tbl_coeffs)
@@ -221,7 +218,6 @@ def apply_special_exceptions(
         coeffs.extend(tbl_coeffs)
         notes.extend(tbl_notes)
 
-    # 3.7.3 — ПАССАЖИРСКИЙ ПОЕЗД (x2.00)
     if nlu_data.get("is_passenger_train") or "пассажирский поезд" in input_lower or "sərnişin qatarı" in input_lower:
         pass_lbl = "Sərnişin qatarı əmsalı (bənd 3.7.3)" if lang == "AZ" else ("Пассажирский поезд (п. 3.7.3)" if lang == "RU" else "Passenger train (cl. 3.7.3)")
         coeffs.append((pass_lbl, 2.00))
@@ -232,7 +228,6 @@ def apply_special_exceptions(
         )
         notes.append(pass_note)
 
-    # НЕГАБАРИТ (Пункт 3.5.1)
     oversize_grp = detect_oversize_group(nlu_data, user_input_raw)
     if table_num == 11:
         note_t11 = (
@@ -273,7 +268,6 @@ def apply_special_exceptions(
             )
             notes.append(ov_note)
 
-    # Спецплатформы длиннее 19 м
     if table_num not in [5, 11, 3.71, 3.72, 3.78, 3.9, 3.91] and is_long_platform_scep(user_input_raw, wagon_type):
         if not is_empty:
             lbl_19m = "Sintez platforma >19m" if lang == "AZ" else ("Спецплатформа >19м" if lang == "RU" else "Special platform >19m")
@@ -288,12 +282,10 @@ def apply_special_exceptions(
             lbl_empty_19m = "Boş platforma >19m" if lang == "AZ" else ("Скидка порожн. >19м" if lang == "RU" else "Empty platform >19m")
             coeffs.append((lbl_empty_19m, 0.60))
             
-    # Общие глобальные коэффициенты
     g_coeffs, g_notes = get_global_coefficients(shipment_type_code, gng, origin_esr, dest_esr, lang)
     coeffs.extend(g_coeffs)
     notes.extend(g_notes)
 
-    # СКИДКА СПС
     if park_type == "SPS" and table_num not in [3.72, 3.78, 3.9, 3.91]:
         sps_val = 0.85
         apply_sps = False
@@ -331,7 +323,6 @@ def apply_special_exceptions(
                 )
             notes.append(sps_note)
 
-    # ОПАСНЫЕ ГРУЗЫ
     is_danger, apply_double, danger_note = check_dangerous_goods_rule(gng, user_input_raw, wagon_type, lang)
     if is_danger and apply_double:
         danger_lbl = "Təhlükəli yük əmsalı (x2.00)" if lang == "AZ" else ("Опасный груз (x2.00)" if lang == "RU" else "Dangerous goods (x2.00)")
@@ -343,7 +334,6 @@ def apply_special_exceptions(
         )
         notes.append(danger_note_str)
 
-    # Вагон прикрытия (п. 3.6.3)
     if any(k in input_lower for k in ["прикрытие", "qoruyucu", "daldalanacaq", "guard_wagon"]):
         cover_rate = 0.30 if park_type == "SPS" else 0.35
         axles = float(nlu_data.get("axles_count") or 4)
@@ -367,40 +357,51 @@ def apply_special_exceptions(
 
 def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, year: str, ui_t: dict) -> dict:
     lang_upper = str(lang or "AZ").upper()
+    input_lower = str(user_input_raw or "").lower()
     
-    # 1. Извлекаем названия станций напрямую из NLU
-    st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
-    st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
-
-    # 2. Поиск ESR-кодов в вашей базе/функции resolve
-    origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
-    dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
-
-    # 3. ТОЧЕЧНЫЙ ПАРОМНЫЙ БЛОК (Срабатывает ТОЛЬКО при наличии паромных портов)
-    ferry_ports_map = [
+    # 1. Позиционное определение станций строго по порядку ввода в тексте
+    station_patterns = [
+        (r'б[её]юк\s*к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', "Böyük Kəsik", "558701"),
+        (r'ялама|yalama', "Yalama", "545006"),
+        (r'астара|astara', "Astara", "554109"),
         (r'курык|kuryk|kurik|quruq', "Ələt eksport-Kurik", "553002"),
         (r'актау|aktau|aqtau', "Ələt eksport-Aktau", "549204"),
-        (r'туркменбаши|turkmenbashi|türkmenbaşı|\bтрк\b|\btrk\b', "Ələt eksport-Türk.", "548803")
+        (r'туркменбаши|turkmenbashi|türkmenbaşı|\bтрк\b|\btrk\b', "Ələt eksport-Türk.", "548803"),
+        (r'баку|baku|bakı', "Bakı", "547001"),
+        (r'абшерон|апшерон|absheron', "Abşeron", "548004"),
+        (r'алят|alat|ələt', "Ələt", "548502")
     ]
 
-    for pattern, p_name, p_esr in ferry_ports_map:
-        if re.search(pattern, st_from_raw.lower()) or origin_esr == p_esr:
-            st_from_raw, origin_esr = p_name, p_esr
-            nlu_data["is_asco_ferry"] = True
-            break
+    found_matches = []
+    for pattern, s_name, s_esr in station_patterns:
+        m = re.search(pattern, input_lower)
+        if m:
+            found_matches.append((m.start(), s_name, s_esr))
 
-    for pattern, p_name, p_esr in ferry_ports_map:
-        if re.search(pattern, st_to_raw.lower()) or dest_esr == p_esr:
-            st_to_raw, dest_esr = p_name, p_esr
-            nlu_data["is_asco_ferry"] = True
-            break
+    found_matches.sort(key=lambda x: x[0])
+
+    if len(found_matches) >= 2:
+        st_from_raw, origin_esr = found_matches[0][1], found_matches[0][2]
+        st_to_raw, dest_esr = found_matches[1][1], found_matches[1][2]
+    elif len(found_matches) == 1:
+        st_from_raw, origin_esr = found_matches[0][1], found_matches[0][2]
+        st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
+        dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
+    else:
+        st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
+        st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
+        origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
+        dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
+
+    ferry_ports = ["553002", "549204", "548803"]
+    if origin_esr in ferry_ports or dest_esr in ferry_ports:
+        nlu_data["is_asco_ferry"] = True
 
     raw_gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
     gng = re.sub(r'\D', '', raw_gng)
     clean_gng = format_clean_gng(gng)
     cargo_name_nlu = str(nlu_data.get("gng_name") or nlu_data.get("cargo_name") or "").strip()
 
-    # Если в gng_name ошибочно сохранились типы вагонов, очищаем
     if any(w in cargo_name_nlu.lower() for w in ["qapalı vaqon", "крытый вагон", "полувагон", "платформа"]):
         cargo_name_nlu = "Buğda" if gng == "1001" else ""
 
@@ -421,7 +422,10 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     display_to = format_station_display_name(st_to_raw, dest_esr, lang_upper)
     route_display = f"{display_from} – {display_to}"
 
-    if explicit_mode in ["import", "export", "transit"]:
+    if origin_esr in ferry_ports or dest_esr in ferry_ports:
+        shipment_type_code = explicit_mode or "transit"
+        shipment_type_display = ui_t.get("type_transit", "Tranzit daşınması" if lang_upper == "AZ" else ("Транзитная перевозка" if lang_upper == "RU" else "Transit shipment"))
+    elif explicit_mode in ["import", "export", "transit"]:
         shipment_type_code = explicit_mode
         shipment_type_display = ui_t.get(f"type_{explicit_mode}", explicit_mode.capitalize())
     else:
@@ -447,7 +451,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     tariff_dist_km = get_calculation_distance(actual_dist_km, shipment_type_code)
     dist_display = f"{actual_dist_km} km (min. {tariff_dist_km} km)" if tariff_dist_km != actual_dist_km else f"{actual_dist_km} km"
 
-    input_lower = user_input_raw.lower()
     is_empty_wagon = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
     is_cover_wagon = any(k in input_lower for k in ["прикрытие", "qoruyucu", "daldalanacaq", "guard_wagon"])
 
@@ -760,7 +763,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit_str}"
     express_rate_str = f"{final_rate * 1.02:.2f} {unit_str}"
 
-    # --- РАСЧЕТ СБОРА ЗА ОХРАНУ (Транзит: км * 0.1 AZN / 1.7 + 2%) ---
     gng_digits = re.sub(r'\D', '', str(gng or ""))
     gng_4 = gng_digits[:4] if len(gng_digits) >= 4 else gng_digits
     gng_8_right = gng_digits.ljust(8, '0')[:8] if gng_digits else ""
@@ -789,7 +791,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         )
         notes.append(guard_note_text)
 
-    # --- РАСЧЕТ ПАРОМНОЙ ПЕРЕПРАВЫ ASCO ---
     asco_result = None
     if nlu_data.get("is_asco_ferry") or is_asco_ferry_route(origin_esr, dest_esr, st_from_raw, st_to_raw, user_input_raw):
         asco_result = calculate_asco_ferry_tariff(nlu_data, user_input_raw)
@@ -836,7 +837,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     gng_label = "GNG" if lang_upper == "AZ" else ("ГНГ" if lang_upper == "RU" else "NHM")
 
-    # Корректно формируем строку Yük / Vəziyyət без дублирования типов вагонов
     if cargo_name_nlu and cargo_name_nlu.lower() != wagon_disp_name.lower():
         cargo_wagon_display = f"{gng_label} {gng} - {cargo_name_nlu}, {wagon_disp_name} ({park_display})"
     else:
