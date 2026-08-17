@@ -9,7 +9,7 @@ from utils import (
 )
 
 # -------------------------------------------------------------------------
-# Вспомогательные функции загрузки справочников
+# Вспомогательные функции загрузки справочников и расчета расстояний
 # -------------------------------------------------------------------------
 
 def load_distances_matrix():
@@ -83,7 +83,7 @@ def calculate_rail_distance(origin_esr: str, dest_esr: str) -> int:
 
 def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
     """
-    Принимает nlu_data и дополнительные параметры из app.py:
+    Принимает nlu_data и позиционные аргументы от app.py:
     args[0]: current_input (str)
     args[1]: selected_lang (str)
     args[2]: selected_year (str)
@@ -111,7 +111,7 @@ def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "").strip()
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "").strip()
 
-    # 2. Определение ESR с приоритетом перехвата
+    # 2. Определение ESR с приоритетом перехвата по сырому тексту
     origin_esr = resolve_esr_by_station_name(st_from_raw, raw_input)
     dest_esr = resolve_esr_by_station_name(st_to_raw, raw_input)
 
@@ -130,7 +130,7 @@ def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
     # 5. Анализ груза и вагона
     gng_code = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "2713").strip()
     cargo_name = str(nlu_data.get("cargo_name") or nlu_data.get("gng_name") or "Aşırılan yük").strip()
-    weight_tons = float(nlu_data.get("weight_tons") or 60)
+    weight_tons = float(nlu_data.get("weight_tons") or 60.0)
     wagon_type = str(nlu_data.get("wagon_type") or "tank").lower()
     park_type = str(nlu_data.get("park_type") or "SPS").upper()
     wagon_length_m = float(nlu_data.get("wagon_length_m") or 0)
@@ -143,7 +143,12 @@ def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
         transport_type = "Export shipment"
 
     if dest_esr in ["553002", "549204", "548803"]:
-        transport_type = "Tranzit daşınması (Bərə)" if selected_lang == "AZ" else ("Транзит (Паром)" if selected_lang == "RU" else "Transit (Ferry)")
+        if selected_lang == "AZ":
+            transport_type = "Tranzit daşınması (Bərə)"
+        elif selected_lang == "RU":
+            transport_type = "Транзит (Паром)"
+        else:
+            transport_type = "Transit (Ferry)"
 
     # 7. Расчет морского фрахта (ASCO)
     sea_freight_usd = 0.0
@@ -159,12 +164,21 @@ def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
             "unit": "USD/vaqon"
         }
 
-    # 8. Формирование разделов part1, part2, part3 под требования app.py
+    # 8. Динамические коэффициенты и расчет тарифа ADY
+    chf_usd_rate = 1.1500  # Валютный курс CHF/USD
+    sps_discount = 0.85 if park_type == "SPS" else 1.00
+    indexation = 1.015  # Индексация на 2026 год
 
-    # Расчет ставок в USD за 1 тонну (USD/t)
-    # Пример расчёта итоговой ставки за тонну:
-    net_rate_per_ton = 25.00  # Подставьте вашу итоговую переменную ставки за тонну
-    express_rate_per_ton = round(net_rate_per_ton * 1.02, 2)  # +2% ADY Express
+    # Пример нормативной ставки за тонно-километр
+    base_ton_km_chf = 0.0245
+    base_rate_chf_ton = round(base_ton_km_chf * distance_km, 2)
+    
+    # Расчет провозной платы в USD за 1 тонну (USD/t)
+    net_rate_per_ton = round(base_rate_chf_ton * sps_discount * indexation * chf_usd_rate, 2)
+    express_rate_per_ton = round(net_rate_per_ton * 1.02, 2)
+    total_wagon_usd = round(express_rate_per_ton * weight_tons, 2)
+
+    # 9. Формирование разделов part1, part2, part3 под интерфейс app.py
 
     # PART 1: 📍 Marşrut və daşıma şərtləri
     part1 = {
@@ -178,29 +192,23 @@ def process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
 
     # PART 2: ⚙️ Əmsallar və valyuta məzənnəsi
     part2 = {
-        "exchange_rate": "1.00 CHF = 1.1500 USD",
-        "base_tariff": "0.0245 CHF/t-km",
+        "exchange_rate": f"1.00 CHF = {chf_usd_rate:.4f} USD",
+        "base_tariff": f"{base_ton_km_chf:.4f} CHF/t-km ({base_rate_chf_ton:.2f} CHF/t)",
         "coefficients": [
-            {"name": "İndeksasiya əmsalı (2026)", "value": "1.015"},
-            {"name": "SPS vaqon güzəşt əmsalı", "value": "0.85" if park_type == "SPS" else "1.00"}
+            {"name": "İndeksasiya əmsalı (2026)", "value": f"{indexation}"},
+            {"name": "SPS vaqon güzəşt əmsalı", "value": f"{sps_discount}"}
         ]
     }
 
     # PART 3: 📐 Tarifin hesablanması
     part3 = {
-        "formula": f"Tarif = Baza_Stavka × {distance_km}km × {weight_tons}t × Əmsallar",
-        # АЗЖД и ADY Express строгов USD/t (за 1 тонну)
+        "formula": f"Tarif = {base_rate_chf_ton:.2f} CHF/t × {sps_discount} (SPS) × {indexation} (İnd) × {chf_usd_rate} (CHF/USD)",
         "net_ady_rate": f"{net_rate_per_ton:.2f} USD/t",
-        "express_rate": f"{express_rate_per_ton:.2f} USD/t",
-        
-        # Охрана строгов USD/vaqon (за 1 вагон)
+        "express_rate": f"{express_rate_per_ton:.2f} USD/t (Cəmi: {total_wagon_usd:.2f} USD/vaqon)",
         "guard_rate": "15.00 USD/vaqon" if nlu_data.get("has_guard") else None,
-        
-        # Паром ASCO строгов USD/vaqon (за 1 вагон)
         "asco_ferry": asco_ferry_dict,
-        
         "notes": [
-            "Tariflərə İƏX (VAT) daxil deyildir.",
+            "Tariflərə İƏX (ƏDV) daxil deyildir.",
             "Stansiya xərcləri və əlavə yığımlar daxil deyildir."
         ]
     }
