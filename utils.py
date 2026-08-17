@@ -182,3 +182,20 @@ def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "") -> 
         print(f"Error resolving ESR: {e}")
 
     return ""
+    
+    def load_rules_config():
+    """Загружает конфигурацию правил калькулятора (RULES.md / rules.json)."""
+    possible_paths = ["RULES.md", "rules.json", "tariff_data/RULES.md", "data/RULES.md"]
+    rules_path = next((p for p in possible_paths if os.path.exists(p)), None)
+    
+    if not rules_path:
+        return {}
+        
+    try:
+        with open(rules_path, "r", encoding="utf-8") as f:
+            content = f.read()
+            if rules_path.endswith(".json"):
+                return json.loads(content)
+            return {"rules_raw": content}
+    except Exception as e:
+        print(f"Error loading rules config: {e}")
