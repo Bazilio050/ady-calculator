@@ -485,22 +485,22 @@ ASCO_FERRY_RATES = {
 }
 
 
-def is_asco_ferry_route(origin_esr: str, dest_esr: str, origin_name: str = "", dest_name: str = "") -> bool:
-    """Проверяет, содержит ли маршрут морскую паромную переправу ASCO."""
-    text = (str(origin_name or "") + " " + str(dest_name or "")).lower()
+def is_asco_ferry_route(origin_esr: str, dest_esr: str, origin_name: str = "", dest_name: str = "", user_input_raw: str = "") -> bool:
+    """Проверяет, содержит ли маршрут или исходный текст паромную переправу ASCO."""
+    text = (str(origin_name or "") + " " + str(dest_name or "") + " " + str(user_input_raw or "")).lower()
     ferry_keywords = ["quruq", "kuryk", "курык", "aqtau", "aktau", "актау", "türkmenbaşı", "turkmenbashi", "туркменбаши", "trk", "трк", "bərə", "паром", "ferry"]
     return any(k in text for k in ferry_keywords)
 
 
-def get_asco_route_key(origin_name: str = "", dest_name: str = "") -> str:
+def get_asco_route_key(origin_name: str = "", dest_name: str = "", user_input_raw: str = "") -> str:
     """Определяет порт назначения для выбора тарифной сетки ASCO."""
-    text = (str(origin_name or "") + " " + str(dest_name or "")).lower()
+    text = (str(origin_name or "") + " " + str(dest_name or "") + " " + str(user_input_raw or "")).lower()
     if any(k in text for k in ["türkmenbaşı", "turkmenbashi", "туркменбаши", "trk", "трк"]):
         return "turkmenbashi"
     return "kuryk_aktau"
 
 
-def calculate_asco_ferry_tariff(nlu_data: dict) -> dict:
+def calculate_asco_ferry_tariff(nlu_data: dict, user_input_raw: str = "") -> dict:
     """
     Рассчитывает стоимость паромной переправы ASCO в USD за 1 вагон.
     """
@@ -510,10 +510,17 @@ def calculate_asco_ferry_tariff(nlu_data: dict) -> dict:
     wagon_type = str(nlu_data.get("wagon_type") or "").lower()
     is_empty = bool(nlu_data.get("is_empty", False))
     raw_length = nlu_data.get("wagon_length_meters")
+
+    # Если в NLU длина не вытащилась, ищем число с буквой "м" в сыром тексте (например "15м")
+    if not raw_length and user_input_raw:
+        match_len = re.search(r'(\d+(?:\.\d+)?)\s*(?:m|м)\b', str(user_input_raw).lower())
+        if match_len:
+            raw_length = float(match_len.group(1))
+
     explicit_mode = str(nlu_data.get("explicit_mode") or "").lower()
     lang = str(nlu_data.get("site_lang") or "AZ").upper()
 
-    route_key = get_asco_route_key(orig_name, dest_name)
+    route_key = get_asco_route_key(orig_name, dest_name, user_input_raw)
     rates_db = ASCO_FERRY_RATES.get(route_key, ASCO_FERRY_RATES["kuryk_aktau"])
 
     # --- 1. Определение категории груза и норматива длины ---
@@ -521,7 +528,6 @@ def calculate_asco_ferry_tariff(nlu_data: dict) -> dict:
     billable_length = 0.0
     is_fixed_length = False
 
-    # Нефть и нефтепродукты (ГНГ 2709, 2710, 2712, 2713)
     is_oil = any(gng_code.startswith(pfx) for pfx in ["2709", "2710", "2712", "2713"])
     
     if is_oil:
@@ -554,7 +560,6 @@ def calculate_asco_ferry_tariff(nlu_data: dict) -> dict:
     # --- 4. Повышающие коэффициенты ASCO ---
     coeff_length = 1.3 if (billable_length > 15.0 and not is_fixed_length) else 1.0
     
-    # Негабарит по ширине (если указан)
     coeff_oversize = 1.0
     width_m = float(nlu_data.get("wagon_width_meters") or 0.0)
     if width_m >= 4.0:
