@@ -416,7 +416,7 @@ with st.expander(t["guide_title"]):
             📐 **Şablon:** `[Haradan] -> [Haraya], [GNG], çən vaqonu, [Çəki]t, SPS`  
             💡 **Nümunə:** `Yalama – Güzdək, 2713, çən vaqonu, 60t, SPS`  
             ⚙️ **Açar sözlər:** `çən`, `cistern`, `2713`, `3404`, `27071`, `SPS`, `MPS`  
-            📌 **Qayda:** Maye növlü yüklər Cədvəl 6 üzrə hesablanır. GNG 2707/2902 üçün özəl çənlərə 0.70 güzəşti tətbiq edilir (bənd 3.2.5).
+            📌 **Qayda:** Maye növlü yüklər Cədvəl 6 üzrə hesablanır. GNG 2707/2902 üçün özəl çənlərə 0.70 güzəşt tətbiq edilir (bənd 3.2.5).
             """)
         with tab5:
             st.markdown("""
@@ -758,29 +758,9 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
 
             input_lower = current_input.lower()
 
-            # --- 1. ПРИНУДИТЕЛЬНОЕ ОПРЕДЕЛЕНИЕ СТАНЦИИ ОТПРАВЛЕНИЯ (ORIGIN) ---
-            if re.search(r'б[её]юк\s+к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', input_lower):
-                nlu_res["origin_name"] = "Böyük Kəsik"
-                nlu_res["origin_esr"] = "558701"
-            elif "yalama" in input_lower:
-                nlu_res["origin_name"] = "Yalama"
-                nlu_res["origin_esr"] = "545006"
-            elif "astara" in input_lower:
-                nlu_res["origin_name"] = "Astara"
-                nlu_res["origin_esr"] = "554109"
-
-            # --- 2. ПРИНУДИТЕЛЬНОЕ ОПРЕДЕЛЕНИЕ ПОРТА НАЗНАЧЕНИЯ (DEST) ---
-            if any(k in input_lower for k in ["kuryk", "kurik", "quruq", "курык"]):
-                nlu_res["dest_name"] = "Ələt eksport-Kurik"
-                nlu_res["dest_esr"] = "553002"
-                nlu_res["is_asco_ferry"] = True
-            elif any(k in input_lower for k in ["aktau", "aqtau", "актау"]):
-                nlu_res["dest_name"] = "Ələt eksport-Aktau"
-                nlu_res["dest_esr"] = "549204"
-                nlu_res["is_asco_ferry"] = True
-            elif any(k in input_lower for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"]):
-                nlu_res["dest_name"] = "Ələt eksport-Türk."
-                nlu_res["dest_esr"] = "548803"
+            # --- АВТОМАТИЧЕСКАЯ ОТМЕТКА ПАРОМА ASCO ДЛЯ ПОРТОВЫХ СТАНЦИЙ ---
+            port_keywords = ["kuryk", "kurik", "quruq", "курык", "aktau", "aqtau", "актау", "turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"]
+            if any(k in input_lower for k in port_keywords):
                 nlu_res["is_asco_ferry"] = True
             
             gng_val = str(nlu_res.get("gng_code") or nlu_res.get("cargo_gng_code") or "").strip()
