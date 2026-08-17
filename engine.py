@@ -35,7 +35,6 @@ OWN_AXLE_GNG_CODES = ["8601", "8602", "8603", "8604", "8605", "8606", "99211000"
 
 
 def format_clean_gng(gng_code: str) -> str:
-    """Корректно форматирует код ГНГ: дополняет нулями СПРАВА до 8 цифр."""
     digits = re.sub(r'\D', '', str(gng_code or ""))
     if not digits:
         return ""
@@ -369,32 +368,44 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     lang_upper = str(lang or "AZ").upper()
     input_lower = str(user_input_raw or "").lower()
     
-    # 1. Принудительный перехват станции отправления по ключевым словам
-    if re.search(r'б[её]юк\s*к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', input_lower):
-        nlu_data["origin_name"] = "Böyük Kəsik"
-        nlu_data["origin_esr"] = "558701"
-    elif "yalama" in input_lower:
-        nlu_data["origin_name"] = "Yalama"
-        nlu_data["origin_esr"] = "545006"
-    elif "astara" in input_lower:
-        nlu_data["origin_name"] = "Astara"
-        nlu_data["origin_esr"] = "554109"
+    # --- ДИНАМИЧЕСКОЕ ОПРЕДЕЛЕНИЕ СТАНЦИЙ ПО ПОЗИЦИЯМ В ТЕКСТЕ ---
+    known_stations = [
+        (r'б[её]юк\s*к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', "Böyük Kəsik", "558701"),
+        (r'ялама|yalama', "Yalama", "545006"),
+        (r'астара|astara', "Astara", "554109"),
+        (r'курык|kuryk|kurik|quruq', "Ələt eksport-Kurik", "553002"),
+        (r'актау|aktau|aqtau', "Ələt eksport-Aktau", "549204"),
+        (r'туркменбаши|turkmenbashi|türkmenbaşı|trk|трк', "Ələt eksport-Türk.", "548803")
+    ]
 
-    # 2. Приоритет отдаётся прямому значению из nlu_data (чтобы resolve_esr_by_station_name не сбивал ESR)
-    origin_esr = str(nlu_data.get("origin_esr") or "").strip()
+    matches = []
+    for pattern, name, esr in known_stations:
+        m = re.search(pattern, input_lower)
+        if m:
+            matches.append((m.start(), name, esr))
+
+    matches.sort(key=lambda x: x[0])
+
+    if len(matches) >= 2:
+        nlu_data["origin_name"], nlu_data["origin_esr"] = matches[0][1], matches[0][2]
+        nlu_data["dest_name"], nlu_data["dest_esr"] = matches[1][1], matches[1][2]
+    elif len(matches) == 1:
+        nlu_data["origin_name"], nlu_data["origin_esr"] = matches[0][1], matches[0][2]
+
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
-    if not origin_esr:
-        origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or ""
-
-    dest_esr = str(nlu_data.get("dest_esr") or "").strip()
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
-    if not dest_esr:
-        dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or ""
+
+    origin_esr = str(nlu_data.get("origin_esr") or resolve_esr_by_station_name(st_from_raw, user_input_raw) or "")
+    dest_esr = str(nlu_data.get("dest_esr") or resolve_esr_by_station_name(st_to_raw, user_input_raw) or "")
+
+    # Флаг паромной переправы
+    if dest_esr in ["553002", "549204", "548803"]:
+        nlu_data["is_asco_ferry"] = True
 
     # --- ЛОГИКА ОПРЕДЕЛЕНИЯ ПАРОМНЫХ И ВНУТРЕННИХ СТАНЦИЙ АЛЯТА И РЕЖИМОВ DAŞINMA ---
-    has_kuryk = any(k in input_lower for k in ["kuryk", "kurik", "quruq", "курык"])
-    has_aktau = any(k in input_lower for k in ["aktau", "aqtau", "актау"])
-    has_trk = any(k in input_lower for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"])
+    has_kuryk = "553002" in dest_esr or any(k in input_lower for k in ["kuryk", "kurik", "quruq", "курык"])
+    has_aktau = "549204" in dest_esr or any(k in input_lower for k in ["aktau", "aqtau", "актау"])
+    has_trk = "548803" in dest_esr or any(k in input_lower for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"])
     
     has_explicit_import = any(k in input_lower for k in ["import", "idxal", "импорт"])
     has_explicit_export = any(k in input_lower for k in ["export", "ixrac", "экспорт"])
@@ -407,7 +418,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
     else:
         shipment_type_code = None
 
-    # Назначение порта назначения
     if has_kuryk:
         dest_esr, st_to_raw = "553002", "Ələt eksport-Kurik"
         shipment_type_code = "transit"
@@ -424,7 +434,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         dest_esr, st_to_raw = "", "Ələt"
         shipment_type_code = "transit"
 
-    # Определение наименования типа перевозки для интерфейса
     if shipment_type_code == "transit":
         shipment_type_display = ui_t.get("type_transit", "Tranzit daşınması" if lang_upper == "AZ" else ("Транзитная перевозка" if lang_upper == "RU" else "Transit shipment"))
     elif shipment_type_code == "import":
