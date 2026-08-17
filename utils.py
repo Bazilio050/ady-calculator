@@ -3,81 +3,88 @@ import re
 from datetime import datetime
 
 # ==============================================================================
-# 1. РЕЕСТР ПОГРАНИЧНЫХ СТАНЦИЙ И ЕСР-КОДОВ (RULES.md -> Раздел 2)
+# 1. РЕЕСТР ПОГРАНИЧНЫХ СТАНЦИЙ И ЕСР-КОДОВ
 # ==============================================================================
 
 BORDER_ESR_CODES = {
-    # Ялама
     "545006", "547508", "545307", "545107",
-    # Беюк Кясик
     "558631", "558701", "558504", "558400",
-    # Астара
     "554109", "554503", "553905",
-    # Джульфа
     "550004", "550108", "550803",
-    # Шарур
     "550502", "550409",
-    # Алят (Паром / Бакинский Порт / Ələt yeni)
     "549204", "553002", "548803", "547302", "547406", "547209", "548502", "548703"
+}
+
+BORDER_STATION_ESR_OVERRIDE = {
+    "boyuk kesik": "558701",
+    "beyuk kasik": "558701",
+    "беюк кясик": "558701",
+    "yalama": "547508",
+    "ялама": "547508",
+    "astara": "554109",
+    "астара": "554109",
+    "culfa": "550004",
+    "serur": "550409",
+    "kuryk": "553002",
+    "kurik": "553002",
+    "quruq": "553002",
+    "курык": "553002",
+    "aktau": "549204",
+    "aqtau": "549204",
+    "актау": "549204",
+    "turkmenbashi": "548803",
+    "türkmenbaşı": "548803",
+    "туркменбаши": "548803",
+    "trk": "548803",
+    "трк": "548803",
+    "absheron": "548004",
+    "абшерон": "548004",
+    "baku": "547001",
+    "bakı": "547001",
+    "баку": "547001",
+    "alet": "548502",
+    "elet": "548502",
+    "алят": "548502"
+}
+
+BORDER_COLUMN_MAP = {
+    "545006": 3, "547508": 3, "545307": 3, "545107": 3,
+    "554109": 4, "554503": 4, "553905": 4,
+    "558701": 5, "558631": 5, "558504": 5, "558400": 5,
+    "550004": 6, "550108": 6, "550803": 6,
+    "549204": 7, "553002": 7, "548803": 7, "547302": 7, 
+    "547406": 7, "547209": 7, "548502": 7, "548703": 7
 }
 
 
 def is_border_esr(esr_code: str) -> bool:
-    """Проверяет, является ли код ЕСР пограничным переходом."""
     clean_esr = re.sub(r'\D', '', str(esr_code or ""))
     return clean_esr in BORDER_ESR_CODES
 
 
 def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "AZ") -> str:
-    """Форматирует название станции для итогового отчёта (прибавляет суффикс погранперехода)."""
     clean_esr = re.sub(r'\D', '', str(esr_code or ""))
     st_name = str(raw_name or "").strip()
 
     if is_border_esr(clean_esr):
         lang_upper = str(site_lang or "AZ").upper()
-        if lang_upper == "RU":
-            suffix = "-эксп."
-        elif lang_upper == "EN":
-            suffix = "-exp."
-        else:
-            suffix = "-eksp."
-
+        suffix = "-эксп." if lang_upper == "RU" else ("-exp." if lang_upper == "EN" else "-eksp.")
         if not st_name.endswith(suffix):
             st_name = f"{st_name}{suffix}"
 
     return f"{st_name} ({clean_esr})" if clean_esr else st_name
 
 
-# ==============================================================================
-# 2. ПОИСК И АВТО-РЕЗОЛВ ЕСР ПО НАЗВАНИЮ (Distances.txt)
-# ==============================================================================
-
-BORDER_STATION_ESR_OVERRIDE = {
-    "boyuk kesik": "558701",  # Böyük Kəsik (eksport) -> 680 км
-    "yalama": "547508",       # Yalama (eksport) -> 680 км
-    "astara": "554109",       # Astara (eksport)
-    "culfa": "550004",        # Culfa (eksport)
-    "serur": "550409",        # Şərur (eksport)
-    "alet": "549204",         # Ələt (parom/eksp) -> 429 км
-    "elet": "549204",         # Ələt транслит
-    "алят": "549204"          # Алят RU
-}
-
-
 def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "") -> str:
-    """
-    Сканирует Distances.txt и возвращает точный 6-значный ЕСР по названию станции.
-    Для пограничных станций приоритет отдаётся экспортным кодам.
-    Принимает необязательный user_input_raw для предотвращения TypeError при вызовах с 2 аргументами.
-    """
     if not station_name:
         return ""
 
     clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(station_name), flags=re.IGNORECASE).strip().lower()
     clean_norm = clean.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
 
-    for b_name, b_esr in BORDER_STATION_ESR_OVERRIDE.items():
-        if b_name in clean_norm or clean_norm in b_name:
+    sorted_overrides = sorted(BORDER_STATION_ESR_OVERRIDE.items(), key=lambda x: len(x[0]), reverse=True)
+    for b_name, b_esr in sorted_overrides:
+        if b_name in clean_norm:
             return b_esr
 
     possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
@@ -108,18 +115,7 @@ def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "") -> 
     return ""
 
 
-BORDER_COLUMN_MAP = {
-    "545006": 3, "547508": 3, "545307": 3, "545107": 3,
-    "554109": 4, "554503": 4, "553905": 4,
-    "558701": 5, "558631": 5, "558504": 5, "558400": 5,
-    "550004": 6, "550108": 6, "550803": 6,
-    "549204": 7, "553002": 7, "548803": 7, "547302": 7, 
-    "547406": 7, "547209": 7, "548502": 7, "548703": 7
-}
-
-
 def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
-    """Точный поиск километража по таблице Distances.txt."""
     if not esr_from or not esr_to:
         return None
 
@@ -172,21 +168,13 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
 
 
 def get_calculation_distance(distance_km: int, shipment_type: str) -> int:
-    """Применяет минимальные ограничения по расстоянию (101 км / 151 км)."""
     st_lower = str(shipment_type or "").lower()
-
     if any(k in st_lower for k in ["ixrac", "export", "экспорт"]):
         return max(distance_km, 101)
-
     if any(k in st_lower for k in ["idxal", "import", "импорт"]):
         return max(distance_km, 151)
-
     return distance_km
 
-
-# ==============================================================================
-# 3. ВЕСОВАЯ СЕТКА (Cədvəl 1) И МИНИМАЛЬНЫЕ НОРМЫ ГНГ
-# ==============================================================================
 
 def get_weight_column_index(billable_weight_tons: float) -> int:
     w = float(billable_weight_tons or 0)
@@ -220,7 +208,6 @@ def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
     if not g:
         return w
 
-    # --- 1. НОРМА 60 ТОНН ---
     if g in ["28182000", "7201", "1701", "1107", "7203", "7401", "7501", "81052"] or g.startswith("2701") or g.startswith("2702") or g.startswith("10"):
         return max(w, 60.0)
     if g.startswith("26") and not (2618 <= int(g[:4]) <= 2621 if len(g) >= 4 else False):
@@ -236,7 +223,6 @@ def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
     if any(g.startswith(p) for p in gng_60_non_ferrous) and not g.startswith("71101910"):
         return max(w, 60.0)
 
-    # --- 2. НОРМА 50 ТОНН ---
     if g.startswith("14042") or (len(g) >= 4 and 5201 <= int(g[:4]) <= 5203):
         return max(w, 50.0)
     if g.startswith("7204") and not g.startswith("72045"):
@@ -246,26 +232,19 @@ def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
     if any(g.startswith(p) for p in gng_50_non_ferrous):
         return max(w, 50.0)
 
-    # --- 3. НОРМА 45 ТОНН (Meşə materialları — YHN 4403, 4404, 4407) ---
     if g.startswith("4403") or g.startswith("4404") or g.startswith("4407"):
         return max(w, 45.0)
 
-    # --- 4. НОРМА 40 ТОНН ---
     gng_40_non_ferrous = ["7404", "7503", "7602", "7802", "7902", "7903", "8002", "81019700", "81029700", "81033000", "81042", "81043", "81053", "81073", "81083", "81093", "81102", "81110019", "81121300", "81122200", "81124110", "81125200", "81130040", "85481", "85493", "85499", "85492000"]
     if any(g.startswith(p) for p in gng_40_non_ferrous):
         return max(w, 40.0)
 
-    # --- 5. НОРМА 30 ТОНН ---
     gng_30_non_ferrous = ["71159", "7411", "7412", "7415", "7419", "7507", "7508", "7608", "7609", "7610", "7611", "7612", "7613", "76152", "7616", "7806", "7907", "8007", "81059", "81060090", "81079", "81089", "81099", "81109", "81110090", "811219", "81122900", "81129920", "81129970", "811259", "81129900", "81129930", "81130090", "8302", "83061", "83079", "8309", "8311", "8481", "8482", "84831", "84832", "84833", "8484"]
     if any(g.startswith(p) for p in gng_30_non_ferrous):
         return max(w, 30.0)
 
     return w
 
-
-# ==============================================================================
-# 4. ОБЩИЕ КОЭФФИЦИЕНТЫ 1.20
-# ==============================================================================
 
 def is_non_ferrous_metal_gng(gng_code: str) -> bool:
     clean_gng = extract_gng_digits(gng_code)
@@ -336,10 +315,6 @@ def load_rules_config(filepath: str = "RULES.md") -> str:
     return ""
 
 
-# ==============================================================================
-# 5. ТАБЛИЦА КУРСОВ CHF/USD И ПОИСК ПО ДАТЕ
-# ==============================================================================
-
 CURRENCY_RATES_TABLE = [
     ("01.01.2023", "31.01.2023", 0.98),
     ("01.04.2023", "30.06.2023", 0.93),
@@ -396,9 +371,6 @@ def get_exchange_rate_for_date(target_date=None) -> tuple:
 
 
 def should_apply_150_coeff(shipment_type_code: str, table_num: int, gng_code: str, wagon_type: str, park_type: str = "SPS") -> bool:
-    """
-    Централизованная проверка коэффициента 1.50 по RULES.md (Раздел 8.1).
-    """
     st = str(shipment_type_code or "").lower()
     if not any(k in st for k in ["import", "export", "idxal", "ixrac"]):
         return False
@@ -433,15 +405,7 @@ def should_apply_150_coeff(shipment_type_code: str, table_num: int, gng_code: st
     return True
 
 
-# ==============================================================================
-# 6. СПЕЦИАЛЬНЫЕ ПРАВИЛА (п. 3.1.2.6 - 3.1.2.7: Транспортеры и Платформы >19м)
-# ==============================================================================
-
 def get_transporter_min_weight(axle_count: int, actual_weight: float) -> float:
-    """
-    Пункт 3.1.2.6: Для 4, 6 и 8-осных транспортеров расчетный вес 
-    принимается не менее 5 тонн на каждую ось.
-    """
     if axle_count in [4, 6, 8]:
         min_allowed = axle_count * 5.0
         return max(actual_weight, min_allowed)
@@ -457,12 +421,7 @@ def is_long_platform_scep(raw_text: str, wagon_type: str = "") -> bool:
     return False
 
 
-# ==============================================================================
-# 7. ВСОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ПАРОМА ASCO
-# ==============================================================================
-
 def is_asco_ferry_route(origin_esr: str, dest_esr: str, st_from_raw: str = "", st_to_raw: str = "", user_input_raw: str = "") -> bool:
-    """Проверяет, участвует ли паромный порт в маршруте."""
     ferry_codes = ["553002", "549204", "548803"]
     o_esr = re.sub(r'\D', '', str(origin_esr or ""))
     d_esr = re.sub(r'\D', '', str(dest_esr or ""))
@@ -475,9 +434,6 @@ def is_asco_ferry_route(origin_esr: str, dest_esr: str, st_from_raw: str = "", s
 
 
 def calculate_asco_ferry_tariff(nlu_data: dict, user_input_raw: str) -> dict:
-    """
-    Расчет морского фрахта ASCO за паромную переправу.
-    """
     return {
         "ferry_rate_usd": 1200.0,
         "note": "ASCO bərə daşıma tarifi cədvəlinə əsasən hesablanmışdır."
