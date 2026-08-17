@@ -770,8 +770,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
 
     # --- РАСЧЕТ ПАРОМНОЙ ПЕРЕПРАВЫ ASCO ---
     asco_result = None
-    if nlu_data.get("is_asco_ferry") or is_asco_ferry_route(origin_esr, dest_esr, st_from_raw, st_to_raw):
-        asco_result = calculate_asco_ferry_tariff(nlu_data)
+    if nlu_data.get("is_asco_ferry") or is_asco_ferry_route(origin_esr, dest_esr, st_from_raw, st_to_raw, user_input_raw):
+        asco_result = calculate_asco_ferry_tariff(nlu_data, user_input_raw)
         if asco_result and asco_result.get("note"):
             notes.append(asco_result["note"])
 
