@@ -29,8 +29,10 @@ CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
 - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
 - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109, Ələt (Bərə/Паром)=549204.
 
-CRITICAL RULES FOR CASPIAN FERRY PORTS & DESTINATION STATIONS:
-- If the request mentions Caspian ferry ports, bind them strictly to the corresponding Alat ferry ESR station codes as dest_name & dest_esr:
+CRITICAL RULES FOR CASPIAN FERRY PORTS & ROUTE SEPARATION:
+- NEVER assign ferry ports ("Kuryk", "Aktau", "Turkmenbashi") to origin_name or origin_esr.
+- Origin station is the entry border/station (e.g. "Böyük Kəsik" -> origin_esr: "558701", "Yalama" -> origin_esr: "545006").
+- If the request mentions Caspian ferry ports, bind them STRICTLY to 'dest_name' & 'dest_esr':
   * "Quruq", "Kuryk", "Курык" -> dest_name: "Ələt eksport-Kurik", dest_esr: "553002"
   * "Aqtau", "Aktau", "Актау" -> dest_name: "Ələt eksport-Aktau", dest_esr: "549204"
   * "Türkmenbaşı", "Turkmenbashi", "Туркменбаши", "TRK", "ТРК" -> dest_name: "Ələt eksport-Türk.", dest_esr: "548803"
@@ -238,25 +240,35 @@ Return ONLY a valid JSON object. UI language context: {target_lang}.
 
 def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
     """
-    Проверяет минимально необходимые данные для расчета и выполняет автоматический фолбэк для паромных портов.
+    Проверяет минимально необходимые данные для расчета и принудительно распределяет станции.
     """
     missing = []
     input_text = str(nlu_data.get("user_input_raw") or "").lower()
 
-    # СТРАХОВОЧНЫЙ ФОЛБЭК ДЛЯ ПАРОМНЫХ СТАНЦИЙ
-    if not nlu_data.get("dest_name") and not nlu_data.get("dest_esr"):
-        if any(k in input_text for k in ["kuryk", "kurik", "quruq", "курык"]):
-            nlu_data["dest_name"] = "Ələt eksport-Kurik"
-            nlu_data["dest_esr"] = "553002"
-            nlu_data["is_asco_ferry"] = True
-        elif any(k in input_text for k in ["aktau", "aqtau", "актау"]):
-            nlu_data["dest_name"] = "Ələt eksport-Aktau"
-            nlu_data["dest_esr"] = "549204"
-            nlu_data["is_asco_ferry"] = True
-        elif any(k in input_text for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"]):
-            nlu_data["dest_name"] = "Ələt eksport-Türk."
-            nlu_data["dest_esr"] = "548803"
-            nlu_data["is_asco_ferry"] = True
+    # 1. Жесткое закрепление станции отправления, если она есть в тексте
+    if any(k in input_text for k in ["беюк кясик", "böyük kəsik", "beyuk kasik", "boyuk kesik"]):
+        nlu_data["origin_name"] = "Böyük Kəsik"
+        nlu_data["origin_esr"] = "558701"
+    elif any(k in input_text for k in ["yalama"]):
+        nlu_data["origin_name"] = "Yalama"
+        nlu_data["origin_esr"] = "545006"
+    elif any(k in input_text for k in ["astara"]):
+        nlu_data["origin_name"] = "Astara"
+        nlu_data["origin_esr"] = "554109"
+
+    # 2. Жесткое закрепление порта назначения
+    if any(k in input_text for k in ["kuryk", "kurik", "quruq", "курык"]):
+        nlu_data["dest_name"] = "Ələt eksport-Kurik"
+        nlu_data["dest_esr"] = "553002"
+        nlu_data["is_asco_ferry"] = True
+    elif any(k in input_text for k in ["aktau", "aqtau", "актау"]):
+        nlu_data["dest_name"] = "Ələt eksport-Aktau"
+        nlu_data["dest_esr"] = "549204"
+        nlu_data["is_asco_ferry"] = True
+    elif any(k in input_text for k in ["turkmenbashi", "türkmenbaşı", "туркменбаши", "trk", "трк"]):
+        nlu_data["dest_name"] = "Ələt eksport-Türk."
+        nlu_data["dest_esr"] = "548803"
+        nlu_data["is_asco_ferry"] = True
 
     origin = nlu_data.get("origin_name") or nlu_data.get("origin_esr")
     dest = nlu_data.get("dest_name") or nlu_data.get("dest_esr")
