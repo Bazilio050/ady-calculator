@@ -14,7 +14,9 @@ from utils import (
     parse_date_from_string,
     should_apply_150_coeff,
     get_transporter_min_weight,
-    is_long_platform_scep
+    is_long_platform_scep,
+    is_asco_ferry_route,
+    calculate_asco_ferry_tariff
 )
 
 from tables.table_3 import calculate_table_3_base, get_table_3_coefficients
@@ -544,7 +546,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             },
             "part3": {
                 "formula": "0.00 CHF / USD", "net_ady_rate": "0.00 USD",
-                "express_rate": "0.00 USD", "guard_rate": None, "notes": [empty_note.get(lang_upper, empty_note["AZ"])]
+                "express_rate": "0.00 USD", "guard_rate": None, "asco_ferry": None, "notes": [empty_note.get(lang_upper, empty_note["AZ"])]
             }
         }
 
@@ -766,6 +768,13 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
         )
         notes.append(guard_note_text)
 
+    # --- РАСЧЕТ ПАРОМНОЙ ПЕРЕПРАВЫ ASCO ---
+    asco_result = None
+    if nlu_data.get("is_asco_ferry") or is_asco_ferry_route(origin_esr, dest_esr, st_from_raw, st_to_raw):
+        asco_result = calculate_asco_ferry_tariff(nlu_data)
+        if asco_result and asco_result.get("note"):
+            notes.append(asco_result["note"])
+
     park_display = "SPS" if park_type == "SPS" else "MPS"
     sec_info = f" ({ref_wagons_cnt}+1)" if ref_wagons_cnt else ""
 
@@ -832,7 +841,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str, lang: str, yea
             "formula": formula_str, 
             "net_ady_rate": f"{final_rate:.2f} {unit_str}",
             "express_rate": express_rate_str, 
-            "guard_rate": f"{guard_fee_express_usd:.2f} USD" if guard_fee_express_usd > 0 else None,
+            "guard_rate": f"{guard_fee_express_usd:.2f} USD/vaqon" if (guard_fee_express_usd > 0 and lang_upper == "AZ") else (f"{guard_fee_express_usd:.2f} USD/вагон" if guard_fee_express_usd > 0 else None),
+            "asco_ferry": asco_result,
             "notes": notes
         }
     }
