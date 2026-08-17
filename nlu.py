@@ -28,7 +28,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
     - Station ESR codes: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109, Ələt (Bərə/Паром)=549204.
 
-    CRITICAL RULES FOR ASCO CASSPIAN FERRY:
+    CRITICAL RULES FOR ASCO CASPIAN FERRY:
     - Set 'is_asco_ferry': true if the request mentions ferry crossing or Caspian sea ports: "Quruq", "Kuryk", "Курык", "Aqtau", "Aktau", "Актау", "Türkmenbaşı", "Turkmenbashi", "Туркменбаши", "TRK", "ТРК", "bərə", "паром", "ferry".
     - Extract wagon length in meters into 'wagon_length_meters' as a float (e.g. "15m", "17 м", "16.97m" -> 15.0, 17.0, 16.97). If not explicitly mentioned, set 'wagon_length_meters': null.
 
@@ -105,6 +105,11 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     if "wagon_length_meters" not in result:
         result["wagon_length_meters"] = None
 
+    # Принудительная детекция парома по ключевым словам из исходного текста
+    ferry_keywords = ["quruq", "kuryk", "курык", "aqtau", "aktau", "актау", "türkmenbaşı", "turkmenbashi", "туркменбаши", "trk", "трк", "bərə", "паром", "ferry"]
+    if any(k in str(user_input).lower() for k in ferry_keywords):
+        result["is_asco_ferry"] = True
+
     return result
 
 
@@ -154,34 +159,3 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
       "explicit_mode": "import / export / transit or null",
       "is_empty": boolean,
       "axles_count": integer or null,
-      "is_own_axles": boolean,
-      "is_in_repair": boolean,
-      "is_passenger_train": boolean,
-      "is_consolidated": boolean,
-      "escort_count": integer or 0,
-      "has_teplushka": boolean,
-      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null",
-      "is_asco_ferry": boolean,
-      "wagon_length_meters": float or null
-    }}
-
-    Return ONLY a valid JSON object. UI language context: {target_lang}.
-    """
-
-    audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
-
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=[audio_part, prompt],
-        config=types.GenerateContentConfig(
-            temperature=0.0,
-            response_mime_type="application/json"
-        )
-    )
-
-    raw_text = response.text.strip()
-    if raw_text.startswith("```json"):
-        raw_text = raw_text[7:]
-    elif raw_text.startswith("```"):
-        raw_text = raw_text[3:]
-    if raw_text.endswith("
