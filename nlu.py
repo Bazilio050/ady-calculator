@@ -240,23 +240,23 @@ Return ONLY a valid JSON object. UI language context: {target_lang}.
 
 def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
     """
-    Проверяет минимально необходимые данные для расчета и принудительно распределяет станции.
+    Проверяет данные, принудительно разделяет станции и предотвращает совпадение origin == dest.
     """
     missing = []
     input_text = str(nlu_data.get("user_input_raw") or "").lower()
 
-    # 1. Жесткое закрепление станции отправления, если она есть в тексте
-    if any(k in input_text for k in ["беюк кясик", "böyük kəsik", "beyuk kasik", "boyuk kesik"]):
+    # 1. Гибкий поиск станции отправления (Origin) через регулярные выражения
+    if re.search(r'б[её]юк\s+к[аяе]сик|beyuk\s*kasik|boyuk\s*kesik', input_text):
         nlu_data["origin_name"] = "Böyük Kəsik"
         nlu_data["origin_esr"] = "558701"
-    elif any(k in input_text for k in ["yalama"]):
+    elif "yalama" in input_text:
         nlu_data["origin_name"] = "Yalama"
         nlu_data["origin_esr"] = "545006"
-    elif any(k in input_text for k in ["astara"]):
+    elif "astara" in input_text:
         nlu_data["origin_name"] = "Astara"
         nlu_data["origin_esr"] = "554109"
 
-    # 2. Жесткое закрепление порта назначения
+    # 2. Определение порта назначения (Dest)
     if any(k in input_text for k in ["kuryk", "kurik", "quruq", "курык"]):
         nlu_data["dest_name"] = "Ələt eksport-Kurik"
         nlu_data["dest_esr"] = "553002"
@@ -269,6 +269,15 @@ def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
         nlu_data["dest_name"] = "Ələt eksport-Türk."
         nlu_data["dest_esr"] = "548803"
         nlu_data["is_asco_ferry"] = True
+
+    # 3. Страховка: Если origin и dest совпали, сбрасываем origin на реальную входную станцию
+    if nlu_data.get("origin_esr") == nlu_data.get("dest_esr"):
+        if re.search(r'б[её]юк\s+к[аяе]сик|beyuk|boyuk', input_text):
+            nlu_data["origin_name"] = "Böyük Kəsik"
+            nlu_data["origin_esr"] = "558701"
+        elif "yalama" in input_text:
+            nlu_data["origin_name"] = "Yalama"
+            nlu_data["origin_esr"] = "545006"
 
     origin = nlu_data.get("origin_name") or nlu_data.get("origin_esr")
     dest = nlu_data.get("dest_name") or nlu_data.get("dest_esr")
