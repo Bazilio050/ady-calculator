@@ -436,65 +436,66 @@ def is_asco_ferry_route(origin_esr: str, dest_esr: str, st_from_raw: str = "", s
 def calculate_asco_ferry_tariff(nlu_data: dict, user_input_raw: str) -> dict:
     inp = str(user_input_raw or "").lower()
     
-    # 1. Определение маршрута (Туркменбаши или Курык/Актау)
+    # 1. Определение длины вагона: сперва ищем в тексте (например: "17м", "17 m", "14.7м")
+    match_len = re.search(r'(\d+(?:[\.,]\d+)?)\s*(?:m|м|metr|метр)\b', inp)
+    if match_len:
+        wagon_length_m = float(match_len.group(1).replace(',', '.'))
+    else:
+        wagon_length_m = float(nlu_data.get("wagon_length_m") or 14.7)
+    
+    # 2. Определение маршрута (Туркменбаши или Курык/Актау)
     is_trk = any(k in inp for k in ["turkmenbashi", "туркменбаши", "trk", "трк"])
     
-    # 2. Статус (порожний или гружёный)
+    # 3. Статус (порожний или гружёный)
     is_empty = nlu_data.get("is_empty", False) or any(k in inp for k in ["boş", "порожн", "empty"])
     
-    # 3. Длина вагона (по умолчанию 14.7 м для универсалов, 13 м для цистерн)
-    wagon_length_m = float(nlu_data.get("wagon_length_m") or 14.7)
-    gng_code = str(nlu_data.get("gng_code") or "")
-    
-    # Категория груза и базовые ставки $/погонный метр
-    # [Ставка_Туркменбаши_Груж, Ставка_Туркменбаши_Порож, Ставка_Курык_Груж, Ставка_Курык_Порож]
-    rate_per_m = 45.0 if is_trk else 50.0 # Базовый по умолчанию
-    
+    # 4. Базовые ставки за 1 погонный метр ($/м)
     if any(k in inp for k in ["сжиженный газ", "газ", "lpg"]):
         rate_per_m = 36.0 if is_empty else (119.0 if is_trk else 135.0)
     elif any(k in inp for k in ["спирт", "напитки", "alkoqol"]):
         rate_per_m = 36.0 if (is_empty and is_trk) else (41.0 if is_empty else (72.0 if is_trk else 77.0))
     elif any(k in inp for k in ["нефть", "нефтепродукт", "мазут", "бензин"]):
         if any(k in inp for k in ["цистерн", "cistern", "tank"]):
-            wagon_length_m = 13.0 # Фиксированная длина по правилам ASCO
+            wagon_length_m = 13.0  # Фиксированная длина по правилам ASCO
             rate_per_m = 32.0 if (is_empty and is_trk) else (37.0 if is_empty else (70.0 if is_trk else 83.0))
         else:
-            wagon_length_m = 15.0 # Фиксированная длина по правилам ASCO
+            wagon_length_m = 15.0  # Фиксированная длина по правилам ASCO
             rate_per_m = 36.0 if (is_empty and is_trk) else (41.0 if is_empty else (70.0 if is_trk else 83.0))
     elif any(k in inp for k in ["опасный", "təhlükəli", "dangerous"]):
         rate_per_m = 36.0 if (is_empty and is_trk) else (41.0 if is_empty else (50.0 if is_trk else 55.0))
     elif any(k in inp for k in ["ixrac", "export", "экспорт"]):
         rate_per_m = 36.0 if (is_empty and is_trk) else (41.0 if is_empty else (43.0 if is_trk else 48.0))
     else:
-        # Прочие грузы (Базовый)
+        # Прочие грузы (Базовый тариф)
         rate_per_m = 36.0 if (is_empty and is_trk) else (41.0 if is_empty else (45.0 if is_trk else 50.0))
 
-    # Базовый расчет по длине
+    # Базовый расчет
     total_usd = rate_per_m * wagon_length_m
 
-    # 4. Применение коэффициентов особенностей
+    # 5. Применение коэффициентов
     coeff_note = []
     
     # Коэффициент длины > 15 метров
     if wagon_length_m > 15.0:
         total_usd *= 1.3
-        coeff_note.append("длина >15м (x1.3)")
+        coeff_note.append("uzunluq >15m (x1.3)")
         
-    # Коэффициент негабаритности/локомотивов
+    # Негабарит / Локомотивы
     if any(k in inp for k in ["локомотив", "locomotive"]):
         total_usd *= 1.4
-        coeff_note.append("локомотив (x1.4)")
+        coeff_note.append("lokomotiv (x1.4)")
     elif any(k in inp for k in ["негабарит 4м", "ширина >4", "сверхнегабарит"]):
         total_usd *= 2.0
-        coeff_note.append("негабарит >4м (x2.0)")
+        coeff_note.append("qabarıtsız >4m (x2.0)")
     elif any(k in inp for k in ["негабарит", "3.25"]):
         total_usd *= 1.4
-        coeff_note.append("негабарит 3.25-4м (x1.4)")
+        coeff_note.append("qabarıtsız 3.25-4m (x1.4)")
 
-    route_str = "Алят-Туркменбаши" if is_trk else "Алят-Курык/Актау"
+    route_str = "Ələt-Türkmenbaşı" if is_trk else "Ələt-Quruq/Aktau"
     coeff_str = f" [{', '.join(coeff_note)}]" if coeff_note else ""
     
     return {
         "ferry_rate_usd": round(total_usd, 2),
         "note": f"ASCO bərə daşıma tarifi ({route_str}): {wagon_length_m}m × ${rate_per_m}/m{coeff_str} = ${round(total_usd, 2)}"
+    }
     }
