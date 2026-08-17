@@ -88,13 +88,21 @@ def calculate_rail_distance(origin_esr: str, dest_esr: str) -> int:
 # Главная функция расчета тарифа
 # -------------------------------------------------------------------------
 
-def process_full_calculation(nlu_data: dict, user_input_raw: str = "") -> dict:
+ddef process_full_calculation(nlu_data: dict, *args, **kwargs) -> dict:
     """
-    Принимает JSON от Gemini NLU и сырой текст пользователя.
-    Выполняет жесткую валидацию станций, расчет километража и тарифа ADY.
+    Принимает любое количество аргументов (от 1 до 5+), чтобы не ломать вызовы из app.py.
     """
     if not isinstance(nlu_data, dict):
         nlu_data = {}
+
+    # Извлекаем user_input_raw из kwargs или из позиционных аргументов args
+    user_input_raw = kwargs.get("user_input_raw", "")
+    if not user_input_raw and args:
+        # Если передан сырой текст среди позиционных аргументов, берем его
+        for arg in reversed(args):
+            if isinstance(arg, str) and arg.strip():
+                user_input_raw = arg
+                break
 
     raw_input = user_input_raw or nlu_data.get("user_input_raw", "")
 
@@ -102,7 +110,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "") -> dict:
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "").strip()
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "").strip()
 
-    # 2. ОПРЕДЕЛЕНИЕ ESR (Приоритет: resolve_esr_by_station_name перехватывает сырой ввод)
+    # 2. ОПРЕДЕЛЕНИЕ ESR (Перехват через resolve_esr_by_station_name)
     origin_esr = resolve_esr_by_station_name(st_from_raw, raw_input)
     dest_esr = resolve_esr_by_station_name(st_to_raw, raw_input)
 
@@ -127,14 +135,14 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "") -> dict:
     wagon_length_m = float(nlu_data.get("wagon_length_m") or 0)
 
     # 6. Определение типа перевозки
-    transport_type = "İxrac daşınması"  # Экспорт по умолчанию
+    transport_type = "İxrac daşınması"
     if dest_esr in ["553002", "549204", "548803"]:
         transport_type = "Tranzit daşınması (Bərə)"
 
-    # 7. Расчет морского фрахта (ASCO) при наличии паромного узла
+    # 7. Расчет морского фрахта (ASCO)
     sea_freight_usd = 0.0
     if wagon_length_m > 0 and dest_esr in ["553002", "549204", "548803"]:
-        base_rate = 50.0  # $50 за метр
+        base_rate = 50.0
         coeff = 1.3 if wagon_length_m > 15 else 1.0
         sea_freight_usd = round(wagon_length_m * base_rate * coeff, 2)
 
