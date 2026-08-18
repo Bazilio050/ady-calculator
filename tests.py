@@ -20,7 +20,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "4407", "cargo_name": "Taxta",
             "actual_weight_tons": 35.0, "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 17.26
+        "expected_rate": 17.26, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "2. Ялама -> Баладжары (0207, реф 5+1, 35т, СПС)",
@@ -29,7 +29,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Biləcəri", "cargo_gng_code": "0207", "cargo_name": "Ət və ət məhsulları",
             "actual_weight_tons": 35.0, "wagon_type": "ref", "park_type": "SPS", "ref_section_cargo_wagons": 5, "explicit_mode": "import"
         },
-        "expected_rate": 33.53
+        "expected_rate": 33.53, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "3. Ялама -> Беюк-Кясик (78, крытый, 60т, СПС)",
@@ -38,7 +38,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Böyük Kəsik", "cargo_gng_code": "0078", "cargo_name": "Aşırılan yük",
             "actual_weight_tons": 60.0, "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "transit"
         },
-        "expected_rate": 38.14
+        "expected_rate": 38.14, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "4. Баку тов -> Ялама (2713, цистерна, 60т, СПС)",
@@ -47,7 +47,7 @@ TEST_SUITE = [
             "route_from": "Bakı Yük (547105)", "route_to": "Yalama", "cargo_gng_code": "2713", "cargo_name": "Neft məhsulları",
             "actual_weight_tons": 60.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "export"
         },
-        "expected_rate": 18.84
+        "expected_rate": 18.84, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "5. Ялама -> Гюздек (3404, цистерна, 60т, СПС)",
@@ -56,7 +56,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Güzdək", "cargo_gng_code": "3404", "cargo_name": "Neft məhsulları",
             "actual_weight_tons": 60.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 16.80
+        "expected_rate": 16.80, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "6. Ялама -> Гюздек (3404, цистерна, 60т, МПС)",
@@ -65,7 +65,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Güzdək", "cargo_gng_code": "3404", "cargo_name": "Neft məhsulları",
             "actual_weight_tons": 60.0, "wagon_type": "cistern", "park_type": "MPS", "explicit_mode": "import"
         },
-        "expected_rate": 19.76
+        "expected_rate": 19.76, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "7. Г.Тагиев -> Беюк Кясик (2705, цистерна, 60т, СПС)",
@@ -74,7 +74,7 @@ TEST_SUITE = [
             "route_from": "H.Z. Tağıyev", "route_to": "Böyük Kəsik", "cargo_gng_code": "2705", "cargo_name": "Enerjili qazlar",
             "actual_weight_tons": 60.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "export"
         },
-        "expected_rate": 40.84
+        "expected_rate": 40.84, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "8. Г.Тагиев -> Ялама (28042, цистерна, 50т, СПС)",
@@ -83,7 +83,7 @@ TEST_SUITE = [
             "route_from": "H.Z. Tağıyev", "route_to": "Yalama", "cargo_gng_code": "28042", "cargo_name": "Qazlar və karbohidrogenlər",
             "actual_weight_tons": 50.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "export"
         },
-        "expected_rate": 58.35
+        "expected_rate": 58.35, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "9. Баладжары -> Ялама (39053, цистерна, 60т, СПС)",
@@ -92,7 +92,7 @@ TEST_SUITE = [
             "route_from": "Biləcəri", "route_to": "Yalama", "cargo_gng_code": "39053", "cargo_name": "Spirt və fenollar",
             "actual_weight_tons": 60.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "export"
         },
-        "expected_rate": 29.59
+        "expected_rate": 29.59, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "10. Сумгаит -> Ялама (2202, цистерна, 60т, МПС)",
@@ -101,7 +101,7 @@ TEST_SUITE = [
             "route_from": "Sumqayıt", "route_to": "Yalama", "cargo_gng_code": "2202", "cargo_name": "Tez xarab olan maye yüklər",
             "actual_weight_tons": 60.0, "wagon_type": "cistern", "park_type": "MPS", "explicit_mode": "export"
         },
-        "expected_rate": 28.15
+        "expected_rate": 28.15, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "11. Ялама -> Ширван (15071010, цистерна, 50т, СПС)",
@@ -110,7 +110,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Şirvan", "cargo_gng_code": "15071010", "cargo_name": "Bitki yağları",
             "actual_weight_tons": 50.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 36.11
+        "expected_rate": 36.11, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "12. Ялама -> Сиазань (29023, цистерна, 50т, СПС)",
@@ -119,7 +119,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Siyəzən", "cargo_gng_code": "29023", "cargo_name": "Özəl çənlər yükləri",
             "actual_weight_tons": 50.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 18.66
+        "expected_rate": 18.66, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "13. Баку тов -> Ялама (4407, крытый, 50т, СПС)",
@@ -128,7 +128,7 @@ TEST_SUITE = [
             "route_from": "Bakı Yük (547105)", "route_to": "Yalama", "cargo_gng_code": "4407", "cargo_name": "Taxta",
             "actual_weight_tons": 50.0, "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "export"
         },
-        "expected_rate": 15.38
+        "expected_rate": 15.38, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "14. Баку тов -> Ялама (Почта, 15т, пассажирский)",
@@ -137,7 +137,7 @@ TEST_SUITE = [
             "route_from": "Bakı Yük (547105)", "route_to": "Yalama", "cargo_gng_code": "99910000", "cargo_name": "Poçt",
             "actual_weight_tons": 15.0, "wagon_type": "passenger", "park_type": "SPS", "explicit_mode": "export"
         },
-        "expected_rate": 41.27
+        "expected_rate": 41.27, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "15. Астара -> Ялама (8-осный транспортер, 15т груза, Транзит)",
@@ -146,7 +146,7 @@ TEST_SUITE = [
             "route_from": "Astara", "route_to": "Yalama", "cargo_gng_code": "00000000",
             "actual_weight_tons": 15.0, "wagon_type": "transporter", "park_type": "SPS", "explicit_mode": "transit"
         },
-        "expected_rate": 63.38
+        "expected_rate": 63.38, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "16. Беюк Кясик -> Астара (Спецплатформа сцеп >19м, 40т, Транзит)",
@@ -155,7 +155,7 @@ TEST_SUITE = [
             "route_from": "Böyük Kəsik", "route_to": "Astara", "cargo_gng_code": "00000000",
             "actual_weight_tons": 40.0, "wagon_type": "platform", "park_type": "SPS", "explicit_mode": "transit"
         },
-        "expected_rate": 46.48
+        "expected_rate": 46.48, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "17. Ялама -> Апшерон (Спецплатформа сцеп >19м, 40т, Импорт)",
@@ -164,7 +164,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
             "actual_weight_tons": 40.0, "wagon_type": "platform", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 21.96
+        "expected_rate": 21.96, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "18. Апшерон -> Ялама (8-осный транспортер, 15т груза, Экспорт)",
@@ -173,7 +173,7 @@ TEST_SUITE = [
             "route_from": "Abşeron", "route_to": "Yalama", "cargo_gng_code": "00000000",
             "actual_weight_tons": 15.0, "wagon_type": "transporter", "park_type": "SPS", "explicit_mode": "export"
         },
-        "expected_rate": 41.27
+        "expected_rate": 41.27, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "19. Баладжары -> Ялама (Порожний возврат вагона, 192км, Экспорт)",
@@ -183,7 +183,7 @@ TEST_SUITE = [
             "cargo_name": "Yükdən boşaldılmış vaqonlar", "is_empty": True, "axles_count": 4,
             "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "export"
         },
-        "expected_rate": 148.74
+        "expected_rate": 148.74, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "20. Алят -> Беюк Кясик (Порожний возврат вагона, 429км, Транзит)",
@@ -193,7 +193,7 @@ TEST_SUITE = [
             "cargo_name": "Yükdən boşaldılmış vaqonlar", "is_empty": True, "axles_count": 4,
             "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "transit"
         },
-        "expected_rate": 265.87
+        "expected_rate": 265.87, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "21. Ялама -> Апшерон (Автопоезд на спецплатформе, 25т, СПС, Импорт — п. 3.3.1)",
@@ -202,7 +202,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
             "actual_weight_tons": 25.0, "wagon_type": "avtoqatar", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 652.65
+        "expected_rate": 652.65, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "22. Ялама -> Апшерон (Прицеп qoşqu порожний на платформе, СПС, Экспорт — п. 3.3.2)",
@@ -211,7 +211,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "99220000",
             "cargo_name": "Boş qoşqu", "is_empty": True, "wagon_type": "qoşqu", "park_type": "SPS", "explicit_mode": "export"
         },
-        "expected_rate": 450.10
+        "expected_rate": 450.10, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "23. Ялама -> Сиазань (27071 бензол, цистерна 55т, СПС — п. 3.2.5, мин 151км)",
@@ -220,7 +220,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Siyəzən", "cargo_gng_code": "27071", "cargo_name": "Benzol və aromatik karbohidrogenlər",
             "actual_weight_tons": 55.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 18.66
+        "expected_rate": 18.66, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "24. Ялама -> Сумгаит (35т, 3-я верхняя негабаритность, платформа, СПС — Cədvəl 11)",
@@ -230,7 +230,7 @@ TEST_SUITE = [
             "cargo_name": "Əndazəsiz yük", "actual_weight_tons": 35.0, "wagon_type": "platform",
             "park_type": "SPS", "oversize_group": "deg3_upper", "explicit_mode": "import"
         },
-        "expected_rate": 51.25
+        "expected_rate": 51.25, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "25. Ялама -> Апшерон (Порожний кузов kuzov на платформе, СПС, Импорт — п. 3.3.2, абз. 2)",
@@ -239,7 +239,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "99220000",
             "cargo_name": "Boş kuzov", "is_empty": True, "wagon_type": "kuzov", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 450.10
+        "expected_rate": 450.10, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "26. Ялама -> Апшерон (20-футовый универсальный контейнер гружёный, СПС, Импорт — Cədvəl 8)",
@@ -248,7 +248,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
             "wagon_type": "container", "container_size": 20, "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 528.00
+        "expected_rate": 528.00, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "27. Ялама -> Апшерон (40-футовый универсальный контейнер гружёный, СПС, Импорт — Cədvəl 8)",
@@ -257,7 +257,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
             "wagon_type": "container", "container_size": 40, "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 950.74
+        "expected_rate": 950.74, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "28. Ялама -> Апшерон (20-футовый танк-контейнер гружёный, СПС, Импорт — Cədvəl 10)",
@@ -266,7 +266,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Abşeron", "cargo_gng_code": "00000000",
             "wagon_type": "tank_container", "container_size": 20, "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 740.21
+        "expected_rate": 740.21, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "29. Ялама → Апшерон (Опасный груз BMT 2927, 35т, СПС, Импорт — Cədvəl 12)",
@@ -276,7 +276,7 @@ TEST_SUITE = [
             "cargo_name": "Təhlükəli yük BMT 2927", "actual_weight_tons": 35.0,
             "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 5777.96
+        "expected_rate": 5777.96, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "30. Ялама → Апшерон (Цистерна Метанол BMT 1230, 50т, СПС — п. 3.6.1 Исключение)",
@@ -286,7 +286,7 @@ TEST_SUITE = [
             "cargo_name": "Metanol", "actual_weight_tons": 50.0,
             "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 20.64
+        "expected_rate": 20.64, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "31. Ялама → Апшерон (Вагон прикрытия, 4 оси, СПС — п. 3.6.3)",
@@ -296,7 +296,7 @@ TEST_SUITE = [
             "cargo_name": "Qoruyucu vaqon", "is_empty": True, "axles_count": 4,
             "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 474.13
+        "expected_rate": 474.13, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "32. Ялама -> Беюк Кясик (Локомотив 8601 на своих осях, 45т, СПС — п. 3.7.1)",
@@ -306,7 +306,7 @@ TEST_SUITE = [
             "cargo_name": "Lokomotiv", "actual_weight_tons": 45.0, "wagon_type": "universal",
             "park_type": "SPS", "is_own_axles": True, "explicit_mode": "transit"
         },
-        "expected_rate": 19.65
+        "expected_rate": 19.65, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "33. Ялама -> Апшерон (Порожний вагон МПС в ремонт, 4 оси, 204км — п. 3.7.2)",
@@ -316,7 +316,7 @@ TEST_SUITE = [
             "cargo_name": "Boş vaqon", "is_empty": True, "axles_count": 4, "wagon_type": "universal",
             "park_type": "MPS", "is_own_axles": True, "is_in_repair": True, "explicit_mode": "import"
         },
-        "expected_rate": 105.36
+        "expected_rate": 105.36, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "34. Астара -> Ялама (Перегонка порожнего 8-осного транспортера, 504км — п. 3.7.8)",
@@ -326,7 +326,7 @@ TEST_SUITE = [
             "cargo_name": "Boş transportyor", "is_empty": True, "axles_count": 8,
             "wagon_type": "transporter", "park_type": "SPS", "explicit_mode": "transit"
         },
-        "expected_rate": 1197.35
+        "expected_rate": 1197.35, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "35. Ялама -> Апшерон (Сборный груз yığma göndərmə 6т -> норма 10т, СПС — п. 3.8)",
@@ -336,7 +336,7 @@ TEST_SUITE = [
             "cargo_name": "Qara metallar", "actual_weight_tons": 6.0, "wagon_type": "universal",
             "park_type": "SPS", "is_consolidated": True, "explicit_mode": "import"
         },
-        "expected_rate": 38.60
+        "expected_rate": 38.60, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "36. Ялама -> Апшерон (Проезд 2 проводников, 204км, Импорт — п. 3.9)",
@@ -345,7 +345,7 @@ TEST_SUITE = [
             "route_from": "Yalama", "route_to": "Abşeron",
             "escort_count": 2, "explicit_mode": "import"
         },
-        "expected_rate": 139.44
+        "expected_rate": 139.44, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "37. Ялама -> Апшерон (Теплушка СПС грузовая, 4 оси, 204км, Импорт — п. 3.9)",
@@ -355,7 +355,7 @@ TEST_SUITE = [
             "has_teplushka": True, "teplushka_type": "freight_sps", "axles_count": 4,
             "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 316.07
+        "expected_rate": 316.07, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "38. Курык -> Астара (2304, хоппер, 40т, СПС, 17м, Паром)",
@@ -365,7 +365,7 @@ TEST_SUITE = [
             "cargo_name": "Jmyx / Şrot", "actual_weight_tons": 40.0, "wagon_type": "universal",
             "park_type": "SPS", "wagon_length_m": 17.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 21.21
+        "expected_rate": 21.21, "expected_guard": 0.00, "expected_ferry": 1054.00
     },
     {
         "name": "39. Ялама -> Алят (72, полувагон, 50т, СПС)",
@@ -375,7 +375,7 @@ TEST_SUITE = [
             "cargo_name": "Qara metallar", "actual_weight_tons": 50.0, "wagon_type": "universal",
             "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 18.95
+        "expected_rate": 18.95, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
         "name": "40. Беюк Кясик -> ТРК (0207, рефвагон 5+1, 43т, МПС, 22м, Паром)",
@@ -386,7 +386,7 @@ TEST_SUITE = [
             "park_type": "MPS", "ref_section_cargo_wagons": 5, "wagon_length_m": 22.0,
             "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 65.15
+        "expected_rate": 65.15, "expected_guard": 0.00, "expected_ferry": 1848.00
     },
     {
         "name": "41. ТРК -> Беюк Кясик (2713, цистерна, 50т, СПС, 13м, Паром)",
@@ -396,7 +396,7 @@ TEST_SUITE = [
             "cargo_name": "Neft məhsulları", "actual_weight_tons": 50.0, "wagon_type": "cistern",
             "park_type": "SPS", "wagon_length_m": 13.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 23.79
+        "expected_rate": 23.79, "expected_guard": 0.00, "expected_ferry": 1092.00
     },
     {
         "name": "42. Курык -> Баладжары (1001, хоппер, 55т, СПС, 15м, Паром)",
@@ -406,7 +406,7 @@ TEST_SUITE = [
             "cargo_name": "Buğda", "actual_weight_tons": 55.0, "wagon_type": "universal",
             "park_type": "SPS", "wagon_length_m": 15.0, "is_asco_ferry": True, "explicit_mode": "import"
         },
-        "expected_rate": 10.69
+        "expected_rate": 10.69, "expected_guard": 0.00, "expected_ferry": 930.00
     },
     {
         "name": "43. ТРК -> Беюк Кясик (2705, цистерна, 50т, МПС, 13м, Паром)",
@@ -416,7 +416,7 @@ TEST_SUITE = [
             "cargo_name": "Qazlar", "actual_weight_tons": 50.0, "wagon_type": "cistern",
             "park_type": "MPS", "wagon_length_m": 13.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 57.42
+        "expected_rate": 57.42, "expected_guard": 0.00, "expected_ferry": 1092.00
     },
     {
         "name": "44. Курык -> Беюк Кясик (28141, цистерна, 50т, СПС, 13м, Паром)",
@@ -426,7 +426,7 @@ TEST_SUITE = [
             "cargo_name": "Ammiak", "actual_weight_tons": 50.0, "wagon_type": "cistern",
             "park_type": "SPS", "wagon_length_m": 13.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 65.15
+        "expected_rate": 65.15, "expected_guard": 0.00, "expected_ferry": 806.00
     },
     {
         "name": "45. Беюк Кясик -> Курык (Порожний вагон, 15м, Паром)",
@@ -436,7 +436,7 @@ TEST_SUITE = [
             "cargo_name": "Boş vaqon", "is_empty": True, "axles_count": 4, "wagon_type": "universal",
             "park_type": "SPS", "wagon_length_m": 15.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 263.39
+        "expected_rate": 263.39, "expected_guard": 0.00, "expected_ferry": 930.00
     },
     {
         "name": "46. Беюк Кясик -> ТРК (1701, платформа, 50т, СПС, Паром)",
@@ -444,9 +444,9 @@ TEST_SUITE = [
         "nlu": {
             "route_from": "Böyük Kəsik", "route_to": "Ələt eksport-Türk.", "cargo_gng_code": "1701",
             "cargo_name": "Qənd və şəkər", "actual_weight_tons": 50.0, "wagon_type": "platform",
-            "park_type": "SPS", "is_asco_ferry": True, "explicit_mode": "transit"
+            "park_type": "SPS", "wagon_length_m": 15.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 28.71
+        "expected_rate": 28.71, "expected_guard": 0.00, "expected_ferry": 1260.00
     }
 ]
 
@@ -461,28 +461,52 @@ def parse_float(val):
     return 0.0
 
 def run_tests():
-    print(f"🧪 ПРОВЕРКА {len(TEST_SUITE)} ОСНОВНЫХ И ДОПОЛНИТЕЛЬНЫХ МАРШРУТОВ...\n" + "="*60)
+    print(f"🧪 ПРОВЕРКА {len(TEST_SUITE)} ТЕСТОВЫХ СЦЕНАРИЕВ (ТАРИФ + ОХРАНА + ПАРОМ)...\n" + "="*70)
     passed, failed = 0, 0
 
     for test in TEST_SUITE:
         try:
             res = process_full_calculation(test["nlu"], test["raw_text"], "AZ", "2026", UI_T)
             
+            # 1. Извлечение Тарифа (экспресс или базовый net_ady)
             raw_rate = res['part3'].get('express_rate') or res['part3'].get('net_ady_rate')
             calc_rate = parse_float(raw_rate)
             exp_rate = test["expected_rate"]
 
-            if abs(calc_rate - exp_rate) <= 0.05:
-                print(f"✅ {test['name']} -> Совпало: {calc_rate}$")
+            # 2. Извлечение Охраны
+            calc_guard = parse_float(res['part3'].get('guard_cost') or res['part3'].get('guard_rate'))
+            exp_guard = test.get("expected_guard", 0.00)
+
+            # 3. Извлечение Паромного Фрахта
+            ferry_obj = res['part3'].get('asco_ferry') or {}
+            calc_ferry = parse_float(ferry_obj.get('total_usd') if isinstance(ferry_obj, dict) else ferry_obj)
+            exp_ferry = test.get("expected_ferry", 0.00)
+
+            # Тройная проверка
+            rate_ok = abs(calc_rate - exp_rate) <= 0.05
+            guard_ok = abs(calc_guard - exp_guard) <= 0.05
+            ferry_ok = abs(calc_ferry - exp_ferry) <= 0.05
+
+            if rate_ok and guard_ok and ferry_ok:
+                details = f"Тариф: {calc_rate}$"
+                if exp_guard > 0: details += f" | Охрана: {calc_guard}$"
+                if exp_ferry > 0: details += f" | Паром: {calc_ferry}$"
+                print(f"✅ {test['name']} -> Совпало ({details})")
                 passed += 1
             else:
-                print(f"❌ {test['name']} -> Ошибка! Должно быть {exp_rate}$, а калькулятор выдал {calc_rate}$")
+                errors = []
+                if not rate_ok: errors.append(f"Тариф {calc_rate}$ вместо {exp_rate}$")
+                if not guard_ok: errors.append(f"Охрана {calc_guard}$ вместо {exp_guard}$")
+                if not ferry_ok: errors.append(f"Паром {calc_ferry}$ вместо {exp_ferry}$")
+                
+                print(f"❌ {test['name']} -> Ошибка! " + ", ".join(errors))
                 failed += 1
+
         except Exception as e:
             print(f"❌ {test['name']} -> Ошибка кода: {e}")
             failed += 1
 
-    print("\n" + "="*60)
+    print("\n" + "="*70)
     print(f"📊 ИТОГ: Успешно: {passed} | Ошибок: {failed}")
 
     if failed > 0:
