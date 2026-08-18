@@ -786,15 +786,15 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     # --- РАСЧЕТ ПАРОМНОЙ ПЕРЕПРАВЫ ASCO (ДЛЯ ПОРТОВ) ---
     asco_ferry_dict = None
     
-    # Проверяем, действительно ли это паромный маршрут (есть флаг или ключевые слова в запросе/портах)
+    # Порты Курык и Актау (553002, 548803) — это всегда паром.
+    # Код 549204 (Алят-экспорт / ТРК) считает паром, если есть явный флаг или ключевое слово в запросе.
+    # Обычный сухопутный Алят (548502) под эти коды не попадает и паром не считает.
     input_str_lower = user_input_raw.lower()
-    is_ferry_keyword = any(k in input_str_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
+    has_ferry_word = any(k in input_str_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
     
-    # Паром считаем только если есть явный флаг, либо ключевое слово порта, 
-    # а для простого Алята без ключевых слов паром не включаем
-    should_calc_ferry = bool(nlu_data.get("is_asco_ferry")) or is_ferry_keyword
+    is_port_code = dest_esr in ["553002", "548803"] or (dest_esr == "549204" and (bool(nlu_data.get("is_asco_ferry")) or has_ferry_word))
     
-    if dest_esr in ["553002", "549204", "548803"] and should_calc_ferry:
+    if is_port_code or nlu_data.get("is_asco_ferry"):
         w_len = float(nlu_data.get("wagon_length_m") or 14.5)
         base_rate = 50.0  # $50 за метр
         coeff = 1.3 if w_len > 15.0 else 1.0
