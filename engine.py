@@ -785,7 +785,16 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
 
     # --- РАСЧЕТ ПАРОМНОЙ ПЕРЕПРАВЫ ASCO (ДЛЯ ПОРТОВ) ---
     asco_ferry_dict = None
-    if dest_esr in ["553002", "549204", "548803"] or nlu_data.get("is_asco_ferry"):
+    
+    # Проверяем, действительно ли это паромный маршрут (есть флаг или ключевые слова в запросе/портах)
+    input_str_lower = user_input_raw.lower()
+    is_ferry_keyword = any(k in input_str_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
+    
+    # Паром считаем только если есть явный флаг, либо ключевое слово порта, 
+    # а для простого Алята без ключевых слов паром не включаем
+    should_calc_ferry = bool(nlu_data.get("is_asco_ferry")) or is_ferry_keyword
+    
+    if dest_esr in ["553002", "549204", "548803"] and should_calc_ferry:
         w_len = float(nlu_data.get("wagon_length_m") or 14.5)
         base_rate = 50.0  # $50 за метр
         coeff = 1.3 if w_len > 15.0 else 1.0
