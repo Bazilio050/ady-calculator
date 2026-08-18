@@ -381,6 +381,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             year = args[2]
 
     user_input_raw = user_input_raw or nlu_data.get("user_input_raw", "")
+    input_lower = user_input_raw.lower()
     lang_upper = str(lang or "AZ").upper()
     
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
@@ -389,6 +390,31 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     # ВАЖНО: передаем user_input_raw в resolve_esr_by_station_name для 100% перехвата "Баку тов" -> 547105
     origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
     dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
+
+    # --- КЛЮЧЕВАЯ ПРАВКА ДЛЯ СТАНЦИИ АЛЯТ (271 км vs 261 км) ---
+    has_import_export_kw = any(kw in input_lower for kw in ["импорт", "экспорт", "idxal", "ixrac"])
+
+    # Если в назначении Алят
+    if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002", "549204", "548803"]:
+        if not has_import_export_kw:
+            # По умолчанию: Портовый стык Ələt-liman (271 км)
+            dest_esr = "553002"
+            st_to_raw = "Ələt-liman"
+            nlu_data["explicit_mode"] = "transit"
+        else:
+            # Явный импорт/экспорт: Сухопутная станция Ələt (261 км)
+            dest_esr = "548502"
+            st_to_raw = "Ələt"
+
+    # Если в отправлении Алят
+    if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002", "549204", "548803"]:
+        if not has_import_export_kw:
+            origin_esr = "553002"
+            st_from_raw = "Ələt-liman"
+            nlu_data["explicit_mode"] = "transit"
+        else:
+            origin_esr = "548502"
+            st_from_raw = "Ələt"
 
     raw_gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
     gng = re.sub(r'\D', '', raw_gng)
@@ -441,7 +467,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     tariff_dist_km = get_calculation_distance(actual_dist_km, shipment_type_code)
     dist_display = f"{actual_dist_km} km (min. {tariff_dist_km} km)" if tariff_dist_km != actual_dist_km else f"{actual_dist_km} km"
 
-    input_lower = user_input_raw.lower()
     is_empty_wagon = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
     is_cover_wagon = any(k in input_lower for k in ["прикрытие", "qoruyucu", "daldalanacaq", "guard_wagon"])
 
@@ -787,8 +812,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     asco_ferry_dict = None
     
     # Порты Курык и Актау (553002, 548803) — это всегда паром.
-    # Код 549204 (Алят-экспорт / ТРК) считает паром, если есть явный флаг или ключевое слово в запросе.
-    # Обычный сухопутный Алят (548502) под эти коды не попадает и паром не считает.
     input_str_lower = user_input_raw.lower()
     has_ferry_word = any(k in input_str_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
     
