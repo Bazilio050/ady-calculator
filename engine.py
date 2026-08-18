@@ -418,6 +418,16 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             if not nlu_data.get("explicit_mode"):
                 nlu_data["explicit_mode"] = "transit"
 
+    # --- ВАЖНО: ПЕРЕСЧЕТ РАССТОЯНИЯ СТРОГО ПОСЛЕ ОБНОВЛЕНИЯ КОДОВ ESR! ---
+    raw_dist = get_distance_by_esr(origin_esr, dest_esr)
+    try:
+        actual_dist_km = int(raw_dist) if raw_dist is not None else 0
+    except (ValueError, TypeError):
+        actual_dist_km = 0
+
+    if actual_dist_km <= 0 or actual_dist_km > 5000:
+        actual_dist_km = 207 if origin_esr == "547105" else 300
+
     # --- ФОРМИРОВАНИЕ ОТОБРАЖЕНИЯ ШАПКИ МАРШРУТА ---
     if dest_esr in ["553002", "548803", "549204"]:
         if "kurik" in input_lower or "курык" in input_lower:
@@ -481,15 +491,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         else:
             shipment_type_code = "local"
             shipment_type_display = "Daxili daşınma" if lang_upper == "AZ" else ("Внутренняя перевозка" if lang_upper == "RU" else "Domestic shipment")
-
-    raw_dist = get_distance_by_esr(origin_esr, dest_esr)
-    try:
-        actual_dist_km = int(raw_dist) if raw_dist is not None else 0
-    except (ValueError, TypeError):
-        actual_dist_km = 0
-
-    if actual_dist_km <= 0 or actual_dist_km > 5000:
-        actual_dist_km = 207 if origin_esr == "547105" else 300
 
     tariff_dist_km = get_calculation_distance(actual_dist_km, shipment_type_code)
     dist_display = f"{actual_dist_km} km (min. {tariff_dist_km} km)" if tariff_dist_km != actual_dist_km else f"{actual_dist_km} km"
