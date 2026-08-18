@@ -371,11 +371,20 @@ TEST_SUITE = [
         "name": "39. Ялама -> Алят (72, полувагон, 50т, СПС)",
         "raw_text": "Ялама Алят 72 полувагон 50т спс",
         "nlu": {
-            "route_from": "Yalama", "route_to": "Ələt", "cargo_gng_code": "72000000",
-            "cargo_name": "Qara metallar", "actual_weight_tons": 50.0, "wagon_type": "universal",
-            "park_type": "SPS", "is_asco_ferry": False, "explicit_mode": "import"
+            "route_from": "Yalama", 
+            "dest_esr": "548502",          # Сухопутный ESR станции Алят
+            "route_to": "Ələt", 
+            "cargo_gng_code": "72000000",
+            "cargo_name": "Qara metallar", 
+            "actual_weight_tons": 50.0, 
+            "wagon_type": "universal",
+            "park_type": "SPS", 
+            "is_asco_ferry": False, 
+            "explicit_mode": "import"
         },
-        "expected_rate": 18.95, "expected_guard": 0.00, "expected_ferry": 0.00
+        "expected_rate": 18.95, 
+        "expected_guard": 0.00, 
+        "expected_ferry": 0.00
     },
     {
         "name": "40. Беюк Кясик -> ТРК (0207, рефвагон 5+1, 43т, МПС, 22м, Паром)",
@@ -452,12 +461,21 @@ TEST_SUITE = [
         "name": "47. Сальяны -> Алят (2304, крытый, 60т, СПС)",
         "raw_text": "Сальяны Алят 2304 крытый 60т СПС",
         "nlu": {
-            "route_from": "Salyan", "route_to": "Ələt", "cargo_gng_code": "2304",
-            "cargo_name": "Jmyx / Şrot", "actual_weight_tons": 60.0, "wagon_type": "universal",
-            "park_type": "SPS", "is_asco_ferry": False, "explicit_mode": "import"
+            "route_from": "Salyan", 
+            "dest_esr": "548502",          # Сухопутный ESR станции Алят
+            "route_to": "Ələt", 
+            "cargo_gng_code": "2304",
+            "cargo_name": "Jmyx / Şrot", 
+            "actual_weight_tons": 60.0, 
+            "wagon_type": "universal",
+            "park_type": "SPS", 
+            "is_asco_ferry": False, 
+            "explicit_mode": "import"
         },
-        "expected_rate": 0.0  # Рассчитается при первом запуске
-    }
+        "expected_rate": 10.69,
+        "expected_guard": 0.00,
+        "expected_ferry": 0.00
+    },
 ]
 
 def parse_float(val):
