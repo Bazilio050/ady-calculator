@@ -372,8 +372,9 @@ TEST_SUITE = [
         "raw_text": "Ялама Алят 72 полувагон 50т спс",
         "nlu": {
             "route_from": "Yalama", 
-            "route_to": "Ələt", 
-            "dest_esr": "548502",          # Сухопутный ESR станции Алят
+            "route_to": "Ələt (548502)", 
+            "origin_esr": "548409",
+            "dest_esr": "548502",
             "cargo_gng_code": "72000000",
             "cargo_name": "Qara metallar", 
             "actual_weight_tons": 50.0, 
