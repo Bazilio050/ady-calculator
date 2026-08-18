@@ -216,7 +216,7 @@ UI_TEXT = {
         "clarify_needed": "Dəqiqləşdirilməli",
         "json_expander": "🔍 Gemini NLU JSON (Tanınmanın yoxlanılması üçün)",
         "calc_btn": "🚀 Tarifi hesabla", 
-        "warning_empty": "Xahiş olunur, hesablaşma şərtlərini daxil edin.",
+        "warning_empty": "Xahiş olunur, hesablama şərtlərini daxil edin.",
         "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...", 
         "success": "Hesablama uğurla tamamlandı! (ADY Policy {})",
         "result_title": "📋 Hesablama nəticəsi:", 
@@ -235,11 +235,11 @@ UI_TEXT = {
         "lbl_type": "Daşıma növü", 
         "lbl_dist": "Məsafə", 
         "lbl_cargo": "Yük / Vəziyyət",
-        "lbl_weight": "Faktiki / Hesablaşma çəkisi", 
+        "lbl_weight": "Faktiki / Hesablama çəkisi", 
         "lbl_period": "Dövr", 
         "lbl_exchange": "CHF/USD", 
         "lbl_base_rate": "Baza tarifi",
-        "lbl_net_rate": "Yekün ADY tarifi", 
+        "lbl_net_rate": "Yekun ADY tarifi", 
         "lbl_express_rate": "Yekun tarif (ADY Express +2% daxil)",
         "lbl_guard_express_rate": "Mühafizə haqqı (ADY Express +2% daxil)",
         "api_warning": "⚠️ Serverdə GEMINI_API_KEY tapılmadı. Xahiş olunur, sistem tənzimləmələrini yoxlayın.", 
@@ -455,7 +455,7 @@ with st.expander(t["guide_title"]):
             📐 **Şablon:** `[Haradan] -> [Haraya], yığma göndərmə, [Çəki]t`  
             💡 **Nümunə:** `Yalama – Abşeron, yığma göndərmə, 8t, örtülü vaqon`  
             ⚙️ **Açar sözlər:** `yığma`, `сборный`, `consolidated`, `örtülü`  
-            📌 **Qayda:** Yığma göndərmələrdə minimum hesablaşma çəkisi norması 10 ton (izotermik vaqonda 25 ton) götürülür (bənd 3.8).
+            📌 **Qayda:** Yığma göndərmələrdə minimum hesablama çəkisi 10 ton (izotermik vaqonda 25 ton) götürülür (bənd 3.8).
             """)
         with tab10:
             st.markdown("""
