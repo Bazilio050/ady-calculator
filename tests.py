@@ -367,14 +367,14 @@ TEST_SUITE = [
         },
         "expected_rate": 21.21, "expected_guard": 0.00, "expected_ferry": 1105.00
     },
-    {
+   {
         "name": "39. Ялама -> Алят (72, полувагон, 50т, СПС)",
         "raw_text": "Ялама Алят 72 полувагон 50т спс",
         "nlu": {
             "route_from": "Yalama", 
             "route_to": "Ələt (548502)", 
             "origin_esr": "548409",
-            "dest_esr": "553002",  # Транзитный Алят-порт (271 км)
+            "dest_esr": "553002",
             "cargo_gng_code": "72000000",
             "cargo_name": "Qara metallar", 
             "actual_weight_tons": 50.0, 
@@ -384,7 +384,7 @@ TEST_SUITE = [
             "explicit_mode": "transit"
         },
         "expected_rate": 16.40, 
-        "expected_guard": 16.26,  # Было 0.00, стало 16.26
+        "expected_guard": 16.26, 
         "expected_ferry": 0.00
     },
         "expected_rate": 16.40,  # Заменили 18.95 на эталонные 16.40
