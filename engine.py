@@ -163,15 +163,15 @@ def apply_special_exceptions(
     is_valid_index_period = datetime(2026, 3, 1) <= target_dt <= datetime(2026, 12, 31)
 
     if not is_empty and is_valid_index_period and table_num not in [3.72, 3.78, 3.9, 3.91]:
-        ind_label = "Əlavə əmsal" if lang == "AZ" else ("Индексация" if lang == "RU" else "Indexation")
+        ind_label = "Indeksasiya əmsalı" if lang == "AZ" else ("Индексация" if lang == "RU" else "Indexation")
         coeffs.append((ind_label, 1.015))
         
         ind_note = (
-            "Yüklü vaqonların daşınmasına 1.015 əlavə əmsalı (indeksasiya) tətbiq olunmuşdur (01.03.2026 - 31.12.2026)."
+            "Yüklü vaqonların daşınmasına 1.015 indeksasiya əmsalı tətbiq olunmuşdur (01.03.2026 – 31.12.2026)."
             if lang == "AZ" else
-            ("К перевозке гружёных вагонов применён дополнительный коэффициент (индексация) 1.015 (01.03.2026 - 31.12.2026)."
+            ("К перевозке гружёных вагонов применён коэффициент индексации 1.015 (01.03.2026 – 31.12.2026)."
              if lang == "RU" else
-             "Additional indexation factor 1.015 applied for loaded wagon movement (01.03.2026 - 31.12.2026).")
+             "Indexation factor 1.015 applied for loaded wagon movement (01.03.2026 – 31.12.2026).")
         )
         notes.append(ind_note)
         
@@ -224,7 +224,7 @@ def apply_special_exceptions(
         pass_lbl = "Sərnişin qatarı əmsalı (bənd 3.7.3)" if lang == "AZ" else ("Пассажирский поезд (п. 3.7.3)" if lang == "RU" else "Passenger train (cl. 3.7.3)")
         coeffs.append((pass_lbl, 2.00))
         pass_note = (
-            "Hərəkət tərkibinin sərnişin qatarı tərkibində daşınmasına 2.00 əmsalı tətbiq edilmişdir (bənd 3.7.3)." if lang == "AZ" else
+            "Hərəkət tərkibinin sərnişin qatarı tərkibində daşınmasına 2.00 əmsalı tətbiq olunmuşdur (bənd 3.7.3)." if lang == "AZ" else
             ("К перевозке подвижного состава в составе пассажирского поезда применён коэффициент 2.00 (п. 3.7.3)." if lang == "RU" else
              "Factor 2.00 applied for movement within passenger train (clause 3.7.3).")
         )
@@ -247,7 +247,7 @@ def apply_special_exceptions(
             ov_lbl = "Əndazəsizlik (6-cı dərəcə / 5 aşağı-yan)" if lang == "AZ" else ("Негабаритность (6-я степень / 5 нижн-боков)" if lang == "RU" else "Oversize (degree 6 / 5 low-side)")
             coeffs.append((ov_lbl, 3.00))
             ov_note = (
-                "Транспортерdə 6-cı dərəcəli və ya 5 aşağı/yan əndazəsiz yükə 3.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3 / 3.5.1.5)." if lang == "AZ" else
+                "Transportyorda 6-cı dərəcəli və ya 5 aşağı/yan əndazəsiz yükə 3.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3 / 3.5.1.5)." if lang == "AZ" else
                 ("На транспортере для 6-й степени или 5 нижней/боковой негабаритности применён коэффициент 3.00 (п. 3.5.1.3 / 3.5.1.5)." if lang == "RU" else
                  "Factor 3.00 applied for degree 6 or 5 low/side oversize on transporter (clause 3.5.1.3 / 3.5.1.5).")
             )
@@ -256,7 +256,7 @@ def apply_special_exceptions(
             ov_lbl = "Əndazəsizlik (3-4 aşağı, 4 yan)" if lang == "AZ" else ("Негабаритность (3-4 нижн, 4 боков)" if lang == "RU" else "Oversize (3-4 lower, 4 side)")
             coeffs.append((ov_lbl, 2.00))
             ov_note = (
-                "Транспортерdə 3-4 aşağı və ya 4 yan dərəcəli əndazəsiz yükə 2.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3)." if lang == "AZ" else
+                "Transportyorda 3-4 aşağı və ya 4 yan dərəcəli əndazəsiz yükə 2.00 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3)." if lang == "AZ" else
                 ("На транспортере для 3-4 нижней или 4 боковой негабаритности применён коэффициент 2.00 (п. 3.5.1.3)." if lang == "RU" else
                  "Factor 2.00 applied for 3-4 lower or 4 side oversize on transporter (clause 3.5.1.3).")
             )
@@ -265,7 +265,7 @@ def apply_special_exceptions(
             ov_lbl = "Əndazəsizlik (3 yuxarı)" if lang == "AZ" else ("Негабаритность (3 верхняя)" if lang == "RU" else "Oversize (3rd upper)")
             coeffs.append((ov_lbl, 1.50))
             ov_note = (
-                "Транспортерdə 3-cü yuxarı dərəcəli əndazəsiz yükə 1.50 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3)." if lang == "AZ" else
+                "Transportyorda 3-cü yuxarı dərəcəli əndazəsiz yükə 1.50 əmsalı tətbiq olunmuşdur (bənd 3.5.1.3)." if lang == "AZ" else
                 ("На транспортере для 3-й верхней негабаритности применён коэффициент 1.50 (п. 3.5.1.3)." if lang == "RU" else
                  "Factor 1.50 applied for 3rd upper oversize on transporter (clause 3.5.1.3).")
             )
@@ -274,10 +274,10 @@ def apply_special_exceptions(
     # Спецплатформы длиннее 19 м
     if table_num not in [5, 11, 3.71, 3.72, 3.78, 3.9, 3.91] and is_long_platform_scep(user_input_raw, wagon_type):
         if not is_empty:
-            lbl_19m = "Sintez platforma >19m" if lang == "AZ" else ("Спецплатформа >19м" if lang == "RU" else "Special platform >19m")
+            lbl_19m = "Xüsusi platforma >19m" if lang == "AZ" else ("Спецплатформа >19м" if lang == "RU" else "Special platform >19m")
             coeffs.append((lbl_19m, 1.20))
             note_19m = (
-                "Qoşqu oxları 19m-dən artıq olan platformalar üçün 1.20 əmsalı tətbiq edilmişdir." if lang == "AZ" else
+                "Qoşqu oxları 19m-dən artıq olan platformalar üçün 1.20 əmsalı tətbiq olunmuşdur." if lang == "AZ" else
                 ("Для платформ с базой осей более 19м применён коэффициент 1.20." if lang == "RU" else
                  "Factor 1.20 applied for platforms with axle distance exceeding 19m.")
             )
@@ -321,7 +321,7 @@ def apply_special_exceptions(
                 )
             else:
                 sps_note = (
-                    "Xüsusi mülkiyyətdə olan (SPS) vaqonlara 0.85 güzəşt əmsalı tətbiq edilmişdir."
+                    "Xüsusi mülkiyyətdə olan (SPS) vaqonlara 0.85 güzəşt əmsalı tətbiq olunmuşdur."
                     if lang == "AZ" else
                     ("К приватным вагонам (СПС) применён коэффициент 0.85 (СПС)."
                      if lang == "RU" else
@@ -612,7 +612,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
 
     elif is_empty_wagon and park_type == "MPS" and not is_cover_wagon:
         empty_note = {
-            "AZ": "İnventar parka mənsub olan boş vaqonlar boşaldıqdan sonra mensub olduqları ölkələrə qaytarıldıqları zaman daşıma haqqı hesablanmır (bənd 3.1.1).",
+            "AZ": "İnventar parka mənsub olan boş vaqonlar boşaldıqdan sonra mənsub olduqları ölkələrə qaytarıldıqları zaman daşıma haqqı hesablanmır (bənd 3.1.1).",
             "RU": "Возврат порожних инвентарных вагонов (МПС) к месту приписки осуществляется бесплатно (п. 3.1.1).",
             "EN": "Return of empty inventory wagons (MPS) to owner countries is free of charge (clause 3.1.1)."
         }
@@ -795,7 +795,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
 
     if is_consolidated:
         cons_note = (
-            "Yığma göndərmə üçün minimum hesablaşma çəkisi norması tətbiq olunmuşdur (bənd 3.8)."
+            "Yığma göndərmə üçün minimum hesablama çəkisi tətbiq olunmuşdur (bənd 3.8)."
             if lang_upper == "AZ" else
             ("Для сборной отправки применена минимальная норма расчётного веса (п. 3.8)." if lang_upper == "RU" else
              "Minimum billable weight norm applied for consolidated shipment (clause 3.8).")
@@ -804,7 +804,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
 
     if not is_empty_wagon and act_weight > 0 and act_weight < billable_weight and not is_consolidated:
         weight_note = (
-            f"Minimum hesablama çəkisi norması {int(billable_weight)} ton tətbiq olunmuşdur."
+            f"Minimum hesablama çəkisi {int(billable_weight)} ton tətbiq olunmuşdur."
             if lang_upper == "AZ" else
             (f"Применена минимальная норма расчётного веса {int(billable_weight)} тонн." if lang_upper == "RU" else
              f"Minimum billable weight norm {int(billable_weight)} tons applied.")
@@ -841,7 +841,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         guard_fee_express_usd = round(base_guard * 1.02, 2)
         
         guard_note_text = (
-            "Yük ADY-nin siyahısına əsasən mühafizəyə tabedir (Tranzit: km * 0.1 AZN / 1.7 + 2%)." 
+            "Yük ADY-nin siyahısına əsasən mühafizə olunmalıdır (Tranzit: km * 0.1 AZN / 1.7 + 2%)." 
             if lang_upper == "AZ" else 
             ("Груз подлежит охране согласно списку ADY (Транзит: км * 0.1 AZN / 1.7 + 2%)."
              if lang_upper == "RU" else
