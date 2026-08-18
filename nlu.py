@@ -5,7 +5,7 @@ from rail_glossary import get_rail_vocabulary
 
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
-    Анализирует текстовый запрос пользователя через быструю модель gemini-3.5-flash-lite.
+    Анализирует текстовый запрос пользователя через быструю модель gemini-2.5-flash.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -25,18 +25,21 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     - NEVER swap origin and destination stations!
     - Station ESR codes mapping: 
       Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109,
-      Kurik/Kuryk/Курык=553002, Aktau/Актау=549204, Türkmenbaşı/Turkmenbashi/TRK/ТРК=548803.
+      Alat-yeni/Ələt-yeni/Алят-новый=548703, Kurik/Kuryk/Курык=553002, Aktau/Актау=549204, Türkmenbaşı/Turkmenbashi/TRK/ТРК=548803.
 
     CRITICAL DISAMBIGUATION RULE FOR ALAT (ƏLƏT / АЛЯТ):
-    - IF user mentions "Alat" / "Ələt" / "Алят" WITHOUT explicit words "import", "export", "idxal", or "ixrac":
+    - IF user explicitly mentions "Alat-yeni", "Ələt-yeni", "Алят-новый", or "новый":
+      Assign 'dest_esr': "548703" (distance 266 km).
+    - IF user mentions "Alat" / "Ələt" / "Алят" WITHOUT explicit words "import", "export", "idxal", "ixrac", or "yeni/новый":
       1. Assign 'dest_esr': "553002" (Ələt-liman / Alat Port export junction, distance 271 km).
       2. Set 'explicit_mode': "transit".
-    - IF user explicitly includes "import", "export", "idxal", or "ixrac" alongside Alat:
+    - IF user explicitly includes "import", "export", "idxal", or "ixrac" alongside Alat (without "yeni/новый"):
       1. Assign 'dest_esr': "548502" (Ələt land station, distance 261 km).
       2. Set 'explicit_mode': "import" or "export".
 
     CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
     - ALWAYS extract any cargo numeric code into 'gng_code' (e.g. if query contains "1001" or "GNG 1001", set 'gng_code': "1001").
+    - CARGO LOOKUP RULE: If NO numeric GNG code is explicitly written, but a cargo name/description is mentioned (e.g., "прокат", "арматура", "пшеница", "цемент"), YOU MUST MATCH IT against the railway glossary reference and set 'gng_code' to its 4-digit or 8-digit numeric code! DO NOT return null or "00000000" if cargo name is present!
     - NEVER put text descriptions or wagon terms into 'gng_code'! Keep 'gng_code' STRICTLY NUMERIC.
     - STRICT PRIORITY RULE FOR GNG: The abbreviation 'GNG', 'NHM' or 'ГНГ' followed by numbers represents strictly a cargo nomenclature code. It is STRICTLY FORBIDDEN to interpret 'GNG' as the city of Ganja (Gəncə) or any other similar-sounding word.
     - TERMS LIKE "qapalı vaqon", "крытый вагон", "полувагон", "платформа", "цистерна", "çən", "cistern" ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
@@ -48,7 +51,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
       "origin_name": "Station name in {target_lang}",
       "dest_esr": "6-digit ESR string or null",
       "dest_name": "Station name in {target_lang}",
-      "gng_code": "Numeric GNG code string only (e.g., '1001', '4407') or null",
+      "gng_code": "Numeric GNG code string only (e.g., '1001', '4407', '7208') or null",
       "gng_name": "Cargo name in {target_lang}",
       "weight_tons": float or null,
       "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
@@ -70,7 +73,6 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     Query: "{user_input}"
     """
 
-    # Устанавливаем жесткий таймаут 12 секунд
     config = types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",
@@ -78,7 +80,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     )
 
     response = client.models.generate_content(
-        model="gemini-3.5-flash-lite",
+        model="gemini-2.5-flash",
         contents=prompt,
         config=config
     )
@@ -94,7 +96,6 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(lang).upper()
 
-    # Сбор метаданных токенов
     if hasattr(response, "usage_metadata") and response.usage_metadata:
         result["_usage"] = {
             "input": getattr(response.usage_metadata, "prompt_token_count", 0),
@@ -125,7 +126,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
-    Принимает байты аудиозаписи и выполняет распознавание через мультимодальную модель gemini-3.6-flash.
+    Принимает байты аудиозаписи и выполняет распознавание через мультимодальную модель gemini-2.5-flash.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -147,18 +148,21 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     - NEVER swap origin and destination stations!
     - Station ESR codes mapping: 
       Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109,
-      Kurik/Kuryk/Курык=553002, Aktau/Актау=549204, Türkmenbaşı/Turkmenbashi/TRK/ТРК=548803.
+      Alat-yeni/Ələt-yeni/Алят-новый=548703, Kurik/Kuryk/Курык=553002, Aktau/Актау=549204, Türkmenbaşı/Turkmenbashi/TRK/ТРК=548803.
 
     CRITICAL DISAMBIGUATION RULE FOR ALAT (ƏLƏT / АЛЯТ):
-    - IF user mentions "Alat" / "Ələt" / "Алят" WITHOUT explicit words "import", "export", "idxal", or "ixrac":
+    - IF user explicitly mentions "Alat-yeni", "Ələt-yeni", "Алят-новый", or "новый":
+      Assign 'dest_esr': "548703" (distance 266 km).
+    - IF user mentions "Alat" / "Ələt" / "Алят" WITHOUT explicit words "import", "export", "idxal", "ixrac", or "yeni/новый":
       1. Assign 'dest_esr': "553002" (Ələt-liman / Alat Port export junction, distance 271 km).
       2. Set 'explicit_mode': "transit".
-    - IF user explicitly includes "import", "export", "idxal", or "ixrac" alongside Alat:
+    - IF user explicitly includes "import", "export", "idxal", or "ixrac" alongside Alat (without "yeni/новый"):
       1. Assign 'dest_esr': "548502" (Ələt land station, distance 261 km).
       2. Set 'explicit_mode': "import" or "export".
 
     CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
-    - ALWAYS extract any spoken cargo numeric code into 'gng_code' (e.g. if user says "1001" or "GNG 1001", set 'gng_code': "1001"). Never put text descriptions into 'gng_code'!
+    - ALWAYS extract any spoken cargo numeric code into 'gng_code' (e.g. if user says "1001" or "GNG 1001", set 'gng_code': "1001").
+    - CARGO LOOKUP RULE: If NO numeric GNG code is spoken, but a cargo name/description is mentioned (e.g., "прокат", "арматура", "пшеница", "цемент"), YOU MUST MATCH IT against the railway glossary reference and set 'gng_code' to its numeric code!
     - STRICT PRIORITY RULE FOR GNG: Spoken 'GNG', 'NHM' or 'ГНГ' followed by numbers represents strictly a cargo nomenclature code. It is STRICTLY FORBIDDEN to interpret 'GNG' as the city of Ganja (Gəncə) or any other similar-sounding word.
     - TERMS LIKE "qapalı vaqon", "крытый вагон", "полувагон", "платформа", "цистерна", "çən", "cistern" ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
     - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
@@ -170,7 +174,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
       "origin_name": "Station name in {target_lang}",
       "dest_esr": "6-digit ESR string or null",
       "dest_name": "Station name in {target_lang}",
-      "gng_code": "Numeric GNG code string only (e.g., '1001', '2713') or null",
+      "gng_code": "Numeric GNG code string only (e.g., '1001', '2713', '7208') or null",
       "gng_name": "Cargo name in {target_lang}",
       "weight_tons": float or null,
       "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
@@ -193,7 +197,6 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
 
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
 
-    # Устанавливаем таймаут 15 секунд для мультимодальной модели
     config = types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",
@@ -201,7 +204,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     )
 
     response = client.models.generate_content(
-        model="gemini-3.6-flash",
+        model="gemini-2.5-flash",
         contents=[audio_part, prompt],
         config=config
     )
@@ -217,7 +220,6 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(lang).upper()
 
-    # Сбор метаданных токенов
     if hasattr(response, "usage_metadata") and response.usage_metadata:
         result["_usage"] = {
             "input": getattr(response.usage_metadata, "prompt_token_count", 0),
