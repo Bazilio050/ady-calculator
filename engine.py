@@ -383,6 +383,10 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     user_input_raw = user_input_raw or nlu_data.get("user_input_raw", "")
     input_lower = user_input_raw.lower()
     lang_upper = str(lang or "AZ").upper()
+
+    # --- ФЛАГИ ПАРОМА И ИМПОРТА/ЭКСПОРТА ---
+    has_import_export_kw = any(kw in input_lower for kw in ["импорт", "экспорт", "idxal", "ixrac"])
+    has_ferry_kw = any(k in input_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
     
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
@@ -391,7 +395,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
 
     # --- ЖЕСТКИЙ ПЕРЕХВАТ ДЛЯ АЛЯТА (СУХОПУТНЫЙ VS ПОРТ) ---
-    has_import_export_kw = any(kw in input_lower for kw in ["импорт", "экспорт", "idxal", "ixrac"])
     is_alat_dest = any(k in st_to_raw.lower() for k in ["алят", "ələt", "alat"]) or dest_esr in ["548502", "553002", "549204", "548803"] or "алят" in input_lower or "ələt" in input_lower
     is_alat_origin = any(k in st_from_raw.lower() for k in ["алят", "ələt", "alat"]) or origin_esr in ["548502", "553002", "549204", "548803"]
 
