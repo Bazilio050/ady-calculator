@@ -364,21 +364,32 @@ def apply_special_exceptions(
 
 
 def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str = "AZ", year: str = "2026", ui_t: dict = None, *args, **kwargs) -> dict:
-    """
-    Принимает nlu_data и гибкий набор параметров от app.py.
-    Сохраняет 100% исходной математики ADY + точный перехват станций.
-    """
-    if ui_t is None:
-        ui_t = {}
-
-    # Страховка на случай разного порядка передачи позиционных аргументов
-    if args:
-        if len(args) >= 1 and isinstance(args[0], str) and not user_input_raw:
-            user_input_raw = args[0]
-        if len(args) >= 2 and isinstance(args[1], str):
-            lang = args[1]
-        if len(args) >= 3 and isinstance(args[2], str):
-            year = args[2]
+    # --- ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ АЛЯТА ---
+    is_alat_yeni = any(k in input_lower for k in ["новый", "yeni", "548703"])
+    
+    if "алят" in input_lower or "ələt" in input_lower or "alat" in input_lower:
+        if is_alat_yeni:
+            # Если в тексте есть "новый" / "yeni" -> СТРОГО 548703 (266 км)
+            if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002", "548703", "549204", "548803"]:
+                dest_esr = "548703"
+            if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002", "548703", "549204", "548803"]:
+                origin_esr = "548703"
+        elif has_import_export_kw:
+            # Обычный Алят при импорте/экспорте -> 548502 (261 км)
+            if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002"]:
+                dest_esr = "548502"
+            if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002"]:
+                origin_esr = "548502"
+        else:
+            if "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
+                dest_esr = "548803"
+            elif "aktau" in input_lower or "актау" in input_lower:
+                dest_esr = "549204"
+            else:
+                dest_esr = "553002"
+            
+            if not nlu_data.get("explicit_mode"):
+                nlu_data["explicit_mode"] = "transit"
 
     user_input_raw = user_input_raw or nlu_data.get("user_input_raw", "")
     input_lower = user_input_raw.lower()
