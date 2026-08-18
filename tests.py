@@ -372,8 +372,8 @@ TEST_SUITE = [
         "raw_text": "Ялама Алят 72 полувагон 50т спс",
         "nlu": {
             "route_from": "Yalama", 
-            "dest_esr": "548502",          # Сухопутный ESR станции Алят
             "route_to": "Ələt", 
+            "dest_esr": "548502",          # Сухопутный ESR станции Алят
             "cargo_gng_code": "72000000",
             "cargo_name": "Qara metallar", 
             "actual_weight_tons": 50.0, 
@@ -462,8 +462,9 @@ TEST_SUITE = [
         "raw_text": "Сальяны Алят 2304 крытый 60т СПС",
         "nlu": {
             "route_from": "Salyan", 
-            "dest_esr": "548502",          # Сухопутный ESR станции Алят
             "route_to": "Ələt", 
+            "origin_esr": "548907",        # Сухопутный ESR станции Сальяны
+            "dest_esr": "548502",          # Сухопутный ESR станции Алят
             "cargo_gng_code": "2304",
             "cargo_name": "Jmyx / Şrot", 
             "actual_weight_tons": 60.0, 
