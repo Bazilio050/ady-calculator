@@ -1,11 +1,34 @@
 import json
 import re
+import time
 from google.genai import types
+from google.genai.errors import APIError
 from rail_glossary import get_rail_vocabulary
+
+def _execute_gemini_request_with_fallback(client, contents, config, primary_model="gemini-3.7-flash", fallback_model="gemini-3.6-flash"):
+    """
+    По умолчанию делает запрос к gemini-3.7-flash.
+    Если сервера перегружены (ошибка 503), автоматически переключается на gemini-3.6-flash.
+    """
+    try:
+        return client.models.generate_content(
+            model=primary_model,
+            contents=contents,
+            config=config
+        )
+    except APIError as e:
+        if getattr(e, 'code', None) == 503 or "503" in str(e):
+            time.sleep(1)
+            return client.models.generate_content(
+                model=fallback_model,
+                contents=contents,
+                config=config
+            )
+        raise e
 
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
-    Анализирует текстовый запрос пользователя через быструю модель gemini-3.7-flash.
+    Анализирует текстовый запрос пользователя. По умолчанию 3.7, фоллбэк на 3.6.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -79,11 +102,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
         http_options=types.HttpOptions(timeout=12000)
     )
 
-    response = client.models.generate_content(
-        model="gemini-3.7-flash",
-        contents=prompt,
-        config=config
-    )
+    response = _execute_gemini_request_with_fallback(client, prompt, config)
 
     raw_text = response.text.strip()
     if raw_text.startswith("```json"):
@@ -126,7 +145,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
-    Принимает байты аудиозаписи и выполняет распознавание через мультимодальную модель gemini-3.7-flash.
+    Принимает байты аудиозаписи. По умолчанию 3.7, фоллбэк на 3.6.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -203,11 +222,8 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
         http_options=types.HttpOptions(timeout=15000)
     )
 
-    response = client.models.generate_content(
-        model="gemini-3.7-flash",
-        contents=[audio_part, prompt],
-        config=config
-    )
+    contents = [audio_part, prompt]
+    response = _execute_gemini_request_with_fallback(client, contents, config)
 
     raw_text = response.text.strip()
     if raw_text.startswith("```json"):
@@ -247,13 +263,8 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
 
     return result
 
-
 def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
-    """
-    Проверяет минимально необходимые данные для расчета.
-    """
     missing = []
-    
     origin = nlu_data.get("origin_name") or nlu_data.get("origin_esr")
     dest = nlu_data.get("dest_name") or nlu_data.get("dest_esr")
     
