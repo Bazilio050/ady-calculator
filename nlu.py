@@ -27,6 +27,14 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
       Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109,
       Kurik/Kuryk/Курык=553002, Aktau/Актау=549204, Türkmenbaşı/Turkmenbashi/TRK/ТРК=548803.
 
+    CRITICAL DISAMBIGUATION RULE FOR ALAT (ƏLƏT / АЛЯТ):
+    - IF user mentions "Alat" / "Ələt" / "Алят" WITHOUT explicit words "import", "export", "idxal", or "ixrac":
+      1. Assign 'dest_esr': "553002" (Ələt-liman / Alat Port export junction, distance 271 km).
+      2. Set 'explicit_mode': "transit".
+    - IF user explicitly includes "import", "export", "idxal", or "ixrac" alongside Alat:
+      1. Assign 'dest_esr': "548502" (Ələt land station, distance 261 km).
+      2. Set 'explicit_mode': "import" or "export".
+
     CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
     - ALWAYS extract any cargo numeric code into 'gng_code' (e.g. if query contains "1001" or "GNG 1001", set 'gng_code': "1001").
     - NEVER put text descriptions or wagon terms into 'gng_code'! Keep 'gng_code' STRICTLY NUMERIC.
@@ -140,6 +148,14 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     - Station ESR codes mapping: 
       Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109,
       Kurik/Kuryk/Курык=553002, Aktau/Актау=549204, Türkmenbaşı/Turkmenbashi/TRK/ТРК=548803.
+
+    CRITICAL DISAMBIGUATION RULE FOR ALAT (ƏLƏT / АЛЯТ):
+    - IF user mentions "Alat" / "Ələt" / "Алят" WITHOUT explicit words "import", "export", "idxal", or "ixrac":
+      1. Assign 'dest_esr': "553002" (Ələt-liman / Alat Port export junction, distance 271 km).
+      2. Set 'explicit_mode': "transit".
+    - IF user explicitly includes "import", "export", "idxal", or "ixrac" alongside Alat:
+      1. Assign 'dest_esr': "548502" (Ələt land station, distance 261 km).
+      2. Set 'explicit_mode': "import" or "export".
 
     CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
     - ALWAYS extract any spoken cargo numeric code into 'gng_code' (e.g. if user says "1001" or "GNG 1001", set 'gng_code': "1001"). Never put text descriptions into 'gng_code'!
