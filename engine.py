@@ -385,11 +385,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     lang_upper = str(lang or "AZ").upper()
 
     # --- ФЛАГИ ПАРОМА И ИМПОРТА/ЭКСПОРТА ---
-    has_import_export_kw = any(kw in input_lower for kw in ["импорт", "экспорт", "idxal", "ixrac"])
-    has_ferry_kw = any(k in input_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
-    
-    # --- ЖЕСТКОЕ ОПРЕДЕЛЕНИЕ ТИПА ДАШИНМА ---
     has_import_export_kw = any(kw in input_lower for kw in ["импорт", "экспорт", "idxal", "ixrac"]) or nlu_data.get("explicit_mode") in ["import", "export"]
+    has_ferry_kw = any(k in input_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
     
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
@@ -412,24 +409,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             else:
                 dest_esr = "553002"
             
-            if not nlu_data.get("explicit_mode"):
-                nlu_data["explicit_mode"] = "transit"
-        else:
-            if "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
-                dest_esr = "548803"
-            elif "aktau" in input_lower or "актау" in input_lower:
-                dest_esr = "549204"
-            else:
-                dest_esr = "553002"  # Ələt-liman (271 км)
-            
-            if not nlu_data.get("explicit_mode"):
-                nlu_data["explicit_mode"] = "transit"
-
-    if is_alat_origin:
-        if has_import_export_kw:
-            origin_esr = "548502"
-        else:
-            origin_esr = "553002"
             if not nlu_data.get("explicit_mode"):
                 nlu_data["explicit_mode"] = "transit"
 
