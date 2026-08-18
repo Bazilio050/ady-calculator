@@ -62,13 +62,17 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     Query: "{user_input}"
     """
 
+    # Устанавливаем жесткий таймаут 12 секунд
+    config = types.GenerateContentConfig(
+        temperature=0.0,
+        response_mime_type="application/json",
+        http_options=types.HttpOptions(timeout=12000)
+    )
+
     response = client.models.generate_content(
         model="gemini-3.5-flash-lite",
         contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.0,
-            response_mime_type="application/json"
-        )
+        config=config
     )
 
     raw_text = response.text.strip()
@@ -173,13 +177,17 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
 
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
 
+    # Устанавливаем таймаут 15 секунд для мультимодальной модели
+    config = types.GenerateContentConfig(
+        temperature=0.0,
+        response_mime_type="application/json",
+        http_options=types.HttpOptions(timeout=15000)
+    )
+
     response = client.models.generate_content(
         model="gemini-3.6-flash",
         contents=[audio_part, prompt],
-        config=types.GenerateContentConfig(
-            temperature=0.0,
-            response_mime_type="application/json"
-        )
+        config=config
     )
 
     raw_text = response.text.strip()
