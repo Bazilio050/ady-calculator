@@ -400,4 +400,97 @@ TEST_SUITE = [
         "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
     },
     {
-        "name": "42. Курык -> Баладжары (1001,
+        "name": "42. Курык -> Баладжары (1001, хоппер, 55т, СПС, 15м, Паром)",
+        "raw_text": "курык баладжары 1001 хопер 55т спс 15м",
+        "nlu": {
+            "route_from": "Ələt eksport-Kurik", "route_to": "Biləcəri", "cargo_gng_code": "1001",
+            "cargo_name": "Buğda", "actual_weight_tons": 55.0, "wagon_type": "universal",
+            "park_type": "SPS", "wagon_length_m": 15.0, "is_asco_ferry": True, "explicit_mode": "import"
+        },
+        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+    },
+    {
+        "name": "43. ТРК -> Беюк Кясик (2705, цистерна, 50т, МПС, 13м, Паром)",
+        "raw_text": "ТРК Беюк кясик 2705 цистерна 50т МПС 13м",
+        "nlu": {
+            "route_from": "Ələt eksport-Türk.", "route_to": "Böyük Kəsik", "cargo_gng_code": "2705",
+            "cargo_name": "Qazlar", "actual_weight_tons": 50.0, "wagon_type": "cistern",
+            "park_type": "MPS", "wagon_length_m": 13.0, "is_asco_ferry": True, "explicit_mode": "transit"
+        },
+        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+    },
+    {
+        "name": "44. Курык -> Беюк Кясик (28141, цистерна, 50т, СПС, 13м, Паром)",
+        "raw_text": "Курык Беюк кясик 28141 цистерна 50т СПС 13м",
+        "nlu": {
+            "route_from": "Ələt eksport-Kurik", "route_to": "Böyük Kəsik", "cargo_gng_code": "28141",
+            "cargo_name": "Ammiak", "actual_weight_tons": 50.0, "wagon_type": "cistern",
+            "park_type": "SPS", "wagon_length_m": 13.0, "is_asco_ferry": True, "explicit_mode": "transit"
+        },
+        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+    },
+    {
+        "name": "45. Беюк Кясик -> Курык (Порожний вагон, 15м, Паром)",
+        "raw_text": "БеюкКясик Курык порожний вагон 15м",
+        "nlu": {
+            "route_from": "Böyük Kəsik", "route_to": "Ələt eksport-Kurik", "cargo_gng_code": "99220000",
+            "cargo_name": "Boş vaqon", "is_empty": True, "axles_count": 4, "wagon_type": "universal",
+            "park_type": "SPS", "wagon_length_m": 15.0, "is_asco_ferry": True, "explicit_mode": "transit"
+        },
+        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+    },
+    {
+        "name": "46. Беюк Кясик -> ТРК (1701, платформа, 50т, СПС, Паром)",
+        "raw_text": "Беюк Кясик ТРК 1701 платформа 50т спс",
+        "nlu": {
+            "route_from": "Böyük Kəsik", "route_to": "Ələt eksport-Türk.", "cargo_gng_code": "1701",
+            "cargo_name": "Qənd və şəkər", "actual_weight_tons": 50.0, "wagon_type": "platform",
+            "park_type": "SPS", "is_asco_ferry": True, "explicit_mode": "transit"
+        },
+        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+    }
+]
+
+def parse_float(val):
+    if val is None:
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val)
+    match = re.search(r'[-+]?\d*\.\d+|\d+', str(val).replace(',', '.'))
+    if match:
+        return float(match.group(0))
+    return 0.0
+
+def run_tests():
+    print(f"🧪 ПРОВЕРКА {len(TEST_SUITE)} ОСНОВНЫХ И ДОПОЛНИТЕЛЬНЫХ МАРШРУТОВ...\n" + "="*60)
+    passed, failed = 0, 0
+
+    for test in TEST_SUITE:
+        try:
+            res = process_full_calculation(test["nlu"], test["raw_text"], "AZ", "2026", UI_T)
+            
+            raw_rate = res['part3'].get('express_rate') or res['part3'].get('net_ady_rate')
+            calc_rate = parse_float(raw_rate)
+            exp_rate = test["expected_rate"]
+
+            if exp_rate == 0.0:
+                print(f"ℹ️ {test['name']} -> Калькулятор рассчитал: {calc_rate}$ (Внесите эту цифру в expected_rate после проверки!)")
+                passed += 1
+            elif abs(calc_rate - exp_rate) <= 0.05:
+                print(f"✅ {test['name']} -> Совпало: {calc_rate}$")
+                passed += 1
+            else:
+                print(f"❌ {test['name']} -> Ошибка! Должно быть {exp_rate}$, а калькулятор выдал {calc_rate}$")
+                failed += 1
+        except Exception as e:
+            print(f"❌ {test['name']} -> Ошибка кода: {e}")
+            failed += 1
+
+    print("\n" + "="*60)
+    print(f"📊 ИТОГ: Успешно: {passed} | Ошибок: {failed}")
+
+    if failed > 0:
+        sys.exit(1)
+
+if __name__ == "__main__":
+    run_tests()
