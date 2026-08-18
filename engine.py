@@ -390,12 +390,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
     dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
 
-    # --- ТОЧНАЯ РАЗВИЛКА ДЛЯ СТАНЦИИ АЛЯТ (271 км vs 261 км) ---
+    # --- ЖЕСТКИЙ ПЕРЕХВАТ ДЛЯ АЛЯТА (СУХОПУТНЫЙ VS ПОРТ) ---
     has_import_export_kw = any(kw in input_lower for kw in ["импорт", "экспорт", "idxal", "ixrac"])
-    has_ferry_kw = any(k in input_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
+    is_alat_dest = any(k in st_to_raw.lower() for k in ["алят", "ələt", "alat"]) or dest_esr in ["548502", "553002", "549204", "548803"] or "алят" in input_lower or "ələt" in input_lower
+    is_alat_origin = any(k in st_from_raw.lower() for k in ["алят", "ələt", "alat"]) or origin_esr in ["548502", "553002", "549204", "548803"]
 
-    # Если Алят в назначении
-    if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002", "549204", "548803"]:
+    if is_alat_dest:
         if has_import_export_kw:
             dest_esr = "548502"  # Сухопутный Алят (261 км)
         else:
@@ -404,13 +404,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             elif "aktau" in input_lower or "актау" in input_lower:
                 dest_esr = "549204"
             else:
-                dest_esr = "553002"  # Ələt-liman (271 км, транзитный стык по умолчанию)
+                dest_esr = "553002"  # Ələt-liman (271 км)
             
             if not nlu_data.get("explicit_mode"):
                 nlu_data["explicit_mode"] = "transit"
 
-    # Если Алят в отправлении
-    if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002", "549204", "548803"]:
+    if is_alat_origin:
         if has_import_export_kw:
             origin_esr = "548502"
         else:
@@ -418,7 +417,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             if not nlu_data.get("explicit_mode"):
                 nlu_data["explicit_mode"] = "transit"
 
-    # --- ВАЖНО: ПЕРЕСЧЕТ РАССТОЯНИЯ СТРОГО ПОСЛЕ ОБНОВЛЕНИЯ КОДОВ ESR! ---
+    # --- ПЕРЕСЧЕТ РАССТОЯНИЯ СТРОГО ПОСЛЕ ПЕРЕХВАТА КОДОВ ESR ---
     raw_dist = get_distance_by_esr(origin_esr, dest_esr)
     try:
         actual_dist_km = int(raw_dist) if raw_dist is not None else 0
