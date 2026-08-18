@@ -387,34 +387,65 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
 
-    # ВАЖНО: передаем user_input_raw в resolve_esr_by_station_name для 100% перехвата "Баку тов" -> 547105
     origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
     dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
 
-    # --- КЛЮЧЕВАЯ ПРАВКА ДЛЯ СТАНЦИИ АЛЯТ (271 км vs 261 км) ---
+    # --- ТОЧНАЯ РАЗВИЛКА ДЛЯ СТАНЦИИ АЛЯТ (271 км vs 261 км) ---
     has_import_export_kw = any(kw in input_lower for kw in ["импорт", "экспорт", "idxal", "ixrac"])
+    has_ferry_kw = any(k in input_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
 
-    # Если в назначении Алят
+    # Если Алят в назначении
     if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002", "549204", "548803"]:
-        if not has_import_export_kw:
-            # По умолчанию: Портовый стык Ələt-liman (271 км)
-            dest_esr = "553002"
-            st_to_raw = "Ələt-liman"
-            nlu_data["explicit_mode"] = "transit"
+        if has_import_export_kw:
+            dest_esr = "548502"  # Сухопутный Алят (261 км)
         else:
-            # Явный импорт/экспорт: Сухопутная станция Ələt (261 км)
-            dest_esr = "548502"
-            st_to_raw = "Ələt"
+            if "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
+                dest_esr = "548803"
+            elif "aktau" in input_lower or "актау" in input_lower:
+                dest_esr = "549204"
+            else:
+                dest_esr = "553002"  # Ələt-liman (271 км, транзитный стык по умолчанию)
+            
+            if not nlu_data.get("explicit_mode"):
+                nlu_data["explicit_mode"] = "transit"
 
-    # Если в отправлении Алят
+    # Если Алят в отправлении
     if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002", "549204", "548803"]:
-        if not has_import_export_kw:
-            origin_esr = "553002"
-            st_from_raw = "Ələt-liman"
-            nlu_data["explicit_mode"] = "transit"
-        else:
+        if has_import_export_kw:
             origin_esr = "548502"
-            st_from_raw = "Ələt"
+        else:
+            origin_esr = "553002"
+            if not nlu_data.get("explicit_mode"):
+                nlu_data["explicit_mode"] = "transit"
+
+    # --- ФОРМИРОВАНИЕ ОТОБРАЖЕНИЯ ШАПКИ МАРШРУТА ---
+    if dest_esr in ["553002", "548803", "549204"]:
+        if "kurik" in input_lower or "курык" in input_lower:
+            display_to = "Ələt-eksp-Kurik (553002)" if lang_upper == "AZ" else "Алят-эксп-Курык (553002)"
+        elif "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
+            display_to = "Ələt-eksp-Türkmenbaşı (548803)" if lang_upper == "AZ" else "Алят-эксп-Туркменбаши (548803)"
+        elif "aktau" in input_lower or "актау" in input_lower:
+            display_to = "Ələt-eksp-Aktau (549204)" if lang_upper == "AZ" else "Алят-эксп-Актау (549204)"
+        else:
+            display_to = "Ələt-eksp. (553002)" if lang_upper == "AZ" else "Алят-эксп. (553002)"
+    elif dest_esr == "548502":
+        display_to = "Ələt (548502)" if lang_upper == "AZ" else "Алят (548502)"
+    else:
+        display_to = format_station_display_name(st_to_raw, dest_esr, lang_upper)
+
+    if origin_esr in ["553002", "548803", "549204"]:
+        if "kurik" in input_lower or "курык" in input_lower:
+            display_from = "Ələt-eksp-Kurik (553002)" if lang_upper == "AZ" else "Алят-эксп-Курык (553002)"
+        elif "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
+            display_from = "Ələt-eksp-Türkmenbaşı (548803)" if lang_upper == "AZ" else "Алят-эксп-Туркменбаши (548803)"
+        else:
+            display_from = "Ələt-eksp. (553002)" if lang_upper == "AZ" else "Алят-эксп. (553002)"
+    elif origin_esr == "548502":
+        display_from = "Ələt (548502)" if lang_upper == "AZ" else "Алят (548502)"
+    else:
+        display_from = format_station_display_name(st_from_raw, origin_esr, lang_upper)
+
+    route_display = f"{display_from} – {display_to}"
 
     raw_gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "").strip()
     gng = re.sub(r'\D', '', raw_gng)
@@ -436,10 +467,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             ref_wagons_cnt = int(match_plus.group(1) or match_plus.group(2))
 
     explicit_mode = nlu_data.get("explicit_mode")
-
-    display_from = format_station_display_name(st_from_raw, origin_esr, lang_upper)
-    display_to = format_station_display_name(st_to_raw, dest_esr, lang_upper)
-    route_display = f"{display_from} – {display_to}"
 
     if explicit_mode in ["import", "export", "transit"]:
         shipment_type_code = explicit_mode
@@ -808,16 +835,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         )
         notes.append(guard_note_text)
 
-    # --- РАСЧЕТ ПАРОМНОЙ ПЕРЕПРАВЫ ASCO (ДЛЯ ПОРТОВ) ---
+    # --- СТРОГИЙ РАСЧЕТ ПАРОМНОЙ ПЕРЕПРАВЫ ASCO (ТОЛЬКО ДЛЯ ПОРТОВ) ---
     asco_ferry_dict = None
-    
-    # Порты Курык и Актау (553002, 548803) — это всегда паром.
-    input_str_lower = user_input_raw.lower()
-    has_ferry_word = any(k in input_str_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
-    
-    is_port_code = dest_esr in ["553002", "548803"] or (dest_esr == "549204" and (bool(nlu_data.get("is_asco_ferry")) or has_ferry_word))
-    
-    if is_port_code or nlu_data.get("is_asco_ferry"):
+    if has_ferry_kw or nlu_data.get("is_asco_ferry"):
         w_len = float(nlu_data.get("wagon_length_m") or 14.5)
         base_rate = 50.0  # $50 за метр
         coeff = 1.3 if w_len > 15.0 else 1.0
