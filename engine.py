@@ -388,19 +388,32 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     has_import_export_kw = any(kw in input_lower for kw in ["импорт", "экспорт", "idxal", "ixrac"])
     has_ferry_kw = any(k in input_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
     
+    # --- ЖЕСТКОЕ ОПРЕДЕЛЕНИЕ ТИПА ДАШИНМА ---
+    has_import_export_kw = any(kw in input_lower for kw in ["импорт", "экспорт", "idxal", "ixrac"]) or nlu_data.get("explicit_mode") in ["import", "export"]
+    
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
 
     origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
     dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
 
-    # --- ЖЕСТКИЙ ПЕРЕХВАТ ДЛЯ АЛЯТА (СУХОПУТНЫЙ VS ПОРТ) ---
-    is_alat_dest = any(k in st_to_raw.lower() for k in ["алят", "ələt", "alat"]) or dest_esr in ["548502", "553002", "549204", "548803"] or "алят" in input_lower or "ələt" in input_lower
-    is_alat_origin = any(k in st_from_raw.lower() for k in ["алят", "ələt", "alat"]) or origin_esr in ["548502", "553002", "549204", "548803"]
-
-    if is_alat_dest:
+    # --- ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ АЛЯТА ---
+    if "алят" in input_lower or "ələt" in input_lower or "alat" in input_lower:
         if has_import_export_kw:
-            dest_esr = "548502"  # Сухопутный Алят (261 км)
+            if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002", "549204", "548803"]:
+                dest_esr = "548502"
+            if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002", "549204", "548803"]:
+                origin_esr = "548502"
+        else:
+            if "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
+                dest_esr = "548803"
+            elif "aktau" in input_lower or "актау" in input_lower:
+                dest_esr = "549204"
+            else:
+                dest_esr = "553002"
+            
+            if not nlu_data.get("explicit_mode"):
+                nlu_data["explicit_mode"] = "transit"
         else:
             if "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
                 dest_esr = "548803"
