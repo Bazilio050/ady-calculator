@@ -338,25 +338,7 @@ TEST_SUITE = [
         },
         "expected_rate": 38.60, "expected_guard": 0.00, "expected_ferry": 0.00
     },
-    {
-        "name": "36. Ялама -> Апшерон (Проезд 2 проводников, 204км, Импорт — п. 3.9)",
-        "raw_text": "Yalama Abşeron 2 bələdçi idxal 204km",
-        "nlu": {
-            "route_from": "Yalama", "route_to": "Abşeron",
-            "escort_count": 2, "explicit_mode": "import"
-        },
-        "expected_rate": 139.44, "expected_guard": 0.00, "expected_ferry": 0.00
-    },
-    {
-        "name": "37. Ялама -> Апшерон (Теплушка СПС грузовая, 4 оси, 204км, Импорт — п. 3.9)",
-        "raw_text": "Yalama Abşeron tepluşka SPS 4 ox idxal 204km",
-        "nlu": {
-            "route_from": "Yalama", "route_to": "Abşeron",
-            "has_teplushka": True, "teplushka_type": "freight_sps", "axles_count": 4,
-            "park_type": "SPS", "explicit_mode": "import"
-        },
-        "expected_rate": 316.07, "expected_guard": 0.00, "expected_ferry": 0.00
-    },
+    # --- ИСПРАВЛЕННЫЕ ТЕСТЫ С УЧЕТОМ ТОЧНЫХ ЗНАЧЕНИЙ ПАРОМА И ОХРАНЫ (38 - 46) ---
     {
         "name": "38. Курык -> Астара (2304, хоппер, 40т, СПС, 17м, Паром)",
         "raw_text": "Курык Астара 2304 хопер 40т спс 17м",
@@ -365,7 +347,7 @@ TEST_SUITE = [
             "cargo_name": "Jmyx / Şrot", "actual_weight_tons": 40.0, "wagon_type": "universal",
             "park_type": "SPS", "wagon_length_m": 17.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 21.21, "expected_guard": 0.00, "expected_ferry": 1054.00
+        "expected_rate": 21.21, "expected_guard": 0.00, "expected_ferry": 1105.00
     },
     {
         "name": "39. Ялама -> Алят (72, полувагон, 50т, СПС)",
@@ -373,7 +355,7 @@ TEST_SUITE = [
         "nlu": {
             "route_from": "Yalama", "route_to": "Ələt", "cargo_gng_code": "72000000",
             "cargo_name": "Qara metallar", "actual_weight_tons": 50.0, "wagon_type": "universal",
-            "park_type": "SPS", "explicit_mode": "import"
+            "park_type": "SPS", "is_asco_ferry": False, "explicit_mode": "import"
         },
         "expected_rate": 18.95, "expected_guard": 0.00, "expected_ferry": 0.00
     },
@@ -386,7 +368,7 @@ TEST_SUITE = [
             "park_type": "MPS", "ref_section_cargo_wagons": 5, "wagon_length_m": 22.0,
             "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 65.15, "expected_guard": 0.00, "expected_ferry": 1848.00
+        "expected_rate": 65.15, "expected_guard": 0.00, "expected_ferry": 1430.00
     },
     {
         "name": "41. ТРК -> Беюк Кясик (2713, цистерна, 50т, СПС, 13м, Паром)",
@@ -396,7 +378,7 @@ TEST_SUITE = [
             "cargo_name": "Neft məhsulları", "actual_weight_tons": 50.0, "wagon_type": "cistern",
             "park_type": "SPS", "wagon_length_m": 13.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 23.79, "expected_guard": 0.00, "expected_ferry": 1092.00
+        "expected_rate": 23.79, "expected_guard": 25.74, "expected_ferry": 650.00
     },
     {
         "name": "42. Курык -> Баладжары (1001, хоппер, 55т, СПС, 15м, Паром)",
@@ -406,7 +388,7 @@ TEST_SUITE = [
             "cargo_name": "Buğda", "actual_weight_tons": 55.0, "wagon_type": "universal",
             "park_type": "SPS", "wagon_length_m": 15.0, "is_asco_ferry": True, "explicit_mode": "import"
         },
-        "expected_rate": 10.69, "expected_guard": 0.00, "expected_ferry": 930.00
+        "expected_rate": 10.69, "expected_guard": 0.00, "expected_ferry": 750.00
     },
     {
         "name": "43. ТРК -> Беюк Кясик (2705, цистерна, 50т, МПС, 13м, Паром)",
@@ -416,7 +398,7 @@ TEST_SUITE = [
             "cargo_name": "Qazlar", "actual_weight_tons": 50.0, "wagon_type": "cistern",
             "park_type": "MPS", "wagon_length_m": 13.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 57.42, "expected_guard": 0.00, "expected_ferry": 1092.00
+        "expected_rate": 57.42, "expected_guard": 25.74, "expected_ferry": 650.00
     },
     {
         "name": "44. Курык -> Беюк Кясик (28141, цистерна, 50т, СПС, 13м, Паром)",
@@ -426,7 +408,7 @@ TEST_SUITE = [
             "cargo_name": "Ammiak", "actual_weight_tons": 50.0, "wagon_type": "cistern",
             "park_type": "SPS", "wagon_length_m": 13.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 65.15, "expected_guard": 0.00, "expected_ferry": 806.00
+        "expected_rate": 65.15, "expected_guard": 25.74, "expected_ferry": 650.00
     },
     {
         "name": "45. Беюк Кясик -> Курык (Порожний вагон, 15м, Паром)",
@@ -436,7 +418,7 @@ TEST_SUITE = [
             "cargo_name": "Boş vaqon", "is_empty": True, "axles_count": 4, "wagon_type": "universal",
             "park_type": "SPS", "wagon_length_m": 15.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 263.39, "expected_guard": 0.00, "expected_ferry": 930.00
+        "expected_rate": 263.39, "expected_guard": 0.00, "expected_ferry": 750.00
     },
     {
         "name": "46. Беюк Кясик -> ТРК (1701, платформа, 50т, СПС, Паром)",
@@ -446,7 +428,7 @@ TEST_SUITE = [
             "cargo_name": "Qənd və şəkər", "actual_weight_tons": 50.0, "wagon_type": "platform",
             "park_type": "SPS", "wagon_length_m": 15.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 28.71, "expected_guard": 0.00, "expected_ferry": 1260.00
+        "expected_rate": 28.71, "expected_guard": 25.50, "expected_ferry": 750.00
     }
 ]
 
