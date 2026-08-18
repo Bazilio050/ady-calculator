@@ -82,11 +82,11 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     result = json.loads(raw_text.strip())
     result["site_lang"] = str(lang).upper()
 
-    # Сбор метаданных использования токенов
+    # Сбор метаданных токенов
     if hasattr(response, "usage_metadata") and response.usage_metadata:
         result["_usage"] = {
-            "input": response.usage_metadata.prompt_token_count,
-            "output": response.usage_metadata.candidates_token_count
+            "input": getattr(response.usage_metadata, "prompt_token_count", 0),
+            "output": getattr(response.usage_metadata, "candidates_token_count", 0)
         }
 
     if "gng_code" in result and result["gng_code"]:
@@ -113,7 +113,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
-    Принимает байты аудиозаписи и выполняет распознавание через мощную мультимодальную модель gemini-3.6-flash.
+    Принимает байты аудиозаписи и выполняет распознавание через мультимодальную модель gemini-3.6-flash.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -156,4 +156,84 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
       "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
       "park_type": "SPS / MPS",
       "ref_section_cargo_wagons": integer or null,
-      "explicit
+      "explicit_mode": "import / export / transit or null",
+      "is_empty": boolean,
+      "axles_count": integer or null,
+      "is_own_axles": boolean,
+      "is_in_repair": boolean,
+      "is_passenger_train": boolean,
+      "is_consolidated": boolean,
+      "escort_count": integer or 0,
+      "has_teplushka": boolean,
+      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"
+    }}
+
+    Return ONLY a valid JSON object. UI language context: {target_lang}.
+    """
+
+    audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
+
+    response = client.models.generate_content(
+        model="gemini-3.6-flash",
+        contents=[audio_part, prompt],
+        config=types.GenerateContentConfig(
+            temperature=0.0,
+            response_mime_type="application/json"
+        )
+    )
+
+    raw_text = response.text.strip()
+    if raw_text.startswith("```json"):
+        raw_text = raw_text[7:]
+    elif raw_text.startswith("```"):
+        raw_text = raw_text[3:]
+    if raw_text.endswith("```"):
+        raw_text = raw_text[:-3]
+
+    result = json.loads(raw_text.strip())
+    result["site_lang"] = str(lang).upper()
+
+    # Сбор метаданных токенов
+    if hasattr(response, "usage_metadata") and response.usage_metadata:
+        result["_usage"] = {
+            "input": getattr(response.usage_metadata, "prompt_token_count", 0),
+            "output": getattr(response.usage_metadata, "candidates_token_count", 0)
+        }
+
+    if "gng_code" in result and result["gng_code"]:
+        result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
+
+    wagon_words = ["qapalı vaqon", "крытый вагон", "крытый", "qapalı", "полувагон", "платформа"]
+    if "gng_name" in result and result["gng_name"]:
+        if any(w in str(result["gng_name"]).lower() for w in wagon_words):
+            result["gng_name"] = "Buğda" if result.get("gng_code") == "1001" else ""
+
+    if "escort_count" not in result or result["escort_count"] is None:
+        result["escort_count"] = 0
+    if "has_teplushka" not in result or result["has_teplushka"] is None:
+        result["has_teplushka"] = False
+    if "teplushka_type" not in result or not result["teplushka_type"]:
+        result["teplushka_type"] = "freight_sps"
+    if "is_empty" not in result or result["is_empty"] is None:
+        result["is_empty"] = False
+    if "is_own_axles" not in result or result["is_own_axles"] is None:
+        result["is_own_axles"] = False
+
+    return result
+
+
+def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
+    """
+    Проверяет минимально необходимые данные для расчета.
+    """
+    missing = []
+    
+    origin = nlu_data.get("origin_name") or nlu_data.get("origin_esr")
+    dest = nlu_data.get("dest_name") or nlu_data.get("dest_esr")
+    
+    if not origin:
+        missing.append("Məlumat yoxdur: Göndərmə stansiyası" if lang == "AZ" else "Отсутствует станция отправления")
+    if not dest:
+        missing.append("Məlumat yoxdur: Təyinat stansiyası" if lang == "AZ" else "Отсутствует станция назначения")
+        
+    return missing
