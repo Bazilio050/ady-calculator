@@ -323,7 +323,7 @@ def apply_special_exceptions(
                 sps_note = (
                     "Xüsusi mülkiyyətdə olan (SPS) vaqonlara 0.85 güzəşt əmsalı tətbiq edilmişdir."
                     if lang == "AZ" else
-                    ("К приватным вагонам (СПС) применён скидочный коэффициент 0.85."
+                    ("К приватным вагонам (СПС) применён коэффициент 0.85 (СПС)."
                      if lang == "RU" else
                      "SPS discount factor 0.85 applied for private wagons.")
                 )
@@ -364,32 +364,16 @@ def apply_special_exceptions(
 
 
 def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str = "AZ", year: str = "2026", ui_t: dict = None, *args, **kwargs) -> dict:
-    # --- ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ АЛЯТА ---
-    is_alat_yeni = any(k in input_lower for k in ["новый", "yeni", "548703"])
-    
-    if "алят" in input_lower or "ələt" in input_lower or "alat" in input_lower:
-        if is_alat_yeni:
-            # Если в тексте есть "новый" / "yeni" -> СТРОГО 548703 (266 км)
-            if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002", "548703", "549204", "548803"]:
-                dest_esr = "548703"
-            if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002", "548703", "549204", "548803"]:
-                origin_esr = "548703"
-        elif has_import_export_kw:
-            # Обычный Алят при импорте/экспорте -> 548502 (261 км)
-            if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002"]:
-                dest_esr = "548502"
-            if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002"]:
-                origin_esr = "548502"
-        else:
-            if "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
-                dest_esr = "548803"
-            elif "aktau" in input_lower or "актау" in input_lower:
-                dest_esr = "549204"
-            else:
-                dest_esr = "553002"
-            
-            if not nlu_data.get("explicit_mode"):
-                nlu_data["explicit_mode"] = "transit"
+    if ui_t is None:
+        ui_t = {}
+
+    if args:
+        if len(args) >= 1 and isinstance(args[0], str) and not user_input_raw:
+            user_input_raw = args[0]
+        if len(args) >= 2 and isinstance(args[1], str):
+            lang = args[1]
+        if len(args) >= 3 and isinstance(args[2], str):
+            year = args[2]
 
     user_input_raw = user_input_raw or nlu_data.get("user_input_raw", "")
     input_lower = user_input_raw.lower()
@@ -406,13 +390,23 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
 
     # --- ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ АЛЯТА ---
+    is_alat_yeni = any(k in input_lower for k in ["новый", "yeni", "548703"])
+    
     if "алят" in input_lower or "ələt" in input_lower or "alat" in input_lower:
-        if has_import_export_kw:
+        if is_alat_yeni:
+            # Приоритет 1: Если в запросе "новый" / "yeni" -> СТРОГО Ələt-yeni (548703 / 266 км)
+            if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002", "548703", "549204", "548803"]:
+                dest_esr = "548703"
+            if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002", "548703", "549204", "548803"]:
+                origin_esr = "548703"
+        elif has_import_export_kw:
+            # Приоритет 2: Обычный Алят при импорте/экспорте -> 548502 (261 км)
             if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002", "549204", "548803"]:
                 dest_esr = "548502"
             if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002", "549204", "548803"]:
                 origin_esr = "548502"
         else:
+            # Приоритет 3: Транзитный Алят / Паром
             if "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
                 dest_esr = "548803"
             elif "aktau" in input_lower or "актау" in input_lower:
@@ -453,6 +447,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             display_to = "Ələt-eksp-Aktau (549204)" if lang_upper == "AZ" else "Алят-эксп-Актау (549204)"
         else:
             display_to = "Ələt-eksp. (553002)" if lang_upper == "AZ" else "Алят-эксп. (553002)"
+    elif dest_esr == "548703":
+        display_to = "Ələt-yeni (548703)" if lang_upper == "AZ" else "Алят-новый (548703)"
     elif dest_esr == "548502":
         display_to = "Ələt (548502)" if lang_upper == "AZ" else "Алят (548502)"
     else:
@@ -465,6 +461,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             display_from = "Ələt-eksp-Türkmenbaşı (548803)" if lang_upper == "AZ" else "Алят-эксп-Туркменбаши (548803)"
         else:
             display_from = "Ələt-eksp. (553002)" if lang_upper == "AZ" else "Алят-эксп. (553002)"
+    elif origin_esr == "548703":
+        display_from = "Ələt-yeni (548703)" if lang_upper == "AZ" else "Алят-новый (548703)"
     elif origin_esr == "548502":
         display_from = "Ələt (548502)" if lang_upper == "AZ" else "Алят (548502)"
     else:
