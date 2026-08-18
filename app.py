@@ -33,6 +33,10 @@ if "preview_nlu" not in st.session_state:
 if "last_processed_audio_hash" not in st.session_state:
     st.session_state.last_processed_audio_hash = None
 
+# Хранилище метаданных использования токенов
+if "token_usage" not in st.session_state:
+    st.session_state.token_usage = None
+
 # Обновление текста ввода ДО отрисовки st.text_area
 if st.session_state.pending_transcript:
     st.session_state.main_input_area = st.session_state.pending_transcript
@@ -613,7 +617,7 @@ with st.expander(t["guide_title"]):
             """)
         with tab8:
             st.markdown("""
-            📐 **Template:** `[From] -> [To], [locomotive/crane/wagon] on own axles`  
+            📐 **Template:** `[From] -> [To], locomotive/crane/wagon] on own axles`  
             💡 **Example:** `Yalama – Absheron, locomotive 8601 on own axles, 40t`  
             ⚙️ **Keywords:** `own axles`, `locomotive`, `crane`, `repair`, `MPS`  
             📌 **Rules:** Movement on own axles via Table 3/4 × 0.50 (clause 3.7.1). MPS wagon to repair calculated at 0.10 CHF/axle-km (clause 3.7.2).
@@ -714,6 +718,10 @@ if audio_file:
                 client = genai.Client(api_key=user_api_key.strip())
                 nlu_res = call_gemini_audio_nlu(client, audio_bytes, mime_type, selected_lang)
                 
+                # Извлечение метаданных токенов (если функция возвращает словарь с usage)
+                if isinstance(nlu_res, dict) and "_usage" in nlu_res:
+                    st.session_state.token_usage = nlu_res.pop("_usage")
+                
                 transcription = nlu_res.get("transcript", "")
                 if transcription:
                     st.session_state.pending_transcript = transcription
@@ -754,6 +762,11 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
         try:
             client = genai.Client(api_key=user_api_key.strip())
             nlu_res = call_gemini_nlu(client, current_input, selected_lang)
+            
+            # Извлечение метаданных токенов (если функция возвращает словарь с usage)
+            if isinstance(nlu_res, dict) and "_usage" in nlu_res:
+                st.session_state.token_usage = nlu_res.pop("_usage")
+
             nlu_res["user_input_raw"] = current_input
 
             input_lower = current_input.lower()
@@ -810,6 +823,15 @@ elif st.session_state.calc_result:
     
     with st.expander(t["json_expander"]):
         st.json(st.session_state.nlu_res)
+        
+        # Вывод статистики использования токенов, если она есть
+        if st.session_state.token_usage:
+            st.divider()
+            st.markdown("##### 📊 Расход API Gemini (Free Tier)")
+            col_a, col_b, col_c = st.columns(3)
+            col_a.metric("Входящие токены (Prompt)", f"{st.session_state.token_usage.get('input', 0):,}")
+            col_b.metric("Исходящие токены (Output)", f"{st.session_state.token_usage.get('output', 0):,}")
+            col_c.metric("Стоимость запроса", "0.00 AZN", delta="Free Tier 🟢", delta_color="normal")
 
     p1, p2, p3 = data["part1"], data["part2"], data["part3"]
     
