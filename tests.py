@@ -357,7 +357,6 @@ TEST_SUITE = [
         },
         "expected_rate": 316.07
     },
-    # --- НОВЫЕ МАРШРУТЫ (38 - 46) ---
     {
         "name": "38. Курык -> Астара (2304, хоппер, 40т, СПС, 17м, Паром)",
         "raw_text": "Курык Астара 2304 хопер 40т спс 17м",
@@ -366,7 +365,7 @@ TEST_SUITE = [
             "cargo_name": "Jmyx / Şrot", "actual_weight_tons": 40.0, "wagon_type": "universal",
             "park_type": "SPS", "wagon_length_m": 17.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+        "expected_rate": 21.21
     },
     {
         "name": "39. Ялама -> Алят (72, полувагон, 50т, СПС)",
@@ -376,7 +375,7 @@ TEST_SUITE = [
             "cargo_name": "Qara metallar", "actual_weight_tons": 50.0, "wagon_type": "universal",
             "park_type": "SPS", "explicit_mode": "import"
         },
-        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+        "expected_rate": 18.95
     },
     {
         "name": "40. Беюк Кясик -> ТРК (0207, рефвагон 5+1, 43т, МПС, 22м, Паром)",
@@ -387,7 +386,7 @@ TEST_SUITE = [
             "park_type": "MPS", "ref_section_cargo_wagons": 5, "wagon_length_m": 22.0,
             "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+        "expected_rate": 65.15
     },
     {
         "name": "41. ТРК -> Беюк Кясик (2713, цистерна, 50т, СПС, 13м, Паром)",
@@ -397,7 +396,7 @@ TEST_SUITE = [
             "cargo_name": "Neft məhsulları", "actual_weight_tons": 50.0, "wagon_type": "cistern",
             "park_type": "SPS", "wagon_length_m": 13.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+        "expected_rate": 23.79
     },
     {
         "name": "42. Курык -> Баладжары (1001, хоппер, 55т, СПС, 15м, Паром)",
@@ -407,7 +406,7 @@ TEST_SUITE = [
             "cargo_name": "Buğda", "actual_weight_tons": 55.0, "wagon_type": "universal",
             "park_type": "SPS", "wagon_length_m": 15.0, "is_asco_ferry": True, "explicit_mode": "import"
         },
-        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+        "expected_rate": 10.69
     },
     {
         "name": "43. ТРК -> Беюк Кясик (2705, цистерна, 50т, МПС, 13м, Паром)",
@@ -417,7 +416,7 @@ TEST_SUITE = [
             "cargo_name": "Qazlar", "actual_weight_tons": 50.0, "wagon_type": "cistern",
             "park_type": "MPS", "wagon_length_m": 13.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+        "expected_rate": 57.42
     },
     {
         "name": "44. Курык -> Беюк Кясик (28141, цистерна, 50т, СПС, 13м, Паром)",
@@ -427,7 +426,7 @@ TEST_SUITE = [
             "cargo_name": "Ammiak", "actual_weight_tons": 50.0, "wagon_type": "cistern",
             "park_type": "SPS", "wagon_length_m": 13.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+        "expected_rate": 65.15
     },
     {
         "name": "45. Беюк Кясик -> Курык (Порожний вагон, 15м, Паром)",
@@ -437,7 +436,7 @@ TEST_SUITE = [
             "cargo_name": "Boş vaqon", "is_empty": True, "axles_count": 4, "wagon_type": "universal",
             "park_type": "SPS", "wagon_length_m": 15.0, "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+        "expected_rate": 263.39
     },
     {
         "name": "46. Беюк Кясик -> ТРК (1701, платформа, 50т, СПС, Паром)",
@@ -447,7 +446,7 @@ TEST_SUITE = [
             "cargo_name": "Qənd və şəkər", "actual_weight_tons": 50.0, "wagon_type": "platform",
             "park_type": "SPS", "is_asco_ferry": True, "explicit_mode": "transit"
         },
-        "expected_rate": 0.0  # Рассчитается калькулятором при первом запуске
+        "expected_rate": 28.71
     }
 ]
 
@@ -473,10 +472,7 @@ def run_tests():
             calc_rate = parse_float(raw_rate)
             exp_rate = test["expected_rate"]
 
-            if exp_rate == 0.0:
-                print(f"ℹ️ {test['name']} -> Калькулятор рассчитал: {calc_rate}$ (Внесите эту цифру в expected_rate после проверки!)")
-                passed += 1
-            elif abs(calc_rate - exp_rate) <= 0.05:
+            if abs(calc_rate - exp_rate) <= 0.05:
                 print(f"✅ {test['name']} -> Совпало: {calc_rate}$")
                 passed += 1
             else:
