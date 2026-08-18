@@ -367,7 +367,7 @@ TEST_SUITE = [
         },
         "expected_rate": 21.21, "expected_guard": 0.00, "expected_ferry": 1105.00
     },
-   {
+    {
         "name": "39. Ялама -> Алят (72, полувагон, 50т, СПС)",
         "raw_text": "Ялама Алят 72 полувагон 50т спс",
         "nlu": {
@@ -385,10 +385,6 @@ TEST_SUITE = [
         },
         "expected_rate": 16.40, 
         "expected_guard": 16.26, 
-        "expected_ferry": 0.00
-    },
-        "expected_rate": 16.40,  # Заменили 18.95 на эталонные 16.40
-        "expected_guard": 0.00, 
         "expected_ferry": 0.00
     },
     {
@@ -481,7 +477,7 @@ TEST_SUITE = [
         "expected_rate": 10.69,
         "expected_guard": 0.00,
         "expected_ferry": 0.00
-    },
+    }
 ]
 
 def parse_float(val):
