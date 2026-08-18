@@ -6,8 +6,8 @@ from rail_glossary import get_rail_vocabulary
 
 def _execute_gemini_request_with_fallback(client, contents, config, primary_model="gemini-3.7-flash", fallback_model="gemini-3.6-flash"):
     """
-    По умолчанию делает запрос к gemini-3.7-flash.
-    При ошибках 503 (перегрузка) или 504 (таймаут) переключается на gemini-3.6-flash.
+    По умолчанию отправляет запрос к gemini-3.7-flash.
+    При возникновении ошибок 503 (перегрузка) или 504 (таймаут) переключается на gemini-3.6-flash.
     """
     try:
         return client.models.generate_content(
@@ -18,6 +18,7 @@ def _execute_gemini_request_with_fallback(client, contents, config, primary_mode
     except Exception as e:
         err_msg = str(e)
         code = getattr(e, 'code', None)
+        # Перехват 503 (UNAVAILABLE) и 504 (DEADLINE_EXCEEDED)
         if code in (503, 504) or any(err in err_msg for err in ["503", "504", "DEADLINE_EXCEEDED", "UNAVAILABLE"]):
             time.sleep(1)
             return client.models.generate_content(
@@ -29,7 +30,7 @@ def _execute_gemini_request_with_fallback(client, contents, config, primary_mode
 
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
-    Анализирует текстовый запрос пользователя. По умолчанию 3.7, фоллбэк на 3.6.
+    Анализирует текстовый запрос пользователя.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -97,6 +98,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     Query: "{user_input}"
     """
 
+    # Увеличен таймаут до 25 000 мс (25 секунд)
     config = types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",
@@ -146,7 +148,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
-    Принимает байты аудиозаписи. По умолчанию 3.7, фоллбэк на 3.6.
+    Принимает байты аудиозаписи.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -217,6 +219,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
 
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
 
+    # Увеличен таймаут до 35 000 мс (35 секунд)
     config = types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",
