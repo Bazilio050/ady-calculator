@@ -5,7 +5,7 @@ from rail_glossary import get_rail_vocabulary
 
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
-    Анализирует текстовый запрос пользователя через быструю модель gemini-2.5-flash.
+    Анализирует текстовый запрос пользователя через быструю модель gemini-3.7-flash.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -80,7 +80,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     )
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.7-flash",
         contents=prompt,
         config=config
     )
@@ -126,7 +126,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
-    Принимает байты аудиозаписи и выполняет распознавание через мультимодальную модель gemini-2.5-flash.
+    Принимает байты аудиозаписи и выполняет распознавание через мультимодальную модель gemini-3.7-flash.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -204,7 +204,7 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     )
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.7-flash",
         contents=[audio_part, prompt],
         config=config
     )
