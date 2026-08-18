@@ -372,18 +372,18 @@ TEST_SUITE = [
         "raw_text": "Ялама Алят 72 полувагон 50т спс",
         "nlu": {
             "route_from": "Yalama", 
-            "route_to": "Ələt (548502)", 
-            "origin_esr": "548409",
-            "dest_esr": "548502",
+            "route_to": "Ələt-eksp-Kurik (553002)", 
+            "origin_esr": "547508",
+            "dest_esr": "553002",
             "cargo_gng_code": "72000000",
             "cargo_name": "Qara metallar", 
             "actual_weight_tons": 50.0, 
             "wagon_type": "universal",
             "park_type": "SPS", 
             "is_asco_ferry": False, 
-            "explicit_mode": "import"
+            "explicit_mode": "transit"  # Дожно быть transit, а не import
         },
-        "expected_rate": 18.95, 
+        "expected_rate": 16.40,  # Заменили 18.95 на эталонные 16.40
         "expected_guard": 0.00, 
         "expected_ferry": 0.00
     },
