@@ -419,6 +419,16 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     except (ValueError, TypeError):
         actual_dist_km = 0
 
+    # --- ТОЧНАЯ КОРРЕКТИРОВКА РАССТОЯНИЯ ДЛЯ АЛЯТА ---
+    pair_esrs = {origin_esr, dest_esr}
+    if "547508" in pair_esrs:  # Если маршрут с Яламой
+        if "548502" in pair_esrs:
+            actual_dist_km = 261  # Ələt (сухопутный)
+        elif "548703" in pair_esrs:
+            actual_dist_km = 266  # Ələt yeni
+        elif "553002" in pair_esrs or "549204" in pair_esrs or "548803" in pair_esrs:
+            actual_dist_km = 271  # Ələt-eksp / порт
+
     if actual_dist_km <= 0 or actual_dist_km > 5000:
         actual_dist_km = 207 if origin_esr == "547105" else 300
 
