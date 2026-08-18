@@ -64,7 +64,7 @@ BORDER_STATION_ESR_OVERRIDE = {
 }
 
 
-def resolve_esr_by_station_name(station_name: str) -> str:
+def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "") -> str:
     """
     Сканирует Distances.txt и возвращает точный 6-значный ЕСР по названию станции.
     Для пограничных станций приоритет отдаётся экспортным кодам.
