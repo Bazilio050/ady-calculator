@@ -4,6 +4,12 @@ import time
 from google.genai import types
 from rail_glossary import get_rail_vocabulary
 
+
+# ==============================================================================
+# === [НАЧАЛО БЛОКА: NLU-01] Защита от сбоев и перегрузок API (Fallback) ===
+# Описание: Отправляет запрос к gemini-3.6-flash. В случае ошибок перегрузки 
+# 503 (UNAVAILABLE) или таймаутов 504 (DEADLINE_EXCEEDED) делает паузу и повтор.
+# ==============================================================================
 def _execute_gemini_request_with_fallback(client, contents, config, primary_model="gemini-3.6-flash", fallback_model="gemini-3.6-flash"):
     """
     По умолчанию отправляет запрос к gemini-3.6-flash.
@@ -27,7 +33,15 @@ def _execute_gemini_request_with_fallback(client, contents, config, primary_mode
                 config=config
             )
         raise e
+# === [КОНЕЦ БЛОКА: NLU-01] ====================================================
 
+
+# ==============================================================================
+# === [НАЧАЛО БЛОКА: NLU-02] Текстовый парсинг запросов (call_gemini_nlu) ===
+# Описание: Разбирает текстовый запрос пользователя, подтягивает железнодорожный 
+# глоссарий, разграничивает станции Алят (548502 / 548703 / 553002), вытаскивает ГНГ 
+# и формирует JSON для Python-калькулятора.
+# ==============================================================================
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
     Анализирует текстовый запрос пользователя.
@@ -144,8 +158,14 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
         result["is_own_axles"] = False
 
     return result
+# === [КОНЕЦ БЛОКА: NLU-02] ====================================================
 
 
+# ==============================================================================
+# === [НАЧАЛО БЛОКА: NLU-03] Голосовой парсинг (call_gemini_audio_nlu) ===
+# Описание: Принимает байты голосового сообщения, транскрибирует речь в текст 
+# (transcript) и одновременно извлекает все параметры железнодорожной перевозки.
+# ==============================================================================
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
     Принимает байты аудиозаписи.
@@ -176,4 +196,65 @@ def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wa
     - IF user explicitly mentions "Alat-yeni", "Ələt-yeni", "Алят-новый", or "новый":
       Assign code "548703" to origin_esr or dest_esr depending on position.
     - IF user mentions "Alat-eksp", "Ələt-eksp", "порт", "паром", "bərə", "Aktau", "Kurik", or "TRK":
-      1. Assign port ESR code (549204 / 553002
+      1. Assign port ESR code (549204 / 553002 / 548803) to origin_esr or dest_esr depending on position.
+      2. Set 'explicit_mode': "transit".
+    - IF user mentions plain "Alat" / "Ələt" / "Алят" WITHOUT words like "yeni/новый", "эксп", "порт", "паром", "bərə":
+      1. Assign ESR code "548502" to origin_esr or dest_esr depending on position.
+      2. DO NOT set 'explicit_mode' to "transit".
+
+    EXPECTED JSON STRUCTURE:
+    {{
+      "transcript": "Exact transcribed text from audio",
+      "origin_esr": "6-digit ESR string or null",
+      "origin_name": "Station name in {target_lang}",
+      "dest_esr": "6-digit ESR string or null",
+      "dest_name": "Station name in {target_lang}",
+      "gng_code": "Numeric GNG code string only or null",
+      "gng_name": "Cargo name in {target_lang}",
+      "weight_tons": float or null,
+      "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
+      "park_type": "SPS / MPS",
+      "ref_section_cargo_wagons": integer or null,
+      "explicit_mode": "import / export / transit or null",
+      "is_empty": boolean,
+      "axles_count": integer or null,
+      "is_own_axles": boolean,
+      "is_in_repair": boolean,
+      "is_passenger_train": boolean,
+      "is_consolidated": boolean,
+      "escort_count": integer or 0,
+      "has_teplushka": boolean,
+      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"
+    }}
+
+    Return ONLY a valid JSON object. User language context: {target_lang}.
+    """
+
+    config = types.GenerateContentConfig(
+        temperature=0.0,
+        response_mime_type="application/json",
+        http_options=types.HttpOptions(timeout=35000)
+    )
+
+    audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
+    response = _execute_gemini_request_with_fallback(client, [prompt, audio_part], config)
+
+    raw_text = response.text.strip()
+    if raw_text.startswith("```json"):
+        raw_text = raw_text[7:]
+    elif raw_text.startswith("```"):
+        raw_text = raw_text[3:]
+    if raw_text.endswith("```"):
+        raw_text = raw_text[:-3]
+
+    result = json.loads(raw_text.strip())
+    result["site_lang"] = str(lang).upper()
+
+    if hasattr(response, "usage_metadata") and response.usage_metadata:
+        result["_usage"] = {
+            "input": getattr(response.usage_metadata, "prompt_token_count", 0),
+            "output": getattr(response.usage_metadata, "candidates_token_count", 0)
+        }
+
+    return result
+# === [КОНЕЦ БЛОКА: NLU-03] ====================================================
