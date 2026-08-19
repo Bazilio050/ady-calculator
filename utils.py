@@ -58,9 +58,9 @@ BORDER_STATION_ESR_OVERRIDE = {
     "astara": "554109",       # Astara (eksport)
     "culfa": "550004",        # Culfa (eksport)
     "serur": "550409",        # Şərur (eksport)
-    "alet": "549204",         # Ələt (parom/eksp) -> 429 км
-    "elet": "549204",         # Ələt транслит
-    "алят": "549204"          # Алят RU
+    "alet": "548502",         # Ələt (parom/eksp) -> 429 км
+    "elet": "548502",         # Ələt транслит
+    "алят": "548502"          # Алят RU
 }
 
 
