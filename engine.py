@@ -389,50 +389,46 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
     dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
 
-    # --- ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ АЛЯТА ---
+    # --- ИСПРАВЛЕННЫЙ ТОЧЕЧНЫЙ ПЕРЕХВАТ АЛЯТА ---
     is_alat_yeni = any(k in input_lower for k in ["новый", "yeni", "548703"])
-    
-    if "алят" in input_lower or "ələt" in input_lower or "alat" in input_lower:
-        if is_alat_yeni:
-            # Приоритет 1: Если в запросе "новый" / "yeni" -> СТРОГО Ələt-yeni (548703 / 266 км)
-            if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002", "548703", "549204", "548803"]:
-                dest_esr = "548703"
-            if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002", "548703", "549204", "548803"]:
-                origin_esr = "548703"
-        elif has_import_export_kw:
-            # Приоритет 2: Обычный Алят при импорте/экспорте -> 548502 (261 км)
-            if "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or dest_esr in ["548502", "553002", "549204", "548803"]:
-                dest_esr = "548502"
-            if "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or origin_esr in ["548502", "553002", "549204", "548803"]:
-                origin_esr = "548502"
-        else:
-            # Приоритет 3: Транзитный Алят / Паром
-            if "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
-                dest_esr = "548803"
-            elif "aktau" in input_lower or "актау" in input_lower:
-                dest_esr = "549204"
-            else:
-                dest_esr = "553002"
-            
-            if not nlu_data.get("explicit_mode"):
-                nlu_data["explicit_mode"] = "transit"
+    is_alat_express = any(k in input_lower for k in ["экс", "эксп", "port", "порт", "паром", "bərə"]) or has_ferry_kw
 
-    # --- ПЕРЕСЧЕТ РАССТОЯНИЯ СТРОГО ПОСЛЕ ПЕРЕХВАТА КОДОВ ESR ---
+    # Вспомогательная функция для выбора нужного ESR-кода Алята
+    def determine_alat_esr():
+        if is_alat_yeni:
+            return "548703"  # Ələt yeni
+        elif is_alat_express:
+            if "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
+                return "548803"  # Ələt eksport-Türkmenbaşı
+            elif "aktau" in input_lower or "актау" in input_lower:
+                return "549204"  # Ələt eksport Aktau
+            else:
+                return "549204"  # Стандартный портовый узел Ələt-eksp
+        elif has_import_export_kw:
+            return "548502"  # Обычный Алят (Импорт/Экспорт)
+        else:
+            return "548502"  # Обычный Алят по умолчанию
+
+    # Проверяем ТОЛЬКО ту сторону, где реально назван Алят (чтобы НЕ затирать вторую станцию!)
+    is_origin_alat = "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or "alat" in st_from_raw.lower() or origin_esr in ["548502", "553002", "548703", "549204", "548803"]
+    is_dest_alat = "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or "alat" in st_to_raw.lower() or dest_esr in ["548502", "553002", "548703", "549204", "548803"]
+
+    if is_origin_alat:
+        origin_esr = determine_alat_esr()
+        if is_alat_express and not nlu_data.get("explicit_mode"):
+            nlu_data["explicit_mode"] = "transit"
+
+    if is_dest_alat:
+        dest_esr = determine_alat_esr()
+        if is_alat_express and not nlu_data.get("explicit_mode"):
+            nlu_data["explicit_mode"] = "transit"
+
+    # --- ПЕРЕСЧЕТ РАССТОЯНИЯ СТРОГО ПО БАЗЕ DISTANCES.TXT ---
     raw_dist = get_distance_by_esr(origin_esr, dest_esr)
     try:
         actual_dist_km = int(raw_dist) if raw_dist is not None else 0
     except (ValueError, TypeError):
         actual_dist_km = 0
-
-    # --- ТОЧНАЯ КОРРЕКТИРОВКА РАССТОЯНИЯ ДЛЯ АЛЯТА ---
-    pair_esrs = {origin_esr, dest_esr}
-    if "547508" in pair_esrs:  # Если маршрут с Яламой
-        if "548502" in pair_esrs:
-            actual_dist_km = 261  # Ələt (сухопутный)
-        elif "548703" in pair_esrs:
-            actual_dist_km = 266  # Ələt yeni
-        elif "553002" in pair_esrs or "549204" in pair_esrs or "548803" in pair_esrs:
-            actual_dist_km = 271  # Ələt-eksp / порт
 
     if actual_dist_km <= 0 or actual_dist_km > 5000:
         actual_dist_km = 207 if origin_esr == "547105" else 300
@@ -440,31 +436,33 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     # --- ФОРМИРОВАНИЕ ОТОБРАЖЕНИЯ ШАПКИ МАРШРУТА ---
     if dest_esr in ["553002", "548803", "549204"]:
         if "kurik" in input_lower or "курык" in input_lower:
-            display_to = "Ələt-eksp-Kurik (553002)" if lang_upper == "AZ" else "Алят-эксп-Курык (553002)"
+            display_to = "Ələt-eksp-Kurik" if lang_upper == "AZ" else "Алят-эксп-Курык"
         elif "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
-            display_to = "Ələt-eksp-Türkmenbaşı (548803)" if lang_upper == "AZ" else "Алят-эксп-Туркменбаши (548803)"
+            display_to = "Ələt-eksp-Türkmenbaşı" if lang_upper == "AZ" else "Алят-эксп-Туркменбаши"
         elif "aktau" in input_lower or "актау" in input_lower:
-            display_to = "Ələt-eksp-Aktau (549204)" if lang_upper == "AZ" else "Алят-эксп-Актау (549204)"
+            display_to = "Ələt-eksp-Aktau" if lang_upper == "AZ" else "Алят-эксп-Актау"
         else:
-            display_to = "Ələt-eksp. (553002)" if lang_upper == "AZ" else "Алят-эксп. (553002)"
+            display_to = "Ələt-eksp" if lang_upper == "AZ" else "Алят-эксп"
     elif dest_esr == "548703":
-        display_to = "Ələt-yeni (548703)" if lang_upper == "AZ" else "Алят-новый (548703)"
+        display_to = "Ələt-yeni" if lang_upper == "AZ" else "Алят-новый"
     elif dest_esr == "548502":
-        display_to = "Ələt (548502)" if lang_upper == "AZ" else "Алят (548502)"
+        display_to = "Ələt" if lang_upper == "AZ" else "Алят"
     else:
         display_to = format_station_display_name(st_to_raw, dest_esr, lang_upper)
 
     if origin_esr in ["553002", "548803", "549204"]:
         if "kurik" in input_lower or "курык" in input_lower:
-            display_from = "Ələt-eksp-Kurik (553002)" if lang_upper == "AZ" else "Алят-эксп-Курык (553002)"
+            display_from = "Ələt-eksp-Kurik" if lang_upper == "AZ" else "Алят-эксп-Курык"
         elif "trk" in input_lower or "трк" in input_lower or "туркменбаши" in input_lower:
-            display_from = "Ələt-eksp-Türkmenbaşı (548803)" if lang_upper == "AZ" else "Алят-эксп-Туркменбаши (548803)"
+            display_from = "Ələt-eksp-Türkmenbaşı" if lang_upper == "AZ" else "Алят-эксп-Туркменбаши"
+        elif "aktau" in input_lower or "актау" in input_lower:
+            display_from = "Ələt-eksp-Aktau" if lang_upper == "AZ" else "Алят-эксп-Актау"
         else:
-            display_from = "Ələt-eksp. (553002)" if lang_upper == "AZ" else "Алят-эксп. (553002)"
+            display_from = "Ələt-eksp" if lang_upper == "AZ" else "Алят-эксп"
     elif origin_esr == "548703":
-        display_from = "Ələt-yeni (548703)" if lang_upper == "AZ" else "Алят-новый (548703)"
+        display_from = "Ələt-yeni" if lang_upper == "AZ" else "Алят-новый"
     elif origin_esr == "548502":
-        display_from = "Ələt (548502)" if lang_upper == "AZ" else "Алят (548502)"
+        display_from = "Ələt" if lang_upper == "AZ" else "Алят"
     else:
         display_from = format_station_display_name(st_from_raw, origin_esr, lang_upper)
 
