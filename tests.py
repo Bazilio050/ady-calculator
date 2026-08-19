@@ -186,10 +186,10 @@ TEST_SUITE = [
         "expected_rate": 148.74, "expected_guard": 0.00, "expected_ferry": 0.00
     },
     {
-        "name": "20. Алят -> Беюк Кясик (Порожний возврат вагона, 429км, Транзит)",
-        "raw_text": "Алят Беюк Кясик порожний вагон",
+        "name": "20. Алят-эксп -> Беюк Кясик (Порожний возврат вагона, 429км, Транзит)",
+        "raw_text": "Алят-эксп Беюк Кясик порожний вагон",
         "nlu": {
-            "route_from": "Ələt", "route_to": "Böyük Kəsik", "cargo_gng_code": "99220000",
+            "route_from": "Ələt-eksp", "route_to": "Böyük Kəsik", "cargo_gng_code": "99220000",
             "cargo_name": "Yükdən boşaldılmış vaqonlar", "is_empty": True, "axles_count": 4,
             "wagon_type": "universal", "park_type": "SPS", "explicit_mode": "transit"
         },
@@ -368,12 +368,12 @@ TEST_SUITE = [
         "expected_rate": 21.21, "expected_guard": 0.00, "expected_ferry": 1105.00
     },
     {
-        "name": "39. Ялама -> Алят (72, полувагон, 50т, СПС)",
-        "raw_text": "Ялама Алят 72 полувагон 50т спс",
+        "name": "39. Ялама -> Алят-эксп (72, полувагон, 50т, СПС, Транзит)",
+        "raw_text": "Ялама Алят-эксп 72 полувагон 50т спс",
         "nlu": {
             "route_from": "Yalama", 
-            "route_to": "Ələt (548502)", 
-            "origin_esr": "548409",
+            "route_to": "Ələt-eksp", 
+            "origin_esr": "547508",
             "dest_esr": "553002",
             "cargo_gng_code": "72000000",
             "cargo_name": "Qara metallar", 
