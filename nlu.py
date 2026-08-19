@@ -4,10 +4,10 @@ import time
 from google.genai import types
 from rail_glossary import get_rail_vocabulary
 
-def _execute_gemini_request_with_fallback(client, contents, config, primary_model="gemini-3.7-flash", fallback_model="gemini-3.6-flash"):
+def _execute_gemini_request_with_fallback(client, contents, config, primary_model="gemini-3.6-flash", fallback_model="gemini-3.6-flash"):
     """
-    По умолчанию отправляет запрос к gemini-3.7-flash.
-    При возникновении ошибок 503 (перегрузка) или 504 (таймаут) переключается на gemini-3.6-flash.
+    По умолчанию отправляет запрос к gemini-3.6-flash.
+    При возникновении ошибок 503 (перегрузка) или 504 (таймаут) переключается на fallback_model.
     """
     try:
         return client.models.generate_content(
