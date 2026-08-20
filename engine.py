@@ -417,11 +417,10 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
     dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
 
-    # --- ИСПРАВЛЕННЫЙ ТОЧЕЧНЫЙ ПЕРЕХВАТ АЛЯТА ---
+    # --- ТОЧЕЧНЫЙ ПЕРЕХВАТ АЛЯТА ---
     is_alat_yeni = any(k in input_lower for k in ["новый", "yeni", "548703"])
     is_alat_express = any(k in input_lower for k in ["экс", "эксп", "port", "порт", "паром", "bərə"]) or has_ferry_kw
 
-    # Вспомогательная функция для выбора нужного ESR-кода Алята
     def determine_alat_esr():
         if is_alat_yeni:
             return "548703"  # Ələt yeni
@@ -431,13 +430,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             elif "aktau" in input_lower or "актау" in input_lower:
                 return "549204"  # Ələt eksport Aktau
             else:
-                return "549204"  # Стандартный портовый узел Ələt-eksp
+                return "553002"  # Стандартный портовый узел Ələt eksport Kurik / Ələt-eksp
         elif has_import_export_kw:
             return "548502"  # Обычный Алят (Импорт/Экспорт)
         else:
             return "548502"  # Обычный Алят по умолчанию
 
-    # Проверяем ТОЛЬКО ту сторону, где реально назван Алят (чтобы НЕ затирать вторую станцию!)
     is_origin_alat = "алят" in st_from_raw.lower() or "ələt" in st_from_raw.lower() or "alat" in st_from_raw.lower() or origin_esr in ["548502", "553002", "548703", "549204", "548803"]
     is_dest_alat = "алят" in st_to_raw.lower() or "ələt" in st_to_raw.lower() or "alat" in st_to_raw.lower() or dest_esr in ["548502", "553002", "548703", "549204", "548803"]
 
@@ -451,15 +449,17 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         if is_alat_express and not nlu_data.get("explicit_mode"):
             nlu_data["explicit_mode"] = "transit"
 
-    # --- ПЕРЕСЧЕТ РАССТОЯНИЯ СТРОГО ПО БАЗЕ DISTANCES.TXT ---
+    # --- ПЕРЕСЧЕТ РАССТОЯНИЯ СТРОГО ПО БАЗЕ DISTANCES (БЕЗ ЗАГЛУШКИ 300 КМ) ---
     raw_dist = get_distance_by_esr(origin_esr, dest_esr)
     try:
         actual_dist_km = int(raw_dist) if raw_dist is not None else 0
     except (ValueError, TypeError):
         actual_dist_km = 0
 
-    if actual_dist_km <= 0 or actual_dist_km > 5000:
-        actual_dist_km = 207 if origin_esr == "547105" else 300
+    # Если расстояние не найдено в базе — не подставляем дефолтные 300 км, а генерируем сообщение об ошибке маршрута
+    if actual_dist_km <= 0:
+        err_msg = "Marşrut məsafəsi tapılmadı" if lang_upper == "AZ" else ("Маршрут не найден в базе расстояний" if lang_upper == "RU" else "Route distance not found")
+        return {"error": err_msg, "route_error": True}
 
     # --- ФОРМИРОВАНИЕ ОТОБРАЖЕНИЯ ШАПКИ МАРШРУТА ---
     if dest_esr in ["553002", "548803", "549204"]:
@@ -631,7 +631,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         else:
             base_chf, table_details = calculate_table_3_base(tariff_dist_km, billable_weight, {}, lang_upper)
 
-        base_chf *= 0.50
+        if base_chf is not None:
+            base_chf *= 0.50
         u_wagon_str = "universal vaqon" if lang_upper == "AZ" else ("универсальный вагон" if lang_upper == "RU" else "universal wagon")
         table_details = f"{sec_word} 3.7.1 ({u_wagon_str} × 0.50)"
         weight_display = f"{int(act_weight if act_weight > 0 else 10)} t (öz oxları üzərində)" if lang_upper == "AZ" else (f"{int(act_weight if act_weight > 0 else 10)} т (на своих осях)" if lang_upper == "RU" else f"{int(act_weight if act_weight > 0 else 10)} t (on own axles)")
@@ -790,10 +791,10 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         else:
             weight_display = f"{act_w_str} t" if lang_upper != "RU" else f"{act_w_str} т"
 
+        # Без заглушки 1200.0 CHF: если тариф не возвращен сеткой
         if base_chf is None:
-            base_chf = 1200.0
-            tbl_word = "Cədvəl" if lang_upper == "AZ" else ("Таблица" if lang_upper == "RU" else "Table")
-            table_details = f"{tbl_word} 3 (baza)" if lang_upper == "AZ" else (f"{tbl_word} 3 (базовая)" if lang_upper == "RU" else f"{tbl_word} 3 (base)")
+            err_msg = "Tarif dərəcəsi tapılmadı" if lang_upper == "AZ" else ("Тарифная ставка не найдена в сетке" if lang_upper == "RU" else "Tariff rate not found in grid")
+            return {"error": err_msg, "tariff_error": True}
 
     unit_str = ui_t.get("unit_wagon", "USD/vaqon") if is_per_wagon else ui_t.get("unit_ton", "USD/t")
     chf_unit = "CHF/вагон" if (is_per_wagon and lang_upper == "RU") else ("CHF/vaqon" if is_per_wagon else ("CHF/т" if lang_upper == "RU" else ("CHF/wagon" if is_per_wagon else "CHF/t")))
@@ -846,7 +847,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     formula_str = " × ".join(formula_parts) + f" = {final_rate:.2f} {unit_str}"
     express_rate_str = f"{final_rate * 1.02:.2f} {unit_str}"
 
-    # --- РАСЧЕТ СБОРА ЗА ОХРАНУ (Транзит: км * 0.1 AZN / 1.7 + 2%) ---
+    # --- РАСЧЕТ СБОРА ЗА ОХРАНУ ---
     gng_digits = re.sub(r'\D', '', str(gng or ""))
     gng_4 = gng_digits[:4] if len(gng_digits) >= 4 else gng_digits
     gng_8_right = gng_digits.ljust(8, '0')[:8] if gng_digits else ""
@@ -875,10 +876,15 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         )
         notes.append(guard_note_text)
 
-    # --- СТРОГИЙ РАСЧЕТ ПАРОМНОЙ ПЕРЕПРАВЫ ASCO (ТОЛЬКО ДЛЯ ПОРТОВ) ---
+    # --- СТРОГИЙ РАСЧЕТ ПАРОМНОЙ ПЕРЕПРАВЫ ASCO (БЕЗ ДЕФОЛТА 14.5 М) ---
     asco_ferry_dict = None
     if has_ferry_kw or nlu_data.get("is_asco_ferry"):
-        w_len = float(nlu_data.get("wagon_length_m") or 14.5)
+        w_len = nlu_data.get("wagon_length_m")
+        if not w_len:
+            err_msg = "Vaqonun uzunluğunu (m) daxil edin" if lang_upper == "AZ" else ("Укажите длину вагона в метрах для расчета парома" if lang_upper == "RU" else "Specify wagon length in meters for ferry calculation")
+            return {"error": err_msg, "missing_length": True}
+        
+        w_len = float(w_len)
         base_rate = 50.0  # $50 за метр
         coeff = 1.3 if w_len > 15.0 else 1.0
         sea_freight_usd = round(w_len * base_rate * coeff, 2)
