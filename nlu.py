@@ -7,13 +7,19 @@ from rail_glossary import get_rail_vocabulary
 
 # ==============================================================================
 # === [НАЧАЛО БЛОКА: NLU-01] Защита от сбоев и перегрузок API (Fallback) ===
-# Описание: Отправляет запрос к gemini-3.6-flash. В случае ошибок перегрузки 
-# 503 (UNAVAILABLE) или таймаутов 504 (DEADLINE_EXCEEDED) делает паузу и повтор.
+# Описание: Отправляет запрос к gemini-3.5-flash-lite. В случае перегрузок (429, 
+# 503, 504, 499) делает паузу 2.5 сек и повторяет запрос к gemini-3.6-flash.
 # ==============================================================================
-def _execute_gemini_request_with_fallback(client, contents, config, primary_model="gemini-3.6-flash", fallback_model="gemini-3.6-flash"):
+def _execute_gemini_request_with_fallback(
+    client, 
+    contents, 
+    config, 
+    primary_model="gemini-3.5-flash-lite", 
+    fallback_model="gemini-3.6-flash"
+):
     """
-    По умолчанию отправляет запрос к gemini-3.6-flash.
-    При возникновении ошибок 503 (перегрузка) или 504 (таймаут) переключается на fallback_model.
+    По умолчанию отправляет запрос к gemini-3.5-flash-lite.
+    При возникновении ошибок перегрузки или таймаутов автоматически переключается на fallback_model.
     """
     try:
         return client.models.generate_content(
@@ -24,14 +30,21 @@ def _execute_gemini_request_with_fallback(client, contents, config, primary_mode
     except Exception as e:
         err_msg = str(e)
         code = getattr(e, 'code', None)
-        # Перехват 503 (UNAVAILABLE) и 504 (DEADLINE_EXCEEDED)
-        if code in (503, 504) or any(err in err_msg for err in ["503", "504", "DEADLINE_EXCEEDED", "UNAVAILABLE"]):
-            time.sleep(1)
-            return client.models.generate_content(
-                model=fallback_model,
-                contents=contents,
-                config=config
-            )
+        
+        is_rate_limit = code == 429 or any(err in err_msg for err in ["429", "RESOURCE_EXHAUSTED", "ResourceExhausted", "Quota exceeded"])
+        is_server_error = code in (499, 503, 504) or any(err in err_msg for err in ["499", "503", "504", "CANCELLED", "DEADLINE_EXCEEDED", "UNAVAILABLE"])
+
+        if is_rate_limit or is_server_error:
+            time.sleep(2.5)
+            try:
+                return client.models.generate_content(
+                    model=fallback_model,
+                    contents=contents,
+                    config=config
+                )
+            except Exception as retry_err:
+                logger.error(f"Повторный запрос Gemini завершился ошибкой: {retry_err}")
+                raise retry_err
         raise e
 # === [КОНЕЦ БЛОКА: NLU-01] ====================================================
 
