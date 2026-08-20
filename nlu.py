@@ -88,11 +88,11 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 
     prompt = _build_compact_nlu_prompt(target_lang, rail_vocab, user_input)
 
-    # Таймаут снижен до 8 000 мс (8 секунд) для мгновенного отклика
+    # Таймаут 15 000 мс (15 секунд) — оптимальный баланс скорости и защиты от 504
     config = types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",
-        http_options=types.HttpOptions(timeout=8000)
+        http_options=types.HttpOptions(timeout=15000)
     )
 
     response = _execute_gemini_request_with_fallback(client, prompt, config)
@@ -140,76 +140,47 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 # ==============================================================================
 # === [НАЧАЛО БЛОКА: NLU-03] Голосовой парсинг (call_gemini_audio_nlu) ===
 # Описание: Принимает байты голосового сообщения, транскрибирует речь в текст 
-# (transcript) и одновременно извлекает все параметры железнодорожной перевозки.
+# (transcript) и одновременно извлекает все параметры перевозки в JSON.
 # ==============================================================================
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
     """
-    Принимает байты аудиозаписи.
+    Принимает байты аудиозаписи и выполняет быстрый голосовой NLU-парсинг.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
     rail_vocab = get_rail_vocabulary()
 
-    prompt = f"""
-    You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
-    Listen carefully to the audio input containing a freight shipment request.
+    prompt = f"""You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
+Listen carefully to the audio input containing a freight shipment request.
 
-    ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
-    {rail_vocab}
+Tasks:
+1. Transcribe spoken text accurately into 'transcript' field.
+2. Extract shipment parameters into JSON matching schema below.
 
-    Tasks:
-    1. Transcribe the spoken text accurately into the 'transcript' field.
-    2. Extract shipment parameters into a JSON object matching the schema below.
+ROUTING & CARGO RULES:
+- FIRST station mentioned = 'origin_name', SECOND = 'dest_name'.
+- Station ESR: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
+- ALAT (ƏLƏT): "yeni" -> 548703; "eksp/порт/паром/Aktau/Kurik/TRK" -> Port ESR & 'explicit_mode': "transit"; Plain "Alat" -> 548502.
+- Match cargo terms against Vocabulary: {rail_vocab}
 
-    CRITICAL RULES FOR STATIONS & ROUTING:
-    - STRICT ORDER RULE: The FIRST station or Caspian ferry port mentioned in the audio MUST ALWAYS be assigned to 'origin_name'. The SECOND station/port MUST ALWAYS be assigned to 'dest_name'.
-    - NEVER swap origin and destination stations!
-    - Station ESR codes mapping: 
-      Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109,
-      Alat-yeni/Ələt-yeni/Алят-новый=548703, Kurik/Kuryk/Курык=553002, Aktau/Актау=549204, Türkmenbaşı/Turkmenbashi/TRK/ТРК=548803.
+EXPECTED JSON SCHEMA:
+{{
+  "transcript": "Exact transcribed text",
+  "origin_esr": "6-digit string or null", "origin_name": "Station name in {target_lang}",
+  "dest_esr": "6-digit string or null", "dest_name": "Station name in {target_lang}",
+  "gng_code": "Numeric GNG string or null", "gng_name": "Cargo name in {target_lang}",
+  "weight_tons": float or null,
+  "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
+  "park_type": "SPS / MPS", "explicit_mode": "import / export / transit or null",
+  "is_empty": boolean, "axles_count": integer or null, "is_own_axles": boolean
+}}
+Return ONLY valid JSON. Target language: {target_lang}."""
 
-    CRITICAL DISAMBIGUATION RULE FOR ALAT (ƏLƏT / АЛЯТ):
-    - IF user explicitly mentions "Alat-yeni", "Ələt-yeni", "Алят-новый", or "новый":
-      Assign code "548703" to origin_esr or dest_esr depending on position.
-    - IF user mentions "Alat-eksp", "Ələt-eksp", "порт", "паром", "bərə", "Aktau", "Kurik", or "TRK":
-      1. Assign port ESR code (549204 / 553002 / 548803) to origin_esr or dest_esr depending on position.
-      2. Set 'explicit_mode': "transit".
-    - IF user mentions plain "Alat" / "Ələt" / "Алят" WITHOUT words like "yeni/новый", "эксп", "порт", "паром", "bərə":
-      1. Assign ESR code "548502" to origin_esr or dest_esr depending on position.
-      2. DO NOT set 'explicit_mode' to "transit".
-
-    EXPECTED JSON STRUCTURE:
-    {{
-      "transcript": "Exact transcribed text from audio",
-      "origin_esr": "6-digit ESR string or null",
-      "origin_name": "Station name in {target_lang}",
-      "dest_esr": "6-digit ESR string or null",
-      "dest_name": "Station name in {target_lang}",
-      "gng_code": "Numeric GNG code string only or null",
-      "gng_name": "Cargo name in {target_lang}",
-      "weight_tons": float or null,
-      "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
-      "park_type": "SPS / MPS",
-      "ref_section_cargo_wagons": integer or null,
-      "explicit_mode": "import / export / transit or null",
-      "is_empty": boolean,
-      "axles_count": integer or null,
-      "is_own_axles": boolean,
-      "is_in_repair": boolean,
-      "is_passenger_train": boolean,
-      "is_consolidated": boolean,
-      "escort_count": integer or 0,
-      "has_teplushka": boolean,
-      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"
-    }}
-
-    Return ONLY a valid JSON object. User language context: {target_lang}.
-    """
-
+    # Таймаут 20 000 мс (20 секунд) с запасом для обработки аудиофайла
     config = types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",
-        http_options=types.HttpOptions(timeout=35000)
+        http_options=types.HttpOptions(timeout=20000)
     )
 
     audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
