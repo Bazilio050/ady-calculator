@@ -205,16 +205,25 @@ Return ONLY valid JSON. Target language: {target_lang}."""
 # === [КОНЕЦ БЛОКА: NLU-03] ====================================================
 
 # ==============================================================================
-# === [НАЧАЛО БЛОКА: NLU-04] Валидация входного JSON от NLU ===
-# Описание: Проверяет структуру NLU-ответа перед передачей в engine.py.
+# === [НАЧАЛО БЛОКА: NLU-04] Валидация входных параметров NLU ===
+# Описание: Проверяет полноту данных из NLU перед расчётом.
+# Принимает nlu_data и выбранный язык, возвращает список недостающих полей.
 # ==============================================================================
-def validate_nlu_input(nlu_data: dict) -> bool:
+def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
     """
-    Проверяет, содержит ли отвеченный JSON базовые поля для расчёта.
+    Проверяет корректность парсинга NLU.
+    Возвращает список отсутствующих обязательных параметров (или пустой список).
     """
+    missing = []
+    
     if not isinstance(nlu_data, dict):
-        return False
-    if "error" in nlu_data:
-        return False
-    return True
+        return ["Некорректный формат данных от NLU"]
+
+    # Проверка ключевых станций маршрута
+    if not nlu_data.get("origin_name") and not nlu_data.get("origin_esr"):
+        missing.append("Станция отправления (Origin)")
+    if not nlu_data.get("dest_name") and not nlu_data.get("dest_esr"):
+        missing.append("Станция назначения (Destination)")
+
+    return missing
 # === [КОНЕЦ БЛОКА: NLU-04] ====================================================
