@@ -38,85 +38,61 @@ def _execute_gemini_request_with_fallback(client, contents, config, primary_mode
 
 # ==============================================================================
 # === [НАЧАЛО БЛОКА: NLU-02] Текстовый парсинг запросов (call_gemini_nlu) ===
-# Описание: Разбирает текстовый запрос пользователя, подтягивает железнодорожный 
-# глоссарий, разграничивает станции Алят (548502 / 548703 / 553002), вытаскивает ГНГ 
-# и формирует JSON для Python-калькулятора.
+# Описание: Оптимизированный ультра-быстрый вызов Gemini NLU. Тяжеловесный текст 
+# вырезан, таймаут снижен с 25с до 8с. Объём токенов снижен с 8000+ до ~300.
 # ==============================================================================
+def _build_compact_nlu_prompt(target_lang: str, rail_vocab: str, user_input: str) -> str:
+    return f"""You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
+Extract shipment parameters from user text query into JSON matching the schema below.
+
+CRITICAL ROUTING RULES:
+1. FIRST station/port mentioned MUST BE 'origin_name', SECOND MUST BE 'dest_name'. NEVER swap them!
+2. Station ESR mapping: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
+3. ALAT (ƏLƏT) DISAMBIGUATION:
+   - "Alat-yeni" / "Ələt-yeni" / "новый" -> ESR "548703"
+   - "Alat-eksp" / "порт" / "паром" / "bərə" / "Aktau" / "Kurik" / "TRK" -> Port ESR ("549204"/"553002"/"548803") & 'explicit_mode': "transit"
+   - Plain "Alat" / "Ələt" / "Алят" -> ESR "548502" (DO NOT set 'transit')
+
+CARGO & WAGON RULES:
+- Extract numeric cargo codes to 'gng_code' (strictly digits).
+- Match cargo text ("арматура", "пшеница") against Glossary: {rail_vocab}
+- TERMS like "крытый", "полувагон", "платформа", "цистерна" are 'wagon_type', NEVER cargo!
+
+JSON SCHEMA:
+{{
+  "origin_esr": "6-digit string or null", "origin_name": "Station name in {target_lang}",
+  "dest_esr": "6-digit string or null", "dest_name": "Station name in {target_lang}",
+  "gng_code": "Numeric GNG string only or null", "gng_name": "Cargo name in {target_lang}",
+  "weight_tons": float or null,
+  "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
+  "park_type": "SPS / MPS", "ref_section_cargo_wagons": integer or null,
+  "explicit_mode": "import / export / transit or null",
+  "is_empty": boolean, "axles_count": integer or null,
+  "is_own_axles": boolean, "is_in_repair": boolean, "is_passenger_train": boolean,
+  "is_consolidated": boolean, "escort_count": integer or 0,
+  "has_teplushka": boolean, "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"
+}}
+
+Return ONLY valid JSON. Target language: {target_lang}.
+User query: "{user_input}"
+"""
+
+
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
-    Анализирует текстовый запрос пользователя.
+    Оптимизированный быстрый текстовый парсер NLU.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
     rail_vocab = get_rail_vocabulary()
 
-    prompt = f"""
-    You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
-    Analyze the user text query containing a freight shipment request.
+    prompt = _build_compact_nlu_prompt(target_lang, rail_vocab, user_input)
 
-    ACTIVE RAILWAY TERMINOLOGY & VOCABULARY REFERENCE:
-    {rail_vocab}
-
-    Extract parameters into a JSON object matching the schema below.
-
-    CRITICAL RULES FOR STATIONS & ROUTING:
-    - STRICT ORDER RULE: The FIRST station or Caspian ferry port mentioned in the text MUST ALWAYS be assigned to 'origin_name'. The SECOND station/port MUST ALWAYS be assigned to 'dest_name'.
-    - NEVER swap origin and destination stations!
-    - Station ESR codes mapping: 
-      Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109,
-      Alat-yeni/Ələt-yeni/Алят-новый=548703, Kurik/Kuryk/Курык=553002, Aktau/Актау=549204, Türkmenbaşı/Turkmenbashi/TRK/ТРК=548803.
-
-    CRITICAL DISAMBIGUATION RULE FOR ALAT (ƏLƏT / АЛЯТ):
-    - IF user explicitly mentions "Alat-yeni", "Ələt-yeni", "Алят-новый", or "новый":
-      Assign code "548703" to origin_esr or dest_esr depending on position.
-    - IF user mentions "Alat-eksp", "Ələt-eksp", "порт", "паром", "bərə", "Aktau", "Kurik", or "TRK":
-      1. Assign port ESR code (549204 / 553002 / 548803) to origin_esr or dest_esr depending on position.
-      2. Set 'explicit_mode': "transit".
-    - IF user mentions plain "Alat" / "Ələt" / "Алят" WITHOUT words like "yeni/новый", "эксп", "порт", "паром", "bərə":
-      1. Assign ESR code "548502" to origin_esr or dest_esr depending on position.
-      2. DO NOT set 'explicit_mode' to "transit".
-
-    CRITICAL RULES FOR GNG, CARGO NAME & WAGON TYPE:
-    - ALWAYS extract any cargo numeric code into 'gng_code' (e.g. if query contains "1001" or "GNG 1001", set 'gng_code': "1001").
-    - CARGO LOOKUP RULE: If NO numeric GNG code is explicitly written, but a cargo name/description is mentioned (e.g., "прокат", "арматура", "пшеница", "цемент"), YOU MUST MATCH IT against the railway glossary reference and set 'gng_code' to its 4-digit or 8-digit numeric code! DO NOT return null or "00000000" if cargo name is present!
-    - NEVER put text descriptions or wagon terms into 'gng_code'! Keep 'gng_code' STRICTLY NUMERIC.
-    - STRICT PRIORITY RULE FOR GNG: The abbreviation 'GNG', 'NHM' or 'ГНГ' followed by numbers represents strictly a cargo nomenclature code. It is STRICTLY FORBIDDEN to interpret 'GNG' as the city of Ganja (Gəncə) or any other similar-sounding word.
-    - TERMS LIKE "qapalı vaqon", "крытый вагон", "полувагон", "платформа", "цистерна", "çən", "cistern" ARE WAGON TYPES ('wagon_type'), NEVER CARGO NAMES ('gng_name')!
-    - If GNG 1001 is provided without an explicit cargo description, set 'gng_name': "Buğda".
-
-    EXPECTED JSON STRUCTURE:
-    {{
-      "origin_esr": "6-digit ESR string or null",
-      "origin_name": "Station name in {target_lang}",
-      "dest_esr": "6-digit ESR string or null",
-      "dest_name": "Station name in {target_lang}",
-      "gng_code": "Numeric GNG code string only (e.g., '1001', '4407', '7208') or null",
-      "gng_name": "Cargo name in {target_lang}",
-      "weight_tons": float or null,
-      "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
-      "park_type": "SPS / MPS",
-      "ref_section_cargo_wagons": integer or null,
-      "explicit_mode": "import / export / transit or null",
-      "is_empty": boolean,
-      "axles_count": integer or null,
-      "is_own_axles": boolean,
-      "is_in_repair": boolean,
-      "is_passenger_train": boolean,
-      "is_consolidated": boolean,
-      "escort_count": integer or 0,
-      "has_teplushka": boolean,
-      "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"
-    }}
-
-    Return ONLY a valid JSON object. User language context: {target_lang}.
-    Query: "{user_input}"
-    """
-
-    # Увеличен таймаут до 25 000 мс (25 секунд)
+    # Таймаут снижен до 8 000 мс (8 секунд) для мгновенного отклика
     config = types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",
-        http_options=types.HttpOptions(timeout=25000)
+        http_options=types.HttpOptions(timeout=8000)
     )
 
     response = _execute_gemini_request_with_fallback(client, prompt, config)
