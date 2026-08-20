@@ -51,9 +51,9 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 
 
 # ==============================================================================
-# === [НАЧАЛО БЛОКА: UTILS-02] Поиск ESR и километров по Distances.txt ===
-# Описание: Авто-подстановка ESR по названиям станций (resolve_esr_by_station_name),
-# матрица колонок (BORDER_COLUMN_MAP) и точный поиск плеча (get_distance_by_esr).
+# === [НАЧАЛО БЛОКА: UTILS-02] Поиск ESR и километров по Distances.txt (с кешированием) ===
+# Описание: Авто-подстановка ESR, матрица колонок BORDER_COLUMN_MAP и мгновенный
+# поиск расстояний с однократной загрузкой файла Distances.txt в память.
 # ==============================================================================
 BORDER_STATION_ESR_OVERRIDE = {
     "boyuk kesik": "558701",   # Böyük Kəsik (eksport) -> 680 км
@@ -66,10 +66,38 @@ BORDER_STATION_ESR_OVERRIDE = {
     "алят": "548502"          # Алят RU
 }
 
+# --- ГЛОБАЛЬНЫЙ КЕШ ДЛЯ DISTANCES.TXT ---
+_DISTANCES_CACHE = None
+
+def _load_distances_cache() -> list:
+    global _DISTANCES_CACHE
+    if _DISTANCES_CACHE is not None:
+        return _DISTANCES_CACHE
+
+    _DISTANCES_CACHE = []
+    possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
+    dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
+
+    if not dist_file:
+        return _DISTANCES_CACHE
+
+    try:
+        with open(dist_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if "|" not in line or ":---" in line or "Stansiyanın" in line:
+                    continue
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) >= 3:
+                    _DISTANCES_CACHE.append(parts)
+    except Exception as e:
+        print(f"Error loading Distances.txt into cache: {e}")
+
+    return _DISTANCES_CACHE
+
 
 def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "") -> str:
     """
-    Сканирует Distances.txt и возвращает точный 6-значный ЕСР по названию станции.
+    Сканирует кеш Distances.txt и возвращает точный 6-значный ЕСР по названию станции.
     Для пограничных станций приоритет отдаётся экспортным кодам.
     """
     if not station_name:
@@ -82,30 +110,14 @@ def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "") -> 
         if b_name in clean_norm or clean_norm in b_name:
             return b_esr
 
-    possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
-    dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
+    cache = _load_distances_cache()
+    for parts in cache:
+        file_st_name = parts[1].replace("*", "").strip().lower()
+        file_st_name = file_st_name.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
+        file_esr = re.sub(r'\D', '', parts[2])
 
-    if not dist_file:
-        return ""
-
-    try:
-        with open(dist_file, "r", encoding="utf-8") as f:
-            for line in f:
-                if "|" not in line or ":---" in line or "Stansiyanın" in line:
-                    continue
-
-                parts = [p.strip() for p in line.split("|")]
-                if len(parts) < 3:
-                    continue
-
-                file_st_name = parts[1].replace("*", "").strip().lower()
-                file_st_name = file_st_name.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
-                file_esr = re.sub(r'\D', '', parts[2])
-
-                if clean_norm and file_st_name and (clean_norm in file_st_name or file_st_name in clean_norm):
-                    return file_esr
-    except Exception as e:
-        print(f"Error resolving ESR: {e}")
+        if clean_norm and file_st_name and (clean_norm in file_st_name or file_st_name in clean_norm):
+            return file_esr
 
     return ""
 
@@ -121,7 +133,7 @@ BORDER_COLUMN_MAP = {
 
 
 def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
-    """Точный поиск километража по таблице Distances.txt."""
+    """Точный поиск километража по закешированной таблице Distances.txt."""
     if not esr_from or not esr_to:
         return None
 
@@ -144,31 +156,17 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
     if col_idx is None:
         col_idx = 3
 
-    possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
-    dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
+    cache = _load_distances_cache()
+    for parts in cache:
+        if len(parts) <= col_idx:
+            continue
 
-    if not dist_file:
-        return None
+        row_esr_code = re.sub(r'\D', '', parts[2])
 
-    try:
-        with open(dist_file, "r", encoding="utf-8") as f:
-            for line in f:
-                if "|" not in line or ":---" in line or "Stansiyanın" in line:
-                    continue
-
-                parts = [p.strip() for p in line.split("|")]
-                if len(parts) <= col_idx:
-                    continue
-
-                row_esr_code = re.sub(r'\D', '', parts[2])
-
-                if row_esr_code and (row_esr_code in target_row_esr or target_row_esr in row_esr_code):
-                    val_str = re.sub(r'\D', '', parts[col_idx])
-                    if val_str and val_str.isdigit():
-                        return int(val_str)
-
-    except Exception as e:
-        print(f"Error reading Distances.txt: {e}")
+        if row_esr_code and (row_esr_code in target_row_esr or target_row_esr in row_esr_code):
+            val_str = re.sub(r'\D', '', parts[col_idx])
+            if val_str and val_str.isdigit():
+                return int(val_str)
 
     return None
 
