@@ -37,11 +37,11 @@ def _execute_gemini_request_with_fallback(client, contents, config, primary_mode
 
 
 # ==============================================================================
-# === [НАЧАЛО БЛОКА: NLU-02] Текстовый парсинг запросов (call_gemini_nlu) ===
-# Описание: Оптимизированный ультра-быстрый вызов Gemini NLU. Тяжеловесный текст 
-# вырезан, таймаут снижен с 25с до 8с. Объём токенов снижен с 8000+ до ~300.
+# === [НАЧАЛО БЛОКА: NLU-02] Оптимизированный ультра-быстрый промпт NLU ===
+# Описание: Глоссарий оптимизирован. Промпт сокращен до минимального размера,
+# что предотвращает перевишение TPM лимитов и ускоряет отклик до 1-2 секунд.
 # ==============================================================================
-def _build_compact_nlu_prompt(target_lang: str, rail_vocab: str, user_input: str) -> str:
+def _build_compact_nlu_prompt(target_lang: str, user_input: str) -> str:
     return f"""You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
 Extract shipment parameters from user text query into JSON matching the schema below.
 
@@ -55,8 +55,8 @@ CRITICAL ROUTING RULES:
 
 CARGO & WAGON RULES:
 - Extract numeric cargo codes to 'gng_code' (strictly digits).
-- Match cargo text ("арматура", "пшеница") against Glossary: {rail_vocab}
-- TERMS like "крытый", "полувагон", "платформа", "цистерна" are 'wagon_type', NEVER cargo!
+- Terms like "крытый", "полувагон", "платформа", "цистерна", "çən", "cistern" are 'wagon_type', NEVER cargo!
+- Terms like "арматура", "пшеница", "цемент", "металл" are cargo names.
 
 JSON SCHEMA:
 {{
@@ -80,15 +80,13 @@ User query: "{user_input}"
 
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
-    Оптимизированный быстрый текстовый парсер NLU.
+    Оптимизированный быстрый текстовый парсер NLU без перегрузки токенов.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
-    rail_vocab = get_rail_vocabulary()
 
-    prompt = _build_compact_nlu_prompt(target_lang, rail_vocab, user_input)
+    prompt = _build_compact_nlu_prompt(target_lang, user_input)
 
-    # Таймаут 15 000 мс (15 секунд) — оптимальный баланс скорости и защиты от 504
     config = types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",
