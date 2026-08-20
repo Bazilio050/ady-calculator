@@ -18,7 +18,7 @@ BORDER_ESR_CODES = {
     "550004", "550108", "550803",
     # Шарур
     "550502", "550409",
-    # Алят (Паром / Бакинский Порт / Ələt yeni)
+    # Алят (Паром / Бакинский Порт / Ələt yeni / Ələt eksport)
     "549204", "553002", "548803", "547302", "547406", "547209", "548502", "548703"
 }
 
@@ -56,14 +56,14 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 # поиск расстояний с однократной загрузкой файла Distances.txt в память.
 # ==============================================================================
 BORDER_STATION_ESR_OVERRIDE = {
-    "boyuk kesik": "558701",   # Böyük Kəsik (eksport) -> 680 км
-    "yalama": "547508",       # Yalama (eksport) -> 680 км
-    "astara": "554109",       # Astara (eksport)
-    "culfa": "550004",        # Culfa (eksport)
-    "serur": "550409",        # Şərur (eksport)
-    "alet": "548502",         # Ələt (parom/eksp) -> 429 км
-    "elet": "548502",         # Ələt транслит
-    "алят": "548502"          # Алят RU
+    "boyuk kesik": "558701",   # Böyük Kəsik (eksport)
+    "yalama": "547508",        # Yalama (eksport)
+    "astara": "554109",        # Astara (eksport)
+    "culfa": "550004",         # Culfa (eksport)
+    "serur": "550409",         # Şərur (eksport)
+    "alet": "548502",          # Ələt базовый
+    "elet": "548502",          # Ələt транслит
+    "алят": "548502"           # Алят RU
 }
 
 # --- ГЛОБАЛЬНЫЙ КЕШ ДЛЯ DISTANCES.TXT ---
@@ -133,7 +133,7 @@ BORDER_COLUMN_MAP = {
 
 
 def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
-    """Точный поиск километража по закешированной таблице Distances.txt."""
+    """Точный поиск километража по закешированной таблице Distances.txt (без скрытых дефолтов)."""
     if not esr_from or not esr_to:
         return None
 
@@ -153,8 +153,9 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
         col_idx = BORDER_COLUMN_MAP.get(c_from)
         target_row_esr = c_to
 
+    # Убрана заглушка col_idx = 3: если колонка стыка не найдена в карте — возвращаем None
     if col_idx is None:
-        col_idx = 3
+        return None
 
     cache = _load_distances_cache()
     for parts in cache:
