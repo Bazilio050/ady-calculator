@@ -50,50 +50,36 @@ def _execute_gemini_request_with_fallback(
 
 
 # ==============================================================================
-# === [НАЧАЛО БЛОКА: NLU-02] Оптимизированный ультра-быстрый промпт NLU ===
-# Описание: Глоссарий оптимизирован. Промпт сокращен до минимального размера,
-# что предотвращает перевишение TPM лимитов и ускоряет отклик до 1-2 секунд.
+# === [НАЧАЛО БЛОКА: NLU-02] Компактный NLU-промпт (Порты + Метраж) ===
+# Описание: Минимальный объем токенов. Гарантированно распознает порты 
+# (Курык, Актау, Туркменбаши/ТРК) и длину вагона в метрах.
 # ==============================================================================
 def _build_compact_nlu_prompt(target_lang: str, user_input: str) -> str:
-    return f"""You are an expert railway freight NLU assistant for Azerbaijan Railways (ADY).
-Extract shipment parameters from user text query into JSON matching the schema below.
+    return f"""Ты — NLU-парсер ж/д запросов для Азербайджана (ADY).
+Извлеки из текста параметры в JSON:
+1. origin_name: Первая станция или порт отправления (например, "Ялама", "Алят-порт", "Курык", "ТРК").
+2. dest_name: Вторая станция или порт назначения (например, "Беюк Кясик", "Актау", "Туркменбаши", "Курык").
+3. gng_code: Код ГНГ (строго цифры, напр. "4407").
+4. weight_tons: Вес груза в тоннах (число).
+5. wagon_type: Тип вагона ("universal", "tank", "ref", "thermos", "transporter", "autocarrier").
+6. park_type: "SPS" или "MPS".
+7. is_empty: true если вагон порожний, иначе false.
+8. wagon_length_m: Длина вагона/платформы в метрах (число, напр. 14.5, 19.0, 24.0 или null).
 
-CRITICAL ROUTING RULES:
-1. FIRST station/port mentioned MUST BE 'origin_name', SECOND MUST BE 'dest_name'. NEVER swap them!
-2. Station ESR mapping: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
-3. ALAT (ƏLƏT) DISAMBIGUATION:
-   - "Alat-yeni" / "Ələt-yeni" / "новый" -> ESR "548703"
-   - "Alat-eksp" / "порт" / "паром" / "bərə" / "Aktau" / "Kurik" / "TRK" -> Port ESR ("549204"/"553002"/"548803") & 'explicit_mode': "transit"
-   - Plain "Alat" / "Ələt" / "Алят" -> ESR "548502" (DO NOT set 'transit')
+ПОДСКАЗКА ПО ПОРТАМ:
+- "ТРК", "TRK", "Туркменбаши" -> порт Туркменбаши.
+- "Курык", "Kuryk", "Quruq" -> порт Курык.
+- "Актау", "Aktau" -> порт Актау.
 
-CARGO & WAGON RULES:
-- Extract numeric cargo codes to 'gng_code' (strictly digits).
-- Terms like "крытый", "полувагон", "платформа", "цистерна", "çən", "cistern" are 'wagon_type', NEVER cargo!
-- Terms like "арматура", "пшеница", "цемент", "металл" are cargo names.
-
-JSON SCHEMA:
-{{
-  "origin_esr": "6-digit string or null", "origin_name": "Station name in {target_lang}",
-  "dest_esr": "6-digit string or null", "dest_name": "Station name in {target_lang}",
-  "gng_code": "Numeric GNG string only or null", "gng_name": "Cargo name in {target_lang}",
-  "weight_tons": float or null,
-  "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
-  "park_type": "SPS / MPS", "ref_section_cargo_wagons": integer or null,
-  "explicit_mode": "import / export / transit or null",
-  "is_empty": boolean, "axles_count": integer or null,
-  "is_own_axles": boolean, "is_in_repair": boolean, "is_passenger_train": boolean,
-  "is_consolidated": boolean, "escort_count": integer or 0,
-  "has_teplushka": boolean, "teplushka_type": "freight_sps / freight_mps / passenger_sps / passenger_mps or null"
-}}
-
-Return ONLY valid JSON. Target language: {target_lang}.
-User query: "{user_input}"
+ПРАВИЛО: Выводи ТОЛЬКО чистый JSON. Никаких приветствий и пояснений.
+Язык названий: {target_lang}.
+Запрос: "{user_input}"
 """
 
 
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
-    Оптимизированный быстрый текстовый парсер NLU без перегрузки токенов.
+    Легкий и быстрый парсер NLU на базе gemini-3.5-flash-lite.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -128,10 +114,8 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     if "gng_code" in result and result["gng_code"]:
         result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
 
-    wagon_words = ["qapalı vaqon", "крытый вагон", "крытый", "qapalı", "полувагон", "платформа"]
-    if "gng_name" in result and result["gng_name"]:
-        if any(w in str(result["gng_name"]).lower() for w in wagon_words):
-            result["gng_name"] = "Buğda" if result.get("gng_code") == "1001" else ""
+    if "wagon_length_m" not in result or result["wagon_length_m"] is None:
+        result["wagon_length_m"] = None
 
     if "escort_count" not in result or result["escort_count"] is None:
         result["escort_count"] = 0
