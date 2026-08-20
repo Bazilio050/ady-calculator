@@ -7,8 +7,7 @@ from rail_glossary import get_rail_vocabulary
 
 # ==============================================================================
 # === [НАЧАЛО БЛОКА: NLU-01] Защита от сбоев и перегрузок API (Fallback) ===
-# Описание: Отправляет запрос к gemini-3.5-flash-lite. В случае перегрузок (429, 
-# 503, 504, 499) делает паузу 2.5 сек и повторяет запрос к gemini-3.6-flash.
+# Описание: Отправляет запрос к gemini-3.6-flash. В случае перегрузок делает паузу.
 # ==============================================================================
 def _execute_gemini_request_with_fallback(
     client, 
@@ -17,10 +16,6 @@ def _execute_gemini_request_with_fallback(
     primary_model="gemini-3.6-flash", 
     fallback_model="gemini-3.6-flash"
 ):
-    """
-    По умолчанию отправляет запрос к gemini-3.5-flash-lite.
-    При возникновении ошибок перегрузки или таймаутов автоматически переключается на fallback_model.
-    """
     try:
         return client.models.generate_content(
             model=primary_model,
@@ -43,28 +38,27 @@ def _execute_gemini_request_with_fallback(
                     config=config
                 )
             except Exception as retry_err:
-                logger.error(f"Повторный запрос Gemini завершился ошибкой: {retry_err}")
                 raise retry_err
         raise e
 # === [КОНЕЦ БЛОКА: NLU-01] ====================================================
 
 
 # ==============================================================================
-# === [НАЧАЛО БЛОКА: NLU-02] Компактный NLU-промпт (Порты + Метраж) ===
-# Описание: Минимальный объем токенов. Гарантированно распознает порты 
-# (Курык, Актау, Туркменбаши/ТРК) и длину вагона в метрах.
+# === [НАЧАЛО БЛОКА: NLU-02] Компактный NLU-промпт (Порты + Метраж + Режим) ===
+# Описание: Распознает станции, порты, метраж и явное указание режима (explicit_mode).
 # ==============================================================================
 def _build_compact_nlu_prompt(target_lang: str, user_input: str) -> str:
     return f"""Ты — NLU-парсер ж/д запросов для Азербайджана (ADY).
 Извлеки из текста параметры в JSON:
-1. origin_name: Первая станция или порт отправления (например, "Ялама", "Алят-порт", "Курык", "ТРК").
-2. dest_name: Вторая станция или порт назначения (например, "Беюк Кясик", "Актау", "Туркменбаши", "Курык").
-3. gng_code: Код ГНГ (строго цифры, напр. "4407").
+1. origin_name: Первая станция или порт отправления (например, "Ялама", "Беюк Кясик", "Алят-порт", "Курык").
+2. dest_name: Вторая станция или порт назначения (например, "Беюк Кясик", "Астара", "Актау", "Туркменбаши").
+3. gng_code: Код ГНГ (строго цифры, напр. "4407", "7201").
 4. weight_tons: Вес груза в тоннах (число).
 5. wagon_type: Тип вагона ("universal", "tank", "ref", "thermos", "transporter", "autocarrier").
 6. park_type: "SPS" или "MPS".
 7. is_empty: true если вагон порожний, иначе false.
 8. wagon_length_m: Длина вагона/платформы в метрах (число, напр. 14.5, 19.0, 24.0 или null).
+9. explicit_mode: "export", "import", "transit" или null. Явно заполнять если в тексте есть слова "экспорт"/"ixrac", "импорт"/"idxal", "транзит"/"tranzit".
 
 ПОДСКАЗКА ПО ПОРТАМ:
 - "ТРК", "TRK", "Туркменбаши" -> порт Туркменбаши.
@@ -78,9 +72,6 @@ def _build_compact_nlu_prompt(target_lang: str, user_input: str) -> str:
 
 
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
-    """
-    Легкий и быстрый парсер NLU на базе gemini-3.6-flash.
-    """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
 
@@ -114,6 +105,17 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     if "gng_code" in result and result["gng_code"]:
         result["gng_code"] = re.sub(r'\D', '', str(result["gng_code"]))
 
+    if "explicit_mode" not in result or not result["explicit_mode"]:
+        result["explicit_mode"] = None
+    else:
+        mode_clean = str(result["explicit_mode"]).lower()
+        if any(k in mode_clean for k in ["export", "ixrac", "экспорт"]):
+            result["explicit_mode"] = "export"
+        elif any(k in mode_clean for k in ["import", "idxal", "импорт"]):
+            result["explicit_mode"] = "import"
+        elif any(k in mode_clean for k in ["transit", "tranzit", "транзит"]):
+            result["explicit_mode"] = "transit"
+
     if "wagon_length_m" not in result or result["wagon_length_m"] is None:
         result["wagon_length_m"] = None
 
@@ -134,13 +136,9 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
 
 # ==============================================================================
 # === [НАЧАЛО БЛОКА: NLU-03] Голосовой парсинг (call_gemini_audio_nlu) ===
-# Описание: Принимает байты голосового сообщения, транскрибирует речь в текст 
-# (transcript) и одновременно извлекает все параметры перевозки в JSON.
+# Описание: Выполняет голосовой парсинг без привязки к хардкод-кодам ЕСР.
 # ==============================================================================
 def call_gemini_audio_nlu(client, audio_bytes: bytes, mime_type: str = "audio/wav", lang: str = "AZ") -> dict:
-    """
-    Принимает байты аудиозаписи и выполняет быстрый голосовой NLU-парсинг.
-    """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
     rail_vocab = get_rail_vocabulary()
@@ -154,24 +152,26 @@ Tasks:
 
 ROUTING & CARGO RULES:
 - FIRST station mentioned = 'origin_name', SECOND = 'dest_name'.
-- Station ESR: Yalama=545006, Abşeron=548004, Biləcəri=546808, Böyük Kəsik=558701, Astara=554109.
-- ALAT (ƏLƏT): "yeni" -> 548703; "eksp/порт/паром/Aktau/Kurik/TRK" -> Port ESR & 'explicit_mode': "transit"; Plain "Alat" -> 548502.
+- ALAT (ƏLƏT): "yeni" -> 'origin_name': "Ələt yeni"; "eksp/порт/паром/Aktau/Kurik/TRK" -> 'explicit_mode': "transit".
 - Match cargo terms against Vocabulary: {rail_vocab}
 
 EXPECTED JSON SCHEMA:
 {{
   "transcript": "Exact transcribed text",
-  "origin_esr": "6-digit string or null", "origin_name": "Station name in {target_lang}",
-  "dest_esr": "6-digit string or null", "dest_name": "Station name in {target_lang}",
-  "gng_code": "Numeric GNG string or null", "gng_name": "Cargo name in {target_lang}",
+  "origin_name": "Station name in {target_lang}",
+  "dest_name": "Station name in {target_lang}",
+  "gng_code": "Numeric GNG string or null",
+  "gng_name": "Cargo name in {target_lang}",
   "weight_tons": float or null,
   "wagon_type": "universal / tank / ref / thermos / autocarrier / transporter",
-  "park_type": "SPS / MPS", "explicit_mode": "import / export / transit or null",
-  "is_empty": boolean, "axles_count": integer or null, "is_own_axles": boolean
+  "park_type": "SPS / MPS",
+  "explicit_mode": "import / export / transit or null",
+  "is_empty": boolean,
+  "axles_count": integer or null,
+  "is_own_axles": boolean
 }}
 Return ONLY valid JSON. Target language: {target_lang}."""
 
-    # Таймаут 20 000 мс (20 секунд) с запасом для обработки аудиофайла
     config = types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",
@@ -201,22 +201,16 @@ Return ONLY valid JSON. Target language: {target_lang}."""
     return result
 # === [КОНЕЦ БЛОКА: NLU-03] ====================================================
 
+
 # ==============================================================================
 # === [НАЧАЛО БЛОКА: NLU-04] Валидация входных параметров NLU ===
-# Описание: Проверяет полноту данных из NLU перед расчётом.
-# Принимает nlu_data и выбранный язык, возвращает список недостающих полей.
 # ==============================================================================
 def validate_nlu_input(nlu_data: dict, lang: str = "AZ") -> list:
-    """
-    Проверяет корректность парсинга NLU.
-    Возвращает список отсутствующих обязательных параметров (или пустой список).
-    """
     missing = []
     
     if not isinstance(nlu_data, dict):
         return ["Некорректный формат данных от NLU"]
 
-    # Проверка ключевых станций маршрута
     if not nlu_data.get("origin_name") and not nlu_data.get("origin_esr"):
         missing.append("Станция отправления (Origin)")
     if not nlu_data.get("dest_name") and not nlu_data.get("dest_esr"):
