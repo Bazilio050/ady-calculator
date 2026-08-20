@@ -14,7 +14,7 @@ def _execute_gemini_request_with_fallback(
     client, 
     contents, 
     config, 
-    primary_model="gemini-3.5-flash-lite", 
+    primary_model="gemini-3.6-flash", 
     fallback_model="gemini-3.6-flash"
 ):
     """
@@ -79,7 +79,7 @@ def _build_compact_nlu_prompt(target_lang: str, user_input: str) -> str:
 
 def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     """
-    Легкий и быстрый парсер NLU на базе gemini-3.5-flash-lite.
+    Легкий и быстрый парсер NLU на базе gemini-3.6-flash.
     """
     lang_map = {"AZ": "Azerbaijani", "RU": "Russian", "EN": "English"}
     target_lang = lang_map.get(str(lang).upper(), "Azerbaijani")
@@ -89,7 +89,7 @@ def call_gemini_nlu(client, user_input: str, lang: str = "AZ") -> dict:
     config = types.GenerateContentConfig(
         temperature=0.0,
         response_mime_type="application/json",
-        http_options=types.HttpOptions(timeout=15000)
+        http_options=types.HttpOptions(timeout=30000)
     )
 
     response = _execute_gemini_request_with_fallback(client, prompt, config)
