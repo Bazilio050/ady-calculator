@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 
 # ==============================================================================
-# === [НАЧАЛО БЛОКА: UTILS-01] Реестр пограничных станций и суффиксы (-екsp) ===
+# === [НАЧАЛО БЛОКА: UTILS-01] Реестр пограничных станций и суффиксы (-eksp) ===
 # Описание: Сборник 6-значных ESR-кодов погранпереходов (Ялама, Беюк Кясик, Астара, 
 # Джульфа, Шарур, Алят) и функции проверки/добавления суффиксов (-эксп./-eksp.).
 # ==============================================================================
@@ -20,6 +20,19 @@ BORDER_ESR_CODES = {
     "550502", "550409",
     # Алят (Паром / Бакинский Порт / Ələt yeni / Ələt eksport)
     "549204", "553002", "548803", "547302", "547406", "547209", "548502", "548703"
+}
+
+# Справочник стыков: пара (внутренний код / local, код стыка-эксп / border)
+BORDER_STATIONS_MAP = {
+    "yalama":       {"local": "545006", "border": "547508"},
+    "boyuk kesik":  {"local": "558631", "border": "558701"},
+    "boyuk-kesik":  {"local": "558631", "border": "558701"},
+    "astara":       {"local": "554109", "border": "554503"},
+    "culfa":        {"local": "550004", "border": "550108"},
+    "serur":        {"local": "550502", "border": "550409"},
+    "alet":         {"local": "548502", "border": "553002"},
+    "elet":         {"local": "548502", "border": "553002"},
+    "алят":         {"local": "548502", "border": "553002"}
 }
 
 
@@ -47,6 +60,44 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
             st_name = f"{st_name}{suffix}"
 
     return f"{st_name} ({clean_esr})" if clean_esr else st_name
+
+
+def get_border_esr(station_name: str, position: str = "origin", shipment_mode: str = "transit") -> str:
+    """
+    Возвращает точный ЕСР код (стык или внутренний) с учетом режима и позиции станции:
+    - position: 'origin' (старт) или 'dest' (финиш)
+    - shipment_mode: 'transit', 'import', 'export', 'local'
+    """
+    if not station_name:
+        return None
+
+    clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(station_name), flags=re.IGNORECASE).strip().lower()
+    clean_norm = clean.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g').replace('ю', 'yu').replace('я', 'ya')
+
+    matched_key = None
+    for key in BORDER_STATIONS_MAP:
+        if key in clean_norm or clean_norm in key:
+            matched_key = key
+            break
+
+    if not matched_key:
+        return None
+
+    mode = str(shipment_mode or "transit").lower()
+
+    # 1. ТРАНЗИТ -> Всегда берутся стыки с обеих сторон
+    if mode == "transit":
+        return BORDER_STATIONS_MAP[matched_key]["border"]
+
+    # 2. ИМПОРТ -> Первой станции (вход) даём стык, второй — внутренний код
+    elif mode in ["import", "idxal", "импорт"]:
+        return BORDER_STATIONS_MAP[matched_key]["border"] if position == "origin" else BORDER_STATIONS_MAP[matched_key]["local"]
+
+    # 3. ЭКСПОРТ -> Первой станции даём внутренний код, второй (выход) — стык
+    elif mode in ["export", "ixrac", "экспорт"]:
+        return BORDER_STATIONS_MAP[matched_key]["local"] if position == "origin" else BORDER_STATIONS_MAP[matched_key]["border"]
+
+    return BORDER_STATIONS_MAP[matched_key]["local"]
 # === [КОНЕЦ БЛОКА: UTILS-01] ==================================================
 
 
@@ -55,16 +106,6 @@ def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "
 # Описание: Авто-подстановка ESR, матрица колонок BORDER_COLUMN_MAP и мгновенный
 # поиск расстояний с однократной загрузкой файла Distances.txt в память.
 # ==============================================================================
-BORDER_STATION_ESR_OVERRIDE = {
-    "boyuk kesik": "558701",   # Böyük Kəsik (eksport)
-    "yalama": "547508",        # Yalama (eksport)
-    "astara": "554109",        # Astara (eksport)
-    "culfa": "550004",         # Culfa (eksport)
-    "serur": "550409",         # Şərur (eksport)
-    "alet": "548502",          # Ələt базовый
-    "elet": "548502",          # Ələt транслит
-    "алят": "548502"           # Алят RU
-}
 
 # --- ГЛОБАЛЬНЫЙ КЕШ ДЛЯ DISTANCES.TXT ---
 _DISTANCES_CACHE = None
@@ -95,20 +136,21 @@ def _load_distances_cache() -> list:
     return _DISTANCES_CACHE
 
 
-def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "") -> str:
+def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "", position: str = "origin", shipment_mode: str = "transit") -> str:
     """
     Сканирует кеш Distances.txt и возвращает точный 6-значный ЕСР по названию станции.
-    Для пограничных станций приоритет отдаётся экспортным кодам.
+    Для пограничных станций ЕСР подбирается строго по режиму перевозки через get_border_esr.
     """
     if not station_name:
         return ""
 
+    # Проверка пограничных станций по направлению (Импорт / Экспорт / Транзит)
+    border_esr = get_border_esr(station_name, position=position, shipment_mode=shipment_mode)
+    if border_esr:
+        return border_esr
+
     clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(station_name), flags=re.IGNORECASE).strip().lower()
     clean_norm = clean.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
-
-    for b_name, b_esr in BORDER_STATION_ESR_OVERRIDE.items():
-        if b_name in clean_norm or clean_norm in b_name:
-            return b_esr
 
     cache = _load_distances_cache()
     for parts in cache:
@@ -153,7 +195,6 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
         col_idx = BORDER_COLUMN_MAP.get(c_from)
         target_row_esr = c_to
 
-    # Убрана заглушка col_idx = 3: если колонка стыка не найдена в карте — возвращаем None
     if col_idx is None:
         return None
 
