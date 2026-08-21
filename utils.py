@@ -136,6 +136,54 @@ def _load_distances_cache() -> list:
     return _DISTANCES_CACHE
 
 
+def resolve_complex_station_code(raw_input: str) -> str:
+    """
+    Точное сопоставление сложных станций ADY на основе корней и уникальных маркеров.
+    Не затрагивает существующую пограничную логику Алята.
+    """
+    text = str(raw_input or "").lower()
+
+    # 1. Группа Тагиев (Z.Tağıyev 546302 vs Z.Tağıyev çeşidləmə 546901)
+    if any(r in text for r in ["тагиев", "tagiyev", "тагив"]):
+        if any(m in text for m in ["сорт", "sort", "чешид", "cesid", "ceşid"]):
+            return "546901"  # Z.Tağıyev çeşidləmə
+        return "546302"      # Z.Tağıyev (Основная)
+
+    # 2. Группа Баку Торговый Порт (547302 vs 547406 vs 547209)
+    if any(r in text for r in ["баку порт", "baki liman", "bakı liman", "торговый порт", "ticarət liman"]):
+        if any(m in text for m in ["перевал", "ашир", "aşır", "ашыр"]):
+            return "547209"  # Bakı ticarət limanı (aşır)
+        if any(m in text for m in ["эксп", "exp", "ixrac", "экспорт"]):
+            return "547406"  # Bakı ticarət limanı (eks)
+        return "547302"      # Bakı ticarət liman (Основная)
+
+    # 3. Группа Баку грузовой (547105 vs 547603)
+    if any(r in text for r in ["баку юк", "bakı yük", "баку груз"]):
+        if any(m in text for m in ["терминал", "terminal"]):
+            return "547603"  # Bakı yük terminal
+        return "547105"      # Bakı yük (Основная)
+
+    # 4. Группа Сангачал (548305 vs 548606)
+    if "sanqacal" in text or "сангачал" in text or "sanqaçal" in text:
+        if any(m in text for m in ["терминал", "terminal", "ашир", "aşır", "перевал"]):
+            return "548606"  # Sanqaçal ter.(aşırma)
+        return "548305"      # Sanqaçal (Основная)
+
+    # 5. Группа Гарадаг (548201 vs 549702)
+    if "qaradag" in text or "гарадаг" in text or "qaradağ" in text:
+        if any(m in text for m in ["терминал", "terminal"]):
+            return "549702"  # Qaradağ terminal
+        return "548201"      # Qaradağ (Основная)
+
+    # 6. Группа Мингечевир (555703 vs 555807)
+    if "mingecevir" in text or "мингечевир" in text or "mingəçevir" in text:
+        if any(m in text for m in ["город", "şəhər", "шехер"]):
+            return "555807"  # Mingəçevir şəhər
+        return "555703"      # Mingəçevir (Основная)
+
+    return None
+
+
 def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "", position: str = "origin", shipment_mode: str = "transit") -> str:
     """
     Сканирует кеш Distances.txt и возвращает точный 6-значный ЕСР по названию станции.
@@ -144,11 +192,17 @@ def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "", pos
     if not station_name:
         return ""
 
-    # Проверка пограничных станций по направлению (Импорт / Экспорт / Транзит)
+    # 1. Проверка пограничных станций по направлению (Импорт / Экспорт / Транзит) - Алят, Ялама и др.
     border_esr = get_border_esr(station_name, position=position, shipment_mode=shipment_mode)
     if border_esr:
         return border_esr
 
+    # 2. Детектор сложных внутренних станций (Тагиев, Порт, Сангачал и др.)
+    complex_esr = resolve_complex_station_code(f"{station_name} {user_input_raw}")
+    if complex_esr:
+        return complex_esr
+
+    # 3. Сканирование Distances.txt по обычному названию
     clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(station_name), flags=re.IGNORECASE).strip().lower()
     clean_norm = clean.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
 
