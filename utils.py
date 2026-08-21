@@ -143,8 +143,8 @@ def resolve_complex_station_code(raw_input: str) -> str:
     """
     text = str(raw_input or "").lower()
 
-    # 1. Группа Тагиев (Z.Tağıyev 546302 vs Z.Tağıyev çeşidləmə 546901)
-    if any(r in text for r in ["тагиев", "tagiyev", "тагив"]):
+# 1. Группа Тагиев (Z.Tağıyev 546302 vs Z.Tağıyev çeşidləmə 546901)
+    if any(r in text for r in ["тагиев", "tagiyev", "тагив", "h.z.", "г.тагиев"]):
         if any(m in text for m in ["сорт", "sort", "чешид", "cesid", "ceşid"]):
             return "546901"  # Z.Tağıyev çeşidləmə
         return "546302"      # Z.Tağıyev (Основная)
