@@ -167,10 +167,10 @@ def apply_special_exceptions(
     
     if not origin_esr:
         st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
-        origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
+        origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw, position="origin", shipment_mode=shipment_type_code) or str(nlu_data.get("origin_esr") or "")
     if not dest_esr:
         st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
-        dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
+        dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw, position="dest", shipment_mode=shipment_type_code) or str(nlu_data.get("dest_esr") or "")
 
     input_lower = user_input_raw.lower()
     is_empty = nlu_data.get("is_empty", False) or any(k in input_lower for k in ["boş", "порожн", "empty"])
@@ -387,9 +387,9 @@ def apply_special_exceptions(
 
 # ==============================================================================
 # === [НАЧАЛО БЛОКА: ENGINE-05] Главный расчётный двигатель (process_full_calculation) ===
-# Описание: Главная функция калькулятора. Выполняет точечный перехват станций Алят 
-# без перетирания маршрута, находит расстояния по Distances.txt, выбирает тарифную 
-# таблицу, рассчитывает фрахт парома ASCO, охрану и собирает итоговый JSON-отчёт.
+# Описание: Главная функция калькулятора. Определяет режим, запрашивает ЕСР-коды 
+# с учётом направления, находит расстояния, рассчитывает фрахт парома ASCO, охрану 
+# и собирает итоговый JSON-отчёт без навязывания лишних суффиксов.
 # ==============================================================================
 def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str = "AZ", year: str = "2026", ui_t: dict = None, *args, **kwargs) -> dict:
     if ui_t is None:
@@ -407,15 +407,29 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     input_lower = user_input_raw.lower()
     lang_upper = str(lang or "AZ").upper()
 
-    # --- ФЛАГИ ПАРОМА И ИМПОРТА/ЭКСПОРТА ---
+    # --- 1. ОПРЕДЕЛЕНИЕ РЕЖИМА ПЕРЕВОЗКИ (ИМПОРТ / ЭКСПОРТ / ТРАНЗИТ / ЛОКАЛЬНАЯ) ---
     has_import_export_kw = any(kw in input_lower for kw in ["импорт", "экспорт", "idxal", "ixrac"]) or nlu_data.get("explicit_mode") in ["import", "export"]
     has_ferry_kw = any(k in input_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
     
+    explicit_mode = nlu_data.get("explicit_mode")
+    if explicit_mode in ["import", "export", "transit"]:
+        shipment_type_code = explicit_mode
+    else:
+        if any(k in input_lower for k in ["экспорт", "ixrac", "export"]):
+            shipment_type_code = "export"
+        elif any(k in input_lower for k in ["импорт", "idxal", "import"]):
+            shipment_type_code = "import"
+        elif any(k in input_lower for k in ["транзит", "tranzit", "transit"]):
+            shipment_type_code = "transit"
+        else:
+            shipment_type_code = "transit"  # Дефолт при двух стыках
+
+    # --- 2. ОПРЕДЕЛЕНИЕ ЕСР-КОДОВ С УЧЕТОМ ПОЗИЦИИ И РЕЖИМА ---
     st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
     st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
 
-    origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw) or str(nlu_data.get("origin_esr") or "")
-    dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw) or str(nlu_data.get("dest_esr") or "")
+    origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw, position="origin", shipment_mode=shipment_type_code) or str(nlu_data.get("origin_esr") or "")
+    dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw, position="dest", shipment_mode=shipment_type_code) or str(nlu_data.get("dest_esr") or "")
 
     # --- ТОЧЕЧНЫЙ ПЕРЕХВАТ АЛЯТА ---
     is_alat_yeni = any(k in input_lower for k in ["новый", "yeni", "548703"])
@@ -441,27 +455,39 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
 
     if is_origin_alat:
         origin_esr = determine_alat_esr()
-        if is_alat_express and not nlu_data.get("explicit_mode"):
-            nlu_data["explicit_mode"] = "transit"
+        if is_alat_express and not explicit_mode:
+            shipment_type_code = "transit"
 
     if is_dest_alat:
         dest_esr = determine_alat_esr()
-        if is_alat_express and not nlu_data.get("explicit_mode"):
-            nlu_data["explicit_mode"] = "transit"
+        if is_alat_express and not explicit_mode:
+            shipment_type_code = "transit"
 
-    # --- ПЕРЕСЧЕТ РАССТОЯНИЯ СТРОГО ПО БАЗЕ DISTANCES (БЕЗ ЗАГЛУШКИ 300 КМ) ---
+    # Корректировка отображения режима для пользователя
+    if shipment_type_code == "import":
+        shipment_type_display = ui_t.get("type_import", "İdxal daşınması" if lang_upper == "AZ" else "Импортная перевозка")
+    elif shipment_type_code == "export":
+        shipment_type_display = ui_t.get("type_export", "İxrac daşınması" if lang_upper == "AZ" else "Экспортная перевозка")
+    elif shipment_type_code == "transit":
+        shipment_type_display = ui_t.get("type_transit", "Tranzit daşınması" if lang_upper == "AZ" else "Транзитная перевозка")
+    else:
+        shipment_type_display = "Daxili daşınma" if lang_upper == "AZ" else "Внутренняя перевозка"
+
+    # --- ПЕРЕСЧЕТ РАССТОЯНИЯ СТРОГО ПО БАЗЕ DISTANCES ---
     raw_dist = get_distance_by_esr(origin_esr, dest_esr)
     try:
         actual_dist_km = int(raw_dist) if raw_dist is not None else 0
     except (ValueError, TypeError):
         actual_dist_km = 0
 
-    # Если расстояние не найдено в базе — не подставляем дефолтные 300 км, а генерируем сообщение об ошибке маршрута
     if actual_dist_km <= 0:
         err_msg = "Marşrut məsafəsi tapılmadı" if lang_upper == "AZ" else ("Маршрут не найден в базе расстояний" if lang_upper == "RU" else "Route distance not found")
         return {"error": err_msg, "route_error": True}
 
-    # --- ФОРМИРОВАНИЕ ОТОБРАЖЕНИЯ ШАПКИ МАРШРУТА ---
+    # --- ФОРМИРОВАНИЕ ОТОБРАЖЕНИЯ ШАПКИ МАРШРУТА СТРОГО ПО СТЫКОВЫМ ЕСР ---
+    # Стыковые коды, требующие суффикса -eksp.
+    STATION_BORDER_ESRS = {"547508", "558701", "554503", "550108", "550409", "553002", "548803", "549204"}
+
     if dest_esr in ["553002", "548803", "549204"]:
         if "kurik" in input_lower or "курык" in input_lower:
             display_to = "Ələt-eksp-Kurik" if lang_upper == "AZ" else "Алят-эксп-Курык"
@@ -476,7 +502,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     elif dest_esr == "548502":
         display_to = "Ələt" if lang_upper == "AZ" else "Алят"
     else:
-        display_to = format_station_display_name(st_to_raw, dest_esr, lang_upper)
+        clean_name = re.sub(r'-(eksp|эксп|exp)\b', '', str(st_to_raw), flags=re.IGNORECASE).strip()
+        if dest_esr in STATION_BORDER_ESRS:
+            suffix = "-эксп." if lang_upper == "RU" else "-eksp."
+            display_to = f"{clean_name}{suffix} ({dest_esr})"
+        else:
+            display_to = f"{clean_name} ({dest_esr})"
 
     if origin_esr in ["553002", "548803", "549204"]:
         if "kurik" in input_lower or "курык" in input_lower:
@@ -492,7 +523,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     elif origin_esr == "548502":
         display_from = "Ələt" if lang_upper == "AZ" else "Алят"
     else:
-        display_from = format_station_display_name(st_from_raw, origin_esr, lang_upper)
+        clean_name = re.sub(r'-(eksp|эксп|exp)\b', '', str(st_from_raw), flags=re.IGNORECASE).strip()
+        if origin_esr in STATION_BORDER_ESRS:
+            suffix = "-эксп." if lang_upper == "RU" else "-eksp."
+            display_from = f"{clean_name}{suffix} ({origin_esr})"
+        else:
+            display_from = f"{clean_name} ({origin_esr})"
 
     route_display = f"{display_from} – {display_to}"
 
@@ -514,22 +550,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         match_plus = re.search(r'(\d+)\s*\+\s*1|1\s*\+\s*(\d+)', user_input_raw)
         if match_plus:
             ref_wagons_cnt = int(match_plus.group(1) or match_plus.group(2))
-
-    explicit_mode = nlu_data.get("explicit_mode")
-
-    if explicit_mode in ["import", "export", "transit"]:
-        shipment_type_code = explicit_mode
-        shipment_type_display = ui_t.get(f"type_{explicit_mode}", explicit_mode.capitalize())
-    else:
-        if is_border_esr(origin_esr) and is_border_esr(dest_esr):
-            shipment_type_code, shipment_type_display = "transit", ui_t.get("type_transit", "Tranzit daşınması")
-        elif is_border_esr(origin_esr):
-            shipment_type_code, shipment_type_display = "import", ui_t.get("type_import", "İdxal daşınması")
-        elif is_border_esr(dest_esr):
-            shipment_type_code, shipment_type_display = "export", ui_t.get("type_export", "İxrac daşınması")
-        else:
-            shipment_type_code = "local"
-            shipment_type_display = "Daxili daşınma" if lang_upper == "AZ" else ("Внутренняя перевозка" if lang_upper == "RU" else "Domestic shipment")
 
     tariff_dist_km = get_calculation_distance(actual_dist_km, shipment_type_code)
     dist_display = f"{actual_dist_km} km (min. {tariff_dist_km} km)" if tariff_dist_km != actual_dist_km else f"{actual_dist_km} km"
@@ -791,7 +811,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         else:
             weight_display = f"{act_w_str} t" if lang_upper != "RU" else f"{act_w_str} т"
 
-        # Без заглушки 1200.0 CHF: если тариф не возвращен сеткой
         if base_chf is None:
             err_msg = "Tarif dərəcəsi tapılmadı" if lang_upper == "AZ" else ("Тарифная ставка не найдена в сетке" if lang_upper == "RU" else "Tariff rate not found in grid")
             return {"error": err_msg, "tariff_error": True}
@@ -876,7 +895,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         )
         notes.append(guard_note_text)
 
-    # --- СТРОГИЙ РАСЧЕТ ПАРОМНОЙ ПЕРЕПРАВЫ ASCO (БЕЗ ДЕФОЛТА 14.5 М) ---
+    # --- СТРОГИЙ РАСЧЕТ ПАРОМНОЙ ПЕРЕПРАВЫ ASCO ---
     asco_ferry_dict = None
     if has_ferry_kw or nlu_data.get("is_asco_ferry"):
         w_len = nlu_data.get("wagon_length_m")
