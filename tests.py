@@ -71,7 +71,7 @@ TEST_SUITE = [
         "name": "7. Г.Тагиев -> Беюк Кясик (2705, цистерна, 60т, СПС)",
         "raw_text": "Г.Тагиев Беюк Кясик 2705 цистерна 60т СПС",
         "nlu": {
-            "route_from": "Z.Tağıyev, "route_to": "Böyük Kəsik", "cargo_gng_code": "2705", "cargo_name": "Enerjili qazlar",
+            "route_from": "Z.Tağıyev", "route_to": "Böyük Kəsik", "cargo_gng_code": "2705", "cargo_name": "Enerjili qazlar",
             "actual_weight_tons": 60.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "export"
         },
         "expected_rate": 40.84, "expected_guard": 0.00, "expected_ferry": 0.00
