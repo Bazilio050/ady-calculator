@@ -71,7 +71,7 @@ TEST_SUITE = [
         "name": "7. Г.Тагиев -> Беюк Кясик (2705, цистерна, 60т, СПС)",
         "raw_text": "Г.Тагиев Беюк Кясик 2705 цистерна 60т СПС",
         "nlu": {
-            "route_from": "H.Z. Tağıyev", "route_to": "Böyük Kəsik", "cargo_gng_code": "2705", "cargo_name": "Enerjili qazlar",
+            "route_from": "Z.Tağıyev, "route_to": "Böyük Kəsik", "cargo_gng_code": "2705", "cargo_name": "Enerjili qazlar",
             "actual_weight_tons": 60.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "export"
         },
         "expected_rate": 40.84, "expected_guard": 0.00, "expected_ferry": 0.00
@@ -80,7 +80,7 @@ TEST_SUITE = [
         "name": "8. Г.Тагиев -> Ялама (28042, цистерна, 50т, СПС)",
         "raw_text": "Г.Тагиев Ялама 28042 цистерна 50т СПС",
         "nlu": {
-            "route_from": "H.Z. Tağıyev", "route_to": "Yalama", "cargo_gng_code": "28042", "cargo_name": "Qazlar və karbohidrogenlər",
+            "route_from": "Z.Tağıyev", "route_to": "Yalama", "cargo_gng_code": "28042", "cargo_name": "Qazlar və karbohidrogenlər",
             "actual_weight_tons": 50.0, "wagon_type": "cistern", "park_type": "SPS", "explicit_mode": "export"
         },
         "expected_rate": 58.35, "expected_guard": 0.00, "expected_ferry": 0.00
