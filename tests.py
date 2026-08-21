@@ -1,6 +1,5 @@
 import sys
 import re
-from utils import load_rules_config
 from engine import process_full_calculation
 
 UI_T = {
