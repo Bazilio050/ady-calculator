@@ -123,10 +123,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         rate_per_axle = 0.30 if park_type == "SPS" else 0.35
         base_chf = rate_per_axle * axles_count * tariff_dist_km
 
-    # Проводники и Теплушки (п. 3.9)
+    # Проводники (п. 3.9 — проезд людей)
     elif escort_cnt > 0 and act_weight == 0:
-        table_num = 3.9
+        table_num = 3.91  # Отдельный индекс для исключения 1.50
         base_chf = escort_cnt * math.ceil(tariff_dist_km / 100.0) * 12.00
+
+    # Вагон-теплушка (п. 3.9 — перевозка вагона)
     elif has_teplushka:
         table_num = 3.9
         rate_per_axle = 0.20 if park_type == "SPS" else 0.23
@@ -212,18 +214,18 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     # 3. ФОРМИРОВАНИЕ КОЭФФИЦИЕНТОВ И СБОРОВ
     # ==============================================================================
     coeffs = []
-    if table_num not in [3.9, 3.72, 3.78]:
+    if table_num not in [3.9, 3.91, 3.72, 3.78]:
         coeffs.append(("İndeksasiya 1.015", 1.015))
 
     # Скидки парка SPS (0.85 или 0.70 для спеццистерн п. 3.2.5)
-    if park_type == "SPS" and table_num not in [3.22, 3.9, 3.72, 3.78]:
+    if park_type == "SPS" and table_num not in [3.22, 3.91, 3.72, 3.78]:
         if clean_gng.startswith("27071") or clean_gng.startswith("2707") or clean_gng.startswith("2902"):
             coeffs.append(("SPS kimyəvi çən güzəşti 0.70", 0.70))
         else:
             coeffs.append(("SPS güzəşt 0.85", 0.85))
 
-    # Для цистерн Таблицы 6 коэффициент 1.50 не применяется
-    if table_num != 6.0 and should_apply_150_coeff(shipment_type_code, table_num, clean_gng, wagon_type, park_type):
+    # Для цистерн Таблицы 6 и проезда проводников (3.91) коэффициент 1.50 НЕ применяется
+    if table_num not in [6.0, 3.91] and should_apply_150_coeff(shipment_type_code, table_num, clean_gng, wagon_type, park_type):
         coeffs.append(("İdxal/İxrac baza 1.50", 1.50))
 
     if is_long_platform_scep(user_input_raw, wagon_type):
