@@ -278,13 +278,21 @@ def is_long_platform_scep(user_input_raw: str, wagon_type: str) -> bool:
     inp = str(user_input_raw or "").lower()
     return "19m" in inp or "19 м" in inp or "19m" in str(wagon_type or "").lower()
 
-def should_apply_150_coeff(shipment_mode: str, table_num: float, gng_code: str, wagon_type: str, park_type: str) -> bool:
-    if shipment_mode in ["import", "export"]:
-        if table_num in [5, 6]:
-            return True
-        if str(park_type).upper() == "SPS" and table_num not in [3, 4]:
-            return True
-    return False
+def should_apply_150_coeff(*args, **kwargs) -> bool:
+    """Безопасная проверка необходимости применения коэффициента 1.50."""
+    try:
+        mode = str(args[0] if len(args) > 0 else kwargs.get('shipment_mode', '')).lower()
+        tbl = float(args[1] if len(args) > 1 else kwargs.get('table_num', 0))
+        park = str(args[4] if len(args) > 4 else kwargs.get('park_type', '')).upper()
+
+        if mode in ["import", "export", "idxal", "ixrac"]:
+            if tbl in [5, 6]:
+                return True
+            if park == "SPS" and tbl not in [3, 4]:
+                return True
+        return False
+    except Exception:
+        return False
 
 def get_global_coefficients(shipment_type_code: str, gng_code: str, origin_esr: str, dest_esr: str, lang: str = "AZ") -> tuple:
     coeffs = []
