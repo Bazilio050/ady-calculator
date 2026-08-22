@@ -32,21 +32,26 @@ from tables.table_12 import calculate_table_12_base
 
 EMPTY_SPS_CODES = ["99210000", "99213000", "99220000", "99223000"]
 
-def is_security_required(clean_gng: str) -> bool:
-    """Проверка необходимости охраны по базе Security_Cargo_GNG.txt."""
-    possible_files = ["Security_Cargo_GNG.txt", "tables/Security_Cargo_GNG.txt", "tariff_data/Security_Cargo_GNG.txt"]
-    sec_file = next((f for f in possible_files if os.path.exists(f)), None)
-    if not sec_file or not clean_gng:
+def is_security_required_gng(clean_gng: str) -> bool:
+    """Проверка обязательной охраны транзитного груза по списку кодов ГНГ."""
+    if not clean_gng:
         return False
-    with open(sec_file, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.startswith("|") and "**" in line:
-                m = re.search(r'\*\*(\d+)\*\*', line)
-                if m:
-                    code_prefix = m.group(1)
-                    if clean_gng.startswith(code_prefix) or clean_gng.startswith(code_prefix[:4]):
-                        return True
-    return False
+    # Префиксы кодов ГНГ, подлежащих обязательной охране
+    sec_prefixes = [
+        "0201", "0202", "0203", "0204", "0205", "0206", "0207", "0208", "0209", "0210",
+        "0402", "0403", "0404", "0405", "0406", "0408", "0801", "0901", "0902", "0903",
+        "0904", "0905", "0906", "0907", "0908", "0909", "0910", "1001", "1002", "1003",
+        "1004", "1005", "1006", "1007", "1008", "1101", "1102", "1103", "1104", "1105",
+        "1106", "1202", "1208", "1212", "1302", "1507", "1508", "1509", "1510", "1511",
+        "1512", "1513", "1514", "1515", "1516", "1518", "1521", "1601", "1602", "1603",
+        "1604", "1605", "1701", "1702", "1704", "1801", "1802", "1803", "1804", "1805",
+        "1806", "1902", "1905", "2001", "2002", "2003", "2004", "2005", "2006", "2007",
+        "2008", "2009", "2101", "2102", "2103", "2104", "2105", "2106", "2201", "2202",
+        "2203", "2204", "2205", "2206", "2207", "2208", "2209", "2304", "2402", "2403",
+        "2523", "27", "28", "29", "30", "32", "33", "36", "40", "42", "43", "44", "48",
+        "50", "51", "52", "57", "61", "62", "64", "71", "72", "73", "84", "85", "87", "90", "91", "94", "95"
+    ]
+    return any(clean_gng.startswith(p) for p in sec_prefixes)
 
 # ==============================================================================
 # 2. ДИСПЕТЧЕР И РАСЧЕТНАЯ ЛОГИКА
@@ -127,7 +132,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     escort_cnt = int(nlu_data.get("escort_count") or 0)
     has_teplushka = bool(nlu_data.get("has_teplushka")) or "teplu" in input_lower or "теплу" in input_lower
     is_cover_wagon = any(k in input_lower for k in ["прикрыт", "qoruyucu", "guard_wagon"])
-    is_dangerous = ("2927" in user_input_raw or bool(nlu_data.get("is_dangerous"))) and ("1230" not in clean_gng)
+    
+    # Опасный груз Cədvəl 12 (за исключением метанола BMT 1230)
+    is_dangerous = ("2927" in user_input_raw or bool(nlu_data.get("is_dangerous"))) and ("1230" not in clean_gng) and ("290511" not in clean_gng)
     oversize_group = nlu_data.get("oversize_group")
 
     # --------------------------------------------------------------------------
@@ -216,7 +223,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     # ==============================================================================
     coeffs = []
 
-    # 1. Индексация 1.015 (только для ГРУЖЁНЫХ вагонов)
+    # 1. Индексация 1.015 (для всех ГРУЖЁНЫХ вагонов)
     if not is_empty and table_num not in [3.9, 3.91, 3.63, 3.72, 3.78]:
         coeffs.append(("İndeksasiya 1.015", 1.015))
 
@@ -231,8 +238,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     is_table_3 = (table_num == 3.0)
     is_wood = any(clean_gng.startswith(code) for code in ["4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"])
     is_metal = clean_gng.startswith("72") or any(clean_gng.startswith(code) for code in ["7301", "7302", "7303", "7304", "7305", "7306", "7307"])
-    is_methanol = ("1230" in clean_gng) or ("метанол" in cargo_name.lower())
-    is_table_6_col2 = (table_num == 6.0 and clean_gng.startswith("27"))
+    is_methanol = ("1230" in clean_gng) or ("290511" in clean_gng) or ("метанол" in cargo_name.lower())
+    is_table_6_col2 = (table_num == 6.0 and any(clean_gng.startswith(p) for p in ["2709", "2710", "2712", "2713", "2714", "2715", "3404"]))
 
     if shipment_type_code in ["import", "export"]:
         if not (is_table_3 or is_wood or is_metal or is_methanol or is_table_6_col2 or table_num in [3.72, 3.91]):
@@ -247,7 +254,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     if shipment_type_code == "transit" and is_alat_bk:
         coeffs.append(("Tranzit Ələt-B.Kəsik 1.20", 1.20))
 
-    # 6. Коэффициент 1.20 (Нефть и нефтепродукты Столбца 2 при Импорте или Транзите)
+    # 6. Коэффициент 1.20 (Нефтепродукты в цистернах при Импорте или Транзите)
     if shipment_type_code in ["import", "transit"] and table_num == 6.0 and is_table_6_col2:
         coeffs.append(("Çəndə neft məhsulları 1.20", 1.20))
 
@@ -274,9 +281,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     net_ady_usd = round((base_chf * total_coeff) / rate_chf_usd, 2)
     express_usd = round(net_ady_usd * 1.02, 2)
 
-    # Охрана
+    # Охрана при транзите
     guard_usd = 0.0
-    if shipment_type_code == "transit" and is_security_required(clean_gng):
+    if shipment_type_code == "transit" and is_security_required_gng(clean_gng):
         guard_usd = round((tariff_dist_km * 0.10 / 1.70) * 1.02, 2)
 
     # Паром ASCO
@@ -298,7 +305,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             elif is_oil: base_rate_m = 70.0 if not is_empty else 32.0
             elif is_danger_ferry: base_rate_m = 50.0 if not is_empty else 36.0
             else: base_rate_m = 45.0 if not is_empty else 36.0
-        else: # Алят - Курык
+        else: # Алят - Курык по умолчанию
             if is_gas: base_rate_m = 135.0 if not is_empty else 41.0
             elif is_oil: base_rate_m = 63.0 if not is_empty else 37.0
             elif is_danger_ferry: base_rate_m = 55.0 if not is_empty else 41.0
