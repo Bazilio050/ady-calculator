@@ -144,8 +144,23 @@ def get_calculation_distance(distance_km: int, shipment_type: str) -> int:
     return distance_km
 
 # ==============================================================================
-# 3. ВЕСОВЫЕ НОРМЫ И КОЭФФИЦИЕНТЫ
+# 3. ВЕСОВЫЕ НОРМЫ, ИНДЕКСЫ КОЛОНОК И КОЭФФИЦИЕНТЫ
 # ==============================================================================
+
+def get_weight_column_index(billable_weight_tons: float) -> int:
+    """Возвращает индекс колонки весовой сетки для Таблиц 3 и 4 (Cədvəl 1)."""
+    w = float(billable_weight_tons or 0)
+    if w <= 12: return 0
+    elif w <= 16: return 1
+    elif w <= 23: return 2
+    elif w <= 26: return 3
+    elif w <= 31: return 4
+    elif w <= 36: return 5
+    elif w <= 40: return 6
+    elif w <= 46: return 7
+    elif w <= 51: return 8
+    elif w <= 55: return 9
+    else: return 10
 
 def extract_gng_digits(gng_code, kwargs=None) -> str:
     kwargs = kwargs or {}
