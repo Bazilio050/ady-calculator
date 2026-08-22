@@ -93,6 +93,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     park_type = str(nlu_data.get("park_type", "SPS") or "SPS").upper()
     wagon_type = str(nlu_data.get("wagon_type", "universal") or "universal").lower()
     is_empty = bool(nlu_data.get("is_empty", False))
+    
+    # Оси: по умолчанию 4, если указано иное — берем из запроса
     axles_count = int(nlu_data.get("axles_count") or 4)
 
     # Нормы фиксированного веса по разделу 3.3 (п. 3.3.1 и 3.3.2)
@@ -125,7 +127,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
 
     # Проводники (п. 3.9 — проезд людей)
     elif escort_cnt > 0 and act_weight == 0:
-        table_num = 3.91  # Отдельный индекс для исключения 1.50
+        table_num = 3.91
         base_chf = escort_cnt * math.ceil(tariff_dist_km / 100.0) * 12.00
 
     # Вагон-теплушка (п. 3.9 — перевозка вагона)
@@ -214,20 +216,47 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     # 3. ФОРМИРОВАНИЕ КОЭФФИЦИЕНТОВ И СБОРОВ
     # ==============================================================================
     coeffs = []
-    if table_num not in [3.9, 3.91, 3.72, 3.78]:
+
+    # 1. Индексация 1.015 (только для ГРУЖЁНЫХ вагонов, исключая 3.9, 3.63, 3.72, 3.78)
+    if not is_empty and table_num not in [3.9, 3.91, 3.63, 3.72, 3.78]:
         coeffs.append(("İndeksasiya 1.015", 1.015))
 
-    # Скидки парка SPS (0.85 или 0.70 для спеццистерн п. 3.2.5)
-    if park_type == "SPS" and table_num not in [3.22, 3.91, 3.72, 3.78]:
+    # 2. Скидка парка SPS (0.85 или 0.70 для спеццистерн п. 3.2.5)
+    if park_type == "SPS" and table_num not in [3.22, 3.63, 3.91, 3.72, 3.78]:
         if clean_gng.startswith("27071") or clean_gng.startswith("2707") or clean_gng.startswith("2902"):
             coeffs.append(("SPS kimyəvi çən güzəşti 0.70", 0.70))
         else:
             coeffs.append(("SPS güzəşt 0.85", 0.85))
 
-    # Для цистерн Таблицы 6 и проезда проводников (3.91) коэффициент 1.50 НЕ применяется
-    if table_num not in [6.0, 3.91] and should_apply_150_coeff(shipment_type_code, table_num, clean_gng, wagon_type, park_type):
-        coeffs.append(("İdxal/İxrac baza 1.50", 1.50))
+    # 3. Базовый коэффициент 1.50 (Импорт / Экспорт) и список исключений
+    is_table_3 = (table_num == 3.0)
+    is_wood = any(clean_gng.startswith(code) for code in ["4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"])
+    is_metal = clean_gng.startswith("72") or any(clean_gng.startswith(code) for code in ["7301", "7302", "7303", "7304", "7305", "7306", "7307"])
+    is_methanol = ("1230" in clean_gng) or ("метанол" in cargo_name.lower())
+    is_table_6_col2 = (table_num == 6.0 and clean_gng.startswith("27"))
 
+    if shipment_type_code in ["import", "export"]:
+        if not (is_table_3 or is_wood or is_metal or is_methanol or is_table_6_col2 or table_num == 3.91):
+            coeffs.append(("İdxal/İxrac baza 1.50", 1.50))
+
+    # 4. Коэффициент 1.04 (Лес и металл при ИМПОРТЕ)
+    if shipment_type_code == "import" and (is_wood or is_metal):
+        coeffs.append(("İdxal meşə/metal 1.04", 1.04))
+
+    # 5. Коэффициент 1.20 (Транзит Алят – Беюк-Кясик)
+    is_alat_bk = ("alat" in st_from_raw.lower() and "boyuk" in st_to_raw.lower()) or ("boyuk" in st_from_raw.lower() and "alat" in st_to_raw.lower())
+    if shipment_type_code == "transit" and is_alat_bk:
+        coeffs.append(("Tranzit Ələt-B.Kəsik 1.20", 1.20))
+
+    # 6. Коэффициент 1.20 (Нефтепродукты в цистернах при Импорте или Транзите)
+    if shipment_type_code in ["import", "transit"] and wagon_type in ["cistern", "цистерна", "çən"] and clean_gng.startswith("27"):
+        coeffs.append(("Çəndə neft məhsulları 1.20", 1.20))
+
+    # 7. Коэффициент 1.20 (Рефрижераторы при Транзите)
+    if shipment_type_code == "transit" and (wagon_type in ["ref", "реф", "изотерм"] or "ref" in input_lower):
+        coeffs.append(("Tranzit ref 1.20", 1.20))
+
+    # 8. Прочие спецкоэффициенты
     if is_long_platform_scep(user_input_raw, wagon_type):
         coeffs.append(("Спецплатформа >19m 1.20", 1.20))
 
@@ -258,13 +287,32 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     if shipment_type_code == "transit" and (clean_gng.startswith("72") or clean_gng.startswith("27")):
         guard_usd = round((tariff_dist_km * 0.10 / 1.70) * 1.02, 2)
 
-    # Паром ASCO — строго по метрам из запроса!
+    # Паром ASCO — строго по нормам длины и таблице ставок
     ferry_usd = 0.0
     wagon_len_req = nlu_data.get("wagon_length_m")
     if wagon_len_req and (bool(nlu_data.get("is_asco_ferry")) or "паром" in input_lower or "bərə" in input_lower):
         w_len = float(wagon_len_req)
-        rate_m = 65.0 if w_len > 18.0 else 50.0
-        ferry_usd = round(w_len * rate_m, 2)
+        
+        # Определение типа груза
+        is_gas = "gas" in input_lower or "газ" in input_lower
+        is_danger_ferry = is_dangerous or "danger" in input_lower
+        is_oil = clean_gng.startswith("27") or "нефть" in cargo_name.lower() or "çən" in wagon_type
+        
+        # Выбор базовой ставки за погонный метр (до 15м)
+        if "туркмен" in input_lower or "trk" in input_lower or "türkmen" in input_lower:
+            if is_gas: base_rate_m = 119.0 if not is_empty else 36.0
+            elif is_oil: base_rate_m = 70.0 if not is_empty else 32.0
+            elif is_danger_ferry: base_rate_m = 50.0 if not is_empty else 36.0
+            else: base_rate_m = 45.0 if not is_empty else 36.0
+        else: # Алят - Курык по умолчанию
+            if is_gas: base_rate_m = 135.0 if not is_empty else 41.0
+            elif is_oil: base_rate_m = 63.0 if not is_empty else 37.0
+            elif is_danger_ferry: base_rate_m = 55.0 if not is_empty else 41.0
+            else: base_rate_m = 50.0 if not is_empty else 41.0
+
+        # Коэффициент 1.30 для вагонов длиннее 15 метров
+        len_coeff = 1.30 if w_len > 15.0 else 1.0
+        ferry_usd = round(w_len * base_rate_m * len_coeff, 2)
 
     # ==============================================================================
     # 4. СБОРКА ИТОГОВОГО СЛОВАРЯ ОТВЕТА
