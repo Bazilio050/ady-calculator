@@ -1,3 +1,6 @@
+# ==============================================================================
+# 1. ИМПОРТЫ И ИНИЦИАЛИЗАЦИЯ
+# ==============================================================================
 import os
 import json
 import re
@@ -78,40 +81,40 @@ def parse_ref_composition(user_input_str):
 
     return None
 
-
+# ==============================================================================
+# 2. РАСЧЕТ БАЗОВОЙ СТАВКИ ТАБЛИЦЫ 5 (ПП. 3.1.2, 3.3.1, 3.3.2)
+# ==============================================================================
 def calculate_table_5_base(distance_km, billable_weight_tons, wagon_type, *args, lang="AZ", **kwargs):
     """
     Расчёт базовой ставки Таблицы 5 (Спецплатформы, İNV/ANV, Рефрижераторы).
-    Раздел 3.3 (п. 3.3.1 и 3.3.2)
     Возвращает: (base_chf, details_str, is_per_wagon)
     """
     w_type_lower = str(wagon_type or "").lower()
     raw_input = str(kwargs.get("user_input_raw") or kwargs.get("raw_text") or kwargs.get("cargo_name") or "").lower()
     full_type_str = f"{w_type_lower} {raw_input}"
-    
+
+    is_empty_flag = kwargs.get("is_empty", False) or any(k in full_type_str for k in ["boş", "empty", "порожн"])
+
     col_idx = 0
     is_per_wagon = True
-
-    # Проверка на порожнее состояние
-    is_empty_flag = kwargs.get("is_empty", False) or any(k in full_type_str for k in ["boş", "empty", "порожн"])
+    clause_info = ""
 
     # 1. Раздел 3.3: Автопоезда, прицепы, полуприцепы, кузова и İNV/ANV
     road_train_keywords = ["avtoqatar", "автопоезд", "qoşqu", "прицеп", "semitrailer", "yarımqoşqu", "kuzov", "кузов", "inv", "anv"]
     is_road_train = any(k in full_type_str for k in road_train_keywords)
 
-    clause_info = ""
     if is_road_train:
         if is_empty_flag:
-            col_idx = 6  # Col 8: İNV/ANV / спецплатформы порожний (per wagon)
+            col_idx = 6  # Col 8: İNV/ANV / спецплатформы порожний (сütun 8)
+            is_per_wagon = False  # Умножаем на расчетную массу 7т / 5т по п. 3.3.2
             if any(k in full_type_str for k in ["kuzov", "кузов"]):
                 clause_info = "boş kuzov 5t - bənd 3.3.2" if lang == "AZ" else ("порожний кузов 5т - п. 3.3.2" if lang == "RU" else "empty body 5t - cl. 3.3.2")
             else:
                 clause_info = "boş avtoqatar/qoşqu 7t - bənd 3.3.2" if lang == "AZ" else ("порожний автопоезд/прицеп 7т - п. 3.3.2" if lang == "RU" else "empty road train/trailer 7t - cl. 3.3.2")
         else:
-            col_idx = 5  # Col 7: İNV/ANV / спецплатформы гружёный (per wagon)
+            col_idx = 5  # Col 7: İNV/ANV / спецплатформы гружёный (сütun 7)
+            is_per_wagon = False  # Умножаем на массу (мин 10т) по п. 3.3.1
             clause_info = "yüklü İNV/ANV min 10t - bənd 3.3.1" if lang == "AZ" else ("гружёный İNV/ANV мин 10т - п. 3.3.1" if lang == "RU" else "loaded İNV/ANV min 10t - cl. 3.3.1")
-        
-        is_per_wagon = True
 
     # 2. Термосы и ледники
     elif any(k in w_type_lower for k in ["thermos", "термос", "lednik", "ледник"]):
@@ -161,14 +164,15 @@ def calculate_table_5_base(distance_km, billable_weight_tons, wagon_type, *args,
 
     return base_chf, details_str, is_per_wagon
 
-
+# ==============================================================================
+# 3. КОЭФФИЦИЕНТЫ ТАБЛИЦЫ 5
+# ==============================================================================
 def get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=None, 
                            ref_wagons_cnt=None, is_2tier_platform=False, 
                            is_fruit_veg_discount=False, lang="AZ", *args, **kwargs):
     coeffs = []
     notes = []
 
-    # Собираем весь доступный текст для парсинга комбинаций
     full_text_search = " ".join([
         str(ref_wagons_cnt or ""),
         str(kwargs.get("ref_wagons_cnt") or ""),
@@ -209,7 +213,7 @@ def get_table_5_coefficients(shipment_type_code=None, wagon_type=None, gng_code=
         coeffs.append((lbl, 0.80))
         notes.append("Cədvəl 5: Avtomobil daşıyan ikimərtəbəli platforma üçün 0.80 əmsalı tətbiq olunmuşdur.")
 
-    # 3. Плодоовощная скидка (0.60) — ТОЛЬКО если запрошено пользователем
+    # 3. Плодоовощная скидка (0.60) — ТОЛЬКО по явному требованию в запросе
     if is_fruit_veg_discount or kwargs.get("fruit_veg_requested"):
         lbl = "Meyvə-tərəvəz güzəşti" if lang == "AZ" else ("Скидка плодоовощная" if lang == "RU" else "Fruit & Veg discount")
         coeffs.append((lbl, 0.60))
