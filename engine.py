@@ -79,8 +79,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     gng = str(nlu_data.get("gng_code") or nlu_data.get("cargo_gng_code") or "00000000").strip()
     clean_gng = re.sub(r'\D', '', gng)
 
-    # Мин. плечо: 151 км для бензола/особых цистерн и импорта
-    if clean_gng.startswith("27071") or clean_gng.startswith("2707"):
+    # Мин. плечо 151 км для бензола и химических цистерн (п. 3.2.5)
+    if clean_gng.startswith("27071") or clean_gng.startswith("2707") or clean_gng.startswith("2902"):
         tariff_dist_km = max(actual_dist_km, 151)
     else:
         tariff_dist_km = get_calculation_distance(actual_dist_km, shipment_type_code)
@@ -95,8 +95,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     is_empty = bool(nlu_data.get("is_empty", False))
     axles_count = int(nlu_data.get("axles_count") or 4)
 
-    # Норма веса для сборных отправок (п. 3.8)
-    if bool(nlu_data.get("is_consolidated")) or "yığma" in input_lower or "сборны" in input_lower:
+    # Нормы фиксированного веса по разделу 3.3 (п. 3.3.1 и 3.3.2)
+    if any(k in input_lower for k in ["qoşqu", "прицеп", "avtoqatar", "автопоезд"]) and is_empty:
+        billable_weight = 7.0
+    elif any(k in input_lower for k in ["kuzov", "кузов"]) and is_empty:
+        billable_weight = 5.0
+    elif bool(nlu_data.get("is_consolidated")) or "yığma" in input_lower or "сборны" in input_lower:
         billable_weight = max(10.0, act_weight)
     else:
         billable_weight = get_min_weight_by_gng(clean_gng, act_weight)
@@ -116,7 +120,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     # Вагон прикрытия (п. 3.6.3)
     if is_cover_wagon:
         table_num = 3.63
-        base_chf = 0.20 * axles_count * tariff_dist_km
+        rate_per_axle = 0.30 if park_type == "SPS" else 0.35
+        base_chf = rate_per_axle * axles_count * tariff_dist_km
 
     # Проводники и Теплушки (п. 3.9)
     elif escort_cnt > 0 and act_weight == 0:
@@ -124,7 +129,8 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         base_chf = escort_cnt * math.ceil(tariff_dist_km / 100.0) * 12.00
     elif has_teplushka:
         table_num = 3.9
-        base_chf = 0.20 * axles_count * tariff_dist_km
+        rate_per_axle = 0.20 if park_type == "SPS" else 0.23
+        base_chf = rate_per_axle * axles_count * tariff_dist_km
 
     # Перегонки и ремонт (п. 3.7.8 / 3.7.2)
     elif is_empty and wagon_type == "transporter":
@@ -209,10 +215,14 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     if table_num not in [3.9, 3.72, 3.78]:
         coeffs.append(("İndeksasiya 1.015", 1.015))
 
+    # Скидки парка SPS (0.85 или 0.70 для спеццистерн п. 3.2.5)
     if park_type == "SPS" and table_num not in [3.22, 3.9, 3.72, 3.78]:
-        coeffs.append(("SPS güzəşt 0.85", 0.85))
+        if clean_gng.startswith("27071") or clean_gng.startswith("2707") or clean_gng.startswith("2902"):
+            coeffs.append(("SPS kimyəvi çən güzəşti 0.70", 0.70))
+        else:
+            coeffs.append(("SPS güzəşt 0.85", 0.85))
 
-    # Для цистерн коэффициент 1.50 не применяется
+    # Для цистерн Таблицы 6 коэффициент 1.50 не применяется
     if table_num != 6.0 and should_apply_150_coeff(shipment_type_code, table_num, clean_gng, wagon_type, park_type):
         coeffs.append(("İdxal/İxrac baza 1.50", 1.50))
 
@@ -246,11 +256,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     if shipment_type_code == "transit" and (clean_gng.startswith("72") or clean_gng.startswith("27")):
         guard_usd = round((tariff_dist_km * 0.10 / 1.70) * 1.02, 2)
 
-    # Паром ASCO
+    # Паром ASCO — строго по метрам из запроса!
     ferry_usd = 0.0
-    if bool(nlu_data.get("is_asco_ferry")) or "паром" in input_lower or "bərə" in input_lower:
-        w_len = float(nlu_data.get("wagon_length_m") or 15.0)
-        rate_m = 65.0 if w_len > 15.0 else 50.0
+    wagon_len_req = nlu_data.get("wagon_length_m")
+    if wagon_len_req and (bool(nlu_data.get("is_asco_ferry")) or "паром" in input_lower or "bərə" in input_lower):
+        w_len = float(wagon_len_req)
+        rate_m = 65.0 if w_len > 18.0 else 50.0
         ferry_usd = round(w_len * rate_m, 2)
 
     # ==============================================================================
