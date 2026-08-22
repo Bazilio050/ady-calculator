@@ -17,6 +17,7 @@ BORDER_COLUMN_MAP = {
     "548803": 7,  # Ələt (eksport)
     "548502": 7,  # Ələt baş
     "553002": 7,  # Ələt-yeni (паром)
+    "549204": 7,  # Ələt Aktau
 }
 
 BORDER_STATIONS_MAP = {
@@ -24,6 +25,7 @@ BORDER_STATIONS_MAP = {
     "boyuk kesik": {"local": "558631", "border": "558701"},
     "böyük kəsik": {"local": "558631", "border": "558701"},
     "беюк кясик": {"local": "558631", "border": "558701"},
+    "беюккясик": {"local": "558631", "border": "558701"},
     "astara": {"local": "554500", "border": "554503"},
     "астара": {"local": "554500", "border": "554503"},
     "culfa": {"local": "550100", "border": "550108"},
@@ -116,19 +118,17 @@ def get_calculation_distance(actual_dist_km: int, shipment_mode: str = "import")
     return calc_dist
 
 # ==============================================================================
-# UTILS-03: Локальное определение ЕСР-кодов станций
+# UTILS-03: Определение ЕСР-кодов станций
 # ==============================================================================
 def resolve_complex_station_code(raw_input: str) -> str:
     """Универсальный локальный резолвер сложных внутренних станций ADY."""
     text = str(raw_input or "").lower()
 
-    # 1. Тагиев
     if any(r in text for r in ["тагиев", "tagiyev", "тагив", "г.тагиев", "h.z.", "г. тагиев", "g.tagiyev", "g tagiyev"]):
         if any(m in text for m in ["сорт", "sort", "чешид", "cesid", "ceşid"]):
             return "546901"
         return "546302"
 
-    # 2. Баку Порт
     if any(r in text for r in ["баку порт", "baki liman", "bakı liman", "торговый порт", "ticarət liman"]):
         if any(m in text for m in ["перевал", "ашир", "aşır", "ашыр"]):
             return "547209"
@@ -136,25 +136,21 @@ def resolve_complex_station_code(raw_input: str) -> str:
             return "547406"
         return "547302"
 
-    # 3. Баку Товарный
     if any(r in text for r in ["баку юк", "bakı yük", "баку груз", "баку товар"]):
         if any(m in text for m in ["терминал", "terminal"]):
             return "547603"
         return "547105"
 
-    # 4. Сангачал
     if any(r in text for r in ["sanqacal", "сангачал", "sanqaçal", "сангачалы"]):
         if any(m in text for m in ["терминал", "terminal", "ашир", "aşır", "перевал"]):
             return "548606"
         return "548305"
 
-    # 5. Гарадаг
     if any(r in text for r in ["qaradag", "гарадаг", "qaradağ", "карадаг"]):
         if any(m in text for m in ["терминал", "terminal"]):
             return "549702"
         return "548201"
 
-    # 6. Сумгаит
     if any(r in text for r in ["сумгаит", "sumqayit", "sumqayıt"]):
         if any(m in text for m in ["главный", "баш", "bas", "baş"]):
             return "546001"
@@ -162,19 +158,16 @@ def resolve_complex_station_code(raw_input: str) -> str:
             return "546209"
         return "546105"
 
-    # 7. Мингечевир
     if any(r in text for r in ["mingecevir", "мингечевир", "mingəçevir"]):
         if any(m in text for m in ["город", "şəhər", "шехер", "seher"]):
             return "555807"
         return "555703"
 
-    # 8. Гянджа
     if any(r in text for r in ["гянджа", "ganja", "gəncə"]):
         if any(m in text for m in ["грузовая", "юк", "yük"]):
             return "558108"
         return "558004"
 
-    # 9. Баладжары
     if any(r in text for r in ["баладжары", "bilacari", "biləcəri", "баледжары"]):
         if any(m in text for m in ["сорт", "sort", "чешид", "cesid"]):
             return "545107"
@@ -183,48 +176,47 @@ def resolve_complex_station_code(raw_input: str) -> str:
     return None
 
 def get_border_esr(station_name: str, position: str = "from", shipment_mode: str = "import") -> str:
+    """Определение пограничного ЕСР с поддержкой позиционных параметров."""
     st_clean = str(station_name or "").lower().strip()
+    pos = "from" if str(position).lower() in ["from", "origin"] else "to"
+    mode = str(shipment_mode or "").lower()
+
     for key, val in BORDER_STATIONS_MAP.items():
         if key in st_clean:
-            if shipment_mode == "transit":
+            if "transit" in mode or "tranzit" in mode:
                 return val["border"]
-            elif shipment_mode in ["import", "idxal"] and position in ["from", "origin"]:
+            elif ("import" in mode or "idxal" in mode) and pos == "from":
                 return val["border"]
-            elif shipment_mode in ["export", "ixrac"] and position in ["to", "dest"]:
+            elif ("export" in mode or "ixrac" in mode) and pos == "to":
                 return val["border"]
             else:
-                return val["local"]
+                return val["border"] if "eksp" in st_clean or "эксп" in st_clean else val["local"]
     return None
 
 def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "", position: str = "from", shipment_mode: str = "import", *args, **kwargs) -> str:
-    """Универсальный резолвер ЕСР-кодов, возвращающий корректные стыковые коды для поиска расстояний."""
-    st_clean = str(station_name or "").lower().strip()
-    
-    # Нормализация положения и режима
-    if isinstance(user_input_raw, str) and user_input_raw in ["from", "to", "origin", "dest", "position"]:
-        shipment_mode = position if position not in ["from", "to", "origin", "dest"] else "import"
+    """Универсальная точка входа для получения ЕСР-кода."""
+    if isinstance(user_input_raw, str) and user_input_raw in ["from", "to", "origin", "dest"]:
+        shipment_mode = position if position not in ["from", "to", "origin", "dest"] else shipment_mode
         position = user_input_raw
+        user_input_raw = ""
 
-    pos = "from" if position in ["from", "origin"] else "to"
-    mode = str(shipment_mode or "import").lower()
+    st_clean = str(station_name or "").strip()
 
-    # 1. Сначала проверяем пограничные узлы из BORDER_STATIONS_MAP
-    border_esr = get_border_esr(st_clean, position=pos, shipment_mode=mode)
+    border_esr = get_border_esr(st_clean, position=position, shipment_mode=shipment_mode)
     if border_esr:
         return border_esr
 
-    # 2. Проверяем сложные узлы (Баку, Тагиев, Сумгаит и т.д.)
     complex_esr = resolve_complex_station_code(f"{st_clean} {user_input_raw}")
     if complex_esr:
         return complex_esr
 
-    # 3. Поиск по прямому совпадению названий из Distances.txt
     cache = _load_distances_cache()
+    st_lower = st_clean.lower()
     for parts in cache:
         if len(parts) >= 3:
             name = parts[1].lower()
             code = parts[2]
-            if st_clean in name or name in st_clean:
+            if st_lower in name or name in st_lower:
                 return code
 
     return None
@@ -239,10 +231,10 @@ def format_station_display_name(st_name: str, esr_code: str, lang: str = "AZ") -
     return st_name
 
 # ==============================================================================
-# UTILS-04: Математика, веса и таблицы
+# UTILS-04: Вспомогательные расчётные функции
 # ==============================================================================
 def get_weight_column_index(weight_tons: float) -> int:
-    """Индекс колонки для Таблиц 3 и 4."""
+    """Возвращает индекс колонки для Таблиц 3 и 4."""
     w = float(weight_tons or 0)
     if w <= 12: return 1
     elif w <= 16: return 2
@@ -279,7 +271,6 @@ def is_long_platform_scep(user_input_raw: str, wagon_type: str) -> bool:
     return "19m" in inp or "19 м" in inp or "19m" in str(wagon_type or "").lower()
 
 def should_apply_150_coeff(*args, **kwargs) -> bool:
-    """Безопасная проверка необходимости применения коэффициента 1.50."""
     try:
         mode = str(args[0] if len(args) > 0 else kwargs.get('shipment_mode', '')).lower()
         tbl = float(args[1] if len(args) > 1 else kwargs.get('table_num', 0))
