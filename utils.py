@@ -36,7 +36,7 @@ BORDER_STATIONS_MAP = {
 _DISTANCES_CACHE = None
 
 # ==============================================================================
-# UTILS-02: Кэширование и поиск расстояний
+# UTILS-02: Поиск расстояний и кэширование
 # ==============================================================================
 def _load_distances_cache():
     global _DISTANCES_CACHE
@@ -63,7 +63,7 @@ def _load_distances_cache():
     return _DISTANCES_CACHE
 
 def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
-    """Точный поиск километража по закешированной таблице Distances.txt (0 токенов)."""
+    """Точный поиск километража по закешированной таблице Distances.txt."""
     if not esr_from or not esr_to:
         return None
 
@@ -116,17 +116,19 @@ def get_calculation_distance(actual_dist_km: int, shipment_mode: str = "import")
     return calc_dist
 
 # ==============================================================================
-# UTILS-03: Резолвер станций и ЕСР-кодов
+# UTILS-03: Локальное определение ЕСР-кодов станций
 # ==============================================================================
 def resolve_complex_station_code(raw_input: str) -> str:
     """Универсальный локальный резолвер сложных внутренних станций ADY."""
     text = str(raw_input or "").lower()
 
+    # 1. Тагиев
     if any(r in text for r in ["тагиев", "tagiyev", "тагив", "г.тагиев", "h.z.", "г. тагиев", "g.tagiyev", "g tagiyev"]):
         if any(m in text for m in ["сорт", "sort", "чешид", "cesid", "ceşid"]):
             return "546901"
         return "546302"
 
+    # 2. Баку Порт
     if any(r in text for r in ["баку порт", "baki liman", "bakı liman", "торговый порт", "ticarət liman"]):
         if any(m in text for m in ["перевал", "ашир", "aşır", "ашыр"]):
             return "547209"
@@ -134,21 +136,25 @@ def resolve_complex_station_code(raw_input: str) -> str:
             return "547406"
         return "547302"
 
+    # 3. Баку Товарный
     if any(r in text for r in ["баку юк", "bakı yük", "баку груз", "баку товар"]):
         if any(m in text for m in ["терминал", "terminal"]):
             return "547603"
         return "547105"
 
+    # 4. Сангачал
     if any(r in text for r in ["sanqacal", "сангачал", "sanqaçal", "сангачалы"]):
         if any(m in text for m in ["терминал", "terminal", "ашир", "aşır", "перевал"]):
             return "548606"
         return "548305"
 
+    # 5. Гарадаг
     if any(r in text for r in ["qaradag", "гарадаг", "qaradağ", "карадаг"]):
         if any(m in text for m in ["терминал", "terminal"]):
             return "549702"
         return "548201"
 
+    # 6. Сумгаит
     if any(r in text for r in ["сумгаит", "sumqayit", "sumqayıt"]):
         if any(m in text for m in ["главный", "баш", "bas", "baş"]):
             return "546001"
@@ -156,16 +162,19 @@ def resolve_complex_station_code(raw_input: str) -> str:
             return "546209"
         return "546105"
 
+    # 7. Мингечевир
     if any(r in text for r in ["mingecevir", "мингечевир", "mingəçevir"]):
         if any(m in text for m in ["город", "şəhər", "шехер", "seher"]):
             return "555807"
         return "555703"
 
+    # 8. Гянджа
     if any(r in text for r in ["гянджа", "ganja", "gəncə"]):
         if any(m in text for m in ["грузовая", "юк", "yük"]):
             return "558108"
         return "558004"
 
+    # 9. Баладжары
     if any(r in text for r in ["баладжары", "bilacari", "biləcəri", "баледжары"]):
         if any(m in text for m in ["сорт", "sort", "чешид", "cesid"]):
             return "545107"
@@ -216,8 +225,26 @@ def format_station_display_name(st_name: str, esr_code: str, lang: str = "AZ") -
     return st_name
 
 # ==============================================================================
-# UTILS-04: Вспомогательные расчётные функции
+# UTILS-04: Математика, веса и таблицы
 # ==============================================================================
+def get_weight_column_index(weight_tons: float) -> int:
+    """Индекс колонки для Таблиц 3 и 4."""
+    w = float(weight_tons or 0)
+    if w <= 12: return 1
+    elif w <= 16: return 2
+    elif w <= 23: return 3
+    elif w <= 26: return 4
+    elif w <= 31: return 5
+    elif w <= 36: return 6
+    elif w <= 40: return 7
+    elif w <= 46: return 8
+    elif w <= 51: return 9
+    elif w <= 55: return 10
+    else: return 11
+
+def extract_gng_digits(gng_code: str) -> str:
+    return re.sub(r'\D', '', str(gng_code or ""))
+
 def get_min_weight_by_gng(gng_code: str, act_weight: float) -> float:
     gng = str(gng_code or "").strip()
     if gng.startswith("44") or gng.startswith("4707"):
@@ -259,33 +286,3 @@ def get_exchange_rate_for_date(target_dt: datetime) -> tuple:
 
 def parse_date_from_string(date_str: str) -> datetime:
     return datetime.now()
-
-def get_weight_column_index(weight_tons: float) -> int:
-    """Возвращает индекс колонки таблицы (3 и 4) по расчетному весу."""
-    w = float(weight_tons or 0)
-    if w <= 12:
-        return 1
-    elif w <= 16:
-        return 2
-    elif w <= 23:
-        return 3
-    elif w <= 26:
-        return 4
-    elif w <= 31:
-        return 5
-    elif w <= 36:
-        return 6
-    elif w <= 40:
-        return 7
-    elif w <= 46:
-        return 8
-    elif w <= 51:
-        return 9
-    elif w <= 55:
-        return 10
-    else:
-        return 11
-
-def extract_gng_digits(gng_code: str) -> str:
-    """Извлекает только цифры из кода ГНГ."""
-    return re.sub(r'\D', '', str(gng_code or ""))
