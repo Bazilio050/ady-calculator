@@ -1,3 +1,6 @@
+# ==============================================================================
+# 1. ИМПОРТЫ И ИНИЦИАЛИЗАЦИЯ
+# ==============================================================================
 import os
 import re
 import math
@@ -29,6 +32,9 @@ from tables.table_12 import calculate_table_12_base
 
 EMPTY_SPS_CODES = ["99210000", "99213000", "99220000", "99223000"]
 
+# ==============================================================================
+# 2. ДИСПЕТЧЕР И РАСЧЕТНАЯ ЛОГИКА
+# ==============================================================================
 def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str = "AZ", year: str = "2026", ui_t: dict = None, *args, **kwargs) -> dict:
     if ui_t is None:
         ui_t = {}
@@ -84,7 +90,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     is_dangerous = "2927" in user_input_raw or bool(nlu_data.get("is_dangerous"))
     oversize_group = nlu_data.get("oversize_group")
 
-    # 1. Спецразделы п. 3.9 (Проводники и Теплушки)
+    # 1. Проводники и Теплушки (п. 3.9)
     if escort_cnt > 0 and act_weight == 0:
         table_num = 3.9
         base_chf = escort_cnt * math.ceil(tariff_dist_km / 100.0) * 12.00
@@ -126,22 +132,19 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     elif oversize_group:
         table_num = 11.0
         res = calculate_table_11_tariff(tariff_dist_km, billable_weight, oversize_group)
-        base_chf = (res.get("base_chf") or 0.0) * billable_weight
+        base_chf = res.get("base_chf") or 0.0
 
-    # 7. Цистерны (Cədvəl 6)
+    # 7. Цистерны (Cədvəl 6) — Ставка сразу за вагон!
     elif wagon_type in ["cistern", "цистерна", "çən"]:
         table_num = 6.0
-        rate_per_ton, _ = calculate_table_6_base(tariff_dist_km, billable_weight, clean_gng, park_type)
-        base_chf = (rate_per_ton or 0.0) * billable_weight
+        r_val, _ = calculate_table_6_base(tariff_dist_km, billable_weight, clean_gng, park_type)
+        base_chf = r_val or 0.0
 
     # 8. Спецплатформы / Рефрижераторы / Автопоезда (Cədvəl 5)
     elif wagon_type in ["ref", "реф", "изотерм"] or any(k in input_lower for k in ["avtoqatar", "автопоезд", "qoşqu", "kuzov", "inv", "anv"]):
         table_num = 5.0
         rate_val, _, is_per_wagon = calculate_table_5_base(tariff_dist_km, billable_weight, wagon_type, user_input_raw=user_input_raw, is_empty=is_empty)
-        if is_per_wagon:
-            base_chf = rate_val or 0.0
-        else:
-            base_chf = (rate_val or 0.0) * billable_weight
+        base_chf = rate_val if is_per_wagon else (rate_val or 0.0) * billable_weight
 
     # 9. Контейнеры (Cədvəl 8 и 10)
     elif wagon_type in ["container", "контейнер", "tank_container"]:
@@ -149,19 +152,18 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         if wagon_type == "tank_container":
             table_num = 10.0
             res = calculate_table_10_tariff(distance_km=tariff_dist_km, container_type="tank_container", feet_size=c_size, is_empty=is_empty, gng_code=clean_gng)
-            base_chf = res.get("base_chf") or 0.0
         else:
             table_num = 8.0
             res = calculate_table_8_tariff(distance_km=tariff_dist_km, feet_size=c_size, is_empty=is_empty, park_type=park_type)
-            base_chf = res.get("base_chf") or 0.0
+        base_chf = res.get("base_chf") or 0.0
 
-    # 10. Малотоннажные отправки, почта, пассажирские и транспортеры (Cədvəl 7)
+    # 10. Малотоннажные отправки, почта, пассажирские (Cədvəl 7)
     elif act_weight > 0 and act_weight <= 25.0 and (wagon_type == "transporter" or "passenger" in wagon_type or clean_gng.startswith("9991")):
         table_num = 7.0
         rate_val, _ = calculate_table_7_base(tariff_dist_km, billable_weight_tons=billable_weight, wagon_type=wagon_type, is_empty=is_empty, gng_code=clean_gng, user_input_raw=user_input_raw)
         base_chf = rate_val or 0.0
 
-    # 11. Стандартные универсальные вагоны (Cədvəl 3 и 4)
+    # 11. Универсальные вагоны (Cədvəl 3 и 4)
     elif shipment_type_code == "transit":
         table_num = 4.0
         r_val, _ = calculate_table_4_base(tariff_dist_km, billable_weight)
@@ -171,7 +173,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         r_val, _ = calculate_table_3_base(tariff_dist_km, billable_weight)
         base_chf = r_val or 0.0
 
-    # === [РАСЧЕТ КОЭФФИЦИЕНТОВ] ===
+    # ==============================================================================
+    # 3. ФОРМИРОВАНИЕ КОЭФФИЦИЕНТОВ
+    # ==============================================================================
     coeffs = []
     if table_num not in [3.9, 3.72, 3.78]:
         coeffs.append(("İndeksasiya 1.015", 1.015))
@@ -185,7 +189,9 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     if is_long_platform_scep(user_input_raw, wagon_type):
         coeffs.append(("Спецплатформа >19m 1.20", 1.20))
 
-    # Специфические коэффициенты из модулей таблиц
+    if table_num == 12.0:
+        coeffs.append(("1-ci sinif təhlükəli yük 2.00", 2.00))
+
     if table_num == 3.0:
         t_coeffs, _ = get_table_3_coefficients(shipment_type_code=shipment_type_code, gng_code=clean_gng, lang=lang)
         coeffs.extend(t_coeffs)
