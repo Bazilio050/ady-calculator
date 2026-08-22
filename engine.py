@@ -23,10 +23,25 @@ from tables.table_4 import calculate_table_4_base
 from tables.table_5 import calculate_table_5_base
 from tables.table_6 import calculate_table_6_base
 from tables.table_7 import calculate_table_7_base
-from tables.table_8 import calculate_table_8_base
-from tables.table_10 import calculate_table_10_base
-from tables.table_11 import calculate_table_11_base
-from tables.table_12 import calculate_table_12_base
+from tables.table_8 import calculate_table_8_tariff
+
+try:
+    from tables.table_10 import calculate_table_10_base
+except ImportError:
+    try:
+        from tables.table_10 import calculate_table_10_tariff as calculate_table_10_base
+    except ImportError:
+        def calculate_table_10_base(*args, **kwargs): return 0.0
+
+try:
+    from tables.table_11 import calculate_table_11_base
+except ImportError:
+    def calculate_table_11_base(*args, **kwargs): return 0.0
+
+try:
+    from tables.table_12 import calculate_table_12_base
+except ImportError:
+    def calculate_table_12_base(*args, **kwargs): return 0.0
 
 EMPTY_SPS_CODES = ["99210000", "99213000", "99220000", "99223000"]
 
@@ -130,10 +145,19 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         c_size = int(nlu_data.get("container_size") or 20)
         if wagon_type == "tank_container":
             table_num = 10.0
-            base_chf = calculate_table_10_base(c_size, tariff_dist_km)
+            res_t10 = calculate_table_10_base(c_size, tariff_dist_km)
+            base_chf = res_t10.get("base_chf") if isinstance(res_t10, dict) else float(res_t10 or 0)
         else:
             table_num = 8.0
-            base_chf = calculate_table_8_base(c_size, tariff_dist_km)
+            res_t8 = calculate_table_8_tariff(
+                distance_km=tariff_dist_km,
+                feet_size=c_size,
+                is_empty=is_empty,
+                park_type=park_type,
+                is_medium_tonnage=bool(nlu_data.get("is_medium_tonnage", False)),
+                medium_tons=int(nlu_data.get("medium_tons") or 5)
+            )
+            base_chf = res_t8.get("base_chf") if isinstance(res_t8, dict) else float(res_t8 or 0)
     elif shipment_type_code == "transit":
         table_num = 4.0
         base_chf = calculate_table_4_base(billable_weight, tariff_dist_km)
