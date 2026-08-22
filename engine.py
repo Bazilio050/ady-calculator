@@ -1,4 +1,3 @@
-# === [НАЧАЛО БЛОКА: FILE-ENGINE] Диспетчер расчетов и генератор отчетов ===
 import os
 import re
 import math
@@ -18,42 +17,17 @@ from utils import (
     get_weight_column_index
 )
 
-from tables.table_3 import calculate_table_3_base
-from tables.table_4 import calculate_table_4_base
-from tables.table_5 import calculate_table_5_base
-from tables.table_6 import calculate_table_6_base
-from tables.table_7 import calculate_table_7_base
-
-try:
-    from tables.table_8 import calculate_table_8_tariff
-except ImportError:
-    def calculate_table_8_tariff(*args, **kwargs): return {"base_chf": 0.0, "details_label": "Cədvəl 8"}
-
-try:
-    from tables.table_10 import calculate_table_10_tariff
-except ImportError:
-    def calculate_table_10_tariff(*args, **kwargs): return {"base_chf": 0.0, "details_label": "Cədvəl 10"}
-
-try:
-    from tables.table_11 import calculate_table_11_tariff
-except ImportError:
-    def calculate_table_11_tariff(*args, **kwargs): return {"base_chf": 0.0, "column_info": "", "rate_type": "per_ton"}
-
-try:
-    from tables.table_12 import calculate_table_12_base
-except ImportError:
-    def calculate_table_12_base(*args, **kwargs): return (0.0, "Cədvəl 12")
+from tables.table_3 import calculate_table_3_base, get_table_3_coefficients
+from tables.table_4 import calculate_table_4_base, get_table_4_coefficients
+from tables.table_5 import calculate_table_5_base, get_table_5_coefficients
+from tables.table_6 import calculate_table_6_base, get_table_6_coefficients
+from tables.table_7 import calculate_table_7_base, get_table_7_coefficients
+from tables.table_8 import calculate_table_8_tariff
+from tables.table_10 import calculate_table_10_tariff
+from tables.table_11 import calculate_table_11_tariff
+from tables.table_12 import calculate_table_12_base
 
 EMPTY_SPS_CODES = ["99210000", "99213000", "99220000", "99223000"]
-
-def _safe_extract_base_chf(val) -> float:
-    if isinstance(val, (int, float)):
-        return float(val)
-    if isinstance(val, (tuple, list)) and len(val) > 0:
-        return float(val[0])
-    if isinstance(val, dict):
-        return float(val.get("base_chf") or val.get("rate") or 0.0)
-    return 0.0
 
 def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str = "AZ", year: str = "2026", ui_t: dict = None, *args, **kwargs) -> dict:
     if ui_t is None:
@@ -105,63 +79,99 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     base_chf = 0.0
     table_num = 3.0
 
-    # === [ОБРАБОТКА СПЕЦИАЛЬНЫХ ТАРИФНЫХ РАЗДЕЛОВ] ===
     escort_cnt = int(nlu_data.get("escort_count") or 0)
     has_teplushka = bool(nlu_data.get("has_teplushka"))
+    is_dangerous = "2927" in user_input_raw or bool(nlu_data.get("is_dangerous"))
+    oversize_group = nlu_data.get("oversize_group")
 
-    # п. 3.9 — Проводники и Теплушки
+    # 1. Спецразделы п. 3.9 (Проводники и Теплушки)
     if escort_cnt > 0 and act_weight == 0:
         table_num = 3.9
         base_chf = escort_cnt * math.ceil(tariff_dist_km / 100.0) * 12.00
     elif has_teplushka:
         table_num = 3.9
         base_chf = 0.20 * axles_count * tariff_dist_km
-    # п. 3.7.8 — Перегонка порожних транспортеров
+
+    # 2. Перегонки и ремонт (п. 3.7.8 / 3.7.2)
     elif is_empty and wagon_type == "transporter":
         table_num = 3.78
         rate_per_axle = 0.23 if axles_count <= 8 else 0.35
         base_chf = rate_per_axle * axles_count * tariff_dist_km
-    # п. 3.7.2 — Вагоны МПС в ремонт
     elif is_empty and nlu_data.get("is_in_repair"):
         table_num = 3.72
         base_chf = 0.10 * axles_count * tariff_dist_km
-    # п. 3.2.2 — Порожний приватный возврат
+
+    # 3. Порожний приватный возврат (п. 3.2.2)
     elif is_empty and clean_gng in EMPTY_SPS_CODES:
         table_num = 3.22
         base_chf = 0.10 * axles_count * tariff_dist_km
-    # п. 3.7.1 — Перевозка на своих осях
+
+    # 4. Перевозимые на своих осях (п. 3.7.1)
     elif bool(nlu_data.get("is_own_axles")):
         table_num = 3.71
-        billable_weight = max(10.0, act_weight)
-        base_raw = _safe_extract_base_chf(calculate_table_4_base(tariff_dist_km, billable_weight) if shipment_type_code == "transit" else calculate_table_3_base(tariff_dist_km, billable_weight))
-        base_chf = base_raw * 0.50
-    # Цистерны (Таблица 6) — Точный порядок аргументов
+        bw = max(10.0, act_weight)
+        if shipment_type_code == "transit":
+            r_val, _ = calculate_table_4_base(tariff_dist_km, bw)
+        else:
+            r_val, _ = calculate_table_3_base(tariff_dist_km, bw)
+        base_chf = (r_val or 0.0) * 0.50
+
+    # 5. Опасные грузы (Cədvəl 12)
+    elif is_dangerous and "1230" not in clean_gng:
+        table_num = 12.0
+        r_val, _ = calculate_table_12_base(tariff_dist_km, billable_weight)
+        base_chf = r_val or 0.0
+
+    # 6. Негабаритные грузы (Cədvəl 11)
+    elif oversize_group:
+        table_num = 11.0
+        res = calculate_table_11_tariff(tariff_dist_km, billable_weight, oversize_group)
+        base_chf = (res.get("base_chf") or 0.0) * billable_weight
+
+    # 7. Цистерны (Cədvəl 6)
     elif wagon_type in ["cistern", "цистерна", "çən"]:
         table_num = 6.0
-        base_chf = _safe_extract_base_chf(calculate_table_6_base(tariff_dist_km, billable_weight, clean_gng, park_type))
-    # Рефрижераторы (Таблица 5)
-    elif wagon_type in ["ref", "реф", "изотерм"]:
+        rate_per_ton, _ = calculate_table_6_base(tariff_dist_km, billable_weight, clean_gng, park_type)
+        base_chf = (rate_per_ton or 0.0) * billable_weight
+
+    # 8. Спецплатформы / Рефрижераторы / Автопоезда (Cədvəl 5)
+    elif wagon_type in ["ref", "реф", "изотерм"] or any(k in input_lower for k in ["avtoqatar", "автопоезд", "qoşqu", "kuzov", "inv", "anv"]):
         table_num = 5.0
-        ref_wagons = int(nlu_data.get("ref_section_cargo_wagons") or 5)
-        base_chf = _safe_extract_base_chf(calculate_table_5_base(tariff_dist_km, billable_weight, ref_wagons))
-    # Контейнеры (Таблицы 8 и 10)
+        rate_val, _, is_per_wagon = calculate_table_5_base(tariff_dist_km, billable_weight, wagon_type, user_input_raw=user_input_raw, is_empty=is_empty)
+        if is_per_wagon:
+            base_chf = rate_val or 0.0
+        else:
+            base_chf = (rate_val or 0.0) * billable_weight
+
+    # 9. Контейнеры (Cədvəl 8 и 10)
     elif wagon_type in ["container", "контейнер", "tank_container"]:
         c_size = int(nlu_data.get("container_size") or 20)
         if wagon_type == "tank_container":
             table_num = 10.0
-            base_chf = _safe_extract_base_chf(calculate_table_10_tariff(distance_km=tariff_dist_km, feet_size=c_size))
+            res = calculate_table_10_tariff(distance_km=tariff_dist_km, container_type="tank_container", feet_size=c_size, is_empty=is_empty, gng_code=clean_gng)
+            base_chf = res.get("base_chf") or 0.0
         else:
             table_num = 8.0
-            base_chf = _safe_extract_base_chf(calculate_table_8_tariff(distance_km=tariff_dist_km, feet_size=c_size, is_empty=is_empty, park_type=park_type))
-    # Стандартный расчет (Таблица 3 / 4)
+            res = calculate_table_8_tariff(distance_km=tariff_dist_km, feet_size=c_size, is_empty=is_empty, park_type=park_type)
+            base_chf = res.get("base_chf") or 0.0
+
+    # 10. Малотоннажные отправки, почта, пассажирские и транспортеры (Cədvəl 7)
+    elif act_weight > 0 and act_weight <= 25.0 and (wagon_type == "transporter" or "passenger" in wagon_type or clean_gng.startswith("9991")):
+        table_num = 7.0
+        rate_val, _ = calculate_table_7_base(tariff_dist_km, billable_weight_tons=billable_weight, wagon_type=wagon_type, is_empty=is_empty, gng_code=clean_gng, user_input_raw=user_input_raw)
+        base_chf = rate_val or 0.0
+
+    # 11. Стандартные универсальные вагоны (Cədvəl 3 и 4)
     elif shipment_type_code == "transit":
         table_num = 4.0
-        base_chf = _safe_extract_base_chf(calculate_table_4_base(tariff_dist_km, billable_weight))
+        r_val, _ = calculate_table_4_base(tariff_dist_km, billable_weight)
+        base_chf = r_val or 0.0
     else:
         table_num = 3.0
-        base_chf = _safe_extract_base_chf(calculate_table_3_base(tariff_dist_km, billable_weight))
+        r_val, _ = calculate_table_3_base(tariff_dist_km, billable_weight)
+        base_chf = r_val or 0.0
 
-    # === КОЭФФИЦИЕНТЫ ===
+    # === [РАСЧЕТ КОЭФФИЦИЕНТОВ] ===
     coeffs = []
     if table_num not in [3.9, 3.72, 3.78]:
         coeffs.append(("İndeksasiya 1.015", 1.015))
@@ -175,10 +185,16 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     if is_long_platform_scep(user_input_raw, wagon_type):
         coeffs.append(("Спецплатформа >19m 1.20", 1.20))
 
-    # п. 3.6.1 — Опасные грузы (2.00)
-    if "2927" in user_input_raw or "1230" in user_input_raw:
-        if "1230" not in clean_gng:  # Метанол - исключение
-            coeffs.append(("Təhlükəli yük 2.00", 2.00))
+    # Специфические коэффициенты из модулей таблиц
+    if table_num == 3.0:
+        t_coeffs, _ = get_table_3_coefficients(shipment_type_code=shipment_type_code, gng_code=clean_gng, lang=lang)
+        coeffs.extend(t_coeffs)
+    elif table_num == 5.0:
+        t_coeffs, _ = get_table_5_coefficients(shipment_type_code=shipment_type_code, wagon_type=wagon_type, gng_code=clean_gng, ref_wagons_cnt=nlu_data.get("ref_section_cargo_wagons"), user_input_raw=user_input_raw, lang=lang)
+        coeffs.extend(t_coeffs)
+    elif table_num == 6.0:
+        t_coeffs, _ = get_table_6_coefficients(shipment_type_code=shipment_type_code, wagon_type=wagon_type, gng_code=clean_gng, park_type=park_type, lang=lang)
+        coeffs.extend(t_coeffs)
 
     total_coeff = 1.0
     for _, c_val in coeffs:
@@ -193,7 +209,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     if shipment_type_code == "transit" and (clean_gng.startswith("72") or clean_gng.startswith("27")):
         guard_usd = round((tariff_dist_km * 0.10 / 1.70) * 1.02, 2)
 
-    # Паром ASCO (65 USD/м для вагонов >15м, 50 USD/м для <=15м)
+    # Паром ASCO
     ferry_usd = 0.0
     if bool(nlu_data.get("is_asco_ferry")) or "паром" in input_lower or "bərə" in input_lower:
         w_len = float(nlu_data.get("wagon_length_m") or 15.0)
@@ -226,4 +242,3 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             "asco_ferry": {"total_usd": ferry_usd} if ferry_usd > 0 else 0.0
         }
     }
-# === [КОНЕЦ БЛОКА: FILE-ENGINE] ==============================================
