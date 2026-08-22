@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import datetime
 
 # ==============================================================================
 # UTILS-01: Константы и пограничные узлы ADY
@@ -99,20 +100,33 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
 
     return None
 
+def get_calculation_distance(actual_dist_km: int, shipment_mode: str = "import") -> int:
+    """Возвращает расчетное расстояние с учетом тарифных норм (min 101/151 км)."""
+    if actual_dist_km is None or actual_dist_km <= 0:
+        return 0
+
+    calc_dist = actual_dist_km
+    mode = str(shipment_mode or "").lower()
+
+    if "import" in mode or "idxal" in mode or "импорт" in mode:
+        calc_dist = max(actual_dist_km, 151)
+    elif "export" in mode or "ixrac" in mode or "экспорт" in mode:
+        calc_dist = max(actual_dist_km, 101)
+
+    return calc_dist
+
 # ==============================================================================
-# UTILS-03: Локальное определение ЕСР-кодов станций
+# UTILS-03: Резолвер станций и ЕСР-кодов
 # ==============================================================================
 def resolve_complex_station_code(raw_input: str) -> str:
     """Универсальный локальный резолвер сложных внутренних станций ADY."""
     text = str(raw_input or "").lower()
 
-    # 1. Группа Тагиев (Z.Tağıyev 546302 vs Z.Tağıyev çeşidləmə 546901)
     if any(r in text for r in ["тагиев", "tagiyev", "тагив", "г.тагиев", "h.z.", "г. тагиев", "g.tagiyev", "g tagiyev"]):
         if any(m in text for m in ["сорт", "sort", "чешид", "cesid", "ceşid"]):
             return "546901"
         return "546302"
 
-    # 2. Группа Баку Торговый Порт / Ляман (547302 vs 547406 vs 547209)
     if any(r in text for r in ["баку порт", "baki liman", "bakı liman", "торговый порт", "ticarət liman"]):
         if any(m in text for m in ["перевал", "ашир", "aşır", "ашыр"]):
             return "547209"
@@ -120,25 +134,21 @@ def resolve_complex_station_code(raw_input: str) -> str:
             return "547406"
         return "547302"
 
-    # 3. Группа Баку Товарный / Грузовой / Гюнес (547105 vs 547603)
     if any(r in text for r in ["баку юк", "bakı yük", "баку груз", "баку товар"]):
         if any(m in text for m in ["терминал", "terminal"]):
             return "547603"
         return "547105"
 
-    # 4. Группа Сангачал (548305 vs 548606)
     if any(r in text for r in ["sanqacal", "сангачал", "sanqaçal", "сангачалы"]):
         if any(m in text for m in ["терминал", "terminal", "ашир", "aşır", "перевал"]):
             return "548606"
         return "548305"
 
-    # 5. Группа Гарадаг (548201 vs 549702)
     if any(r in text for r in ["qaradag", "гарадаг", "qaradağ", "карадаг"]):
         if any(m in text for m in ["терминал", "terminal"]):
             return "549702"
         return "548201"
 
-    # 6. Группа Сумгаит (546105 vs 546001 vs 546209)
     if any(r in text for r in ["сумгаит", "sumqayit", "sumqayıt"]):
         if any(m in text for m in ["главный", "баш", "bas", "baş"]):
             return "546001"
@@ -146,19 +156,16 @@ def resolve_complex_station_code(raw_input: str) -> str:
             return "546209"
         return "546105"
 
-    # 7. Группа Мингечевир (555703 vs 555807)
     if any(r in text for r in ["mingecevir", "мингечевир", "mingəçevir"]):
         if any(m in text for m in ["город", "şəhər", "шехер", "seher"]):
             return "555807"
         return "555703"
 
-    # 8. Группа Гянджа (558004 vs 558108)
     if any(r in text for r in ["гянджа", "ganja", "gəncə"]):
         if any(m in text for m in ["грузовая", "юк", "yük"]):
             return "558108"
         return "558004"
 
-    # 9. Группа Баладжары (545200 vs 545107)
     if any(r in text for r in ["баладжары", "bilacari", "biləcəri", "баледжары"]):
         if any(m in text for m in ["сорт", "sort", "чешид", "cesid"]):
             return "545107"
@@ -167,22 +174,20 @@ def resolve_complex_station_code(raw_input: str) -> str:
     return None
 
 def get_border_esr(station_name: str, position: str = "from", shipment_mode: str = "import") -> str:
-    """Определение пограничного ЕСР с учетом направления перевозки."""
     st_clean = str(station_name or "").lower().strip()
     for key, val in BORDER_STATIONS_MAP.items():
         if key in st_clean:
             if shipment_mode == "transit":
                 return val["border"]
-            elif shipment_mode == "import" and position == "from":
+            elif shipment_mode in ["import", "idxal"] and position in ["from", "origin"]:
                 return val["border"]
-            elif shipment_mode == "export" and position == "to":
+            elif shipment_mode in ["export", "ixrac"] and position in ["to", "dest"]:
                 return val["border"]
             else:
                 return val["local"]
     return None
 
-def resolve_esr_by_station_name(station_name: str, position: str = "from", shipment_mode: str = "import") -> str:
-    """Универсальная точка входа для получения ЕСР-кода."""
+def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "", position: str = "from", shipment_mode: str = "import") -> str:
     border_esr = get_border_esr(station_name, position=position, shipment_mode=shipment_mode)
     if border_esr:
         return border_esr
@@ -200,3 +205,57 @@ def resolve_esr_by_station_name(station_name: str, position: str = "from", shipm
             if st_clean in name or name in st_clean:
                 return code
     return None
+
+def is_border_esr(esr_code: str) -> bool:
+    return str(esr_code) in BORDER_COLUMN_MAP
+
+def format_station_display_name(st_name: str, esr_code: str, lang: str = "AZ") -> str:
+    if is_border_esr(esr_code):
+        suf = "-эксп." if lang == "RU" else "-eksp."
+        return f"{st_name}{suf}"
+    return st_name
+
+# ==============================================================================
+# UTILS-04: Вспомогательные расчётные функции
+# ==============================================================================
+def get_min_weight_by_gng(gng_code: str, act_weight: float) -> float:
+    gng = str(gng_code or "").strip()
+    if gng.startswith("44") or gng.startswith("4707"):
+        return max(45.0, act_weight)
+    if gng.startswith("72") or gng.startswith("1001"):
+        return max(60.0, act_weight)
+    return max(10.0, act_weight)
+
+def get_transporter_min_weight(axles: int, act_weight: float) -> float:
+    if axles <= 4:
+        return max(10.0, act_weight)
+    elif axles <= 8:
+        return max(15.0, act_weight)
+    return max(20.0, act_weight)
+
+def is_long_platform_scep(user_input_raw: str, wagon_type: str) -> bool:
+    inp = str(user_input_raw or "").lower()
+    return "19m" in inp or "19 м" in inp or "19m" in str(wagon_type or "").lower()
+
+def should_apply_150_coeff(shipment_mode: str, table_num: float, gng_code: str, wagon_type: str, park_type: str) -> bool:
+    if shipment_mode in ["import", "export"]:
+        if table_num in [5, 6]:
+            return True
+        if str(park_type).upper() == "SPS" and table_num not in [3, 4]:
+            return True
+    return False
+
+def get_global_coefficients(shipment_type_code: str, gng_code: str, origin_esr: str, dest_esr: str, lang: str = "AZ") -> tuple:
+    coeffs = []
+    notes = []
+    gng = str(gng_code or "")
+    if shipment_type_code in ["import", "idxal"] and (gng.startswith("44") or gng.startswith("72")):
+        lbl = "Meşə/Metal 1.04" if lang == "AZ" else ("Лес/Металл 1.04" if lang == "RU" else "Wood/Metal 1.04")
+        coeffs.append((lbl, 1.04))
+    return coeffs, notes
+
+def get_exchange_rate_for_date(target_dt: datetime) -> tuple:
+    return 0.79, "01.07.2026 - 30.09.2026"
+
+def parse_date_from_string(date_str: str) -> datetime:
+    return datetime.now()
