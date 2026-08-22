@@ -1,3 +1,4 @@
+# === [НАЧАЛО БЛОКА: FILE-ENGINE] Диспетчер расчетов и генератор отчетов ===
 import os
 import re
 import math
@@ -13,7 +14,8 @@ from utils import (
     get_exchange_rate_for_date,
     should_apply_150_coeff,
     get_transporter_min_weight,
-    is_long_platform_scep
+    is_long_platform_scep,
+    get_weight_column_index
 )
 
 from tables.table_3 import calculate_table_3_base
@@ -80,7 +82,6 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         else:
             shipment_type_code = "import"
 
-    # Расчет расстояния
     explicit_dist = nlu_data.get("distance_km") or nlu_data.get("actual_dist_km")
     if not explicit_dist and user_input_raw:
         m = re.search(r'(\d+)\s*(?:km|км)', input_lower)
@@ -104,16 +105,46 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     base_chf = 0.0
     table_num = 3.0
 
-    if is_empty and clean_gng in EMPTY_SPS_CODES:
+    # === [ОБРАБОТКА СПЕЦИАЛЬНЫХ ТАРИФНЫХ РАЗДЕЛОВ] ===
+    escort_cnt = int(nlu_data.get("escort_count") or 0)
+    has_teplushka = bool(nlu_data.get("has_teplushka"))
+
+    # п. 3.9 — Проводники и Теплушки
+    if escort_cnt > 0 and act_weight == 0:
+        table_num = 3.9
+        base_chf = escort_cnt * math.ceil(tariff_dist_km / 100.0) * 12.00
+    elif has_teplushka:
+        table_num = 3.9
+        base_chf = 0.20 * axles_count * tariff_dist_km
+    # п. 3.7.8 — Перегонка порожних транспортеров
+    elif is_empty and wagon_type == "transporter":
+        table_num = 3.78
+        rate_per_axle = 0.23 if axles_count <= 8 else 0.35
+        base_chf = rate_per_axle * axles_count * tariff_dist_km
+    # п. 3.7.2 — Вагоны МПС в ремонт
+    elif is_empty and nlu_data.get("is_in_repair"):
+        table_num = 3.72
+        base_chf = 0.10 * axles_count * tariff_dist_km
+    # п. 3.2.2 — Порожний приватный возврат
+    elif is_empty and clean_gng in EMPTY_SPS_CODES:
         table_num = 3.22
         base_chf = 0.10 * axles_count * tariff_dist_km
+    # п. 3.7.1 — Перевозка на своих осях
+    elif bool(nlu_data.get("is_own_axles")):
+        table_num = 3.71
+        billable_weight = max(10.0, act_weight)
+        base_raw = _safe_extract_base_chf(calculate_table_4_base(tariff_dist_km, billable_weight) if shipment_type_code == "transit" else calculate_table_3_base(tariff_dist_km, billable_weight))
+        base_chf = base_raw * 0.50
+    # Цистерны (Таблица 6) — Точный порядок аргументов
     elif wagon_type in ["cistern", "цистерна", "çən"]:
         table_num = 6.0
-        base_chf = _safe_extract_base_chf(calculate_table_6_base(clean_gng, park_type, billable_weight, tariff_dist_km))
+        base_chf = _safe_extract_base_chf(calculate_table_6_base(tariff_dist_km, billable_weight, clean_gng, park_type))
+    # Рефрижераторы (Таблица 5)
     elif wagon_type in ["ref", "реф", "изотерм"]:
         table_num = 5.0
         ref_wagons = int(nlu_data.get("ref_section_cargo_wagons") or 5)
-        base_chf = _safe_extract_base_chf(calculate_table_5_base(billable_weight, tariff_dist_km, ref_wagons))
+        base_chf = _safe_extract_base_chf(calculate_table_5_base(tariff_dist_km, billable_weight, ref_wagons))
+    # Контейнеры (Таблицы 8 и 10)
     elif wagon_type in ["container", "контейнер", "tank_container"]:
         c_size = int(nlu_data.get("container_size") or 20)
         if wagon_type == "tank_container":
@@ -122,6 +153,7 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         else:
             table_num = 8.0
             base_chf = _safe_extract_base_chf(calculate_table_8_tariff(distance_km=tariff_dist_km, feet_size=c_size, is_empty=is_empty, park_type=park_type))
+    # Стандартный расчет (Таблица 3 / 4)
     elif shipment_type_code == "transit":
         table_num = 4.0
         base_chf = _safe_extract_base_chf(calculate_table_4_base(tariff_dist_km, billable_weight))
@@ -129,9 +161,12 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         table_num = 3.0
         base_chf = _safe_extract_base_chf(calculate_table_3_base(tariff_dist_km, billable_weight))
 
-    # Коэффициенты
-    coeffs = [("İndeksasiya 1.015", 1.015)]
-    if park_type == "SPS" and table_num not in [3.22, 3.9]:
+    # === КОЭФФИЦИЕНТЫ ===
+    coeffs = []
+    if table_num not in [3.9, 3.72, 3.78]:
+        coeffs.append(("İndeksasiya 1.015", 1.015))
+
+    if park_type == "SPS" and table_num not in [3.22, 3.9, 3.72, 3.78]:
         coeffs.append(("SPS güzəşt 0.85", 0.85))
 
     if should_apply_150_coeff(shipment_type_code, table_num, clean_gng, wagon_type, park_type):
@@ -139,6 +174,11 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
 
     if is_long_platform_scep(user_input_raw, wagon_type):
         coeffs.append(("Спецплатформа >19m 1.20", 1.20))
+
+    # п. 3.6.1 — Опасные грузы (2.00)
+    if "2927" in user_input_raw or "1230" in user_input_raw:
+        if "1230" not in clean_gng:  # Метанол - исключение
+            coeffs.append(("Təhlükəli yük 2.00", 2.00))
 
     total_coeff = 1.0
     for _, c_val in coeffs:
@@ -148,8 +188,17 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
     net_ady_usd = round((base_chf * total_coeff) / rate_chf_usd, 2)
     express_usd = round(net_ady_usd * 1.02, 2)
 
-    guard_usd = round(0.024 * tariff_dist_km, 2) if clean_gng.startswith("72") or clean_gng.startswith("27") else 0.0
-    ferry_usd = round(float(nlu_data.get("wagon_length_m") or 15.0) * 50.0, 2) if bool(nlu_data.get("is_asco_ferry")) or "паром" in input_lower or "bərə" in input_lower else 0.0
+    # Охрана
+    guard_usd = 0.0
+    if shipment_type_code == "transit" and (clean_gng.startswith("72") or clean_gng.startswith("27")):
+        guard_usd = round((tariff_dist_km * 0.10 / 1.70) * 1.02, 2)
+
+    # Паром ASCO (65 USD/м для вагонов >15м, 50 USD/м для <=15м)
+    ferry_usd = 0.0
+    if bool(nlu_data.get("is_asco_ferry")) or "паром" in input_lower or "bərə" in input_lower:
+        w_len = float(nlu_data.get("wagon_length_m") or 15.0)
+        rate_m = 65.0 if w_len > 15.0 else 50.0
+        ferry_usd = round(w_len * rate_m, 2)
 
     st_from_display = format_station_display_name(st_from_raw, origin_esr, lang_upper)
     st_to_display = format_station_display_name(st_to_raw, dest_esr, lang_upper)
@@ -177,3 +226,4 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
             "asco_ferry": {"total_usd": ferry_usd} if ferry_usd > 0 else 0.0
         }
     }
+# === [КОНЕЦ БЛОКА: FILE-ENGINE] ==============================================
