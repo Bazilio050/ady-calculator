@@ -1,62 +1,94 @@
-# === [НАЧАЛО БЛОКА: UTILS-01] Константы и пограничные узлы ADY ===
 import os
 import re
 from datetime import datetime
 
+# ==============================================================================
+# 1. РЕЕСТР ПОГРАНИЧНЫХ СТАНЦИЙ И ЕСР-КОДОВ
+# ==============================================================================
+
+BORDER_ESR_CODES = {
+    "545006", "547508", "545307", "545107",
+    "558631", "558701", "558504", "558400",
+    "554109", "554503", "553905",
+    "550004", "550108", "550803",
+    "550502", "550409",
+    "549204", "553002", "548803", "547302", "547406", "547209", "548502", "548703"
+}
+
 BORDER_COLUMN_MAP = {
-    "547508": 3, "545006": 3, "54750": 3, "54500": 3,  # Yalama (погран / локал)
-    "558701": 4, "558631": 4, "55870": 4, "55863": 4,  # Böyük Kəsik (погран / локал)
-    "554503": 5, "554500": 5, "55450": 5,              # Astara (погран / локал)
-    "550108": 6, "550100": 6, "55010": 6,              # Culfa (погран / локал)
-    "553002": 7, "548803": 7, "548502": 7, "549204": 7, "54850": 7  # Ələt ports / eksp
+    "545006": 3, "547508": 3, "545307": 3, "545107": 3,
+    "554109": 4, "554503": 4, "553905": 4,
+    "558701": 5, "558631": 5, "558504": 5, "558400": 5,
+    "550004": 6, "550108": 6, "550803": 6,
+    "549204": 7, "553002": 7, "548803": 7, "547302": 7, 
+    "547406": 7, "547209": 7, "548502": 7, "548703": 7
 }
 
-BORDER_STATIONS_MAP = {
-    "yalama": {"local": "545006", "border": "547508"},
-    "boyuk kesik": {"local": "558631", "border": "558701"},
-    "böyük kəsik": {"local": "558631", "border": "558701"},
-    "беюк кясик": {"local": "558631", "border": "558701"},
-    "беюккясик": {"local": "558631", "border": "558701"},
-    "astara": {"local": "554500", "border": "554503"},
-    "астара": {"local": "554500", "border": "554503"},
-    "culfa": {"local": "550100", "border": "550108"},
-    "джульфа": {"local": "550100", "border": "550108"},
-    "alet": {"local": "548502", "border": "553002"},
-    "elet": {"local": "548502", "border": "553002"},
-    "алят": {"local": "548502", "border": "553002"},
+BORDER_STATION_ESR_OVERRIDE = {
+    "boyuk kesik": "558701",
+    "yalama": "547508",
+    "astara": "554109",
+    "culfa": "550004",
+    "serur": "550409",
+    "alet": "548502",
+    "elet": "548502",
+    "алят": "548502"
 }
 
-_DISTANCES_CACHE = None
-# === [КОНЕЦ БЛОКА: UTILS-01] =================================================
+def is_border_esr(esr_code: str) -> bool:
+    clean_esr = re.sub(r'\D', '', str(esr_code or ""))
+    return clean_esr in BORDER_ESR_CODES
 
+def format_station_display_name(raw_name: str, esr_code: str, site_lang: str = "AZ") -> str:
+    clean_esr = re.sub(r'\D', '', str(esr_code or ""))
+    st_name = str(raw_name or "").strip()
 
-# === [НАЧАЛО БЛОКА: UTILS-02] Кэширование и точный поиск расстояний ===
-def _load_distances_cache():
-    global _DISTANCES_CACHE
-    if _DISTANCES_CACHE is not None:
-        return _DISTANCES_CACHE
+    if is_border_esr(clean_esr):
+        lang_upper = str(site_lang or "AZ").upper()
+        suffix = "-эксп." if lang_upper == "RU" else ("-exp." if lang_upper == "EN" else "-eksp.")
+        if not st_name.endswith(suffix):
+            st_name = f"{st_name}{suffix}"
 
-    _DISTANCES_CACHE = []
-    filepath = "Distances.txt"
-    if not os.path.exists(filepath):
-        possible = [f for f in os.listdir(".") if "dist" in f.lower() or "məsafə" in f.lower() or "masafe" in f.lower()]
-        if possible:
-            filepath = possible[0]
+    return f"{st_name} ({clean_esr})" if clean_esr else st_name
 
-    if os.path.exists(filepath):
+# ==============================================================================
+# 2. ПОИСК И АВТО-РЕЗОЛВ ЕСР ПО НАЗВАНИЮ И КИЛОМЕТРАЖУ
+# ==============================================================================
+
+def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "") -> str:
+    if not station_name:
+        return ""
+
+    clean = re.sub(r'-(eksp|эксп|exp)\b', '', str(station_name), flags=re.IGNORECASE).strip().lower()
+    clean_norm = clean.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
+
+    for b_name, b_esr in BORDER_STATION_ESR_OVERRIDE.items():
+        if b_name in clean_norm or clean_norm in b_name:
+            return b_esr
+
+    possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
+    dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
+
+    if dist_file:
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(dist_file, "r", encoding="utf-8") as f:
                 for line in f:
-                    parts = [p.strip() for p in line.split("\t")]
-                    if len(parts) >= 3:
-                        _DISTANCES_CACHE.append(parts)
+                    if "|" not in line or ":---" in line or "Stansiyanın" in line:
+                        continue
+                    parts = [p.strip() for p in line.split("|")]
+                    if len(parts) < 3:
+                        continue
+                    file_st_name = parts[1].replace("*", "").strip().lower()
+                    file_st_name = file_st_name.replace('ö', 'o').replace('ə', 'e').replace('ı', 'i').replace('ş', 's').replace('ç', 'c').replace('ğ', 'g')
+                    file_esr = re.sub(r'\D', '', parts[2])
+                    if clean_norm and file_st_name and (clean_norm in file_st_name or file_st_name in clean_norm):
+                        return file_esr
         except Exception as e:
-            print(f"Error loading distances: {e}")
+            print(f"Error resolving ESR: {e}")
 
-    return _DISTANCES_CACHE
+    return ""
 
 def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
-    """Точный поиск километража по закешированной таблице Distances.txt (0 токенов)."""
     if not esr_from or not esr_to:
         return None
 
@@ -77,228 +109,119 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
         target_row_esr = c_to
 
     if col_idx is None:
-        col_idx = BORDER_COLUMN_MAP.get(c_to[:5])
-        target_row_esr = c_from
+        col_idx = 3
 
-    if col_idx is None:
-        col_idx = BORDER_COLUMN_MAP.get(c_from[:5])
-        target_row_esr = c_to
+    possible_paths = ["Distances.txt", "tariff_data/Distances.txt", "data/Distances.txt", "tables/Distances.txt"]
+    dist_file = next((p for p in possible_paths if os.path.exists(p)), None)
 
-    if col_idx is None:
+    if not dist_file:
         return None
 
-    cache = _load_distances_cache()
-    target_5 = target_row_esr[:5]
-
-    for parts in cache:
-        if len(parts) <= col_idx:
-            continue
-
-        row_esr_code = re.sub(r'\D', '', parts[2])
-        if not row_esr_code:
-            continue
-
-        if row_esr_code[:5] == target_5 or target_5 in row_esr_code or row_esr_code in target_row_esr:
-            val_str = re.sub(r'\D', '', parts[col_idx])
-            if val_str and val_str.isdigit():
-                return int(val_str)
-
-    return None
-
-def get_calculation_distance(actual_dist_km: int, shipment_mode: str = "import") -> int:
-    """Возвращает расчетное расстояние с учетом тарифных норм ADY (min 101/151 км)."""
-    if actual_dist_km is None or actual_dist_km <= 0:
-        return 0
-
-    calc_dist = actual_dist_km
-    mode = str(shipment_mode or "").lower()
-
-    if "import" in mode or "idxal" in mode or "импорт" in mode:
-        calc_dist = max(actual_dist_km, 151)
-    elif "export" in mode or "ixrac" in mode or "экспорт" in mode:
-        calc_dist = max(actual_dist_km, 101)
-
-    return calc_dist
-# === [КОНЕЦ БЛОКА: UTILS-02] =================================================
-
-
-# === [НАЧАЛО БЛОКА: UTILS-03] Определение ЕСР-кодов станций ===
-def resolve_complex_station_code(raw_input: str) -> str:
-    """Универсальный локальный резолвер сложных внутренних станций ADY."""
-    text = str(raw_input or "").lower()
-
-    # 1. Группа Тагиев
-    if any(r in text for r in ["тагиев", "tagiyev", "тагив", "г.тагиев", "h.z.", "г. тагиев", "g.tagiyev", "g tagiyev"]):
-        if any(m in text for m in ["сорт", "sort", "чешид", "cesid", "ceşid"]):
-            return "546901"
-        return "546302"
-
-    # 2. Группа Баку Торговый Порт / Ляман
-    if any(r in text for r in ["баку порт", "baki liman", "bakı liman", "торговый порт", "ticarət liman"]):
-        if any(m in text for m in ["перевал", "ашир", "aşır", "ашыр"]):
-            return "547209"
-        if any(m in text for m in ["эксп", "exp", "ixrac", "экспорт"]):
-            return "547406"
-        return "547302"
-
-    # 3. Группа Баку Товарный / Грузовой
-    if any(r in text for r in ["баку юк", "bakı yük", "баку груз", "баку товар"]):
-        if any(m in text for m in ["терминал", "terminal"]):
-            return "547603"
-        return "547105"
-
-    # 4. Группа Сангачал
-    if any(r in text for r in ["sanqacal", "сангачал", "sanqaçal", "сангачалы"]):
-        if any(m in text for m in ["терминал", "terminal", "ашир", "aşır", "перевал"]):
-            return "548606"
-        return "548305"
-
-    # 5. Группа Гарадаг
-    if any(r in text for r in ["qaradag", "гарадаг", "qaradağ", "карадаг"]):
-        if any(m in text for m in ["терминал", "terminal"]):
-            return "549702"
-        return "548201"
-
-    # 6. Группа Сумгаит
-    if any(r in text for r in ["сумгаит", "sumqayit", "sumqayıt"]):
-        if any(m in text for m in ["главный", "баш", "bas", "baş"]):
-            return "546001"
-        if any(m in text for m in ["пасс", "шехер", "seher", "город"]):
-            return "546209"
-        return "546105"
-
-    # 7. Группа Мингечевир
-    if any(r in text for r in ["mingecevir", "мингечевир", "mingəçevir"]):
-        if any(m in text for m in ["город", "şəhər", "шехер", "seher"]):
-            return "555807"
-        return "555703"
-
-    # 8. Группа Гянджа
-    if any(r in text for r in ["гянджа", "ganja", "gəncə"]):
-        if any(m in text for m in ["грузовая", "юк", "yük"]):
-            return "558108"
-        return "558004"
-
-    # 9. Группа Баладжары
-    if any(r in text for r in ["баладжары", "bilacari", "biləcəri", "баледжары"]):
-        if any(m in text for m in ["сорт", "sort", "чешид", "cesid"]):
-            return "545107"
-        return "545200"
-
-    return None
-
-def get_border_esr(station_name: str, position: str = "from", shipment_mode: str = "import") -> str:
-    """Определение пограничного ЕСР с поддержкой позиционных параметров."""
-    st_clean = str(station_name or "").lower().strip()
-    for key, val in BORDER_STATIONS_MAP.items():
-        if key in st_clean:
-            return val["border"]
-    return None
-
-def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "", position: str = "from", shipment_mode: str = "import", *args, **kwargs) -> str:
-    """Универсальная точка входа для получения ЕСР-кода."""
-    if isinstance(user_input_raw, str) and user_input_raw in ["from", "to", "origin", "dest"]:
-        shipment_mode = position if position not in ["from", "to", "origin", "dest"] else shipment_mode
-        position = user_input_raw
-        user_input_raw = ""
-
-    st_clean = str(station_name or "").strip()
-
-    border_esr = get_border_esr(st_clean, position=position, shipment_mode=shipment_mode)
-    if border_esr:
-        return border_esr
-
-    complex_esr = resolve_complex_station_code(f"{st_clean} {user_input_raw}")
-    if complex_esr:
-        return complex_esr
-
-    cache = _load_distances_cache()
-    st_lower = st_clean.lower()
-    for parts in cache:
-        if len(parts) >= 3:
-            name = parts[1].lower()
-            code = parts[2]
-            if st_lower in name or name in st_lower:
-                return code
-
-    return None
-
-def is_border_esr(esr_code: str) -> bool:
-    return str(esr_code) in BORDER_COLUMN_MAP
-
-def format_station_display_name(st_name: str, esr_code: str, lang: str = "AZ") -> str:
-    if is_border_esr(esr_code):
-        suf = "-эксп." if lang == "RU" else "-eksp."
-        return f"{st_name}{suf}"
-    return st_name
-# === [КОНЕЦ БЛОКА: UTILS-03] =================================================
-
-
-# === [НАЧАЛО БЛОКА: UTILS-04] Вспомогательные математические функции ===
-def get_weight_column_index(weight_tons: float) -> int:
-    """Возвращает индекс колонки для Таблиц 3 и 4 (Cədvəl 1)."""
-    w = float(weight_tons or 0)
-    if w <= 12: return 1
-    elif w <= 16: return 2
-    elif w <= 23: return 3
-    elif w <= 26: return 4
-    elif w <= 31: return 5
-    elif w <= 36: return 6
-    elif w <= 40: return 7
-    elif w <= 46: return 8
-    elif w <= 51: return 9
-    elif w <= 55: return 10
-    else: return 11
-
-def extract_gng_digits(gng_code: str) -> str:
-    return re.sub(r'\D', '', str(gng_code or ""))
-
-def get_min_weight_by_gng(gng_code: str, act_weight: float) -> float:
-    gng = str(gng_code or "").strip()
-    if gng.startswith("44") or gng.startswith("4707"):
-        return max(45.0, act_weight)
-    if gng.startswith("72") or gng.startswith("1001"):
-        return max(60.0, act_weight)
-    return max(10.0, act_weight)
-
-def get_transporter_min_weight(axles: int, act_weight: float) -> float:
-    if axles <= 4:
-        return max(10.0, act_weight)
-    elif axles <= 8:
-        return max(15.0, act_weight)
-    return max(20.0, act_weight)
-
-def is_long_platform_scep(user_input_raw: str, wagon_type: str) -> bool:
-    inp = str(user_input_raw or "").lower()
-    return "19m" in inp or "19 м" in inp or "19m" in str(wagon_type or "").lower()
-
-def should_apply_150_coeff(*args, **kwargs) -> bool:
     try:
-        mode = str(args[0] if len(args) > 0 else kwargs.get('shipment_mode', '')).lower()
-        tbl = float(args[1] if len(args) > 1 else kwargs.get('table_num', 0))
-        park = str(args[4] if len(args) > 4 else kwargs.get('park_type', '')).upper()
+        with open(dist_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if "|" not in line or ":---" in line or "Stansiyanın" in line:
+                    continue
+                parts = [p.strip() for p in line.split("|")]
+                if len(parts) <= col_idx:
+                    continue
+                row_esr_code = re.sub(r'\D', '', parts[2])
+                if row_esr_code and (row_esr_code[:5] in target_row_esr or target_row_esr[:5] in row_esr_code):
+                    val_str = re.sub(r'\D', '', parts[col_idx])
+                    if val_str and val_str.isdigit():
+                        return int(val_str)
+    except Exception as e:
+        print(f"Error reading Distances.txt: {e}")
 
-        if mode in ["import", "export", "idxal", "ixrac"]:
-            if tbl in [5, 6]:
-                return True
-            if park == "SPS" and tbl not in [3, 4]:
-                return True
-        return False
-    except Exception:
-        return False
+    return None
 
-def get_global_coefficients(shipment_type_code: str, gng_code: str, origin_esr: str, dest_esr: str, lang: str = "AZ") -> tuple:
-    coeffs = []
-    notes = []
-    gng = str(gng_code or "")
-    if shipment_type_code in ["import", "idxal"] and (gng.startswith("44") or gng.startswith("72")):
-        lbl = "Meşə/Metal 1.04" if lang == "AZ" else ("Лес/Металл 1.04" if lang == "RU" else "Wood/Metal 1.04")
-        coeffs.append((lbl, 1.04))
+def get_calculation_distance(distance_km: int, shipment_type: str) -> int:
+    st_lower = str(shipment_type or "").lower()
+    if any(k in st_lower for k in ["ixrac", "export", "экспорт"]):
+        return max(distance_km, 101)
+    if any(k in st_lower for k in ["idxal", "import", "импорт"]):
+        return max(distance_km, 151)
+    return distance_km
+
+# ==============================================================================
+# 3. ВЕСОВЫЕ НОРМЫ И КОЭФФИЦИЕНТЫ
+# ==============================================================================
+
+def extract_gng_digits(gng_code, kwargs=None) -> str:
+    kwargs = kwargs or {}
+    candidates = [gng_code, kwargs.get("gng_code"), kwargs.get("gng"), kwargs.get("cargo_code")]
+    for c in candidates:
+        if c:
+            m = re.search(r"\d+", str(c))
+            if m:
+                return m.group(0)
+    return ""
+
+def get_min_weight_by_gng(gng_code: str, actual_weight_tons: float) -> float:
+    g = extract_gng_digits(gng_code)
+    w = float(actual_weight_tons or 0)
+    if not g:
+        return w
+    if g.startswith("4403") or g.startswith("4404") or g.startswith("4407"):
+        return max(w, 45.0)
+    if g.startswith("72") or g.startswith("1001") or g.startswith("1701"):
+        return max(w, 60.0)
+    if g.startswith("5201") or g.startswith("5202"):
+        return max(w, 50.0)
+    return max(w, 10.0)
+
+def is_non_ferrous_metal_gng(gng_code: str) -> bool:
+    clean_gng = extract_gng_digits(gng_code)
+    if not clean_gng: return False
+    return clean_gng.startswith("78") or clean_gng.startswith("74") or clean_gng.startswith("75") or clean_gng.startswith("76")
+
+def is_alat_boyuk_kesik_route(origin_esr: str, dest_esr: str, shipment_type: str) -> bool:
+    st_lower = str(shipment_type or "").lower()
+    if "tranzit" not in st_lower and "transit" not in st_lower and "транзит" not in st_lower:
+        return False
+    o_esr = re.sub(r'\D', '', str(origin_esr or ""))
+    d_esr = re.sub(r'\D', '', str(dest_esr or ""))
+    alat_codes = ["549204", "553002", "548803", "547302", "547406", "547209", "548502", "548703"]
+    bk_codes = ["558631", "558701", "558504", "558400"]
+    return (o_esr in alat_codes and d_esr in bk_codes) or (o_esr in bk_codes and d_esr in alat_codes)
+
+def get_global_coefficients(shipment_type: str, gng_code: str, origin_esr: str = None, dest_esr: str = None, lang: str = "AZ") -> tuple:
+    coeffs, notes = [], []
+    if is_non_ferrous_metal_gng(gng_code):
+        coeffs.append(("Əlvan metal 1.20", 1.20))
+    if is_alat_boyuk_kesik_route(origin_esr, dest_esr, shipment_type):
+        coeffs.append(("Ələt - B.Kəsik marşrutu 1.20", 1.20))
     return coeffs, notes
 
-def get_exchange_rate_for_date(target_dt: datetime) -> tuple:
-    return 0.79, "01.07.2026 - 30.09.2026"
+def load_rules_config(filepath: str = "RULES.md") -> str:
+    if os.path.exists(filepath):
+        with open(filepath, "r", encoding="utf-8") as f:
+            return f.read()
+    return ""
 
-def parse_date_from_string(date_str: str) -> datetime:
+CURRENCY_RATES_TABLE = [
+    ("01.01.2026", "31.12.2026", 0.79)
+]
+
+def parse_date_from_string(text: str):
     return datetime.now()
-# === [КОНЕЦ БЛОКА: UTILS-04] =================================================
+
+def get_exchange_rate_for_date(target_date=None) -> tuple:
+    return 0.79, "01.01.2026 - 31.12.2026"
+
+def should_apply_150_coeff(shipment_type_code: str, table_num: int, gng_code: str, wagon_type: str, park_type: str = "SPS") -> bool:
+    st = str(shipment_type_code or "").lower()
+    if not any(k in st for k in ["import", "export", "idxal", "ixrac"]):
+        return False
+    if table_num in [3, 3.22, 3.71, 3.72, 3.78, 3.9]:
+        return False
+    return True
+
+def get_transporter_min_weight(axle_count: int, actual_weight: float) -> float:
+    if axle_count in [4, 6, 8]:
+        return max(actual_weight, axle_count * 5.0)
+    return actual_weight
+
+def is_long_platform_scep(raw_text: str, wagon_type: str = "") -> bool:
+    text_lower = (str(raw_text or "") + " " + str(wagon_type or "")).lower()
+    return any(re.search(p, text_lower) for p in [r'19\s*m', r'19\s*м', r'>\s*19', r'сцеп', r'scep', r'qoşqu'])
