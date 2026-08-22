@@ -1,23 +1,14 @@
+# === [НАЧАЛО БЛОКА: UTILS-01] Константы и пограничные узлы ADY ===
 import os
 import re
 from datetime import datetime
 
-# ==============================================================================
-# UTILS-01: Константы и пограничные узлы ADY
-# ==============================================================================
 BORDER_COLUMN_MAP = {
-    "547508": 3,  # Yalama (eksport)
-    "545006": 3,  # Yalama
-    "558701": 4,  # Böyük Kəsik (eksport)
-    "558631": 4,  # Böyük Kəsik
-    "554503": 5,  # Astara (eks.aşır)
-    "554500": 5,  # Astara
-    "550108": 6,  # Culfa (eksport)
-    "550100": 6,  # Culfa
-    "548803": 7,  # Ələt (eksport)
-    "548502": 7,  # Ələt baş
-    "553002": 7,  # Ələt-yeni (паром)
-    "549204": 7,  # Ələt Aktau
+    "547508": 3, "545006": 3, "54750": 3, "54500": 3,  # Yalama (погран / локал)
+    "558701": 4, "558631": 4, "55870": 4, "55863": 4,  # Böyük Kəsik (погран / локал)
+    "554503": 5, "554500": 5, "55450": 5,              # Astara (погран / локал)
+    "550108": 6, "550100": 6, "55010": 6,              # Culfa (погран / локал)
+    "553002": 7, "548803": 7, "548502": 7, "549204": 7, "54850": 7  # Ələt ports / eksp
 }
 
 BORDER_STATIONS_MAP = {
@@ -36,10 +27,10 @@ BORDER_STATIONS_MAP = {
 }
 
 _DISTANCES_CACHE = None
+# === [КОНЕЦ БЛОКА: UTILS-01] =================================================
 
-# ==============================================================================
-# UTILS-02: Поиск расстояний и кэширование
-# ==============================================================================
+
+# === [НАЧАЛО БЛОКА: UTILS-02] Кэширование и точный поиск расстояний ===
 def _load_distances_cache():
     global _DISTANCES_CACHE
     if _DISTANCES_CACHE is not None:
@@ -65,7 +56,7 @@ def _load_distances_cache():
     return _DISTANCES_CACHE
 
 def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
-    """Точный поиск километража по закешированной таблице Distances.txt."""
+    """Точный поиск километража по закешированной таблице Distances.txt (0 токенов)."""
     if not esr_from or not esr_to:
         return None
 
@@ -75,7 +66,7 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
     if not c_from or not c_to:
         return None
 
-    if c_from == c_to:
+    if c_from == c_to or c_from[:5] == c_to[:5]:
         return 0
 
     col_idx = BORDER_COLUMN_MAP.get(c_to)
@@ -86,16 +77,28 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
         target_row_esr = c_to
 
     if col_idx is None:
+        col_idx = BORDER_COLUMN_MAP.get(c_to[:5])
+        target_row_esr = c_from
+
+    if col_idx is None:
+        col_idx = BORDER_COLUMN_MAP.get(c_from[:5])
+        target_row_esr = c_to
+
+    if col_idx is None:
         return None
 
     cache = _load_distances_cache()
+    target_5 = target_row_esr[:5]
+
     for parts in cache:
         if len(parts) <= col_idx:
             continue
 
         row_esr_code = re.sub(r'\D', '', parts[2])
+        if not row_esr_code:
+            continue
 
-        if row_esr_code and (row_esr_code in target_row_esr or target_row_esr in row_esr_code):
+        if row_esr_code[:5] == target_5 or target_5 in row_esr_code or row_esr_code in target_row_esr:
             val_str = re.sub(r'\D', '', parts[col_idx])
             if val_str and val_str.isdigit():
                 return int(val_str)
@@ -103,7 +106,7 @@ def get_distance_by_esr(esr_from: str, esr_to: str) -> int:
     return None
 
 def get_calculation_distance(actual_dist_km: int, shipment_mode: str = "import") -> int:
-    """Возвращает расчетное расстояние с учетом тарифных норм (min 101/151 км)."""
+    """Возвращает расчетное расстояние с учетом тарифных норм ADY (min 101/151 км)."""
     if actual_dist_km is None or actual_dist_km <= 0:
         return 0
 
@@ -116,19 +119,21 @@ def get_calculation_distance(actual_dist_km: int, shipment_mode: str = "import")
         calc_dist = max(actual_dist_km, 101)
 
     return calc_dist
+# === [КОНЕЦ БЛОКА: UTILS-02] =================================================
 
-# ==============================================================================
-# UTILS-03: Определение ЕСР-кодов станций
-# ==============================================================================
+
+# === [НАЧАЛО БЛОКА: UTILS-03] Определение ЕСР-кодов станций ===
 def resolve_complex_station_code(raw_input: str) -> str:
     """Универсальный локальный резолвер сложных внутренних станций ADY."""
     text = str(raw_input or "").lower()
 
+    # 1. Группа Тагиев
     if any(r in text for r in ["тагиев", "tagiyev", "тагив", "г.тагиев", "h.z.", "г. тагиев", "g.tagiyev", "g tagiyev"]):
         if any(m in text for m in ["сорт", "sort", "чешид", "cesid", "ceşid"]):
             return "546901"
         return "546302"
 
+    # 2. Группа Баку Торговый Порт / Ляман
     if any(r in text for r in ["баку порт", "baki liman", "bakı liman", "торговый порт", "ticarət liman"]):
         if any(m in text for m in ["перевал", "ашир", "aşır", "ашыр"]):
             return "547209"
@@ -136,21 +141,25 @@ def resolve_complex_station_code(raw_input: str) -> str:
             return "547406"
         return "547302"
 
+    # 3. Группа Баку Товарный / Грузовой
     if any(r in text for r in ["баку юк", "bakı yük", "баку груз", "баку товар"]):
         if any(m in text for m in ["терминал", "terminal"]):
             return "547603"
         return "547105"
 
+    # 4. Группа Сангачал
     if any(r in text for r in ["sanqacal", "сангачал", "sanqaçal", "сангачалы"]):
         if any(m in text for m in ["терминал", "terminal", "ашир", "aşır", "перевал"]):
             return "548606"
         return "548305"
 
+    # 5. Группа Гарадаг
     if any(r in text for r in ["qaradag", "гарадаг", "qaradağ", "карадаг"]):
         if any(m in text for m in ["терминал", "terminal"]):
             return "549702"
         return "548201"
 
+    # 6. Группа Сумгаит
     if any(r in text for r in ["сумгаит", "sumqayit", "sumqayıt"]):
         if any(m in text for m in ["главный", "баш", "bas", "baş"]):
             return "546001"
@@ -158,16 +167,19 @@ def resolve_complex_station_code(raw_input: str) -> str:
             return "546209"
         return "546105"
 
+    # 7. Группа Мингечевир
     if any(r in text for r in ["mingecevir", "мингечевир", "mingəçevir"]):
         if any(m in text for m in ["город", "şəhər", "шехер", "seher"]):
             return "555807"
         return "555703"
 
+    # 8. Группа Гянджа
     if any(r in text for r in ["гянджа", "ganja", "gəncə"]):
         if any(m in text for m in ["грузовая", "юк", "yük"]):
             return "558108"
         return "558004"
 
+    # 9. Группа Баладжары
     if any(r in text for r in ["баладжары", "bilacari", "biləcəri", "баледжары"]):
         if any(m in text for m in ["сорт", "sort", "чешид", "cesid"]):
             return "545107"
@@ -178,19 +190,9 @@ def resolve_complex_station_code(raw_input: str) -> str:
 def get_border_esr(station_name: str, position: str = "from", shipment_mode: str = "import") -> str:
     """Определение пограничного ЕСР с поддержкой позиционных параметров."""
     st_clean = str(station_name or "").lower().strip()
-    pos = "from" if str(position).lower() in ["from", "origin"] else "to"
-    mode = str(shipment_mode or "").lower()
-
     for key, val in BORDER_STATIONS_MAP.items():
         if key in st_clean:
-            if "transit" in mode or "tranzit" in mode:
-                return val["border"]
-            elif ("import" in mode or "idxal" in mode) and pos == "from":
-                return val["border"]
-            elif ("export" in mode or "ixrac" in mode) and pos == "to":
-                return val["border"]
-            else:
-                return val["border"] if "eksp" in st_clean or "эксп" in st_clean else val["local"]
+            return val["border"]
     return None
 
 def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "", position: str = "from", shipment_mode: str = "import", *args, **kwargs) -> str:
@@ -229,12 +231,12 @@ def format_station_display_name(st_name: str, esr_code: str, lang: str = "AZ") -
         suf = "-эксп." if lang == "RU" else "-eksp."
         return f"{st_name}{suf}"
     return st_name
+# === [КОНЕЦ БЛОКА: UTILS-03] =================================================
 
-# ==============================================================================
-# UTILS-04: Вспомогательные расчётные функции
-# ==============================================================================
+
+# === [НАЧАЛО БЛОКА: UTILS-04] Вспомогательные математические функции ===
 def get_weight_column_index(weight_tons: float) -> int:
-    """Возвращает индекс колонки для Таблиц 3 и 4."""
+    """Возвращает индекс колонки для Таблиц 3 и 4 (Cədvəl 1)."""
     w = float(weight_tons or 0)
     if w <= 12: return 1
     elif w <= 16: return 2
@@ -299,3 +301,4 @@ def get_exchange_rate_for_date(target_dt: datetime) -> tuple:
 
 def parse_date_from_string(date_str: str) -> datetime:
     return datetime.now()
+# === [КОНЕЦ БЛОКА: UTILS-04] =================================================
