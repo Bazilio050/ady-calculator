@@ -197,28 +197,36 @@ def get_border_esr(station_name: str, position: str = "from", shipment_mode: str
     return None
 
 def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "", position: str = "from", shipment_mode: str = "import", *args, **kwargs) -> str:
-    """Универсальная точка входа для получения ЕСР-кода (совместима с 3 и 4 аргументами)."""
-    # Если передано 3 аргумента без position (старый вызов)
-    if isinstance(user_input_raw, str) and user_input_raw in ["from", "to", "origin", "dest"]:
-        shipment_mode = position if position != "from" else "import"
+    """Универсальный резолвер ЕСР-кодов, возвращающий корректные стыковые коды для поиска расстояний."""
+    st_clean = str(station_name or "").lower().strip()
+    
+    # Нормализация положения и режима
+    if isinstance(user_input_raw, str) and user_input_raw in ["from", "to", "origin", "dest", "position"]:
+        shipment_mode = position if position not in ["from", "to", "origin", "dest"] else "import"
         position = user_input_raw
 
-    border_esr = get_border_esr(station_name, position=position, shipment_mode=shipment_mode)
+    pos = "from" if position in ["from", "origin"] else "to"
+    mode = str(shipment_mode or "import").lower()
+
+    # 1. Сначала проверяем пограничные узлы из BORDER_STATIONS_MAP
+    border_esr = get_border_esr(st_clean, position=pos, shipment_mode=mode)
     if border_esr:
         return border_esr
 
-    complex_esr = resolve_complex_station_code(f"{station_name} {user_input_raw}")
+    # 2. Проверяем сложные узлы (Баку, Тагиев, Сумгаит и т.д.)
+    complex_esr = resolve_complex_station_code(f"{st_clean} {user_input_raw}")
     if complex_esr:
         return complex_esr
 
+    # 3. Поиск по прямому совпадению названий из Distances.txt
     cache = _load_distances_cache()
-    st_clean = str(station_name or "").lower().strip()
     for parts in cache:
         if len(parts) >= 3:
             name = parts[1].lower()
             code = parts[2]
             if st_clean in name or name in st_clean:
                 return code
+
     return None
 
 def is_border_esr(esr_code: str) -> bool:
