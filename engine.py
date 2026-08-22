@@ -197,6 +197,11 @@ def apply_special_exceptions(
         notes.append(ind_note)
         
     # 2. ГЛОБАЛЬНЫЙ КОЭФФИЦИЕНТ 1.50
+    try:
+        apply_150 = should_apply_150_coeff(shipment_type_code, table_num, gng, wagon_type, park_type)
+    except Exception:
+        apply_150 = False
+
     if is_empty and clean_gng in EMPTY_SPS_CODES and table_num not in [3.71, 3.72, 3.78]:
         if shipment_type_code in ["import", "export"]:
             lbl_150 = "İdxal/İxrac baza" if lang == "AZ" else ("Импорт/Экспорт база" if lang == "RU" else "Import/Export base")
@@ -208,7 +213,7 @@ def apply_special_exceptions(
             )
             notes.append(note_150)
     else:
-        if table_num not in [3.71, 3.72, 3.78] and should_apply_150_coeff(shipment_type_code, table_num, gng, wagon_type, park_type):
+        if table_num not in [3.71, 3.72, 3.78] and apply_150:
             lbl_150 = "İdxal/İxrac baza" if lang == "AZ" else ("Импорт/Экспорт база" if lang == "RU" else "Import/Export base")
             coeffs.append((lbl_150, 1.50))
             note_base150 = (
