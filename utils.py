@@ -196,12 +196,18 @@ def get_border_esr(station_name: str, position: str = "from", shipment_mode: str
                 return val["local"]
     return None
 
-def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "", position: str = "from", shipment_mode: str = "import") -> str:
+def resolve_esr_by_station_name(station_name: str, user_input_raw: str = "", position: str = "from", shipment_mode: str = "import", *args, **kwargs) -> str:
+    """Универсальная точка входа для получения ЕСР-кода (совместима с 3 и 4 аргументами)."""
+    # Если передано 3 аргумента без position (старый вызов)
+    if isinstance(user_input_raw, str) and user_input_raw in ["from", "to", "origin", "dest"]:
+        shipment_mode = position if position != "from" else "import"
+        position = user_input_raw
+
     border_esr = get_border_esr(station_name, position=position, shipment_mode=shipment_mode)
     if border_esr:
         return border_esr
 
-    complex_esr = resolve_complex_station_code(station_name)
+    complex_esr = resolve_complex_station_code(f"{station_name} {user_input_raw}")
     if complex_esr:
         return complex_esr
 
