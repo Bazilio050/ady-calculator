@@ -259,3 +259,33 @@ def get_exchange_rate_for_date(target_dt: datetime) -> tuple:
 
 def parse_date_from_string(date_str: str) -> datetime:
     return datetime.now()
+
+def get_weight_column_index(weight_tons: float) -> int:
+    """Возвращает индекс колонки таблицы (3 и 4) по расчетному весу."""
+    w = float(weight_tons or 0)
+    if w <= 12:
+        return 1
+    elif w <= 16:
+        return 2
+    elif w <= 23:
+        return 3
+    elif w <= 26:
+        return 4
+    elif w <= 31:
+        return 5
+    elif w <= 36:
+        return 6
+    elif w <= 40:
+        return 7
+    elif w <= 46:
+        return 8
+    elif w <= 51:
+        return 9
+    elif w <= 55:
+        return 10
+    else:
+        return 11
+
+def extract_gng_digits(gng_code: str) -> str:
+    """Извлекает только цифры из кода ГНГ."""
+    return re.sub(r'\D', '', str(gng_code or ""))
