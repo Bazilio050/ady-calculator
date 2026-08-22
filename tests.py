@@ -1,5 +1,6 @@
 import sys
 import re
+import traceback
 from engine import process_full_calculation
 
 UI_T = {
@@ -463,8 +464,8 @@ TEST_SUITE = [
         "nlu": {
             "route_from": "Salyan", 
             "route_to": "Ələt", 
-            "origin_esr": "548907",        # Сухопутный ESR станции Сальяны
-            "dest_esr": "548502",          # Сухопутный ESR станции Алят
+            "origin_esr": "548907",
+            "dest_esr": "548502",
             "cargo_gng_code": "2304",
             "cargo_name": "Jmyx / Şrot", 
             "actual_weight_tons": 60.0, 
@@ -490,14 +491,21 @@ def parse_float(val):
     return 0.0
 
 def run_tests():
-    print(f"🧪 ПРОВЕРКА {len(TEST_SUITE)} ТЕСТОВЫХ СЦЕНАРИЕВ (ТАРИФ + ОХРАНА + ПАРОМ)...\n" + "="*70)
+    print(f"🧪 ПРОВЕРКА {len(TEST_SUITE)} ТЕСТОВЫХ СЦЕНАРИЕВ...\n" + "="*70)
     passed, failed = 0, 0
 
     for test in TEST_SUITE:
         try:
             res = process_full_calculation(test["nlu"], test["raw_text"], "AZ", "2026", UI_T)
             
-            # 1. Извлечение Тарифа (экспресс или базовый net_ady)
+            # Проверка на словарь с ошибкой
+            if not isinstance(res, dict) or "error" in res or "part3" not in res:
+                err_msg = res.get("error") if isinstance(res, dict) else "Неверный формат ответа"
+                print(f"❌ {test['name']} -> Ошибка внутри engine: {err_msg}")
+                failed += 1
+                continue
+
+            # 1. Извлечение Тарифа
             raw_rate = res['part3'].get('express_rate') or res['part3'].get('net_ady_rate')
             calc_rate = parse_float(raw_rate)
             exp_rate = test["expected_rate"]
@@ -511,13 +519,13 @@ def run_tests():
             calc_ferry = parse_float(ferry_obj.get('total_usd') if isinstance(ferry_obj, dict) else ferry_obj)
             exp_ferry = test.get("expected_ferry", 0.00)
 
-            # Режим первичного автоопределения для новых тестов с expected_rate == 0.0
+            # Первичный прогон
             if exp_rate == 0.0:
-                print(f"ℹ️ {test['name']} -> Рассчитано: Тариф: {calc_rate}$ | Охрана: {calc_guard}$ | Паром: {calc_ferry}$ (Внесите в expected_rate после проверки)")
+                print(f"ℹ️ {test['name']} -> Рассчитано: Тариф: {calc_rate}$ | Охрана: {calc_guard}$ | Паром: {calc_ferry}$")
                 passed += 1
                 continue
 
-            # Тройная проверка
+            # Тройная проверка параметров
             rate_ok = abs(calc_rate - exp_rate) <= 0.05
             guard_ok = abs(calc_guard - exp_guard) <= 0.05
             ferry_ok = abs(calc_ferry - exp_ferry) <= 0.05
@@ -534,11 +542,12 @@ def run_tests():
                 if not guard_ok: errors.append(f"Охрана {calc_guard}$ вместо {exp_guard}$")
                 if not ferry_ok: errors.append(f"Паром {calc_ferry}$ вместо {exp_ferry}$")
                 
-                print(f"❌ {test['name']} -> Ошибка! " + ", ".join(errors))
+                print(f"❌ {test['name']} -> Расхождение! " + ", ".join(errors))
                 failed += 1
 
-        except Exception as e:
-            print(f"❌ {test['name']} -> Ошибка кода: {e}")
+        except Exception:
+            print(f"❌ {test['name']} -> КРИТИЧЕСКОЕ ИСКЛЮЧЕНИЕ:")
+            traceback.print_exc()
             failed += 1
 
     print("\n" + "="*70)
