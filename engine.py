@@ -392,25 +392,19 @@ def apply_special_exceptions(
 # и собирает итоговый JSON-отчёт без навязывания лишних суффиксов.
 # ==============================================================================
 def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str = "AZ", year: str = "2026", ui_t: dict = None, *args, **kwargs) -> dict:
+    # 0. Нормализация входных параметров
+    if isinstance(user_input_raw, dict) and ui_t is None:
+        ui_t = user_input_raw
+        user_input_raw = ""
+
     if ui_t is None:
         ui_t = {}
 
-    if args:
-        if len(args) >= 1 and isinstance(args[0], str) and not user_input_raw:
-            user_input_raw = args[0]
-        if len(args) >= 2 and isinstance(args[1], str):
-            lang = args[1]
-        if len(args) >= 3 and isinstance(args[2], str):
-            year = args[2]
-
-    user_input_raw = user_input_raw or nlu_data.get("user_input_raw", "")
+    user_input_raw = user_input_raw or nlu_data.get("user_input_raw", "") or str(nlu_data.get("route_from", "")) + " " + str(nlu_data.get("route_to", ""))
     input_lower = user_input_raw.lower()
     lang_upper = str(lang or "AZ").upper()
 
-    # --- 1. ОПРЕДЕЛЕНИЕ РЕЖИМА ПЕРЕВОЗКИ (ИМПОРТ / ЭКСПОРТ / ТРАНЗИТ / ЛОКАЛЬНАЯ) ---
-    has_import_export_kw = any(kw in input_lower for kw in ["импорт", "экспорт", "idxal", "ixrac"]) or nlu_data.get("explicit_mode") in ["import", "export"]
-    has_ferry_kw = any(k in input_lower for k in ["паром", "bərə", "kurik", "курык", "aktau", "актау", "trk", "трк", "туркменбаши"])
-    
+    # --- 1. ОПРЕДЕЛЕНИЕ РЕЖИМА ПЕРЕВОЗКИ ---
     explicit_mode = nlu_data.get("explicit_mode")
     if explicit_mode in ["import", "export", "transit"]:
         shipment_type_code = explicit_mode
@@ -422,14 +416,14 @@ def process_full_calculation(nlu_data: dict, user_input_raw: str = "", lang: str
         elif any(k in input_lower for k in ["транзит", "tranzit", "transit"]):
             shipment_type_code = "transit"
         else:
-            shipment_type_code = "transit"  # Дефолт при двух стыках
+            shipment_type_code = "import"
 
-    # --- 2. ОПРЕДЕЛЕНИЕ ЕСР-КОДОВ С УЧЕТОМ ПОЗИЦИИ И РЕЖИМА ---
-    st_from_raw = str(nlu_data.get("origin_name") or nlu_data.get("route_from") or "")
-    st_to_raw = str(nlu_data.get("dest_name") or nlu_data.get("route_to") or "")
+    # --- 2. ОПРЕДЕЛЕНИЕ ЕСР-КОДОВ И РАССТОЯНИЙ ---
+    st_from_raw = str(nlu_data.get("route_from") or nlu_data.get("origin_name") or "")
+    st_to_raw = str(nlu_data.get("route_to") or nlu_data.get("dest_name") or "")
 
-    origin_esr = resolve_esr_by_station_name(st_from_raw, user_input_raw, position="origin", shipment_mode=shipment_type_code) or str(nlu_data.get("origin_esr") or "")
-    dest_esr = resolve_esr_by_station_name(st_to_raw, user_input_raw, position="dest", shipment_mode=shipment_type_code) or str(nlu_data.get("dest_esr") or "")
+    origin_esr = nlu_data.get("origin_esr") or resolve_esr_by_station_name(st_from_raw, user_input_raw, position="origin", shipment_mode=shipment_type_code)
+    dest_esr = nlu_data.get("dest_esr") or resolve_esr_by_station_name(st_to_raw, user_input_raw, position="dest", shipment_mode=shipment_type_code)
 
     # --- ТОЧЕЧНЫЙ ПЕРЕХВАТ АЛЯТА ---
     is_alat_yeni = any(k in input_lower for k in ["новый", "yeni", "548703"])
