@@ -18,10 +18,12 @@ def calculate_freight(
     manual_distance_km: int = 0,
     calculation_date: str = None,
     is_empty_inventory: bool = False,
+    is_private_wagon: bool = True,
     data_dir: str = "data"
 ) -> dict:
     """
-    Главная функция расчета стоимости перевозки ADY 2026 с выводом результатов в USD.
+    Главная функция расчета стоимости перевозки ADY 2026 с выводом результатов в USD за 1 тн.
+    Формула: (CHF_rate / FX) * coeff * 1.015 * 0.85
     """
     # 1. Порожний возврат инвентарного парка
     if is_empty_inventory:
@@ -55,30 +57,33 @@ def calculate_freight(
     # 6. Поиск базовой ставки (CHF/тонна)
     base_rate_chf = get_base_rate_from_table(table_num, calc_distance, weight_category, data_dir)
 
-    # 7. Расчет коэффициентов
+    # 7. Расчет всех коэффициентов (включая 1.015 для груженого и 0.85 для приватов)
     coeff_info = get_applicable_coefficients(
         shipment_type=shipment_type,
         gng_code=gng_code,
         table_number=table_num,
         wagon_type=wagon_type,
         from_station=from_station,
-        to_station=to_station
+        to_station=to_station,
+        is_loaded=True,
+        is_private_wagon=is_private_wagon
     )
     total_multiplier = coeff_info["total_multiplier"]
 
-    # 8. Итоговый расчет ставок
-    # Ставка за 1 тонну в CHF с учетом коэффициентов
-    final_rate_chf_per_ton = base_rate_chf * total_multiplier
-    
-    # Перевод ставки за 1 тонну в USD
-    rate_usd_per_ton = final_rate_chf_per_ton / fx_rate
+    # 8. Итоговый расчет ставок в USD за 1 тонну
+    # Базовая ставка переведенная в USD: CHF / FX
+    base_rate_usd_per_ton = base_rate_chf / fx_rate
+
+    # Финальная ставка в USD за 1 тонну со всеми коэффициентами
+    rate_usd_per_ton = base_rate_usd_per_ton * total_multiplier
 
     # Общая стоимость на весь расчетный вес в USD
     total_usd = rate_usd_per_ton * chargeable_tons
 
     return {
         "base_rate_chf_per_ton": base_rate_chf,
-        "final_rate_chf_per_ton": round(final_rate_chf_per_ton, 3),
+        "fx_rate_used": fx_rate,
+        "base_rate_usd_per_ton": round(base_rate_usd_per_ton, 3),
         "rate_usd_per_ton": round(rate_usd_per_ton, 2),
         "chargeable_tons": chargeable_tons,
         "weight_category": weight_category,
@@ -86,6 +91,5 @@ def calculate_freight(
         "table_used": table_num,
         "coefficients": coeff_info["coefficients_list"],
         "total_multiplier": total_multiplier,
-        "fx_rate_used": fx_rate,
         "total_usd": round(total_usd, 2)
     }
