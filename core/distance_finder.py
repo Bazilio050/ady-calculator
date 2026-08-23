@@ -1,52 +1,128 @@
 # ==============================================================================
-# МОДУЛЬ ПОИСКА РАССТОЯНИЙ МЕЖДУ СТАНЦИЯМИ ADY 2026
+# МОДУЛЬ ПОИСКА РАССТОЯНИЙ И КОДОВ СТАНЦИЙ ADY
 # ==============================================================================
 import os
+import re
 
-def load_distances(data_dir: str = "data") -> dict:
-    """
-    Загружает справочник расстояний из файла data/Distances.txt.
-    """
-    file_path = os.path.join(data_dir, "Distances.txt")
-    distances = {}
+# Словарь пограничных экспортных стыков и опорных станций
+BORDER_NODES = {
+    "Yalama (eksport)": ["yalama", "yalama-eksport", "yalama eksport", "ялама", "ялама-эксп", "ялама экспорт"],
+    "Astara (eksport)": ["astara", "astara-eksport", "astara eksport", "астара", "астара-эксп", "астара экспорт"],
+    "Böyük Kəsik (eksport)": ["boyuk kesik", "böyük kəsik", "boyuk kesik-eksport", "беюк-кясик", "беюк кясик", "беюк-кясик-эксп", "беюк кясик экспорт"],
+    "Culfa (eksport)": ["culfa", "culfa-eksport", "джульфа", "джульфа-эксп"],
+    "Ələt eksp / Bakı liman": [
+        "alat", "ələt", "alat-eksport", "ələt-eksport", "алят", "алят-эксп",
+        "alat eksport aktau", "ələt eksport aktau", "алят актау",
+        "alat eksport kurik", "ələt eksport kurik", "алят курык",
+        "alat eksport-turk.", "ələt eksport-türk.", "алят туркменбаши", "алят туркменистан",
+        "baki ticarat liman", "bakı ticarət limanı", "бакинский порт", "порт алят"
+    ]
+}
 
+def normalize_name(text: str) -> str:
+    """Нормализует название станции для поиска"""
+    if not text:
+        return ""
+    text = text.lower().strip()
+    replacements = {
+        'ə': 'e', 'ö': 'o', 'ü': 'u', 'ç': 'c', 'ş': 's', 'ı': 'i', 'ğ': 'g',
+        'ё': 'е', 'й': 'и'
+    }
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+    text = re.sub(r'[^a-z0-0\s]', '', text)
+    return text.strip()
+
+def find_border_column(station_name: str) -> str:
+    """Определяет, к какому пограничному стыку относится название станции"""
+    norm = normalize_name(station_name)
+    for main_node, aliases in BORDER_NODES.items():
+        for alias in aliases:
+            if normalize_name(alias) in norm:
+                return main_node
+    return None
+
+def get_route_distance(from_station: str, to_station: str) -> int:
+    """
+    Вычисляет расстояние между двумя станциями по файлу Distances.txt
+    """
+    file_path = os.path.join("data", "Distances.txt")
     if not os.path.exists(file_path):
-        return distances
+        raise FileNotFoundError("Файл data/Distances.txt не найден!")
 
+    # 1. Если одна из станций — погранпереход
+    border_from = find_border_column(from_station)
+    border_to = find_border_column(to_station)
+
+    # 2. Парсим файл Distances.txt
     with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line_str = line.strip()
-            if not line_str or line_str.startswith("=") or "Məsafə" in line_str:
-                continue
+        lines = f.readlines()
+
+    header_idx = -1
+    headers = []
+    
+    # Находим заголовок таблицы
+    for idx, line in enumerate(lines):
+        if "| Stansiyanın adı |" in line or "| Stansiyanın" in line:
+            header_idx = idx
+            headers = [h.strip() for h in line.split("|")[1:-1]]
+            break
+
+    if header_idx == -1:
+        raise ValueError("Не удалось распознать структуру таблицы в data/Distances.txt")
+
+    # Читаем строки станций
+    stations_data = {}
+    for line in lines[header_idx + 2:]:
+        if not line.strip() or not line.startswith("|"):
+            continue
+        cols = [c.strip() for c in line.split("|")[1:-1]]
+        if len(cols) < len(headers):
+            continue
             
-            parts = [p.strip() for p in line_str.split("|")]
-            if len(parts) >= 3:
-                st1 = parts[0].lower()
-                st2 = parts[1].lower()
-                try:
-                    dist = int(parts[2])
-                    distances[(st1, st2)] = dist
-                    distances[(st2, st1)] = dist  # Обратное направление
-                except ValueError:
-                    continue
+        st_name = cols[0].replace("**", "").strip()
+        st_code = cols[1].strip()
+        
+        distances = {}
+        for h_name, val in zip(headers[2:], cols[2:]):
+            try:
+                distances[h_name] = int(val.strip())
+            except ValueError:
+                distances[h_name] = None
+                
+        stations_data[st_name] = {
+            "code": st_code,
+            "distances": distances
+        }
 
-    return distances
+    # Поиск станции в нашей базе
+    def match_station(target_name):
+        norm_target = normalize_name(target_name)
+        for st_key, data in stations_data.items():
+            if normalize_name(st_key) == norm_target:
+                return st_key, data
+        # Частичное совпадение
+        for st_key, data in stations_data.items():
+            if norm_target in normalize_name(st_key):
+                return st_key, data
+        return None, None
 
+    # Вариант А: Транзит через 2 стыка (например: Ялама -> Беюк Кясик)
+    if border_from and border_to:
+        name_to, data_to = match_station(border_to)
+        if data_to and border_from in data_to["distances"]:
+            return data_to["distances"][border_from]
 
-def get_distance_between_stations(from_station: str, to_station: str, data_dir: str = "data") -> int:
-    """
-    Возвращает расстояние в километрах между двумя станциями.
-    """
-    st1 = str(from_station or "").strip().lower()
-    st2 = str(to_station or "").strip().lower()
+    # Вариант Б: Прямой рейс Станция <-> Стык (например: Апшерон -> Ялама)
+    if border_to:
+        name_from, data_from = match_station(from_station)
+        if data_from and border_to in data_from["distances"]:
+            return data_from["distances"][border_to]
 
-    if st1 == st2:
-        return 0
+    if border_from:
+        name_to, data_to = match_station(to_station)
+        if data_to and border_from in data_to["distances"]:
+            return data_to["distances"][border_from]
 
-    distances = load_distances(data_dir)
-    dist = distances.get((st1, st2))
-
-    if dist is None:
-        raise ValueError(f"Расстояние между станциями '{from_station}' и '{to_station}' не найдено в справочнике Distances.txt")
-
-    return dist
+    # Если расстояние напрямую не найдено в матрице погранпереходов
+    raise ValueError(f"Не удалось вычесть расстояние между '{from_station}' и '{to_station}'. Убедитесь в правильности станций.")
