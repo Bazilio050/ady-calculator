@@ -25,6 +25,30 @@ def calculate_freight(
     calculation_date=None,  # <-- Помещаем в параметры со значением по умолчанию
     **kwargs                 # <-- Принимает любые дополнительные поля (origin_country, gng_name)
 ):
+
+    # 1. Фиксация даты
+    if not calculation_date:
+        calculation_date = datetime.now().strftime("%Y-%m-%d")
+
+    # 2. ЗАЩИТНЫЙ БЛОК ОТ None (ВСТАВЛЯТЬ СЮДА)
+    if fact_weight is None:
+        fact_weight = 0.0
+    
+    if wagon_axles is None:
+        wagon_axles = 4
+
+    if is_empty_wagon is None:
+        is_empty_wagon = False
+
+    # Вспомогательная функция защиты от None при сравнениях
+    def safe_float(val, default=0.0):
+        if val is None:
+            return default
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return default
+            
     # Логика даты должна находиться ВНУТРИ функции:
     if not calculation_date:
         calculation_date = datetime.now().strftime("%Y-%m-%d")
