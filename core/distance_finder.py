@@ -53,10 +53,16 @@ def resolve_alat_code(text: str) -> tuple:
     return None, None
 
 def find_border_column(station_name: str) -> str:
-    norm = normalize_name(station_name)
+    if not station_name:
+        return None
+    # Удаляем 6-значный код и скобки из входного имени
+    clean_name = re.sub(r'\(\d{6}\)|\b\d{6}\b', '', str(station_name)).strip()
+    norm = normalize_name(clean_name)
+    
     for main_node, aliases in BORDER_NODES.items():
         for alias in aliases:
-            if normalize_name(alias) in norm:
+            norm_alias = normalize_name(alias)
+            if norm_alias == norm or (len(norm_alias) > 3 and norm_alias in norm):
                 return main_node
     return None
 
@@ -146,14 +152,6 @@ def get_route_info(from_station: str, to_station: str) -> dict:
     name_from, data_from = match_station(from_station, stations_data)
     name_to, data_to = match_station(to_station, stations_data)
 
-    # Если станция является погранпереходом, отдаем приоритет названию погранперехода
-    if border_from:
-        name_from = border_from
-        _, data_from = match_station(border_from, stations_data)
-    if border_to:
-        name_to = border_to
-        _, data_to = match_station(border_to, stations_data)
-
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
 
@@ -162,42 +160,39 @@ def get_route_info(from_station: str, to_station: str) -> dict:
 
     dist = None
 
-    # 1. Если ОБА узла — погранпереходы/стыки (например, Yalama (eksport) -> Böyük Kəsik (eksport))
-    if border_from and border_to:
-        # Ищем строку border_to и берем из нее колонку border_from
-        if data_to and data_to.get("distances"):
-            for h_key, d_val in data_to["distances"].items():
-                if normalize_name(h_key) == normalize_name(border_from):
-                    if d_val is not None and d_val > 0:
-                        dist = d_val
-                        break
-        # Если не нашли — ищем строку border_from и берем колонку border_to
-        if dist is None and data_from and data_from.get("distances"):
-            for h_key, d_val in data_from["distances"].items():
-                if normalize_name(h_key) == normalize_name(border_to):
-                    if d_val is not None and d_val > 0:
-                        dist = d_val
-                        break
-
-    # 2. Перевозка: Погранпереход -> Внутренняя станция
-    if dist is None and border_from and data_to:
+    # Попытка 1: Поиск среди колонок в data_to
+    if data_to and data_to.get("distances"):
         for h_key, d_val in data_to["distances"].items():
-            if normalize_name(h_key) == normalize_name(border_from):
-                dist = d_val
-                break
+            if d_val is not None and d_val > 0:
+                norm_h = normalize_name(h_key)
+                if (name_from and normalize_name(name_from) in norm_h) or \
+                   (border_from and normalize_name(border_from) in norm_h) or \
+                   ("yalama" in norm_h if border_from == "Yalama (eksport)" else False):
+                    dist = d_val
+                    break
 
-    # 3. Перевозка: Внутренняя станция -> Погранпереход
-    if dist is None and border_to and data_from:
+    # Попытка 2: Поиск среди колонок в data_from
+    if dist is None and data_from and data_from.get("distances"):
         for h_key, d_val in data_from["distances"].items():
-            if normalize_name(h_key) == normalize_name(border_to):
-                dist = d_val
-                break
+            if d_val is not None and d_val > 0:
+                norm_h = normalize_name(h_key)
+                if (name_to and normalize_name(name_to) in norm_h) or \
+                   (border_to and normalize_name(border_to) in norm_h) or \
+                   ("boyuk" in norm_h if border_to == "Böyük Kəsik (eksport)" else False):
+                    dist = d_val
+                    break
 
-    # 4. Внутренняя станция -> Внутренняя станция
-    if dist is None and data_from and name_to:
-        for h_key, d_val in data_from["distances"].items():
-            if normalize_name(h_key) == normalize_name(name_to):
-                dist = d_val
+    # Попытка 3: Жёсткий прямой фоллбек для погранузлов
+    if dist is None and border_from and border_to:
+        for st_key, st_data in stations_data.items():
+            st_norm = normalize_name(st_key)
+            if "boyuk" in st_norm or "kesik" in st_norm:
+                for h_key, d_val in st_data["distances"].items():
+                    if "yalama" in normalize_name(h_key):
+                        if d_val is not None and d_val > 0:
+                            dist = d_val
+                            break
+            if dist:
                 break
 
     if dist is None or dist == 0:
