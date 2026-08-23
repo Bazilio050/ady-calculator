@@ -1,5 +1,5 @@
 # ==============================================================================
-# МОДУЛЬ ИНТЕРПРЕТАЦИИ ЗАПРОСОВ ЧЕРЕЗ GEMINI AI (GOOGLE-GENAI SDK)
+# МОДУЛЬ ИНТЕРПРЕТАЦИИ ЗАПРОСОВ ЧЕРЕЗ GEMINI AI (АКТУАЛЬНЫЙ GOOGLE-GENAI SDK)
 # ==============================================================================
 import json
 import os
@@ -56,11 +56,11 @@ def parse_user_request(user_prompt: str) -> dict:
         raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
 
     try:
-        # Инициализация нового клиента
+        # Инициализация актуального клиента google-genai
         client = genai.Client(api_key=API_KEY)
         
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             contents=f"{SYSTEM_PROMPT}\n\nЗапрос пользователя: {user_prompt}",
             config=types.GenerateContentConfig(
                 response_mime_type="application/json"
