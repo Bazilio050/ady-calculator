@@ -57,7 +57,7 @@ def calculate_freight(
 
     # 1. Определение расстояния
     if manual_distance_km is not None and manual_distance_km > 0:
-    distance = manual_distance_km
+        distance = manual_distance_km
     else:
         from core.distance_finder import get_distance_between_stations
         raw_distance = get_distance_between_stations(from_station, to_station, data_dir)
