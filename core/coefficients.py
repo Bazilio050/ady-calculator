@@ -1,5 +1,5 @@
 # ==============================================================================
-# МОДУЛЬ РАСЧЕТА ТАРИФНЫХ КОЭФФИЦИЕНТОВ ADY 2026 (МУЛЬТИЯЗЫЧНЫЙ С QEYDLƏR)
+# МОДУЛЬ РАСЧЕТА ТАРИФНЫХ КОЭФФИЦИЕНТОВ ADY 2026 (СТРОГИЙ ПОРЯДОК И QEYDLƏR)
 # ==============================================================================
 import re
 
@@ -235,6 +235,17 @@ def get_applicable_coefficients(
     is_ref = any(k in wagon_type.lower() for k in ["arv", "рефрижератор", "ref"])
     if is_transit and is_ref:
         add_coeff("ref_transit", 1.20)
+
+    # ЖЕСТКАЯ СОРТИРОВКА ПОРЯДКА ВЫВОДА
+    def get_coeff_priority(c):
+        val = c.get("value")
+        if val == 0.85:
+            return 99  # SPS всегда в самом конце
+        elif val == 1.015:
+            return 98  # Доп. коэффициент всегда перед SPS
+        return 1       # Основные коэффициенты всегда первыми
+
+    coeffs.sort(key=get_coeff_priority)
 
     total_multiplier = 1.0
     for c in coeffs:
