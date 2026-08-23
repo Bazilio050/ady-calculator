@@ -10,19 +10,18 @@ from core.coefficients import get_applicable_coefficients
 from core.currency import get_chf_usd_rate
 
 def calculate_freight(
-    fact_weight: float = 0,
-    gng_code: str = "",
-    shipment_type: str = "import",
-    wagon_type: str = "universal",
-    from_station: str = "",
-    to_station: str = "",
-    manual_distance_km: int = 0,
-    calculation_date: str = None,
-    is_empty_wagon: bool = False,
-    is_private_wagon: bool = True,
-    wagon_axles: int = 4,
-    data_dir: str = "data"
-) -> dict:
+    from_station,
+    to_station,
+    gng_code=None,
+    fact_weight=0.0,
+    wagon_type="universal",
+    shipment_type="import",
+    is_empty_wagon=False,
+    is_private_wagon=True,
+    is_round_trip=False,
+    wagon_axles=4,
+    **kwargs  # <-- Позволяет принимать origin_country, gng_name и другие дополнительные поля без ошибок
+):
     """
     Главная функция расчета стоимости перевозки ADY 2026 в USD.
     """
