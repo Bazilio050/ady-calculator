@@ -9,6 +9,10 @@ from core.table_parser import get_base_rate_from_table
 from core.coefficients import get_applicable_coefficients
 from core.currency import get_chf_usd_rate
 
+if not calculation_date:
+    from datetime import datetime
+    calculation_date = datetime.now().strftime("%Y-%m-%d")
+
 def calculate_freight(
     from_station,
     to_station,
