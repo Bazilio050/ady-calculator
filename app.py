@@ -340,7 +340,7 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             st.session_state.nlu_res = nlu_res
 
             # 2. Расчет через calculator
-            calc_res = calculate_freight(**nlu_res)
+            calc_res = calculate_freight(**nlu_res, lang=selected_lang)
             st.session_state.calc_result = calc_res
             st.session_state.missing_data = None
             loader_placeholder.empty()
