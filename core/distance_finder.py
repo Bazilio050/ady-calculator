@@ -7,14 +7,11 @@ import re
 BORDER_NODES = {
     "Yalama (eksport)": ["yalama", "yalama-eksport", "yalama eksport", "ялама", "ялама-эксп", "ялама экспорт"],
     "Astara (eksport)": ["astara", "astara-eksport", "astara eksport", "астара", "астара-эксп", "астара экспорт"],
-    "Böyük Kəsik (eksport)": ["boyuk kesik", "böyük kəsik", "boyuk kesik-eksport", "беюк-кясик", "беюк кясик", "беюк-кясик-эксп", "беюк кясик экспорт"],
+    "Böyük Kəsik (eksport)": ["boyuk kesik", "böyük kəsik", "boyuk kesik-eksport", "беюк-кясик", "беюк кясик", "беюк-кясик-эксп"],
     "Culfa (eksport)": ["culfa", "culfa-eksport", "джульфа", "джульфа-эксп"],
     "Ələt eksp / Bakı liman": [
         "alat", "ələt", "alat-eksport", "ələt-eksport", "алят", "алят-эксп",
-        "alat eksport aktau", "ələt eksport aktau", "алят актау",
-        "alat eksport kurik", "ələt eksport kurik", "алят курык",
-        "alat eksport-turk.", "ələt eksport-türk.", "алят туркменбаши", "алят туркменистан",
-        "baki ticarat liman", "bakı ticarət limanı", "бакинский порт", "порт алят"
+        "aktau", "актау", "kurik", "kuryk", "курык", "курыт", "turk", "turkmen", "трк", "туркменбаши"
     ]
 }
 
@@ -32,10 +29,28 @@ def normalize_name(text: str) -> str:
     for k, v in replacements.items():
         text = text.replace(k, v)
         
-    # Оставляем только буквы, цифры и одиночные пробелы
     text = re.sub(r'[^a-z0-9\s]', '', text)
-    text = re.sub(r'\s+', ' ', text)
-    return text.strip()
+    return re.sub(r'\s+', ' ', text).strip()
+
+def extract_code(text: str) -> str:
+    """Извлекает 6-значный код ЕСР из строки"""
+    match = re.search(r'\b\d{6}\b', str(text))
+    return match.group(0) if match else None
+
+def resolve_alat_code(text: str) -> tuple:
+    """ Применяет жесткие правила маппинга для Алята и морских направлений """
+    norm = normalize_name(text)
+    if "trk" in norm or "turk" in norm or "туркмен" in norm:
+        return "Ələt eksport-Türk.", "548803"
+    if "aktau" in norm or "актау" in norm:
+        return "Ələt eksport Aktau", "549204"
+    if "kurik" in norm or "kuryk" in norm or "курык" in norm or "курыт" in norm or "alat eksp" in norm or "alet eksp" in norm or "алят эксп" in norm:
+        return "Ələt eksport Kurik", "553002"
+    if "yeni" in norm or "новый" in norm:
+        return "Ələt yeni", "548703"
+    if "alat" in norm or "alet" in norm or "алят" in norm:
+        return "Ələt", "548502"
+    return None, None
 
 def find_border_column(station_name: str) -> str:
     norm = normalize_name(station_name)
@@ -91,29 +106,45 @@ def parse_distances_file():
     return stations_data
 
 def match_station(target_name, stations_data):
+    if not target_name:
+        return None, None
+
+    # 1. Проверка маппинга для Алята (Курык, Актау, ТРК)
+    alat_name, alat_code = resolve_alat_code(target_name)
+    if alat_code:
+        for st_key, data in stations_data.items():
+            if data.get("code") == alat_code:
+                return st_key, data
+
+    # 2. Поиск по 6-значному коду ЕСР (самый надежный способ!)
+    target_code = extract_code(target_name)
+    if target_code:
+        for st_key, data in stations_data.items():
+            if data.get("code") == target_code:
+                return st_key, data
+
+    # 3. Поиск по строгому точному совпадению названия
     norm_target = normalize_name(target_name)
-    
-    # 1. Сначала ищем СТРОГОЕ точное совпадение
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm_target:
             return st_key, data
-            
-    # 2. Только при отсутствии точного — частичный поиск
+
+    # 4. Частичный поиск по названию
     for st_key, data in stations_data.items():
         st_norm = normalize_name(st_key)
         if norm_target == st_norm or (len(norm_target) > 3 and norm_target in st_norm):
             return st_key, data
-            
+
     return None, None
 
 def get_route_info(from_station: str, to_station: str) -> dict:
     stations_data = parse_distances_file()
 
-    border_from = find_border_column(from_station)
-    border_to = find_border_column(to_station)
-
     name_from, data_from = match_station(from_station, stations_data)
     name_to, data_to = match_station(to_station, stations_data)
+
+    border_from = find_border_column(from_station)
+    border_to = find_border_column(to_station)
 
     if not data_from and border_from:
         name_from, data_from = match_station(border_from, stations_data)
@@ -128,7 +159,6 @@ def get_route_info(from_station: str, to_station: str) -> dict:
 
     dist = None
 
-    # Поиск расстояния пересечением погранперехода и станции
     if border_from and border_to:
         _, data_border_to = match_station(border_to, stations_data)
         if data_border_to:
