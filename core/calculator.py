@@ -1,6 +1,7 @@
 # ==============================================================================
-# ГЛАВНЫЙ МОДУЛЬ РАСЧЕТА ТАРИФОВ ADY 2026 (Таблицы 3 и 4)
+# ГЛАВНЫЙ МОДУЛЬ РАСЧЕТА ТАРИФНЫХ СТАВОК ADY 2026
 # ==============================================================================
+import re
 from core.weight import calculate_chargeable_weight
 from core.route import calculate_tariff_distance
 from core.table_selector import select_tariff_table
@@ -9,34 +10,25 @@ from core.coefficients import get_applicable_coefficients
 from core.currency import get_chf_usd_rate
 
 def calculate_freight(
-    fact_weight: float,
-    gng_code: str,
-    shipment_type: str,
+    fact_weight: float = 0,
+    gng_code: str = "",
+    shipment_type: str = "import",
     wagon_type: str = "universal",
     from_station: str = "",
     to_station: str = "",
     manual_distance_km: int = 0,
     calculation_date: str = None,
-    is_empty_inventory: bool = False,
+    is_empty_wagon: bool = False,
     is_private_wagon: bool = True,
+    wagon_axles: int = 4,
     data_dir: str = "data"
 ) -> dict:
     """
-    Главная функция расчета стоимости перевозки ADY 2026 с выводом результатов в USD за 1 тн.
-    Формула: (CHF_rate / FX) * coeff * 1.015 * 0.85
+    Главная функция расчета стоимости перевозки ADY 2026 в USD.
     """
-    # 1. Порожний возврат инвентарного парка
-    if is_empty_inventory:
-        return {
-            "rate_usd_per_ton": 0.0,
-            "total_usd": 0.0,
-            "details": "Порожний возврат инвентарного парка (0 USD)"
-        }
-
-    # 2. Определение курса валюты на выбранную дату (или текущую по умолчанию)
     fx_rate = get_chf_usd_rate(calculation_date)
 
-    # 3. Определение расстояния
+    # 1. Определение расстояния
     if manual_distance_km > 0:
         raw_distance = manual_distance_km
     else:
@@ -46,21 +38,45 @@ def calculate_freight(
     route_info = calculate_tariff_distance(raw_distance, shipment_type)
     calc_distance = route_info["calculated_distance_km"]
 
-    # 4. Определение расчетного веса и категории
-    weight_info = calculate_chargeable_weight(fact_weight, gng_code)
+    # 2. Порожний пробег приватного вагона (п. 3.2.2: 0.10 CHF за ось-км)
+    if is_empty_wagon:
+        clean_gng = re.sub(r'\D', '', str(gng_code or "")) if gng_code else "99220000"
+        axles = wagon_axles if wagon_axles > 0 else 4
+        
+        # Расчет в CHF: Расстояние * Количество осей * 0.10 CHF
+        total_chf = calc_distance * axles * 0.10
+        total_usd = total_chf / fx_rate
+        
+        return {
+            "gng_code": clean_gng,
+            "wagon_axles": axles,
+            "calculated_distance_km": calc_distance,
+            "rate_per_axle_km_chf": 0.10,
+            "total_chf": round(total_chf, 2),
+            "fx_rate_used": fx_rate,
+            "total_usd": round(total_usd, 2),
+            "details": f"Порожний пробег приватного вагона ({axles} осей, ГНГ {clean_gng}): {calc_distance} км * {axles} осей * 0.10 CHF/ось-км"
+        }
+
+    # 3. Расчет для груженых вагонов
+    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
+    weight_info = calculate_chargeable_weight(fact_weight, clean_gng, wagon_type)
     chargeable_tons = weight_info["chargeable_tons"]
     weight_category = weight_info["weight_category"]
 
-    # 5. Выбор тарифной таблицы (3 или 4)
-    table_num = select_tariff_table(wagon_type, shipment_type, is_empty_inventory)
+    table_info = select_tariff_table(
+        wagon_category=wagon_type,
+        shipment_type=shipment_type,
+        is_empty_inventory=False,
+        gng_code=clean_gng
+    )
+    table_num = table_info["table"]
 
-    # 6. Поиск базовой ставки (CHF/тонна)
     base_rate_chf = get_base_rate_from_table(table_num, calc_distance, weight_category, data_dir)
 
-    # 7. Расчет всех коэффициентов (включая 1.015 для груженого и 0.85 для приватов)
     coeff_info = get_applicable_coefficients(
         shipment_type=shipment_type,
-        gng_code=gng_code,
+        gng_code=clean_gng,
         table_number=table_num,
         wagon_type=wagon_type,
         from_station=from_station,
@@ -70,14 +86,8 @@ def calculate_freight(
     )
     total_multiplier = coeff_info["total_multiplier"]
 
-    # 8. Итоговый расчет ставок в USD за 1 тонну
-    # Базовая ставка переведенная в USD: CHF / FX
     base_rate_usd_per_ton = base_rate_chf / fx_rate
-
-    # Финальная ставка в USD за 1 тонну со всеми коэффициентами
     rate_usd_per_ton = base_rate_usd_per_ton * total_multiplier
-
-    # Общая стоимость на весь расчетный вес в USD
     total_usd = rate_usd_per_ton * chargeable_tons
 
     return {
