@@ -271,6 +271,7 @@ if st.button(t["calc_btn"], type="primary"):
         except Exception as e:
             loader_placeholder.empty()
             st.error(f"Произошла ошибка при расчете: {str(e)}")
+            st.code(traceback.format_exc()) # <-- Покажет точный номер строки и переменную!
             st.session_state.calc_result = None
             st.session_state.return_calc_result = None
 
