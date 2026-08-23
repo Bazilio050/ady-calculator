@@ -140,11 +140,11 @@ def match_station(target_name, stations_data):
 def get_route_info(from_station: str, to_station: str) -> dict:
     stations_data = parse_distances_file()
 
-    name_from, data_from = match_station(from_station, stations_data)
-    name_to, data_to = match_station(to_station, stations_data)
-
     border_from = find_border_column(from_station)
     border_to = find_border_column(to_station)
+
+    name_from, data_from = match_station(from_station, stations_data)
+    name_to, data_to = match_station(to_station, stations_data)
 
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
@@ -154,37 +154,46 @@ def get_route_info(from_station: str, to_station: str) -> dict:
 
     dist = None
 
-    # 1. Если ИЗ погранперехода В обычную станцию (напр. Yalama -> Abşeron)
-    if border_from and data_to:
-        for h_key, d_val in data_to["distances"].items():
-            if normalize_name(h_key) == normalize_name(border_from):
-                dist = d_val
-                break
-
-    # 2. Если ИЗ обычной станции В погранпереход (напр. Abşeron -> Yalama)
-    if dist is None and border_to and data_from:
-        for h_key, d_val in data_from["distances"].items():
-            if normalize_name(h_key) == normalize_name(border_to):
-                dist = d_val
-                break
-
-    # 3. Если между двумя погранпереходами
-    if dist is None and border_from and border_to:
+    # 1. Сначала проверяем транзит МЕЖДУ ДВУМЯ ПОГРАНПЕРЕХОДАМИ (например, Yalama -> Böyük Kəsik)
+    if border_from and border_to:
+        # Ищем погранпереход border_from в колонках погранперехода border_to
         _, data_border_to = match_station(border_to, stations_data)
         if data_border_to:
             for h_key, d_val in data_border_to["distances"].items():
                 if normalize_name(h_key) == normalize_name(border_from):
                     dist = d_val
                     break
+        # Если не нашли наоборот, ищем border_to в колонках border_from
+        if dist is None:
+            _, data_border_from = match_station(border_from, stations_data)
+            if data_border_from:
+                for h_key, d_val in data_border_from["distances"].items():
+                    if normalize_name(h_key) == normalize_name(border_to):
+                        dist = d_val
+                        break
 
-    # 4. Прямой поиск между внутренними станциями
+    # 2. ИЗ погранперехода В обычную внутреннюю станцию (например, Yalama -> Abşeron)
+    if dist is None and border_from and data_to:
+        for h_key, d_val in data_to["distances"].items():
+            if normalize_name(h_key) == normalize_name(border_from):
+                dist = d_val
+                break
+
+    # 3. ИЗ обычной внутренней станции В погранпереход (например, Abşeron -> Yalama)
+    if dist is None and border_to and data_from:
+        for h_key, d_val in data_from["distances"].items():
+            if normalize_name(h_key) == normalize_name(border_to):
+                dist = d_val
+                break
+
+    # 4. Прямой поиск между двумя обычными внутренними станциями
     if dist is None and data_from and name_to:
         for h_key, d_val in data_from["distances"].items():
             if normalize_name(h_key) == normalize_name(name_to):
                 dist = d_val
                 break
 
-    if dist is None:
+    if dist is None or dist == 0:
         raise ValueError(f"Не удалось определить расстояние между '{from_station}' и '{to_station}'.")
 
     return {
