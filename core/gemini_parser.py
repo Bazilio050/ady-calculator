@@ -60,7 +60,7 @@ def parse_user_request(user_prompt: str) -> dict:
         client = genai.Client(api_key=API_KEY)
         
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.5-flash-lite",
             contents=f"{SYSTEM_PROMPT}\n\nЗапрос пользователя: {user_prompt}",
             config=types.GenerateContentConfig(
                 response_mime_type="application/json"
