@@ -22,6 +22,8 @@ def normalize_name(text: str) -> str:
     if not text:
         return ""
     text = text.lower().strip()
+    # Удаляем символы Markdown (жирный шрифт **) и знаки препинания
+    text = text.replace("*", "")
     replacements = {
         'ə': 'e', 'ö': 'o', 'ü': 'u', 'ç': 'c', 'ş': 's', 'ı': 'i', 'ğ': 'g',
         'ё': 'е', 'й': 'и'
@@ -31,13 +33,20 @@ def normalize_name(text: str) -> str:
     text = re.sub(r'[^a-z0-9\s]', '', text)
     return text.strip()
 
-def find_border_column(station_name: str) -> str:
-    norm = normalize_name(station_name)
-    for main_node, aliases in BORDER_NODES.items():
-        for alias in aliases:
-            if normalize_name(alias) in norm:
-                return main_node
-    return None
+def match_station(target_name, stations_data):
+    norm_target = normalize_name(target_name)
+    
+    # 1. Приоритет №1: СТРОГОЕ ТОЧНОЕ совпадение
+    for st_key, data in stations_data.items():
+        if normalize_name(st_key) == norm_target:
+            return st_key, data
+            
+    # 2. Приоритет №2: Частичное совпадение (только если точного нет)
+    for st_key, data in stations_data.items():
+        if norm_target in normalize_name(st_key):
+            return st_key, data
+            
+    return None, None
 
 def parse_distances_file():
     file_path = os.path.join("data", "Distances.txt")
