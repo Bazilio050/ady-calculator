@@ -84,12 +84,17 @@ def parse_distances_file():
 
 def match_station(target_name, stations_data):
     norm_target = normalize_name(target_name)
+    
+    # 1. Приоритет: точное совпадение названий
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm_target:
             return st_key, data
+            
+    # 2. Вторично: частичное совпадение
     for st_key, data in stations_data.items():
         if norm_target in normalize_name(st_key):
             return st_key, data
+            
     return None, None
 
 def get_route_info(from_station: str, to_station: str) -> dict:
@@ -101,7 +106,6 @@ def get_route_info(from_station: str, to_station: str) -> dict:
     name_from, data_from = match_station(from_station, stations_data)
     name_to, data_to = match_station(to_station, stations_data)
 
-    # Если точное совпадение не найдено, ищем код через заголовок погранперехода
     if not data_from and border_from:
         name_from, data_from = match_station(border_from, stations_data)
     if not data_to and border_to:
