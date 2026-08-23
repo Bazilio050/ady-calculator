@@ -19,39 +19,37 @@ BORDER_NODES = {
 }
 
 def normalize_name(text: str) -> str:
+    """ Нормализует название станции: регистр, символы **, азербайджанская кириллица/латиница, пробелы """
     if not text:
         return ""
     text = text.lower().strip()
-    # Удаляем символы Markdown (жирный шрифт **) и знаки препинания
-    text = text.replace("*", "")
+    text = text.replace("*", "").replace("(", "").replace(")", "").replace("-", " ")
+    
     replacements = {
         'ə': 'e', 'ö': 'o', 'ü': 'u', 'ç': 'c', 'ş': 's', 'ı': 'i', 'ğ': 'g',
         'ё': 'е', 'й': 'и'
     }
     for k, v in replacements.items():
         text = text.replace(k, v)
+        
+    # Оставляем только буквы, цифры и одиночные пробелы
     text = re.sub(r'[^a-z0-9\s]', '', text)
+    text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
-def match_station(target_name, stations_data):
-    norm_target = normalize_name(target_name)
-    
-    # 1. Приоритет №1: СТРОГОЕ ТОЧНОЕ совпадение
-    for st_key, data in stations_data.items():
-        if normalize_name(st_key) == norm_target:
-            return st_key, data
-            
-    # 2. Приоритет №2: Частичное совпадение (только если точного нет)
-    for st_key, data in stations_data.items():
-        if norm_target in normalize_name(st_key):
-            return st_key, data
-            
-    return None, None
+def find_border_column(station_name: str) -> str:
+    norm = normalize_name(station_name)
+    for main_node, aliases in BORDER_NODES.items():
+        for alias in aliases:
+            if normalize_name(alias) in norm:
+                return main_node
+    return None
 
 def parse_distances_file():
-    file_path = os.path.join("data", "Distances.txt")
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(base_dir, "data", "Distances.txt")
     if not os.path.exists(file_path):
-        raise FileNotFoundError("Файл data/Distances.txt не найден!")
+        raise FileNotFoundError(f"Файл {file_path} не найден!")
 
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
@@ -61,7 +59,7 @@ def parse_distances_file():
     for idx, line in enumerate(lines):
         if "| Stansiyanın adı |" in line or "| Stansiyanın" in line:
             header_idx = idx
-            headers = [h.strip() for h in line.split("|")[1:-1]]
+            headers = [h.strip().replace("*", "") for h in line.split("|")[1:-1]]
             break
 
     if header_idx == -1:
@@ -75,15 +73,16 @@ def parse_distances_file():
         if len(cols) < len(headers):
             continue
             
-        st_name = cols[0].replace("**", "").strip()
-        st_code = cols[1].strip()
+        st_name = cols[0].replace("*", "").strip()
+        st_code = cols[1].replace("*", "").strip()
         
         distances = {}
         for h_name, val in zip(headers[2:], cols[2:]):
+            clean_h_name = h_name.replace("*", "").strip()
             try:
-                distances[h_name] = int(val.strip())
+                distances[clean_h_name] = int(val.strip())
             except ValueError:
-                distances[h_name] = None
+                distances[clean_h_name] = None
                 
         stations_data[st_name] = {
             "code": st_code,
@@ -94,14 +93,15 @@ def parse_distances_file():
 def match_station(target_name, stations_data):
     norm_target = normalize_name(target_name)
     
-    # 1. Сначала ищем СТРОГОЕ ТОЧНОЕ совпадение
+    # 1. Сначала ищем СТРОГОЕ точное совпадение
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm_target:
             return st_key, data
             
-    # 2. Только если точного совпадения нет — частичный поиск
+    # 2. Только при отсутствии точного — частичный поиск
     for st_key, data in stations_data.items():
-        if norm_target in normalize_name(st_key):
+        st_norm = normalize_name(st_key)
+        if norm_target == st_norm or (len(norm_target) > 3 and norm_target in st_norm):
             return st_key, data
             
     return None, None
@@ -128,21 +128,29 @@ def get_route_info(from_station: str, to_station: str) -> dict:
 
     dist = None
 
+    # Поиск расстояния пересечением погранперехода и станции
     if border_from and border_to:
         _, data_border_to = match_station(border_to, stations_data)
-        if data_border_to and border_from in data_border_to["distances"]:
-            dist = data_border_to["distances"][border_from]
+        if data_border_to:
+            for h_key, d_val in data_border_to["distances"].items():
+                if normalize_name(h_key) == normalize_name(border_from):
+                    dist = d_val
+                    break
 
     if dist is None and border_to and data_from:
-        if border_to in data_from["distances"]:
-            dist = data_from["distances"][border_to]
+        for h_key, d_val in data_from["distances"].items():
+            if normalize_name(h_key) == normalize_name(border_to):
+                dist = d_val
+                break
 
     if dist is None and border_from and data_to:
-        if border_from in data_to["distances"]:
-            dist = data_to["distances"][border_from]
+        for h_key, d_val in data_to["distances"].items():
+            if normalize_name(h_key) == normalize_name(border_from):
+                dist = d_val
+                break
 
     if dist is None:
-        raise ValueError(f"Не удалось вычесть расстояние между '{from_station}' и '{to_station}'.")
+        raise ValueError(f"Не удалось определить расстояние между '{from_station}' и '{to_station}'.")
 
     return {
         "distance_km": dist,
