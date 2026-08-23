@@ -11,7 +11,7 @@ from core.table_selector import select_tariff_table
 from core.table_parser import get_base_rate_from_table
 from core.coefficients import get_applicable_coefficients
 from core.currency import get_chf_usd_rate
-from core.distance_finder import get_distance_between_stations
+from core.distance_finder import get_route_info
 
 def safe_float(val, default=0.0):
     if val is None:
@@ -51,11 +51,14 @@ def calculate_freight(
     is_empty_wagon = bool(is_empty_wagon)
     fx_rate = get_chf_usd_rate(calculation_date) or 1.0
 
-    # 1. Расстояние
+    # 1. Расстояние и форматирование станций с кодами ADY
     if manual_dist_val > 0:
         raw_distance = manual_dist_val
+        route_formatted = f"{from_station} – {to_station}"
     else:
-        raw_distance = get_distance_between_stations(from_station, to_station)
+        route_data = get_route_info(from_station, to_station)
+        raw_distance = route_data["distance_km"]
+        route_formatted = route_data["route_formatted"]
 
     route_info = calculate_tariff_distance(raw_distance, shipment_type)
     calc_distance = route_info["calculated_distance_km"]
@@ -123,7 +126,7 @@ def calculate_freight(
 
     return {
         "part1": {
-            "route": f"{from_station} – {to_station}",
+            "route": route_formatted,
             "shipment_type": shipment_title,
             "distance": f"{calc_distance} km",
             "cargo_and_wagon": f"GNG {clean_gng} — {cargo_desc}, {wagon_type.capitalize()} ({wagon_ownership})",
