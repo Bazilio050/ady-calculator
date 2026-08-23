@@ -1,12 +1,100 @@
 # ==============================================================================
-# МОДУЛЬ РАСЧЕТА ТАРИФНЫХ КОЭФФИЦИЕНТОВ ADY 2026
+# МОДУЛЬ РАСЧЕТА ТАРИФНЫХ КОЭФФИЦИЕНТОВ ADY 2026 (МУЛЬТИЯЗЫЧНЫЙ С QEYDLƏR)
 # ==============================================================================
 import re
 
+COEFF_LABELS = {
+    "ref_section": {
+        "AZ": "Refseksiya tərkib əmsalı ({count} vaqon)",
+        "RU": "Коэффициент состава рефсекции ({count} вагонов)",
+        "EN": "Refrigerated section composition factor ({count} wagons)",
+        "note_az": "Refseksiyanın tərkibindəki yük vaqonlarının sayından asılı olaraq əmsal tətbiq olunmuşdur.",
+        "note_ru": "Применен коэффициент в зависимости от количества грузовых вагонов в составе рефсекции.",
+        "note_en": "Factor applied depending on the number of cargo wagons in the refrigerated section."
+    },
+    "fresh_produce": {
+        "AZ": "Meyvə-tərəvəz güzəştı (Tarif Razılaşması ölkələri)",
+        "RU": "Скидка на овощи/фрукты (страны Тарифного Соглашения)",
+        "EN": "Fruit/vegetable discount (Tariff Agreement countries)",
+        "note_az": "Tarif Razılaşması iştirakçısı olan ölkələrin mənşəli təzə meyvə-tərəvəz daşınmasına 0.60 güzəşt əmsalı tətbiq edilmişdir.",
+        "note_ru": "Применен скидочный коэффициент 0.60 на перевозку свежих овощей и фруктов происхождения стран Тарифного Соглашения.",
+        "note_en": "Discount coefficient of 0.60 applied for fresh fruits and vegetables originating from Tariff Agreement countries."
+    },
+    "loaded_wagon": {
+        "AZ": "Yüklü vaqonlar üçün əlavə əmsal",
+        "RU": "Дополнительный коэффициент для груженых вагонов",
+        "EN": "Additional coefficient for loaded wagons",
+        "note_az": "Yüklü vaqonların daşınmasına 1.015 əlavə əmsalı (indeksasiya) tətbiq olunmuşdur (01.03.2026 - 31.12.2026).",
+        "note_ru": "Применен дополнительный коэффициент (индексация) 1.015 для перевозки груженых вагонов (01.03.2026 - 31.12.2026).",
+        "note_en": "Additional coefficient (indexation) 1.015 applied for loaded wagon shipments (01.03.2026 - 31.12.2026)."
+    },
+    "private_wagon": {
+        "AZ": "Xüsusi (SPS) vaqonlar üçün güzəşt əmsalı",
+        "RU": "Коэффициент собственных/приватных вагонов",
+        "EN": "Private (SPS) wagon discount coefficient",
+        "note_az": "Xüsusi mülkiyyətdə olan (SPS) vaqonlara 0.85 güzəşt əmsalı tətbiq edilmişdir.",
+        "note_ru": "К вагонам собственной (приватной) собственности (СПС) применен скидочный коэффициент 0.85.",
+        "note_en": "Discount coefficient of 0.85 applied for private (SPS) wagons."
+    },
+    "long_platform": {
+        "AZ": "Uzunluğu 19m-dən çox olan platformalar üçün əmsal",
+        "RU": "Коэффициент для платформ длиннее 19м (п. 3.1.2.7)",
+        "EN": "Coefficient for platforms over 19m (p. 3.1.2.7)",
+        "note_az": "Bazasının uzunluğu 19 metrdən çox olan uzunölçülü platformalara 1.20 əmsalı tətbiq edilmişdir (bənd 3.1.2.7).",
+        "note_ru": "Применен коэффициент 1.20 для длиннобазных платформ с длиной базы более 19 метров (п. 3.1.2.7).",
+        "note_en": "Coefficient 1.20 applied for long-platform wagons exceeding 19m base length (clause 3.1.2.7)."
+    },
+    "import_export_150": {
+        "AZ": "İdxal / İxrac əmsalı",
+        "RU": "Коэффициент импорт/экспорт",
+        "EN": "Import / Export coefficient",
+        "note_az": "İdxal və ya ixrac rejimində daşınan yüklərə 1.50 əmsalı tətbiq edilmişdir.",
+        "note_ru": "Применен коэффициент 1.50 для грузов, перевозимых в режиме импорта или экспорта.",
+        "note_en": "Coefficient 1.50 applied for cargo transported in import or export mode."
+    },
+    "wood_metal_import": {
+        "AZ": "Meşə və ya metal yükləri üçün əmsal (İdxal)",
+        "RU": "Специальный коэффициент для леса/металла (Импорт)",
+        "EN": "Special coefficient for timber/metal (Import)",
+        "note_az": "Cədvəl 3: İdxal daşımaları zamanı meşə materiallarına və ya qara metallara 1.04 əmsalı tətbiq olunmuşdur.",
+        "note_ru": "Таблица 3: При импортных перевозках лесоматериалов или черных металлов применен коэффициент 1.04.",
+        "note_en": "Table 3: Coefficient 1.04 applied for import shipments of timber or ferrous metals."
+    },
+    "non_ferrous_metal": {
+        "AZ": "Əlvan metallar üçün artırıcı əmsal",
+        "RU": "Повышающий коэффициент для цветных металлов (стр. 18)",
+        "EN": "Surcharge coefficient for non-ferrous metals (p. 18)",
+        "note_az": "Əlvan metallar və onların ərintilərinin daşınmasına 1.20 artırıcı əmsalı tətbiq olunmuşdur.",
+        "note_ru": "Применен повышающий коэффициент 1.20 для перевозок цветных металлов и их сплавов.",
+        "note_en": "Surcharge coefficient of 1.20 applied for non-ferrous metals and alloys."
+    },
+    "transit_alat_bk": {
+        "AZ": "Tranzit əmsalı (Ələt - Böyük Kəsik)",
+        "RU": "Транзитный коэффициент (Ələt - Böyük Kəsik)",
+        "EN": "Transit coefficient (Ələt - Böyük Kəsik)",
+        "note_az": "Ələt - Böyük Kəsik istiqamətində tranzit daşımalara 1.20 əmsalı tətbiq olunmuşdur.",
+        "note_ru": "Применен транзитный коэффициент 1.20 для перевозок по маршруту Ələt - Böyük Kəsik.",
+        "note_en": "Transit coefficient of 1.20 applied for shipments on the Ələt - Böyük Kəsik route."
+    },
+    "oil_products": {
+        "AZ": "Neft və neft məhsulları üçün əmsal",
+        "RU": "Специальный коэффициент для нефти/нефтепродуктов",
+        "EN": "Special coefficient for oil and petroleum products",
+        "note_az": "Neft və neft məhsullarının İdxal/Tranzit daşınmasına 1.20 əmsalı tətbiq olunmuşdur.",
+        "note_ru": "Применен специальный коэффициент 1.20 для импорта и транзита нефти и нефтепродуктов.",
+        "note_en": "Special coefficient of 1.20 applied for import and transit of crude oil and petroleum products."
+    },
+    "ref_transit": {
+        "AZ": "Refrijerator vaqonları üçün tranzit əmsalı",
+        "RU": "Специальный коэффициент для рефрижераторного подвижного состава",
+        "EN": "Special transit coefficient for refrigerated wagons",
+        "note_az": "Refrijerator vaqonları ilə tranzit daşımalara 1.20 əmsalı tətbiq edilmişdir.",
+        "note_ru": "Применен коэффициент 1.20 для транзитных перевозок в рефрижераторных вагонах.",
+        "note_en": "Special coefficient 1.20 applied for transit shipments in refrigerated wagons."
+    }
+}
+
 def is_special_non_ferrous_metal(gng_code: str) -> bool:
-    """
-    Проверяет, входит ли код ГНГ в список цветных металлов со стр. 18 (коэф 1.20).
-    """
     code = re.sub(r'\D', '', str(gng_code or ""))
     if not code:
         return False
@@ -32,9 +120,6 @@ def is_special_non_ferrous_metal(gng_code: str) -> bool:
 
 
 def parse_ref_section_schema(schema_str: str) -> dict:
-    """
-    Разбирает схемы рефсекций вида '4+1', '1+4', '5+1', '1+6' и возвращает коэффициент.
-    """
     if not schema_str:
         return {"coeff": 1.0, "cargo_wagons": 4}
     
@@ -64,14 +149,13 @@ def get_applicable_coefficients(
     is_private_wagon: bool = True,
     ref_schema: str = "",
     is_tariff_agreement_member: bool = False,
-    is_long_platform_over_19m: bool = False
+    is_long_platform_over_19m: bool = False,
+    lang: str = "AZ"
 ) -> dict:
-    """
-    Вычисляет применимые коэффициенты на основе правил ADY 2026.
-    """
     mode = str(shipment_type or "").strip().lower()
     clean_gng = re.sub(r'\D', '', str(gng_code or ""))
     table_str = str(table_number or "").strip()
+    l_code = lang.upper() if lang in ["AZ", "RU", "EN"] else "AZ"
     
     is_export = any(k in mode for k in ["ixrac", "export", "экспорт"])
     is_import = any(k in mode for k in ["idxal", "import", "импорт"])
@@ -79,7 +163,6 @@ def get_applicable_coefficients(
 
     coeffs = []
     
-    # Флаги категорий грузов
     is_table_3 = (table_str == "3")
     is_table_5 = (table_str == "5")
     is_table_7 = (table_str == "7")
@@ -88,66 +171,71 @@ def get_applicable_coefficients(
     is_methanol = ("метанол" in wagon_type.lower() or "methanol" in wagon_type.lower())
     is_oil_tab6_col2 = (table_str == "6")
 
-    # 1. Схема состава рефсекции (1+3, 4+1, 5+1 и т.д.)
+    def add_coeff(key: str, val: float, **kwargs):
+        cfg = COEFF_LABELS[key]
+        name_template = cfg.get(l_code, cfg["AZ"])
+        note_text = cfg.get(f"note_{l_code.lower()}", cfg["note_az"])
+        
+        coeffs.append({
+            "name": name_template.format(**kwargs),
+            "value": val,
+            "note": note_text
+        })
+
+    # 1. Схема состава рефсекции
     if "ref" in wagon_type.lower() or "реф" in wagon_type.lower():
         ref_info = parse_ref_section_schema(ref_schema)
         if ref_info["coeff"] != 1.0:
-            coeffs.append({
-                "name": f"Коэффициент состава рефсекции ({ref_info['cargo_wagons']} вагонов)", 
-                "value": ref_info["coeff"]
-            })
+            add_coeff("ref_section", ref_info["coeff"], count=ref_info['cargo_wagons'])
 
-    # 2. Скидка 0.60 на фрукты/овощи (только при явном указании в запросе)
+    # 2. Скидка 0.60 на фрукты/овощи
     is_fresh_produce = clean_gng.startswith(("04100", "04200", "04300", "04400", "05100", "05200", "05300", "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710", "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810", "12129100"))
     if is_fresh_produce and is_tariff_agreement_member:
-        coeffs.append({"name": "Скидка на овощи/фрукты (страны Тарифного Соглашения)", "value": 0.60})
+        add_coeff("fresh_produce", 0.60)
 
     # 3. Дополнительный коэффициент 1.015 для всех груженых вагонов
     if is_loaded:
-        coeffs.append({"name": "Дополнительный коэффициент для груженых вагонов", "value": 1.015})
+        add_coeff("loaded_wagon", 1.015)
 
     # 4. Коэффициент 0.85 для собственных (приватных) вагонов
     if is_private_wagon:
-        coeffs.append({"name": "Коэффициент собственных/приватных вагонов", "value": 0.85})
+        add_coeff("private_wagon", 0.85)
 
-    # 5. Проверка спец-платформ длиннее 19 метров (п. 3.1.2.7)
+    # 5. Платформы длиннее 19 метров
     if is_long_platform_over_19m:
-        coeffs.append({"name": "Коэффициент для платформ длиннее 19м (п. 3.1.2.7)", "value": 1.20})
+        add_coeff("long_platform", 1.20)
 
-    # 6. Проверка исключений для коэффициента 1.50 (Импорт / Экспорт)
+    # 6. Коэффициент 1.50 (Импорт / Экспорт)
     excluded_from_1_50 = is_table_3 or is_table_5 or is_table_7 or is_wood or is_black_metal or is_methanol or is_oil_tab6_col2
-
     if (is_import or is_export) and not excluded_from_1_50:
-        coeffs.append({"name": "Коэффициент импорт/экспорт", "value": 1.50})
+        add_coeff("import_export_150", 1.50)
 
     # 7. Коэффициент 1.04 для леса и черных металлов при Импорте
     if is_import and (is_wood or is_black_metal):
-        coeffs.append({"name": "Специальный коэффициент для леса/металла (Импорт)", "value": 1.04})
+        add_coeff("wood_metal_import", 1.04)
 
-    # 8. Повышающий коэффициент 1.20 для цветных металлов (стр. 18)
+    # 8. Коэффициент 1.20 для цветных металлов
     if is_special_non_ferrous_metal(clean_gng):
-        coeffs.append({"name": "Повышающий коэффициент для цветных металлов (стр. 18)", "value": 1.20})
+        add_coeff("non_ferrous_metal", 1.20)
 
-    # 9. Коэффициент 1.20 для транзита Ələt — Böyük Kəsik (в обе стороны)
+    # 9. Коэффициент 1.20 для транзита Ələt — Böyük Kəsik
     st_from = str(from_station or "").strip().lower()
     st_to = str(to_station or "").strip().lower()
-    
     is_alat = any(k in st_from or k in st_to for k in ["alat", "ələt", "алят"])
     is_bk = any(k in st_from or k in st_to for k in ["boyuk kesik", "böyük kəsik", "беюк-кесик", "беюк кесик"])
     
     if is_transit and (is_alat and is_bk):
-        coeffs.append({"name": "Транзитный коэффициент (Ələt - Böyük Kəsik)", "value": 1.20})
+        add_coeff("transit_alat_bk", 1.20)
 
-    # 10. Коэффициент 1.20 для нефти и нефтепродуктов (Импорт или Транзит)
+    # 10. Коэффициент 1.20 для нефти и нефтепродуктов
     if (is_import or is_transit) and is_oil_tab6_col2:
-        coeffs.append({"name": "Специальный коэффициент для нефти/нефтепродуктов", "value": 1.20})
+        add_coeff("oil_products", 1.20)
 
-    # 11. Коэффициент 1.20 для ARV / рефрижераторов при Транзите
+    # 11. Коэффициент 1.20 для рефрижераторов при Транзите
     is_ref = any(k in wagon_type.lower() for k in ["arv", "рефрижератор", "ref"])
     if is_transit and is_ref:
-        coeffs.append({"name": "Специальный коэффициент для рефрижераторного подвижного состава", "value": 1.20})
+        add_coeff("ref_transit", 1.20)
 
-    # Итоговый перемноженный коэффициент
     total_multiplier = 1.0
     for c in coeffs:
         total_multiplier *= c["value"]
