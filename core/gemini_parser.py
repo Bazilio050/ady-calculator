@@ -1,100 +1,148 @@
 # ==============================================================================
-# МОДУЛЬ ИНТЕРПРЕТАЦИИ ЗАПРОСОВ ЧЕРЕЗ GEMINI AI (АКТУАЛЬНЫЙ GOOGLE-GENAI SDK)
+# МОДУЛЬ ПОИСКА РАССТОЯНИЙ И КОДОВ СТАНЦИЙ ADY
 # ==============================================================================
-import json
 import os
-from google import genai
-from google.genai import types
+import re
 
-API_KEY = os.environ.get("GEMINI_API_KEY", "")
-
-SYSTEM_PROMPT = """
-Ты — профессиональный AI-ассистент логиста ADY (Азербайджанские Железные Дороги).
-Твоя задача — извлечь параметры из текста запроса и вернуть STRICT JSON.
-
-Правила извлечения:
-1. Код ГНГ / YHN (gng_code):
-   - Ищи В ИСКЛЮЧИТЕЛЬНОМ ПОРЯДКЕ числовой код ГНГ (например: '72', '4818', '2713').
-   - ЕСЛИ В ТЕКСТЕ НЕТ ЧИСЛОВОГО КОДА ГНГ (даже если написано наименование груза словами, например 'металл' или 'пшеница') -> СТАВЬ null. НЕ ПОДБИРАЙ И НЕ УГАДЫВАЙ КОД.
-   - Если код ГНГ указан в виде числа, верни его и добавь краткое официальное наименование груза в 'gng_name' (2-3 слова max).
-
-2. Станции (from_station, to_station):
-   - Извлекай только название станций/стыков.
-   - Для погранпереходов и стыков добавляй постфикс '-eksport' (например: 'Yalama-eksport', 'Böyük Kəsik-eksport').
-   - Для Алята различай: 'Ələt', 'Ələt yeni', 'Ələt eksport Aktau', 'Ələt eksport Kurik', 'Ələt eksport-Türk.'. Если просто 'Алят-эксп' -> 'Ələt-eksport'.
-
-3. Страны (origin_country, destination_country):
-   - Заполняй ТОЛЬКО если страна явным образом указана в тексте. Если нет — пиши null.
-
-4. Порожний вагон (is_empty_wagon):
-   - Если вагон порожний: gng_code = "99220000", wagon_axles = 4, fact_weight = 0.0, gng_name = "Порожний вагон".
-
-5. Флаги:
-   - is_round_trip: true, если есть фразы "с возвратом", "с учетом порожнего возврата", "кругорейс".
-   - is_private_wagon: true по умолчанию (СПС), если не указано МПС/инвентарный.
-
-Формат ответа (СТРОГО JSON):
-{
-  "from_station": "строка или null",
-  "to_station": "строка или null",
-  "origin_country": "строка или null",
-  "destination_country": "строка или null",
-  "gng_code": "строка или null",
-  "gng_name": "строка или null",
-  "fact_weight": число_или_null,
-  "wagon_type": "universal/tank/ref/autocar/passenger",
-  "shipment_type": "import/export/transit",
-  "is_empty_wagon": true/false,
-  "is_private_wagon": true/false,
-  "is_round_trip": true/false,
-  "wagon_axles": число
+BORDER_NODES = {
+    "Yalama (eksport)": ["yalama", "yalama-eksport", "yalama eksport", "ялама", "ялама-эксп", "ялама экспорт"],
+    "Astara (eksport)": ["astara", "astara-eksport", "astara eksport", "астара", "астара-эксп", "астара экспорт"],
+    "Böyük Kəsik (eksport)": ["boyuk kesik", "böyük kəsik", "boyuk kesik-eksport", "беюк-кясик", "беюк кясик", "беюк-кясик-эксп", "беюк кясик экспорт"],
+    "Culfa (eksport)": ["culfa", "culfa-eksport", "джульфа", "джульфа-эксп"],
+    "Ələt eksp / Bakı liman": [
+        "alat", "ələt", "alat-eksport", "ələt-eksport", "алят", "алят-эксп",
+        "alat eksport aktau", "ələt eksport aktau", "алят актау",
+        "alat eksport kurik", "ələt eksport kurik", "алят курык",
+        "alat eksport-turk.", "ələt eksport-türk.", "алят туркменбаши", "алят туркменистан",
+        "baki ticarat liman", "bakı ticarət limanı", "бакинский порт", "порт алят"
+    ]
 }
-"""
 
-def parse_user_request(user_prompt: str) -> dict:
-    if not API_KEY:
-        raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
+def normalize_name(text: str) -> str:
+    if not text:
+        return ""
+    text = text.lower().strip()
+    replacements = {
+        'ə': 'e', 'ö': 'o', 'ü': 'u', 'ç': 'c', 'ş': 's', 'ı': 'i', 'ğ': 'g',
+        'ё': 'е', 'й': 'и'
+    }
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+    text = re.sub(r'[^a-z0-9\s]', '', text)
+    return text.strip()
 
-    try:
-        # Инициализация актуального клиента google-genai
-        client = genai.Client(api_key=API_KEY)
+def find_border_column(station_name: str) -> str:
+    norm = normalize_name(station_name)
+    for main_node, aliases in BORDER_NODES.items():
+        for alias in aliases:
+            if normalize_name(alias) in norm:
+                return main_node
+    return None
+
+def parse_distances_file():
+    file_path = os.path.join("data", "Distances.txt")
+    if not os.path.exists(file_path):
+        raise FileNotFoundError("Файл data/Distances.txt не найден!")
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    header_idx = -1
+    headers = []
+    for idx, line in enumerate(lines):
+        if "| Stansiyanın adı |" in line or "| Stansiyanın" in line:
+            header_idx = idx
+            headers = [h.strip() for h in line.split("|")[1:-1]]
+            break
+
+    if header_idx == -1:
+        raise ValueError("Не удалось распознать структуру таблицы в data/Distances.txt")
+
+    stations_data = {}
+    for line in lines[header_idx + 2:]:
+        if not line.strip() or not line.startswith("|"):
+            continue
+        cols = [c.strip() for c in line.split("|")[1:-1]]
+        if len(cols) < len(headers):
+            continue
+            
+        st_name = cols[0].replace("**", "").strip()
+        st_code = cols[1].strip()
         
-        response = client.models.generate_content(
-            model="gemini-3.5-flash-lite",
-            contents=f"{SYSTEM_PROMPT}\n\nЗапрос пользователя: {user_prompt}",
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json"
-            )
-        )
-        parsed_data = json.loads(response.text)
-    except Exception as e:
-        raise ValueError(f"Ошибка обращения к Gemini API: {str(e)}")
+        distances = {}
+        for h_name, val in zip(headers[2:], cols[2:]):
+            try:
+                distances[h_name] = int(val.strip())
+            except ValueError:
+                distances[h_name] = None
+                
+        stations_data[st_name] = {
+            "code": st_code,
+            "distances": distances
+        }
+    return stations_data
 
-    # Автоподстановка для порожнего вагона
-    if parsed_data.get("is_empty_wagon"):
-        parsed_data["gng_code"] = "99220000"
-        parsed_data["gng_name"] = "Порожний вагон"
-        if not parsed_data.get("wagon_axles"):
-            parsed_data["wagon_axles"] = 4
-        if parsed_data.get("fact_weight") is None:
-            parsed_data["fact_weight"] = 0.0
+def match_station(target_name, stations_data):
+    norm_target = normalize_name(target_name)
+    
+    # 1. Приоритет: СТРОГОЕ ТОЧНОЕ совпадение
+    for st_key, data in stations_data.items():
+        if normalize_name(st_key) == norm_target:
+            return st_key, data
+            
+    # 2. Вторично: частичное совпадение
+    for st_key, data in stations_data.items():
+        if norm_target in normalize_name(st_key):
+            return st_key, data
+            
+    return None, None
 
-    # Жесткая проверка обязательных полей
-    missing_fields = []
-    if not parsed_data.get("from_station"):
-        missing_fields.append("Станция отправления (from_station)")
-    if not parsed_data.get("to_station"):
-        missing_fields.append("Станция назначения (to_station)")
+def get_route_info(from_station: str, to_station: str) -> dict:
+    stations_data = parse_distances_file()
 
-    # Проверка ГНГ и веса для груженого вагона
-    if not parsed_data.get("is_empty_wagon"):
-        if not parsed_data.get("gng_code"):
-            missing_fields.append("Код ГНГ / YHN (укажите числовой код, например: 72, 4818)")
-        if parsed_data.get("fact_weight") is None or parsed_data.get("fact_weight") <= 0:
-            missing_fields.append("Фактический вес груза в тоннах (fact_weight)")
+    border_from = find_border_column(from_station)
+    border_to = find_border_column(to_station)
 
-    if missing_fields:
-        missing_str = "\n- ".join(missing_fields)
-        raise ValueError(f"Для расчета не хватает следующих обязательных данных:\n- {missing_str}")
+    name_from, data_from = match_station(from_station, stations_data)
+    name_to, data_to = match_station(to_station, stations_data)
 
-    return parsed_data
+    if not data_from and border_from:
+        name_from, data_from = match_station(border_from, stations_data)
+    if not data_to and border_to:
+        name_to, data_to = match_station(border_to, stations_data)
+
+    code_from = data_from["code"] if data_from else ""
+    code_to = data_to["code"] if data_to else ""
+
+    fmt_from = f"{name_from or from_station}" + (f" ({code_from})" if code_from else "")
+    fmt_to = f"{name_to or to_station}" + (f" ({code_to})" if code_to else "")
+
+    dist = None
+
+    if border_from and border_to:
+        _, data_border_to = match_station(border_to, stations_data)
+        if data_border_to and border_from in data_border_to["distances"]:
+            dist = data_border_to["distances"][border_from]
+
+    if dist is None and border_to and data_from:
+        if border_to in data_from["distances"]:
+            dist = data_from["distances"][border_to]
+
+    if dist is None and border_from and data_to:
+        if border_from in data_to["distances"]:
+            dist = data_to["distances"][border_from]
+
+    if dist is None:
+        raise ValueError(f"Не удалось вычесть расстояние между '{from_station}' и '{to_station}'.")
+
+    return {
+        "distance_km": dist,
+        "from_formatted": fmt_from,
+        "to_formatted": fmt_to,
+        "route_formatted": f"{fmt_from} – {fmt_to}"
+    }
+
+def get_route_distance(from_station: str, to_station: str) -> int:
+    return get_route_info(from_station, to_station)["distance_km"]
+
+get_distance_between_stations = get_route_distance
