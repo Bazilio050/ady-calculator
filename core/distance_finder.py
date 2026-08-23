@@ -140,11 +140,19 @@ def match_station(target_name, stations_data):
 def get_route_info(from_station: str, to_station: str) -> dict:
     stations_data = parse_distances_file()
 
+    border_from = find_border_column(from_station)
+    border_to = find_border_column(to_station)
+
     name_from, data_from = match_station(from_station, stations_data)
     name_to, data_to = match_station(to_station, stations_data)
 
-    border_from = find_border_column(from_station)
-    border_to = find_border_column(to_station)
+    # Если станция является погранпереходом, отдаем приоритет названию погранперехода
+    if border_from:
+        name_from = border_from
+        _, data_from = match_station(border_from, stations_data)
+    if border_to:
+        name_to = border_to
+        _, data_to = match_station(border_to, stations_data)
 
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
@@ -154,39 +162,42 @@ def get_route_info(from_station: str, to_station: str) -> dict:
 
     dist = None
 
-    # 1. Поиск в объекте data_from по имени или коду назначения
-    if data_from and data_from.get("distances"):
-        for h_key, d_val in data_from["distances"].items():
-            if d_val is not None and d_val > 0:
-                norm_h = normalize_name(h_key)
-                if (name_to and norm_h == normalize_name(name_to)) or \
-                   (border_to and norm_h == normalize_name(border_to)) or \
-                   (normalize_name(to_station) in norm_h):
-                    dist = d_val
-                    break
+    # 1. Если ОБА узла — погранпереходы/стыки (например, Yalama (eksport) -> Böyük Kəsik (eksport))
+    if border_from and border_to:
+        # Ищем строку border_to и берем из нее колонку border_from
+        if data_to and data_to.get("distances"):
+            for h_key, d_val in data_to["distances"].items():
+                if normalize_name(h_key) == normalize_name(border_from):
+                    if d_val is not None and d_val > 0:
+                        dist = d_val
+                        break
+        # Если не нашли — ищем строку border_from и берем колонку border_to
+        if dist is None and data_from and data_from.get("distances"):
+            for h_key, d_val in data_from["distances"].items():
+                if normalize_name(h_key) == normalize_name(border_to):
+                    if d_val is not None and d_val > 0:
+                        dist = d_val
+                        break
 
-    # 2. Поиск в объекте data_to по имени или коду отправления
-    if dist is None and data_to and data_to.get("distances"):
+    # 2. Перевозка: Погранпереход -> Внутренняя станция
+    if dist is None and border_from and data_to:
         for h_key, d_val in data_to["distances"].items():
-            if d_val is not None and d_val > 0:
-                norm_h = normalize_name(h_key)
-                if (name_from and norm_h == normalize_name(name_from)) or \
-                   (border_from and norm_h == normalize_name(border_from)) or \
-                   (normalize_name(from_station) in norm_h):
-                    dist = d_val
-                    break
+            if normalize_name(h_key) == normalize_name(border_from):
+                dist = d_val
+                break
 
-    # 3. Резервный поиск по BORDER_NODES (пересечение двух погранпереходов)
-    if dist is None and border_from and border_to:
-        # Ищем погранпереход border_to среди строк и берем колонку border_from
-        for st_key, st_data in stations_data.items():
-            if normalize_name(border_to) in normalize_name(st_key):
-                for h_key, d_val in st_data["distances"].items():
-                    if normalize_name(border_from) in normalize_name(h_key):
-                        if d_val is not None and d_val > 0:
-                            dist = d_val
-                            break
-            if dist:
+    # 3. Перевозка: Внутренняя станция -> Погранпереход
+    if dist is None and border_to and data_from:
+        for h_key, d_val in data_from["distances"].items():
+            if normalize_name(h_key) == normalize_name(border_to):
+                dist = d_val
+                break
+
+    # 4. Внутренняя станция -> Внутренняя станция
+    if dist is None and data_from and name_to:
+        for h_key, d_val in data_from["distances"].items():
+            if normalize_name(h_key) == normalize_name(name_to):
+                dist = d_val
                 break
 
     if dist is None or dist == 0:
