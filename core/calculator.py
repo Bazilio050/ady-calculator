@@ -26,10 +26,7 @@ def calculate_freight(
     # Логика даты должна находиться ВНУТРИ функции:
     if not calculation_date:
         calculation_date = datetime.now().strftime("%Y-%m-%d")
-
-     """
-    Главная функция расчета стоимости перевозки ADY 2026 в USD.
-    """
+  
     fx_rate = get_chf_usd_rate(calculation_date)
 
     # 1. Определение расстояния
