@@ -9,10 +9,6 @@ from core.table_parser import get_base_rate_from_table
 from core.coefficients import get_applicable_coefficients
 from core.currency import get_chf_usd_rate
 
-if not calculation_date:
-    from datetime import datetime
-    calculation_date = datetime.now().strftime("%Y-%m-%d")
-
 def calculate_freight(
     from_station,
     to_station,
@@ -24,9 +20,14 @@ def calculate_freight(
     is_private_wagon=True,
     is_round_trip=False,
     wagon_axles=4,
-    **kwargs  # <-- Позволяет принимать origin_country, gng_name и другие дополнительные поля без ошибок
+    calculation_date=None,  # <-- Помещаем в параметры со значением по умолчанию
+    **kwargs                 # <-- Принимает любые дополнительные поля (origin_country, gng_name)
 ):
-    """
+    # Логика даты должна находиться ВНУТРИ функции:
+    if not calculation_date:
+        calculation_date = datetime.now().strftime("%Y-%m-%d")
+
+     """
     Главная функция расчета стоимости перевозки ADY 2026 в USD.
     """
     fx_rate = get_chf_usd_rate(calculation_date)
