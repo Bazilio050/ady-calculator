@@ -85,12 +85,12 @@ def parse_distances_file():
 def match_station(target_name, stations_data):
     norm_target = normalize_name(target_name)
     
-    # 1. Приоритет: точное совпадение названий
+    # 1. Сначала ищем СТРОГОЕ ТОЧНОЕ совпадение
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm_target:
             return st_key, data
             
-    # 2. Вторично: частичное совпадение
+    # 2. Только если точного совпадения нет — частичный поиск
     for st_key, data in stations_data.items():
         if norm_target in normalize_name(st_key):
             return st_key, data
