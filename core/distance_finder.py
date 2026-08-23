@@ -146,11 +146,6 @@ def get_route_info(from_station: str, to_station: str) -> dict:
     border_from = find_border_column(from_station)
     border_to = find_border_column(to_station)
 
-    if not data_from and border_from:
-        name_from, data_from = match_station(border_from, stations_data)
-    if not data_to and border_to:
-        name_to, data_to = match_station(border_to, stations_data)
-
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
 
@@ -159,7 +154,22 @@ def get_route_info(from_station: str, to_station: str) -> dict:
 
     dist = None
 
-    if border_from and border_to:
+    # 1. Если ИЗ погранперехода В обычную станцию (напр. Yalama -> Abşeron)
+    if border_from and data_to:
+        for h_key, d_val in data_to["distances"].items():
+            if normalize_name(h_key) == normalize_name(border_from):
+                dist = d_val
+                break
+
+    # 2. Если ИЗ обычной станции В погранпереход (напр. Abşeron -> Yalama)
+    if dist is None and border_to and data_from:
+        for h_key, d_val in data_from["distances"].items():
+            if normalize_name(h_key) == normalize_name(border_to):
+                dist = d_val
+                break
+
+    # 3. Если между двумя погранпереходами
+    if dist is None and border_from and border_to:
         _, data_border_to = match_station(border_to, stations_data)
         if data_border_to:
             for h_key, d_val in data_border_to["distances"].items():
@@ -167,15 +177,10 @@ def get_route_info(from_station: str, to_station: str) -> dict:
                     dist = d_val
                     break
 
-    if dist is None and border_to and data_from:
+    # 4. Прямой поиск между внутренними станциями
+    if dist is None and data_from and name_to:
         for h_key, d_val in data_from["distances"].items():
-            if normalize_name(h_key) == normalize_name(border_to):
-                dist = d_val
-                break
-
-    if dist is None and border_from and data_to:
-        for h_key, d_val in data_to["distances"].items():
-            if normalize_name(h_key) == normalize_name(border_from):
+            if normalize_name(h_key) == normalize_name(name_to):
                 dist = d_val
                 break
 
