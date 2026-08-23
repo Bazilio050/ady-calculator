@@ -39,20 +39,21 @@ def calculate_freight(
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     data_dir = os.path.join(base_dir, "data")
 
-    if not calculation_date:
-        calculation_date = datetime.now().strftime("%Y-%m-%d")
-
-    fact_weight = safe_float(fact_weight, 0.0)
-    wagon_axles = int(safe_float(wagon_axles, 4))
-    if wagon_axles <= 0:
-        wagon_axles = 4
+    # Приведение типов и валидация
+    calculation_date = calculation_date or datetime.now().strftime("%Y-%m-%d")
+    fact_weight_val = safe_float(fact_weight, 0.0)
+    manual_dist_val = safe_float(manual_distance_km, 0.0)
+    
+    wagon_axles_val = int(safe_float(wagon_axles, 4))
+    if wagon_axles_val <= 0:
+        wagon_axles_val = 4
 
     is_empty_wagon = bool(is_empty_wagon)
-    fx_rate = get_chf_usd_rate(calculation_date)
+    fx_rate = get_chf_usd_rate(calculation_date) or 1.0  # Защита от None/0.0
 
     # 1. Расстояние
-    if safe_float(manual_distance_km) > 0:
-        raw_distance = safe_float(manual_distance_km)
+    if manual_dist_val > 0:
+        raw_distance = manual_dist_val
     else:
         raw_distance = get_distance_between_stations(from_station, to_station)
 
@@ -61,8 +62,8 @@ def calculate_freight(
 
     clean_gng = re.sub(r'\D', '', str(gng_code or "")) if gng_code else ("99220000" if is_empty_wagon else "00000000")
 
-    # 2. Обработка веса (Фактический / Расчетный)
-    weight_info = calculate_chargeable_weight(fact_weight, clean_gng, wagon_type)
+    # 2. Обработка веса
+    weight_info = calculate_chargeable_weight(fact_weight_val, clean_gng, wagon_type)
     chargeable_tons = weight_info["chargeable_tons"]
     weight_category = weight_info["weight_category"]
 
@@ -90,33 +91,34 @@ def calculate_freight(
     )
     total_multiplier = coeff_info["total_multiplier"]
 
-    # Математика расчета ставки за тонну
-    base_rate_usd = base_rate_chf / fx_rate if fx_rate else base_rate_chf
+    # Математика расчета
+    base_rate_usd = base_rate_chf / fx_rate
     rate_usd_per_ton = base_rate_usd * total_multiplier
     total_usd = rate_usd_per_ton * chargeable_tons
 
-    # Перевод наименования типа перевозки
     shipment_names = {
         "import": "İdxal daşınması",
         "export": "İxrac daşınması",
         "transit": "Tranzit daşınması"
     }
-    shipment_title = shipment_names.get(shipment_type.lower(), "İdxal daşınması")
+    shipment_title = shipment_names.get(str(shipment_type).lower(), "İdxal daşınması")
 
-    # Формирование текстовой формулы расчета
+    # Формирование формулы
     coeffs_list = coeff_info["coefficients_list"]
     coeff_str_elements = [str(c["value"]) for c in coeffs_list]
     coeff_formula_part = " * ".join(coeff_str_elements) if coeff_str_elements else "1.0"
     formula_text = f"{base_rate_chf:.2f} / {fx_rate:.2f} * {coeff_formula_part} = {rate_usd_per_ton:.2f} USD/t"
 
-    # Сборка структур Part1, Part2, Part3 для генерации интерфейса
+    wagon_ownership = "SPS" if is_private_wagon else "MPS"
+    cargo_desc = "Boş vaqon" if is_empty_wagon else "Yüklü vaqon"
+
     return {
         "part1": {
             "route": f"{from_station} – {to_station}",
             "shipment_type": shipment_title,
             "distance": f"{calc_distance} km",
-            "cargo_and_wagon": f"GNG {clean_gng} — Qapalı vaqonda yük, Universal vaqon ({'SPS' if is_private_wagon else 'MPS'})",
-            "weight_info": f"{int(fact_weight)} t / {int(chargeable_tons)} t",
+            "cargo_and_wagon": f"GNG {clean_gng} — {cargo_desc}, {wagon_type.capitalize()} ({wagon_ownership})",
+            "weight_info": f"{int(fact_weight_val)} t / {int(chargeable_tons)} t",
             "period": "2026-cı fraxt ili"
         },
         "part2": {
@@ -127,7 +129,7 @@ def calculate_freight(
         "part3": {
             "formula": formula_text,
             "net_ady_rate": f"{rate_usd_per_ton:.2f} USD/t",
-            "express_rate": None,  # Временно отключено
+            "express_rate": None,
             "guard_rate": None,
             "notes": [c.get("note", "") for c in coeffs_list if c.get("note")]
         },
