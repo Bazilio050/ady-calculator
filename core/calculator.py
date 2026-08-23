@@ -21,6 +21,7 @@ def calculate_freight(
     is_private_wagon=True,
     is_round_trip=False,
     wagon_axles=4,
+    manual_distance_km=None
     calculation_date=None,  # <-- Помещаем в параметры со значением по умолчанию
     **kwargs                 # <-- Принимает любые дополнительные поля (origin_country, gng_name)
 ):
