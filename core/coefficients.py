@@ -63,7 +63,8 @@ def get_applicable_coefficients(
     is_loaded: bool = True,
     is_private_wagon: bool = True,
     ref_schema: str = "",
-    is_tariff_agreement_member: bool = False
+    is_tariff_agreement_member: bool = False,
+    is_long_platform_over_19m: bool = False
 ) -> dict:
     """
     Вычисляет применимые коэффициенты на основе правил ADY 2026.
@@ -81,6 +82,7 @@ def get_applicable_coefficients(
     # Флаги категорий грузов
     is_table_3 = (table_str == "3")
     is_table_5 = (table_str == "5")
+    is_table_7 = (table_str == "7")
     is_wood = clean_gng.startswith(("4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"))
     is_black_metal = clean_gng.startswith("72") or any(clean_gng.startswith(str(code)) for code in range(7301, 7308))
     is_methanol = ("метанол" in wagon_type.lower() or "methanol" in wagon_type.lower())
@@ -108,21 +110,25 @@ def get_applicable_coefficients(
     if is_private_wagon:
         coeffs.append({"name": "Коэффициент собственных/приватных вагонов", "value": 0.85})
 
-    # 5. Проверка исключений для коэффициента 1.50 (Импорт / Экспорт)
-    excluded_from_1_50 = is_table_3 or is_table_5 or is_wood or is_black_metal or is_methanol or is_oil_tab6_col2
+    # 5. Проверка спец-платформ длиннее 19 метров (п. 3.1.2.7)
+    if is_long_platform_over_19m:
+        coeffs.append({"name": "Коэффициент для платформ длиннее 19м (п. 3.1.2.7)", "value": 1.20})
+
+    # 6. Проверка исключений для коэффициента 1.50 (Импорт / Экспорт)
+    excluded_from_1_50 = is_table_3 or is_table_5 or is_table_7 or is_wood or is_black_metal or is_methanol or is_oil_tab6_col2
 
     if (is_import or is_export) and not excluded_from_1_50:
         coeffs.append({"name": "Коэффициент импорт/экспорт", "value": 1.50})
 
-    # 6. Коэффициент 1.04 для леса и черных металлов при Импорте
+    # 7. Коэффициент 1.04 для леса и черных металлов при Импорте
     if is_import and (is_wood or is_black_metal):
         coeffs.append({"name": "Специальный коэффициент для леса/металла (Импорт)", "value": 1.04})
 
-    # 7. Повышающий коэффициент 1.20 для цветных металлов (стр. 18)
+    # 8. Повышающий коэффициент 1.20 для цветных металлов (стр. 18)
     if is_special_non_ferrous_metal(clean_gng):
         coeffs.append({"name": "Повышающий коэффициент для цветных металлов (стр. 18)", "value": 1.20})
 
-    # 8. Коэффициент 1.20 для транзита Ələt — Böyük Kəsik (в обе стороны)
+    # 9. Коэффициент 1.20 для транзита Ələt — Böyük Kəsik (в обе стороны)
     st_from = str(from_station or "").strip().lower()
     st_to = str(to_station or "").strip().lower()
     
@@ -132,11 +138,11 @@ def get_applicable_coefficients(
     if is_transit and (is_alat and is_bk):
         coeffs.append({"name": "Транзитный коэффициент (Ələt - Böyük Kəsik)", "value": 1.20})
 
-    # 9. Коэффициент 1.20 для нефти и нефтепродуктов (Импорт или Транзит)
+    # 10. Коэффициент 1.20 для нефти и нефтепродуктов (Импорт или Транзит)
     if (is_import or is_transit) and is_oil_tab6_col2:
         coeffs.append({"name": "Специальный коэффициент для нефти/нефтепродуктов", "value": 1.20})
 
-    # 10. Коэффициент 1.20 для ARV / рефрижераторов при Транзите
+    # 11. Коэффициент 1.20 для ARV / рефрижераторов при Транзите
     is_ref = any(k in wagon_type.lower() for k in ["arv", "рефрижератор", "ref"])
     if is_transit and is_ref:
         coeffs.append({"name": "Специальный коэффициент для рефрижераторного подвижного состава", "value": 1.20})
