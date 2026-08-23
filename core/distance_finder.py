@@ -101,6 +101,12 @@ def get_route_info(from_station: str, to_station: str) -> dict:
     name_from, data_from = match_station(from_station, stations_data)
     name_to, data_to = match_station(to_station, stations_data)
 
+    # Если точное совпадение не найдено, ищем код через заголовок погранперехода
+    if not data_from and border_from:
+        name_from, data_from = match_station(border_from, stations_data)
+    if not data_to and border_to:
+        name_to, data_to = match_station(border_to, stations_data)
+
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
 
