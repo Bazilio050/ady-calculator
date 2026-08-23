@@ -15,13 +15,13 @@ SYSTEM_PROMPT = """
 Правила извлечения:
 1. Код ГНГ / YHN (gng_code):
    - Ищи В ИСКЛЮЧИТЕЛЬНОМ ПОРЯДКЕ числовой код ГНГ (например: '72', '4818', '2713').
-   - ЕСЛИ В ТЕКСТЕ НЕТ ЧИСЛОВОГО КОДА ГНГ (даже если написано наименование груза словами, например 'металл' или 'пшеница') -> СТАВЬ null. НЕ ПОДБИРАЙ И НЕ УГАДЫВАЙ КОД.
+   - ЕСЛИ В ТЕКСТЕ НЕТ ЧИСЛОВОГО КОДА ГНГ -> СТАВЬ null. НЕ ПОДБИРАЙ И НЕ УГАДЫВАЙ КОД.
    - Если код ГНГ указан в виде числа, верни его и добавь краткое официальное наименование груза в 'gng_name' (2-3 слова max).
 
 2. Станции (from_station, to_station):
-   - Извлекай только название станций/стыков.
-   - Для погранпереходов и стыков добавляй постфикс '-eksport' (например: 'Yalama-eksport', 'Böyük Kəsik-eksport').
-   - Для Алята различай: 'Ələt', 'Ələt yeni', 'Ələt eksport Aktau', 'Ələt eksport Kurik', 'Ələt eksport-Türk.'. Если просто 'Алят-эксп' -> 'Ələt-eksport'.
+   - Извлекай название станций и добавляй их 6-значный код ЕСР, если знаешь (например: 'Abşeron (548004)', 'Biləcəri (546808)', 'Yalama (547508)', 'Salyan (553106)').
+   - Для Алята и морских портов передавай контекст: 'Ələt', 'Ələt yeni', 'Ələt eksport Aktau', 'Ələt eksport Kurik', 'Ələt eksport-Türk.'.
+   - Если упоминаются Курык / Курыт -> пиши 'Ələt eksport Kurik'. Если Актау -> 'Ələt eksport Aktau'. Если ТРК / Туркменистан / Туркменбаши -> 'Ələt eksport-Türk.'.
 
 3. Страны (origin_country, destination_country):
    - Заполняй ТОЛЬКО если страна явным образом указана в тексте. Если нет — пиши null.
@@ -56,9 +56,7 @@ def parse_user_request(user_prompt: str) -> dict:
         raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
 
     try:
-        # Инициализация актуального клиента google-genai
         client = genai.Client(api_key=API_KEY)
-        
         response = client.models.generate_content(
             model="gemini-3.5-flash-lite",
             contents=f"{SYSTEM_PROMPT}\n\nЗапрос пользователя: {user_prompt}",
@@ -70,7 +68,6 @@ def parse_user_request(user_prompt: str) -> dict:
     except Exception as e:
         raise ValueError(f"Ошибка обращения к Gemini API: {str(e)}")
 
-    # Автоподстановка для порожнего вагона
     if parsed_data.get("is_empty_wagon"):
         parsed_data["gng_code"] = "99220000"
         parsed_data["gng_name"] = "Порожний вагон"
@@ -79,14 +76,12 @@ def parse_user_request(user_prompt: str) -> dict:
         if parsed_data.get("fact_weight") is None:
             parsed_data["fact_weight"] = 0.0
 
-    # Жесткая проверка обязательных полей
     missing_fields = []
     if not parsed_data.get("from_station"):
         missing_fields.append("Станция отправления (from_station)")
     if not parsed_data.get("to_station"):
         missing_fields.append("Станция назначения (to_station)")
 
-    # Проверка ГНГ и веса для груженого вагона
     if not parsed_data.get("is_empty_wagon"):
         if not parsed_data.get("gng_code"):
             missing_fields.append("Код ГНГ / YHN (укажите числовой код, например: 72, 4818)")
