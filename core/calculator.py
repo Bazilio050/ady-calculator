@@ -56,8 +56,8 @@ def calculate_freight(
     fx_rate = get_chf_usd_rate(calculation_date)
 
     # 1. Определение расстояния
-    if manual_distance_km > 0:
-        raw_distance = manual_distance_km
+    if manual_distance_km is not None and manual_distance_km > 0:
+    distance = manual_distance_km
     else:
         from core.distance_finder import get_distance_between_stations
         raw_distance = get_distance_between_stations(from_station, to_station, data_dir)
