@@ -126,3 +126,6 @@ def get_route_distance(from_station: str, to_station: str) -> int:
 
     # Если расстояние напрямую не найдено в матрице погранпереходов
     raise ValueError(f"Не удалось вычесть расстояние между '{from_station}' и '{to_station}'. Убедитесь в правильности станций.")
+
+# Ссылка-алиас для совместимости с calculator.py
+get_distance_between_stations = get_route_distance
