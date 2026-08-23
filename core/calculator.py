@@ -34,12 +34,12 @@ def calculate_freight(
     wagon_axles=4,
     manual_distance_km=None,
     calculation_date=None,
+    lang="AZ",
     **kwargs
 ):
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     data_dir = os.path.join(base_dir, "data")
 
-    # Приведение типов и валидация
     calculation_date = calculation_date or datetime.now().strftime("%Y-%m-%d")
     fact_weight_val = safe_float(fact_weight, 0.0)
     manual_dist_val = safe_float(manual_distance_km, 0.0)
@@ -49,7 +49,7 @@ def calculate_freight(
         wagon_axles_val = 4
 
     is_empty_wagon = bool(is_empty_wagon)
-    fx_rate = get_chf_usd_rate(calculation_date) or 1.0  # Защита от None/0.0
+    fx_rate = get_chf_usd_rate(calculation_date) or 1.0
 
     # 1. Расстояние
     if manual_dist_val > 0:
@@ -62,10 +62,17 @@ def calculate_freight(
 
     clean_gng = re.sub(r'\D', '', str(gng_code or "")) if gng_code else ("99220000" if is_empty_wagon else "00000000")
 
-    # 2. Обработка веса
+    # 2. Расчет веса (с учетом минимальных норм со стр. 11-12)
     weight_info = calculate_chargeable_weight(fact_weight_val, clean_gng, wagon_type)
     chargeable_tons = weight_info["chargeable_tons"]
+    min_norm = weight_info.get("min_weight_norm", 0)
     weight_category = weight_info["weight_category"]
+
+    # Форматирование отображения веса
+    if min_norm > 0 and fact_weight_val < min_norm:
+        weight_str = f"{int(fact_weight_val)} t / min. {int(chargeable_tons)} t"
+    else:
+        weight_str = f"{int(chargeable_tons)} t"
 
     # 3. Выбор таблицы и базовой ставки
     table_info = select_tariff_table(
@@ -78,7 +85,7 @@ def calculate_freight(
 
     base_rate_chf = get_base_rate_from_table(table_num, calc_distance, weight_category, data_dir)
 
-    # 4. Коэффициенты
+    # 4. Коэффициенты с учетом выбранного языка lang
     coeff_info = get_applicable_coefficients(
         shipment_type=shipment_type,
         gng_code=clean_gng,
@@ -87,7 +94,8 @@ def calculate_freight(
         from_station=from_station,
         to_station=to_station,
         is_loaded=not is_empty_wagon,
-        is_private_wagon=is_private_wagon
+        is_private_wagon=is_private_wagon,
+        lang=lang
     )
     total_multiplier = coeff_info["total_multiplier"]
 
@@ -97,13 +105,14 @@ def calculate_freight(
     total_usd = rate_usd_per_ton * chargeable_tons
 
     shipment_names = {
-        "import": "İdxal daşınması",
-        "export": "İxrac daşınması",
-        "transit": "Tranzit daşınması"
+        "AZ": {"import": "İdxal daşınması", "export": "İxrac daşınması", "transit": "Tranzit daşınması"},
+        "RU": {"import": "Импортная перевозка", "export": "Экспортная перевозка", "transit": "Транзитная перевозка"},
+        "EN": {"import": "Import shipment", "export": "Export shipment", "transit": "Transit shipment"}
     }
-    shipment_title = shipment_names.get(str(shipment_type).lower(), "İdxal daşınması")
+    lang_key = lang.upper() if lang in ["AZ", "RU", "EN"] else "AZ"
+    shipment_title = shipment_names[lang_key].get(str(shipment_type).lower(), shipment_names[lang_key]["import"])
 
-    # Формирование формулы
+    # Формула расчета
     coeffs_list = coeff_info["coefficients_list"]
     coeff_str_elements = [str(c["value"]) for c in coeffs_list]
     coeff_formula_part = " * ".join(coeff_str_elements) if coeff_str_elements else "1.0"
@@ -118,7 +127,7 @@ def calculate_freight(
             "shipment_type": shipment_title,
             "distance": f"{calc_distance} km",
             "cargo_and_wagon": f"GNG {clean_gng} — {cargo_desc}, {wagon_type.capitalize()} ({wagon_ownership})",
-            "weight_info": f"{int(fact_weight_val)} t / {int(chargeable_tons)} t",
+            "weight_info": weight_str,
             "period": "2026-cı fraxt ili"
         },
         "part2": {
