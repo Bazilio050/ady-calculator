@@ -1,9 +1,10 @@
 # ==============================================================================
-# МОДУЛЬ ИНТЕРПРЕТАЦИИ ЗАПРОСОВ ЧЕРЕЗ GEMINI AI (СТРОГИЙ ПАРСИНГ)
+# МОДУЛЬ ИНТЕРПРЕТАЦИИ ЗАПРОСОВ ЧЕРЕЗ GEMINI AI (GOOGLE-GENAI SDK)
 # ==============================================================================
 import json
 import os
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
@@ -52,19 +53,22 @@ SYSTEM_PROMPT = """
 
 def parse_user_request(user_prompt: str) -> dict:
     if not API_KEY:
-        raise ValueError(" Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
+        raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
 
-    genai.configure(api_key=API_KEY)
-    
     try:
-        model = genai.GenerativeModel("gemini-3.5-flash-lite")
-        response = model.generate_content(
-            f"{SYSTEM_PROMPT}\n\nЗапрос пользователя: {user_prompt}",
-            generation_config={"response_mime_type": "application/json"}
+        # Инициализация нового клиента
+        client = genai.Client(api_key=API_KEY)
+        
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=f"{SYSTEM_PROMPT}\n\nЗапрос пользователя: {user_prompt}",
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
         )
         parsed_data = json.loads(response.text)
     except Exception as e:
-        raise ValueError(f" Ошибка обращения к Gemini API: {str(e)}")
+        raise ValueError(f"Ошибка обращения к Gemini API: {str(e)}")
 
     # Автоподстановка для порожнего вагона
     if parsed_data.get("is_empty_wagon"):
@@ -91,6 +95,6 @@ def parse_user_request(user_prompt: str) -> dict:
 
     if missing_fields:
         missing_str = "\n- ".join(missing_fields)
-        raise ValueError(f" Для расчета не хватает следующих обязательных данных:\n- {missing_str}")
+        raise ValueError(f"Для расчета не хватает следующих обязательных данных:\n- {missing_str}")
 
     return parsed_data
