@@ -15,11 +15,11 @@ SYSTEM_PROMPT = """
 Правила извлечения:
 1. Код ГНГ / YHN (gng_code) и Наименование (gng_name):
    - Ищи числовой код ГНГ (например: '72', '3102', '4818', '2713').
-   - Если в тексте указан числовой код ГНГ (2-значный или 4-значный), ты ОБЯЗАН вернуть сам код в 'gng_code' И его официальное наименование на азербайджанском языке в 'gng_name' (2-4 слова max).
+   - Если в тексте указан числовой код ГНГ (2-значный или 4-значный), ты ОБЯЗАН вернуть сам код в 'gng_code' И его краткое официальное наименование в 'gng_name' (2-4 слова max).
    - Примеры: 
-     - код '72' -> gng_code: "72", gng_name: "Qara metallar"
-     - код '3102' -> gng_code: "3102", gng_name: "Azot gübrələri"
-     - код '4818' -> gng_code: "4818", gng_name: "Tualet kağızı və ya dəsmal"
+     - код '72' -> gng_code: "72"
+     - код '3102' -> gng_code: "3102"
+     - код '4818' -> gng_code: "4818"
    - ЕСЛИ В ТЕКСТЕ НЕТ ЧИСЛОВОГО КОДА ГНГ -> СТАВЬ null в gng_code и gng_name. НЕ ПОДБИРАЙ И НЕ УГАДЫВАЙ КОД.
 
 2. Станции (from_station, to_station):
@@ -55,15 +55,28 @@ SYSTEM_PROMPT = """
 }
 """
 
-def parse_user_request(user_prompt: str) -> dict:
+def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     if not API_KEY:
         raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
+
+    lang_map = {
+        "AZ": "азербайджанском (Azerbaijani)",
+        "RU": "русском (Russian)",
+        "EN": "английском (English)"
+    }
+    target_lang = lang_map.get(str(lang).upper(), "азербайджанском (Azerbaijani)")
+
+    prompt_with_lang = (
+        f"{SYSTEM_PROMPT}\n\n"
+        f"ТРЕБОВАНИЕ ПО ЯЗЫКУ: Верни значение поля 'gng_name' строго на {target_lang} языке!\n\n"
+        f"Запрос пользователя: {user_prompt}"
+    )
 
     try:
         client = genai.Client(api_key=API_KEY)
         response = client.models.generate_content(
             model="gemini-3.5-flash-lite",
-            contents=f"{SYSTEM_PROMPT}\n\nЗапрос пользователя: {user_prompt}",
+            contents=prompt_with_lang,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json"
             )
@@ -74,7 +87,8 @@ def parse_user_request(user_prompt: str) -> dict:
 
     if parsed_data.get("is_empty_wagon"):
         parsed_data["gng_code"] = "99220000"
-        parsed_data["gng_name"] = "Boş vaqon"
+        empty_names = {"AZ": "Boş vaqon", "RU": "Порожний вагон", "EN": "Empty wagon"}
+        parsed_data["gng_name"] = empty_names.get(str(lang).upper(), "Boş vaqon")
         if not parsed_data.get("wagon_axles"):
             parsed_data["wagon_axles"] = 4
         if parsed_data.get("fact_weight") is None:
