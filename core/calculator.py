@@ -124,15 +124,23 @@ def calculate_freight(
     wagon_ownership = "SPS" if is_private_wagon else "MPS"
     cargo_desc = "Boş vaqon" if is_empty_wagon else "Yüklü vaqon"
 
+    # Извлекаем наименование ГНГ, которое передал Gemini
+    gng_name = kwargs.get("gng_name", "")
+    if gng_name:
+        cargo_label = f"GNG {clean_gng} ({gng_name})"
+    else:
+        cargo_label = f"GNG {clean_gng}"
+
     return {
         "part1": {
             "route": route_formatted,
             "shipment_type": shipment_title,
             "distance": f"{calc_distance} km",
-            "cargo_and_wagon": f"GNG {clean_gng} — {cargo_desc}, {wagon_type.capitalize()} ({wagon_ownership})",
+            "cargo_and_wagon": f"{cargo_label} — {cargo_desc}, {wagon_type.capitalize()} ({wagon_ownership})",
             "weight_info": weight_str,
             "period": "2026-cı fraxt ili"
         },
+        
         "part2": {
             "exchange_rate": f"{fx_rate:.2f} CHF/USD",
             "base_tariff": f"{base_rate_chf:.2f} CHF/t (Cədvəl {table_num} ({calc_distance} km, {int(chargeable_tons)} t))",
