@@ -336,7 +336,7 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
 
         try:
             # 1. Распознавание через gemini_parser
-            nlu_res = parse_user_request(current_input)
+            nlu_res = parse_user_request(current_input, lang=selected_lang)
             st.session_state.nlu_res = nlu_res
 
             # 2. Расчет через calculator
