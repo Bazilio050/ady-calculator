@@ -122,7 +122,6 @@ def calculate_freight(
     formula_text = f"{base_rate_chf:.2f} / {fx_rate:.2f} * {coeff_formula_part} = {rate_usd_per_ton:.2f} USD/t"
 
     wagon_ownership = "SPS" if is_private_wagon else "MPS"
-    cargo_desc = "Boş vaqon" if is_empty_wagon else "Yüklü vaqon"
 
     # Извлекаем наименование ГНГ, которое передал Gemini
     gng_name = kwargs.get("gng_name", "")
@@ -131,12 +130,18 @@ def calculate_freight(
     else:
         cargo_label = f"GNG {clean_gng}"
 
+    # Если вагон порожний — указываем "Boş vaqon", если гружёный — вывод только груза и типа вагона
+    if is_empty_wagon:
+        cargo_status = f"{cargo_label} — Boş vaqon, {wagon_type.capitalize()} ({wagon_ownership})"
+    else:
+        cargo_status = f"{cargo_label}, {wagon_type.capitalize()} ({wagon_ownership})"
+
     return {
         "part1": {
             "route": route_formatted,
             "shipment_type": shipment_title,
             "distance": f"{calc_distance} km",
-            "cargo_and_wagon": f"{cargo_label} — {cargo_desc}, {wagon_type.capitalize()} ({wagon_ownership})",
+            "cargo_and_wagon": cargo_status,
             "weight_info": weight_str,
             "period": "2026-cı fraxt ili"
         },
