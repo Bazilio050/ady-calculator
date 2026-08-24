@@ -107,13 +107,27 @@ def calculate_freight(
     rate_usd_per_ton = base_rate_usd * total_multiplier
     total_usd = rate_usd_per_ton * chargeable_tons
 
+    lang_key = lang.upper() if lang in ["AZ", "RU", "EN"] else "AZ"
+
     shipment_names = {
         "AZ": {"import": "İdxal daşınması", "export": "İxrac daşınması", "transit": "Tranzit daşınması"},
         "RU": {"import": "Импортная перевозка", "export": "Экспортная перевозка", "transit": "Транзитная перевозка"},
         "EN": {"import": "Import shipment", "export": "Export shipment", "transit": "Transit shipment"}
     }
-    lang_key = lang.upper() if lang in ["AZ", "RU", "EN"] else "AZ"
     shipment_title = shipment_names[lang_key].get(str(shipment_type).lower(), shipment_names[lang_key]["import"])
+
+    period_names = {
+        "AZ": "2026-cı fraxt ili",
+        "RU": "2026 фрахтовый год",
+        "EN": "2026 freight year"
+    }
+    period_title = period_names.get(lang_key, "2026-cı fraxt ili")
+
+    table_word = {
+        "AZ": "Cədvəl",
+        "RU": "Таблица",
+        "EN": "Table"
+    }.get(lang_key, "Cədvəl")
 
     # Формула расчета
     coeffs_list = coeff_info["coefficients_list"]
@@ -122,17 +136,16 @@ def calculate_freight(
     formula_text = f"{base_rate_chf:.2f} / {fx_rate:.2f} * {coeff_formula_part} = {rate_usd_per_ton:.2f} USD/t"
 
     wagon_ownership = "SPS" if is_private_wagon else "MPS"
-
-    # Извлекаем наименование ГНГ, которое передал Gemini
     gng_name = kwargs.get("gng_name", "")
+
     if gng_name:
         cargo_label = f"GNG {clean_gng} ({gng_name})"
     else:
         cargo_label = f"GNG {clean_gng}"
 
-    # Если вагон порожний — указываем "Boş vaqon", если гружёный — вывод только груза и типа вагона
     if is_empty_wagon:
-        cargo_status = f"{cargo_label} — Boş vaqon, {wagon_type.capitalize()} ({wagon_ownership})"
+        empty_text = {"AZ": "Boş vaqon", "RU": "Порожний вагон", "EN": "Empty wagon"}.get(lang_key, "Boş vaqon")
+        cargo_status = f"{cargo_label} — {empty_text}, {wagon_type.capitalize()} ({wagon_ownership})"
     else:
         cargo_status = f"{cargo_label}, {wagon_type.capitalize()} ({wagon_ownership})"
 
