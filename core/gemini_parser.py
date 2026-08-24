@@ -14,7 +14,7 @@ SYSTEM_PROMPT = """
 
 Правила извлечения:
 1. Код ГНГ / YHN (gng_code) и Наименование (gng_name):
-   - ПРИОРИТЕТ: Ищи в тексте любое числовое значение кода ГНГ (от 2 до 8 цифр любой длины, например: '72', '1001', '31024', '48182000'). 
+   - ПРИОРИТЕТ: Ищи в тексте любое числовое значение кода ГНГ (любой длины от 2 до 8 цифр, например: '72', '1001', '31024', '48182000'). 
    - Если в тексте есть цифры кода — ты ЖЕСТКО ОБЯЗАН записать их в 'gng_code'!
    - Для найденного кода напиши его официальное наименование в 'gng_name' (2-4 слова max).
 2. Станции (from_station, to_station):
@@ -55,9 +55,9 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
         raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
 
     lang_map = {
-        "AZ": "азербайджанском (Azerbaijani)",
-        "RU": "русском (Russian)",
-        "EN": "английском (English)"
+        "AZ": "Azərbaycan dilində",
+        "RU": "русском языке",
+        "EN": "English language"
     }
     target_lang = lang_map.get(str(lang).upper(), "азербайджанском (Azerbaijani)")
 
