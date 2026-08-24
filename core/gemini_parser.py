@@ -93,21 +93,6 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
             parsed_data["wagon_axles"] = 4
         if parsed_data.get("fact_weight") is None:
             parsed_data["fact_weight"] = 0.0
-
-    missing_fields = []
-    if not parsed_data.get("from_station"):
-        missing_fields.append("Станция отправления (from_station)")
-    if not parsed_data.get("to_station"):
-        missing_fields.append("Станция назначения (to_station)")
-
-    if not parsed_data.get("is_empty_wagon"):
-        if not parsed_data.get("gng_code"):
-            missing_fields.append("Код ГНГ / YHN (укажите числовой код, например: 72, 3102, 4818)")
-        if parsed_data.get("fact_weight") is None or parsed_data.get("fact_weight") <= 0:
-            missing_fields.append("Фактический вес груза в тоннах (fact_weight)")
-
-    if missing_fields:
-        missing_str = "\n- ".join(missing_fields)
-        raise ValueError(f"Для расчета не хватает следующих обязательных данных:\n- {missing_str}")
+    
 
     return parsed_data
