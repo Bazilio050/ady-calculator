@@ -14,10 +14,14 @@ SYSTEM_PROMPT = """
 
 Правила извлечения:
 1. Код ГНГ / YHN (gng_code) и Наименование (gng_name):
-   - Ищи числовой код ГНГ (например: '72', '4818', '2713').
-   - Если в тексте указан числовой код ГНГ, ты ОБЯЗАН вернуть сам этот код в 'gng_code' И его официальное наименование (на азербайджанском или русском языке) в 'gng_name'.
-   - Пример: если в тексте '72', верни gng_code = "72", gng_name = "Qara metallar".
-   - ЕСЛИ В ТЕКСТЕ НЕТ ЧИСЛОВОГО КОДА ГНГ -> СТАВЬ null в оба поля. НЕ ПОДБИРАЙ И НЕ УГАДЫВАЙ КОД.
+   - Ищи числовой код ГНГ (например: '72', '3102', '4818', '2713').
+   - Если в тексте указан числовой код ГНГ (2-значный или 4-значный), ты ОБЯЗАН вернуть сам код в 'gng_code' И его официальное наименование на азербайджанском языке в 'gng_name' (2-4 слова max).
+   - Примеры: 
+     - код '72' -> gng_code: "72", gng_name: "Qara metallar"
+     - код '3102' -> gng_code: "3102", gng_name: "Azot gübrələri"
+     - код '4818' -> gng_code: "4818", gng_name: "Tualet kağızı və ya dəsmal"
+   - ЕСЛИ В ТЕКСТЕ НЕТ ЧИСЛОВОГО КОДА ГНГ -> СТАВЬ null в gng_code и gng_name. НЕ ПОДБИРАЙ И НЕ УГАДЫВАЙ КОД.
+
 2. Станции (from_station, to_station):
    - Извлекай название станций и добавляй их 6-значный код ЕСР, если знаешь (например: 'Abşeron (548004)', 'Biləcəri (546808)', 'Yalama (547508)', 'Salyan (553106)').
    - Для Алята и морских портов передавай контекст: 'Ələt', 'Ələt yeni', 'Ələt eksport Aktau', 'Ələt eksport Kurik', 'Ələt eksport-Türk.'.
@@ -27,7 +31,7 @@ SYSTEM_PROMPT = """
    - Заполняй ТОЛЬКО если страна явным образом указана в тексте. Если нет — пиши null.
 
 4. Порожний вагон (is_empty_wagon):
-   - Если вагон порожний: gng_code = "99220000", wagon_axles = 4, fact_weight = 0.0, gng_name = "Порожний вагон".
+   - Если вагон порожний: gng_code = "99220000", wagon_axles = 4, fact_weight = 0.0, gng_name = "Boş vaqon".
 
 5. Флаги:
    - is_round_trip: true, если есть фразы "с возвратом", "с учетом порожнего возврата", "кругорейс".
@@ -70,7 +74,7 @@ def parse_user_request(user_prompt: str) -> dict:
 
     if parsed_data.get("is_empty_wagon"):
         parsed_data["gng_code"] = "99220000"
-        parsed_data["gng_name"] = "Порожний вагон"
+        parsed_data["gng_name"] = "Boş vaqon"
         if not parsed_data.get("wagon_axles"):
             parsed_data["wagon_axles"] = 4
         if parsed_data.get("fact_weight") is None:
@@ -84,7 +88,7 @@ def parse_user_request(user_prompt: str) -> dict:
 
     if not parsed_data.get("is_empty_wagon"):
         if not parsed_data.get("gng_code"):
-            missing_fields.append("Код ГНГ / YHN (укажите числовой код, например: 72, 4818)")
+            missing_fields.append("Код ГНГ / YHN (укажите числовой код, например: 72, 3102, 4818)")
         if parsed_data.get("fact_weight") is None or parsed_data.get("fact_weight") <= 0:
             missing_fields.append("Фактический вес груза в тоннах (fact_weight)")
 
