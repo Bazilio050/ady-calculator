@@ -71,7 +71,7 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     try:
         client = genai.Client(api_key=API_KEY)
         response = client.models.generate_content(
-            model="gemini-3.5-flash-lite",
+            model="gemini-3.7-flash",
             contents=prompt_with_lang,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json"
