@@ -1,39 +1,36 @@
 # ==============================================================================
-# МОДУЛЬ ИНТЕРПРЕТАЦИИ ЗАПРОСОВ ЧЕРЕЗ GEMINI AI (АКТУАЛЬНЫЙ GOOGLE-GENAI SDK)
+# МОДУЛЬ ИЗВЛЕЧЕНИЯ ПАРАМЕТРОВ ИЗ ЗАПРОСА (GEMINI AI PARSER)
 # ==============================================================================
 import json
 import os
-import google.genai as genai
+from google import genai
 from google.genai import types
 
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
+# Минималистичный промпт: запрещаем генерацию кодов ЕСР и скобок для станций
 SYSTEM_PROMPT = """
-Ты — профессиональный AI-ассистент логиста ADY (Азербайджанские Железные Дороги).
-Твоя задача — извлечь параметры из текста запроса и вернуть STRICT JSON.
+Ты — AI-парсер логистических запросов ADY.
+Твоя задача — извлечь из текста параметры и вернуть STRICT JSON.
 
-Правила извлечения:
-1. Код ГНГ / YHN (gng_code) и Наименование (gng_name):
-   - ПРИОРИТЕТ: Ищи в тексте любое числовое значение кода ГНГ (любой длины от 2 до 8 цифр, например: '72', '1001', '31024', '48182000'). 
-   - Если в тексте есть цифры кода — ты ЖЕСТКО ОБЯЗАН записать их в 'gng_code'!
-   - Для найденного кода напиши его официальное наименование в 'gng_name' (2-4 слова max).
-2. Станции (from_station, to_station):
-   - Извлекай название станций СТРОГО на азербайджанской латинице без использования кириллических букв (например: 'Sumqayıt', 'Yalama', 'Biləcəri', 'Abşeron').
-   - Добавляй 6-значный код ЕСР, если знаешь: 'Yalama (547508)', 'Sumqayıt (546305)', 'Abşeron (548004)', 'Biləcəri (546808)'.
-   - Для Алята и морских портов передавай контекст: 'Ələt', 'Ələt yeni', 'Ələt eksport Aktau', 'Ələt eksport Kurik', 'Ələt eksport-Türk.'.
-   - Если упоминаются Курык / Курыт -> пиши 'Ələt eksport Kurik'. Если Актау -> 'Ələt eksport Aktau'. Если ТРК / Туркменистан / Туркменбаши -> 'Ələt eksport-Türk.'.
+Правила:
+1. Станции (from_station, to_station):
+   - Извлекай ТОЛЬКО сырые названия станций так, как они указаны или подразумеваются (например: "ялама", "сумгаит", "баладжары", "алят").
+   - СТРОГО ЗАПРЕЩЕНО генерировать 6-значные коды ЕСР, цифры или скобки в названии станций.
 
-3. Страны (origin_country, destination_country):
-   - Заполняй ТОЛЬКО если страна явным образом указана в тексте. Если нет — пиши null.
+2. Код ГНГ (gng_code) и наименование (gng_name):
+   - Извлекай код ГНГ/ГНГ (от 2 до 8 цифр), если он указан.
+   - Указывай краткое наименование груза.
 
-4. Порожний вагон (is_empty_wagon):
-   - Если вагон порожний: gng_code = "99220000", wagon_axles = 4, fact_weight = 0.0, gng_name = "Boş vaqon".
+3. Флаги и параметры:
+   - fact_weight: масса груза в тоннах (число или null).
+   - wagon_type: universal/tank/ref/autocar/passenger.
+   - is_empty_wagon: true, если вагон порожний.
+   - is_private_wagon: true по умолчанию (собственный/арендованный).
+   - is_round_trip: true, если указан кругорейс / возврат.
+   - wagon_axles: количество осей (по умолчанию 4).
 
-5. Флаги:
-   - is_round_trip: true, если есть фразы "с возвратом", "с учетом порожнего возврата", "кругорейс".
-   - is_private_wagon: true по умолчанию (СПС), если не указано МПС/инвентарный.
-
-Формат ответа (СТРОГО JSON):
+Формат ответа (JSON):
 {
   "from_station": "строка или null",
   "to_station": "строка или null",
@@ -71,7 +68,7 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     try:
         client = genai.Client(api_key=API_KEY)
         response = client.models.generate_content(
-            model="gemini-3.7-flash",
+            model="gemini-3.5-flash-lite",
             contents=prompt_with_lang,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json"
@@ -89,6 +86,5 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
             parsed_data["wagon_axles"] = 4
         if parsed_data.get("fact_weight") is None:
             parsed_data["fact_weight"] = 0.0
-    
 
     return parsed_data
