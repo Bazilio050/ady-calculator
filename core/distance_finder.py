@@ -1,8 +1,16 @@
 # ==============================================================================
-# МОДУЛЬ ПОИСКА РАССТОЯНИЙ И КОДОВ СТАНЦИЙ ADY
+# МОДУЛЬ ЛОКАЛЬНОГО ПОИСКА СТАНЦИЙ И РАССЧЕТА РАССТОЯНИЙ ADY
 # ==============================================================================
+import json
 import os
 import re
+from difflib import get_close_matches
+
+try:
+    from rapidfuzz import process, fuzz
+    HAS_RAPIDFUZZ = True
+except ImportError:
+    HAS_RAPIDFUZZ = False
 
 BORDER_NODES = {
     "Yalama (eksport)": ["yalama", "yalama-eksport", "yalama eksport", "ялама", "ялама-эксп", "ялама экспорт"],
@@ -15,8 +23,20 @@ BORDER_NODES = {
     ]
 }
 
+def load_aliases() -> dict:
+    """ Загружает словарь псевдонимов и русских названий из data/aliases.json """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    aliases_path = os.path.join(base_dir, "data", "aliases.json")
+    if os.path.exists(aliases_path):
+        try:
+            with open(aliases_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
 def normalize_name(text: str) -> str:
-    """ Нормализует название станции: регистр, символы **, азербайджанская кириллица/латиница, пробелы """
+    """ Нормализует название станции """
     if not text:
         return ""
     text = text.lower().strip()
@@ -33,12 +53,12 @@ def normalize_name(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
 def extract_code(text: str) -> str:
-    """Извлекает 6-значный код ЕСР из строки"""
+    """ Извлекает 6-значный код ЕСР из строки, если присутствовал """
     match = re.search(r'\b\d{6}\b', str(text))
     return match.group(0) if match else None
 
 def resolve_alat_code(text: str) -> tuple:
-    """ Применяет жесткие правила маппинга для Алята и морских направлений """
+    """ Специальные правила маппинга для Алята и морских направлений """
     norm = normalize_name(text)
     if "trk" in norm or "turk" in norm or "туркмен" in norm:
         return "Ələt eksport-Türk.", "548803"
@@ -55,7 +75,6 @@ def resolve_alat_code(text: str) -> tuple:
 def find_border_column(station_name: str) -> str:
     if not station_name:
         return None
-    # Удаляем 6-значный код и скобки из входного имени
     clean_name = re.sub(r'\(\d{6}\)|\b\d{6}\b', '', str(station_name)).strip()
     norm = normalize_name(clean_name)
     
@@ -66,7 +85,7 @@ def find_border_column(station_name: str) -> str:
                 return main_node
     return None
 
-def parse_distances_file():
+def parse_distances_file() -> dict:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     file_path = os.path.join(base_dir, "data", "Distances.txt")
     if not os.path.exists(file_path):
@@ -111,35 +130,54 @@ def parse_distances_file():
         }
     return stations_data
 
-def match_station(target_name, stations_data):
+def match_station(target_name: str, stations_data: dict) -> tuple:
     if not target_name:
         return None, None
 
-    # 1. Проверка маппинга для Алята (Курык, Актау, ТРК)
+    # 1. Проверка через словари псевдонимов (aliases.json)
+    aliases = load_aliases()
+    norm_input = normalize_name(target_name)
+    if norm_input in aliases:
+        target_name = aliases[norm_input]
+
+    # 2. Проверка маппинга для Алята (Курык, Актау, ТРК)
     alat_name, alat_code = resolve_alat_code(target_name)
     if alat_code:
         for st_key, data in stations_data.items():
             if data.get("code") == alat_code:
                 return st_key, data
 
-    # 2. Поиск по 6-значному коду ЕСР (самый надежный способ!)
+    # 3. Поиск по 6-значному коду ЕСР (если передавался)
     target_code = extract_code(target_name)
     if target_code:
         for st_key, data in stations_data.items():
             if data.get("code") == target_code:
                 return st_key, data
 
-    # 3. Поиск по строгому точному совпадению названия
+    # 4. Точное и частичное соответствие по имени
     norm_target = normalize_name(target_name)
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm_target:
             return st_key, data
 
-    # 4. Частичный поиск по названию
     for st_key, data in stations_data.items():
         st_norm = normalize_name(st_key)
         if norm_target == st_norm or (len(norm_target) > 3 and norm_target in st_norm):
             return st_key, data
+
+    # 5. Нечёткий (fuzzy) поиск через RapidFuzz или Difflib
+    station_names = list(stations_data.keys())
+    
+    if HAS_RAPIDFUZZ:
+        best_match = process.extractOne(target_name, station_names, scorer=fuzz.WRatio)
+        if best_match and best_match[1] >= 70:
+            matched_key = best_match[0]
+            return matched_key, stations_data[matched_key]
+    else:
+        matches = get_close_matches(target_name, station_names, n=1, cutoff=0.6)
+        if matches:
+            matched_key = matches[0]
+            return matched_key, stations_data[matched_key]
 
     return None, None
 
@@ -160,7 +198,7 @@ def get_route_info(from_station: str, to_station: str) -> dict:
 
     dist = None
 
-    # Попытка 1: Поиск среди колонок в data_to
+    # Поиск расстояния
     if data_to and data_to.get("distances"):
         for h_key, d_val in data_to["distances"].items():
             if d_val is not None and d_val > 0:
@@ -171,7 +209,6 @@ def get_route_info(from_station: str, to_station: str) -> dict:
                     dist = d_val
                     break
 
-    # Попытка 2: Поиск среди колонок в data_from
     if dist is None and data_from and data_from.get("distances"):
         for h_key, d_val in data_from["distances"].items():
             if d_val is not None and d_val > 0:
@@ -182,7 +219,6 @@ def get_route_info(from_station: str, to_station: str) -> dict:
                     dist = d_val
                     break
 
-    # Попытка 3: Жёсткий прямой фоллбек для погранузлов
     if dist is None and border_from and border_to:
         for st_key, st_data in stations_data.items():
             st_norm = normalize_name(st_key)
