@@ -1,8 +1,10 @@
 import sys
 import os
 
-# Добавляем путь к корневой директории проекта, чтобы избежать ImportError на Streamlit Cloud
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Явно добавляем корень проекта и папку core в пути импорта Python
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 import re
 import streamlit as st
@@ -12,7 +14,6 @@ from google import genai
 from core.gemini_parser import parse_user_request
 from core.distance_finder import get_route_info
 from core.calculator import calculate_freight
-
 st.set_page_config(
     page_title="ADY — Tariff Calculator", 
     page_icon="🚆", 
