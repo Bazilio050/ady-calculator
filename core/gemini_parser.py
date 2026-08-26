@@ -1,17 +1,17 @@
 # ==============================================================================
 # МОДУЛЬ ЛОКАЛЬНОГО ПОИСКА СТАНЦИЙ И РАССЧЕТА РАССТОЯНИЙ ADY
 # ==============================================================================
+iimport os
 import json
-import os
 import re
-from typing import Dict, Optional, Tuple
-from difflib import get_close_matches
+from google import genai
+from google.genai import types
 
-try:
-    from rapidfuzz import process, fuzz
-    HAS_RAPIDFUZZ = True
-except ImportError:
-    HAS_RAPIDFUZZ = False
+# Импорты вспомогательных функций из папки core
+from core.distance_finder import get_route_info
+
+def parse_user_request(text_prompt: str, lang: str = "AZ") -> dict:
+    # Твой код распознавания запроса через Gemini API...
 
 # ==============================================================================
 # СЛОВАРИ ПОГРАНИЧНЫХ СТЫКОВ И ПЕРЕВОДОВ НАЗВАНИЙ
