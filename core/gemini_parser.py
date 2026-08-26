@@ -1,90 +1,118 @@
-# ==============================================================================
-# МОДУЛЬ ИЗВЛЕЧЕНИЯ ПАРАМЕТРОВ ИЗ ЗАПРОСА (GEMINI AI PARSER)
-# ==============================================================================
 import json
+import logging
 import os
 from google import genai
 from google.genai import types
 
-API_KEY = os.environ.get("GEMINI_API_KEY", "")
+# Настройка логирования для отслеживания ошибок работы с API Gemini
+logger = logging.getLogger(__name__)
 
-# Минималистичный промпт: запрещаем генерацию кодов ЕСР и скобок для станций
+# Инициализация официального клиента Google GenAI.
+# API-ключ автоматически берется из переменной окружения GEMINI_API_KEY.
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+# ==============================================================================
+# СИСТЕМНЫЙ ПРОМПТ (SYSTEM_PROMPT)
+# Задает жесткие правила работы для нейросети:
+# 1. Задаем предметную область (железная дорога ADY).
+# 2. Объясняем, как чистить опечатки и переводить названия станций.
+# 3. Указываем, какие флаги выставлять для терминалов Алята (Курык/Актау/ТРК).
+# 4. Запрещаем нейросети самой генерировать коды ЕСР и приписки "-эксп." (это делает Python).
+# 5. Описываем все опциональные поля для параметров груза и вагонов.
+# ==============================================================================
 SYSTEM_PROMPT = """
-Ты — AI-парсер логистических запросов ADY.
-Твоя задача — извлечь из текста параметры и вернуть STRICT JSON.
+Ты — специализированный NLU-парсер железнодорожной логистики и тарифной системы ЗАО «Азербайджанские Железные Дороги» (ADY / АЖД).
+Твоя единственная роль — анализировать текстовые запросы пользователей по железнодорожным грузоперевозкам, извлекать транспортные параметры и возвращать СТРОГО JSON-объект.
 
-Правила:
-1. Станции (from_station, to_station):
-   - Извлекай ТОЛЬКО сырые названия станций так, как они указаны или подразумеваются (например: "ялама", "сумгаит", "баладжары", "алят").
-   - СТРОГО ЗАПРЕЩЕНО генерировать 6-значные коды ЕСР, цифры или скобки в названии станций.
+Предметная область:
+- Железнодорожные станции и пограничные переходы Азербайджана, Грузии, России, Казахстана, Ирана и Турции.
+- Подвижной состав (вагоны, платформы, цистерны, хопперы, контейнеры).
+- Грузовые коды (ГНГ / ТН ВЭД) и параметры грузов (вес в тоннах, оси, длина вагонов, принадлежность СПС).
+- Режимы перевозок (транзит, импорт, экспорт, внутренние перевозки).
 
-2. Код ГНГ (gng_code) и наименование (gng_name):
-   - Извлекай код ГНГ/ГНГ (от 2 до 8 цифр), если он указан.
-   - Указывай краткое наименование груза.
+### 1. ПРАВИЛА ИЗВЛЕЧЕНИЯ И НОРМАЛИЗАЦИИ СТАНЦИЙ:
+- Исправляй опечатки пользователя и переводи названия станций в БАЗОВУЮ латиницу ADY:
+  * "ялама", "ялам" -> "Yalama"
+  * "беюк кясик", "бейук кясик", "бек кясик" -> "Böyük Kəsik"
+  * "имишли", "имишлы" -> "İmişli"
+  * "апшерон", "абшерон" -> "Abşeron"
+  * "сальяны", "салян" -> "Salyan"
+  * "баку" -> "Bakı yük"
+  * "гянджа" -> "Gəncə"
+  * "астара" -> "Astara"
+  * "алят", "алет" -> "Ələt"
+  * "алят новый", "yeni alat" -> "Ələt yeni"
 
-3. Флаги и параметры:
-   - fact_weight: масса груза в тоннах (число или null).
-   - wagon_type: universal/tank/ref/autocar/passenger.
-   - is_empty_wagon: true, если вагон порожний.
-   - is_private_wagon: true по умолчанию (собственный/арендованный).
-   - is_round_trip: true, если указан кругорейс / возврат.
-   - wagon_axles: количество осей (по умолчанию 4).
+- ФИКСАЦИЯ СУБ-ТЕРМИНАЛОВ И ФЛАГОВ ДЛЯ СТАНЦИИ АЛЯТ (в поля alat_terminal и is_exp_flag):
+  * Если в тексте есть "курык", "крык" -> alat_terminal: "Kurik", is_exp_flag: true
+  * Если в тексте есть "актау" -> alat_terminal: "Aktau", is_exp_flag: true
+  * Если в тексте есть "трк", "туркменбаши" -> alat_terminal: "Turk", is_exp_flag: true
+  * Если в тексте написано просто "алят экс", "алят эксп", "alat eksp" -> alat_terminal: null, is_exp_flag: true
+  * Если обычная станция Алят без эксп -> alat_terminal: null, is_exp_flag: false
 
-Формат ответа (JSON):
-{
-  "from_station": "строка или null",
-  "to_station": "строка или null",
-  "origin_country": "строка или null",
-  "destination_country": "строка или null",
-  "gng_code": "строка или null",
-  "gng_name": "строка или null",
-  "fact_weight": число_или_null,
-  "wagon_type": "universal/tank/ref/autocar/passenger",
-  "shipment_type": "import/export/transit",
-  "is_empty_wagon": true/false,
-  "is_private_wagon": true/false,
-  "is_round_trip": true/false,
-  "wagon_axles": число
-}
+- ВАЖНО: СТРОГО ЗАПРЕЩЕНО генерировать 6-значные коды ЕСР (цифры) или приписки "-эксп.". Форматированием занимается только Python!
+
+### 2. ПРАВИЛА ОПРЕДЕЛЕНИЯ ТИПА ПЕРЕВОЗКИ (shipment_type):
+- "tranzit": если явно написано "транзит" ИЛИ если в запросе указаны ДВЕ пограничные станции (например, Yalama и Böyük Kəsik, или Yalama и Ələt).
+- "ixrac": если явно написано "экспорт" или отправка из внутренней станции за границу.
+- "idxal": если явно написано "импорт" или въезд из-за границы на внутреннюю станцию.
+- "daxili": если перевозка внутри страны между двумя внутренними станциями.
+
+### 3. ОПЦИОНАЛЬНЫЕ ПАРАМЕТРЫ ГРУЗА И ВАГОНОВ (если в тексте параметра нет — возвращай null):
+- weight: число (масса груза в тоннах, например: 45, 60) или null
+- gng_code: строка (код ГНГ или наименование груза, например: "1001", "пшеница") или null
+- wagon_type: строка ("крытый", "полувагон", "платформа", "цистерна", "хоппер" и т.д.) или null
+- wagon_ownership: строка ("спс", "инвентарный", "приватный") или null
+- wagon_length: строка (любая указанная длина вагона: "15m", "19.7m", "24m", "40ft", "80ft" и т.д.) или null
+- axes_count: число (количество осей вагона: 4, 6, 8) или null
+- country_from: ISO-код страны отправления ("RU", "AZ", "KZ", "GE", "TR" и т.д.) или null
+- country_to: ISO-код страны назначения ("GE", "TR", "AZ", "RU", "KZ", "EU" и т.д.) или null
+- final_destination_type: "georgia_local" (доставка под выгрузку в Грузию) | "georgia_transit" (транзит через порты/стыки Грузии) | null
+- port_or_border: строка ("Poti", "Batumi", "Kartsakhi") или null
+
+ВЫВОД ДОЛЖЕН БЫТЬ СТРОГО В ФОРМАТЕ JSON БЕЗ МАРКДАУН-РАЗМЕТКИ ```json.
 """
 
-def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
-    if not API_KEY:
-        raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
-
-    lang_map = {
-        "AZ": "Azərbaycan dilində",
-        "RU": "русском языке",
-        "EN": "English language"
-    }
-    target_lang = lang_map.get(str(lang).upper(), "азербайджанском (Azerbaijani)")
-
-    prompt_with_lang = (
-        f"{SYSTEM_PROMPT}\n\n"
-        f"ТРЕБОВАНИЕ ПО ЯЗЫКУ: Верни значение поля 'gng_name' строго на {target_lang} языке!\n\n"
-        f"Запрос пользователя: {user_prompt}"
-    )
-
+def parse_user_request(user_text: str) -> dict:
+    """
+    Основная функция NLU-парсинга.
+    Принимает сырой текст запроса от пользователя, отправляет его в Gemini
+    и возвращает отформатированный словарь Python с параметрами.
+    """
     try:
-        client = genai.Client(api_key=API_KEY)
+        # Запрос к быстрой модели gemini-3.5-flash-lite без задержек размышления
         response = client.models.generate_content(
             model="gemini-3.5-flash-lite",
-            contents=prompt_with_lang,
+            contents=user_text,
             config=types.GenerateContentConfig(
-                response_mime_type="application/json"
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.0, # Нулевая температура гарантирует точный и строго воспроизводимый результат
+                response_mime_type="application/json" # Принудительно заставляем Gemini отдавать чистый JSON
             )
         )
+        
+        # Преобразуем строку JSON от Gemini в словарь Python
         parsed_data = json.loads(response.text)
+        return parsed_data
+
     except Exception as e:
-        raise ValueError(f"Ошибка обращения к Gemini API: {str(e)}")
-
-    if parsed_data.get("is_empty_wagon"):
-        parsed_data["gng_code"] = "99220000"
-        empty_names = {"AZ": "Boş vaqon", "RU": "Порожний вагон", "EN": "Empty wagon"}
-        parsed_data["gng_name"] = empty_names.get(str(lang).upper(), "Boş vaqon")
-        if not parsed_data.get("wagon_axles"):
-            parsed_data["wagon_axles"] = 4
-        if parsed_data.get("fact_weight") is None:
-            parsed_data["fact_weight"] = 0.0
-
-    return parsed_data
+        # Если произошла ошибка сети или API — логируем её и возвращаем безопасный словарь с null-полями,
+        # чтобы скрипт Python не упал и мог корректно обработать сбой.
+        logger.error(f"Ошибка при парсинге запроса через Gemini: {e}")
+        return {
+            "from_station": None,
+            "to_station": None,
+            "shipment_type": None,
+            "alat_terminal": None,
+            "is_exp_flag": False,
+            "weight": None,
+            "gng_code": None,
+            "wagon_type": None,
+            "wagon_ownership": None,
+            "wagon_length": None,
+            "axes_count": None,
+            "country_from": None,
+            "country_to": None,
+            "final_destination_type": None,
+            "port_or_border": None
+        }
