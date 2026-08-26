@@ -46,7 +46,7 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.5-flash-lite",
             contents=user_prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
