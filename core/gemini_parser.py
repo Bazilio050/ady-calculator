@@ -10,7 +10,7 @@ from difflib import get_close_matches
 try:
     from rapidfuzz import process, fuzz
     HAS_RAPIDFUZZ = True
-except ImporterError:  # <--- Опечатка!
+except ImportError:
     HAS_RAPIDFUZZ = False
 
 # ==============================================================================
