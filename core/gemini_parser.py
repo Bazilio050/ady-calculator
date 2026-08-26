@@ -1,141 +1,355 @@
 # ==============================================================================
-# МОДУЛЬ ИЗВЛЕЧЕНИЯ ПАРАМЕТРОВ ИЗ ЗАПРОСА (GEMINI AI PARSER)
+# МОДУЛЬ ЛОКАЛЬНОГО ПОИСКА СТАНЦИЙ И РАССЧЕТА РАССТОЯНИЙ ADY
 # ==============================================================================
 import json
-import logging
 import os
-from google import genai
-from google.genai import types
+import re
+from typing import Dict, Optional, Tuple
+from difflib import get_close_matches
 
-logger = logging.getLogger(__name__)
+try:
+    from rapidfuzz import process, fuzz
+    HAS_RAPIDFUZZ = True
+except ImportError:
+    HAS_RAPIDFUZZ = False
 
-# Считываем API-ключ Gemini из переменных окружения
-API_KEY = os.environ.get("GEMINI_API_KEY", "")
+# ==============================================================================
+# СЛОВАРИ ПОГРАНИЧНЫХ СТЫКОВ И ПЕРЕВОДОВ НАЗВАНИЙ
+# ==============================================================================
 
-# Системный промпт с предметной областью ADY и зафиксированными правилами извлечения
-SYSTEM_PROMPT = """
-Ты — специализированный NLU-парсер железнодорожной логистики и тарифной системы ЗАО «Азербайджанские Железные Дороги» (ADY / АЖД).
-Твоя единственная роль — анализировать текстовые запросы пользователей по железнодорожным грузоперевозкам, извлекать транспортные параметры и возвращать СТРОГО JSON-объект.
-
-Предметная область:
-- Железнодорожные станции и пограничные переходы Азербайджана, Грузии, России, Казахстана, Ирана и Турции.
-- Подвижной состав (вагоны, платформы, цистерны, хопперы, контейнеры).
-- Грузовые коды (ГНГ / ТН ВЭД) и параметры грузов (вес в тоннах, оси, длина вагонов, принадлежность СПС).
-- Режимы перевозок (транзит, импорт, экспорт, внутренние перевозки).
-
-### 1. ПРАВИЛА ИЗВЛЕЧЕНИЯ И НОРМАЛИЗАЦИИ СТАНЦИЙ (from_station, to_station):
-- Исправляй опечатки пользователя и переводи названия станций в БАЗОВУЮ латиницу ADY:
-  * "ялама", "ялам" -> "Yalama"
-  * "беюк кясик", "бейук кясик", "бек кясик" -> "Böyük Kəsik"
-  * "имишли", "имишлы" -> "İmişli"
-  * "апшерон", "абшерон" -> "Abşeron"
-  * "сальяны", "салян" -> "Salyan"
-  * "баку" -> "Bakı yük"
-  * "гянджа" -> "Gəncə"
-  * "астара" -> "Astara"
-  * "алят", "алет" -> "Ələt"
-  * "алят новый", "yeni alat" -> "Ələt yeni"
-
-- ФИКСАЦИЯ СУБ-ТЕРМИНАЛОВ И ФЛАГОВ ДЛЯ СТАНЦИИ АЛЯТ (в поля alat_terminal и is_exp_flag):
-  * Если в тексте есть "курык", "крык" -> alat_terminal: "Kurik", is_exp_flag: true
-  * Если в тексте есть "актау" -> alat_terminal: "Aktau", is_exp_flag: true
-  * Если в тексте есть "трк", "туркменбаши" -> alat_terminal: "Turk", is_exp_flag: true
-  * Если в тексте написано просто "алят экс", "алят эксп", "alat eksp" -> alat_terminal: null, is_exp_flag: true
-  * Если обычная станция Алят без экспортного контекста -> alat_terminal: null, is_exp_flag: false
-
-- СТРОГО ЗАПРЕЩЕНО генерировать 6-значные коды ЕСР (цифры) или приписки "-эксп.". Это делает Python!
-
-### 2. ПРАВИЛА ОПРЕДЕЛЕНИЯ ТИПА ПЕРЕВОЗКИ (shipment_type):
-- "tranzit": если явно написано "транзит" ИЛИ если в запросе указаны ДВЕ пограничные станции (например, Yalama и Böyük Kəsik, или Yalama и Ələt).
-- "ixrac" (export): если явно написано "экспорт" или отправка из внутренней станции за границу.
-- "idxal" (import): если явно написано "импорт" или въезд из-за границы на внутреннюю станцию.
-- "daxili" (local): если перевозка между двумя внутренними стациями Азербайджана.
-
-### 3. ПАРАМЕТРЫ ГРУЗА И ВАГОНОВ (если в тексте параметра нет — возвращай null):
-- gng_code: строка (код ГНГ от 2 до 8 цифр) или null
-- gng_name: краткое наименование груза или null
-- fact_weight: масса груза в тоннах (число) или null
-- wagon_type: "universal", "tank", "ref", "autocar", "passenger", "hopper", "platform" или null
-- is_empty_wagon: true, если вагон порожний, иначе false
-- is_private_wagon: true по умолчанию (собственный/СПС/арендованный), false если инвентарный
-- is_round_trip: true, если указан кругорейс/возврат, иначе false
-- wagon_axles: количество осей (число, по умолчанию 4)
-- wagon_length: строка (длина вагона/платформы: "15m", "19.7m", "24m", "40ft", "80ft") или null
-- origin_country: ISO-код страны отправления ("RU", "AZ", "KZ", "GE", "TR") или null
-- destination_country: ISO-код страны назначения ("GE", "TR", "AZ", "RU", "KZ", "EU") или null
-- final_destination_type: "georgia_local" (доставка под выгрузку в Грузию) | "georgia_transit" (транзит через порты/стыки Грузии) | null
-- port_or_border: строка ("Poti", "Batumi", "Kartsakhi") или null
-
-Формат ответа (СТРОГО JSON):
-{
-  "from_station": "строка или null",
-  "to_station": "строка или null",
-  "alat_terminal": "Kurik/Aktau/Turk или null",
-  "is_exp_flag": true/false,
-  "shipment_type": "tranzit/ixrac/idxal/daxili",
-  "origin_country": "строка или null",
-  "destination_country": "строка или null",
-  "gng_code": "строка или null",
-  "gng_name": "строка или null",
-  "fact_weight": число_или_null,
-  "wagon_type": "строка или null",
-  "is_empty_wagon": true/false,
-  "is_private_wagon": true/false,
-  "is_round_trip": true/false,
-  "wagon_axles": число,
-  "wagon_length": "строка или null",
-  "final_destination_type": "georgia_local/georgia_transit или null",
-  "port_or_border": "строка или null"
+BORDER_NODES = {
+    "Yalama (eksport)": ["yalama", "yalama-eksport", "yalama eksport", "ялама", "ялама-эксп", "ялама экспорт"],
+    "Astara (eksport)": ["astara", "astara-eksport", "astara eksport", "астара", "астара-эксп", "астара экспорт"],
+    "Böyük Kəsik (eksport)": ["boyuk kesik", "böyük kəsik", "boyuk kesik-eksport", "беюк-кясик", "беюк кясик", "беюк-кясик-эксп"],
+    "Culfa (eksport)": ["culfa", "culfa-eksport", "джульфа", "джульфа-эксп"],
+    "Ələt eksp / Bakı liman": [
+        "alat", "ələt", "alat-eksport", "ələt-eksport", "алят", "алят-эксп",
+        "aktau", "актау", "kurik", "kuryk", "курык", "курыт", "turk", "turkmen", "трк", "туркменбаши"
+    ]
 }
-"""
 
-def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
-    """
-    Основная функция NLU-парсинга запроса через Gemini 3.5 Flash-Lite.
-    Принимает текст запроса пользователя и язык интерфейса.
-    """
-    if not API_KEY:
-        raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
+# Список пограничных стыков для определения правила применения приписки -эксп.
+BORDER_STATION_NAMES = {"Yalama", "Böyük Kəsik", "Astara", "Culfa", "Ələt-eksp."}
 
-    # Формируем карту языков для вывода поля gng_name
-    lang_map = {
-        "AZ": "Azərbaycan dilində",
-        "RU": "русском языке",
-        "EN": "English language"
+# Переводы названий станций на русский и английский языки
+STATION_TRANSLATIONS: Dict[str, Dict[str, str]] = {
+    "Yalama": {"az": "Yalama", "ru": "Ялама", "en": "Yalama"},
+    "Böyük Kəsik": {"az": "Böyük Kəsik", "ru": "Беюк Кясик", "en": "Beyuk Kasik"},
+    "İmişli": {"az": "İmişli", "ru": "Имишли", "en": "Imishli"},
+    "Abşeron": {"az": "Abşeron", "ru": "Апшерон", "en": "Absheron"},
+    "Salyan": {"az": "Salyan", "ru": "Сальяны", "en": "Salyan"},
+    "Bakı yük": {"az": "Bakı yük", "ru": "Баку гл.", "en": "Baku freight"},
+    "Gəncə": {"az": "Gəncə", "ru": "Гянджа", "en": "Ganja"},
+    "Astara": {"az": "Astara", "ru": "Астара", "en": "Astara"},
+    "Culfa": {"az": "Culfa", "ru": "Джульфа", "en": "Julfa"},
+    "Ələt": {"az": "Ələt", "ru": "Алят", "en": "Alat"},
+    "Ələt yeni": {"az": "Ələt yeni", "ru": "Алят новый", "en": "Alat yeni"}
+}
+
+# Приписки пограничных станций по языкам
+EXP_SUFFIX = {
+    "az": "-eksp.",
+    "ru": "-эксп.",
+    "en": "-exp."
+}
+
+def load_aliases() -> dict:
+    """ Загружает словарь псевдонимов и русских названий из data/aliases.json """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    aliases_path = os.path.join(base_dir, "data", "aliases.json")
+    if os.path.exists(aliases_path):
+        try:
+            with open(aliases_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def normalize_name(text: str) -> str:
+    """ Нормализует название станции для поиска """
+    if not text:
+        return ""
+    text = text.lower().strip()
+    text = text.replace("*", "").replace("(", "").replace(")", "").replace("-", " ")
+    
+    replacements = {
+        'ə': 'e', 'ö': 'o', 'ü': 'u', 'ç': 'c', 'ş': 's', 'ı': 'i', 'ğ': 'g',
+        'ё': 'е', 'й': 'и'
     }
-    target_lang = lang_map.get(str(lang).upper(), "азербайджанском (Azerbaijani)")
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+        
+    text = re.sub(r'[^a-z0-9\s]', '', text)
+    return re.sub(r'\s+', ' ', text).strip()
 
-    # Подготавливаем итоговый промпт с динамическим требованием языка
-    prompt_with_lang = (
-        f"{SYSTEM_PROMPT}\n\n"
-        f"ТРЕБОВАНИЕ ПО ЯЗЫКУ: Верни значение поля 'gng_name' строго на {target_lang} языке!\n\n"
-        f"Запрос пользователя: {user_prompt}"
-    )
+def extract_code(text: str) -> Optional[str]:
+    """ Извлекает 6-значный код ЕСР из строки, если он присутствует """
+    match = re.search(r'\b\d{6}\b', str(text))
+    return match.group(0) if match else None
 
-    try:
-        # Инициализируем клиента Gemini GenAI
-        client = genai.Client(api_key=API_KEY)
-        response = client.models.generate_content(
-            model="gemini-3.5-flash-lite",
-            contents=prompt_with_lang,
-            config=types.GenerateContentConfig(
-                temperature=0.0, # Нулевая температура для максимальной точности
-                response_mime_type="application/json"
-            )
-        )
-        parsed_data = json.loads(response.text)
-    except Exception as e:
-        logger.error(f"Ошибка обращения к Gemini API: {str(e)}")
-        raise ValueError(f"Ошибка обращения к Gemini API: {str(e)}")
+def resolve_alat_code(text: str) -> Tuple[Optional[str], Optional[str]]:
+    """ Специальные правила маппинга для Алята и морских терминалов """
+    norm = normalize_name(text)
+    if "trk" in norm or "turk" in norm or "туркмен" in norm:
+        return "Ələt eksport-Türk.", "548803"
+    if "aktau" in norm or "актау" in norm:
+        return "Ələt eksport Aktau", "549204"
+    if "kurik" in norm or "kuryk" in norm or "курык" in norm or "курыт" in norm:
+        return "Ələt eksport Kurik", "553002"
+    if "yeni" in norm or "новый" in norm:
+        return "Ələt yeni", "548703"
+    if "alat" in norm or "alet" in norm or "алят" in norm:
+        return "Ələt", "548502"
+    return None, None
 
-    # Логика обработки порожнего вагона (перенесена из твоей исходной логики)
-    if parsed_data.get("is_empty_wagon"):
-        parsed_data["gng_code"] = "99220000"
-        empty_names = {"AZ": "Boş vaqon", "RU": "Порожний вагон", "EN": "Empty wagon"}
-        parsed_data["gng_name"] = empty_names.get(str(lang).upper(), "Boş vaqon")
-        if not parsed_data.get("wagon_axles"):
-            parsed_data["wagon_axles"] = 4
-        if parsed_data.get("fact_weight") is None:
-            parsed_data["fact_weight"] = 0.0
+def find_border_column(station_name: str) -> Optional[str]:
+    """ Находит пограничный столбец матрицы расстояний """
+    if not station_name:
+        return None
+    clean_name = re.sub(r'\(\d{6}\)|\b\d{6}\b', '', str(station_name)).strip()
+    norm = normalize_name(clean_name)
+    
+    for main_node, aliases in BORDER_NODES.items():
+        for alias in aliases:
+            norm_alias = normalize_name(alias)
+            if norm_alias == norm or (len(norm_alias) > 3 and norm_alias in norm):
+                return main_node
+    return None
 
-    return parsed_data
+def parse_distances_file() -> dict:
+    """ Парсит файл тарифных расстояний data/Distances.txt """
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(base_dir, "data", "Distances.txt")
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Файл {file_path} не найден!")
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    header_idx = -1
+    headers = []
+    for idx, line in enumerate(lines):
+        if "| Stansiyanın adı |" in line or "| Stansiyanın" in line:
+            header_idx = idx
+            headers = [h.strip().replace("*", "") for h in line.split("|")[1:-1]]
+            break
+
+    if header_idx == -1:
+        raise ValueError("Не удалось распознать структуру таблицы в data/Distances.txt")
+
+    stations_data = {}
+    for line in lines[header_idx + 2:]:
+        if not line.strip() or not line.startswith("|"):
+            continue
+        cols = [c.strip() for c in line.split("|")[1:-1]]
+        if len(cols) < len(headers):
+            continue
+            
+        st_name = cols[0].replace("*", "").strip()
+        st_code = cols[1].replace("*", "").strip()
+        
+        distances = {}
+        for h_name, val in zip(headers[2:], cols[2:]):
+            clean_h_name = h_name.replace("*", "").strip()
+            try:
+                distances[clean_h_name] = int(val.strip())
+            except ValueError:
+                distances[clean_h_name] = None
+                
+        stations_data[st_name] = {
+            "code": st_code,
+            "distances": distances
+        }
+    return stations_data
+
+def match_station(target_name: str, stations_data: dict) -> Tuple[Optional[str], Optional[dict]]:
+    """ Сопоставляет название станции из запроса со справочником ADY """
+    if not target_name:
+        return None, None
+
+    # 1. Проверка через словари псевдонимов (aliases.json)
+    aliases = load_aliases()
+    norm_input = normalize_name(target_name)
+    if norm_input in aliases:
+        target_name = aliases[norm_input]
+
+    # 2. Проверка маппинга для Алята (Курык, Актау, ТРК)
+    alat_name, alat_code = resolve_alat_code(target_name)
+    if alat_code:
+        for st_key, data in stations_data.items():
+            if data.get("code") == alat_code:
+                return st_key, data
+
+    # 3. Поиск по 6-значному коду ЕСР (если передавался)
+    target_code = extract_code(target_name)
+    if target_code:
+        for st_key, data in stations_data.items():
+            if data.get("code") == target_code:
+                return st_key, data
+
+    # 4. Точное и частичное соответствие по имени
+    norm_target = normalize_name(target_name)
+    for st_key, data in stations_data.items():
+        if normalize_name(st_key) == norm_target:
+            return st_key, data
+
+    for st_key, data in stations_data.items():
+        st_norm = normalize_name(st_key)
+        if norm_target == st_norm or (len(norm_target) > 3 and norm_target in st_norm):
+            return st_key, data
+
+    # 5. Нечёткий (fuzzy) поиск через RapidFuzz или Difflib
+    station_names = list(stations_data.keys())
+    
+    if HAS_RAPIDFUZZ:
+        best_match = process.extractOne(target_name, station_names, scorer=fuzz.WRatio)
+        if best_match and best_match[1] >= 70:
+            matched_key = best_match[0]
+            return matched_key, stations_data[matched_key]
+    else:
+        matches = get_close_matches(target_name, station_names, n=1, cutoff=0.6)
+        if matches:
+            matched_key = matches[0]
+            return matched_key, stations_data[matched_key]
+
+    return None, None
+
+# ==============================================================================
+# ФУНКЦИИ КРАСИВОГО ФОРМАТИРОВАНИЯ ВЫВОДА СТАНЦИЙ (PYTHON)
+# ==============================================================================
+
+def format_station_display(st_name: str, 
+                           st_code: str, 
+                           parsed_data: dict, 
+                           is_from: bool, 
+                           lang: str = "ru") -> str:
+    """
+    Формирует отображение станции на выбранном языке (az/ru/en) 
+    с учетом приписок -эксп., кодов ЕСР и правил скрытия для Алята.
+    """
+    lang = lang.lower()
+    suf = EXP_SUFFIX.get(lang, "-эксп.")
+    shipment_type = parsed_data.get("shipment_type", "")
+    alat_terminal = parsed_data.get("alat_terminal")
+    is_exp_flag = parsed_data.get("is_exp_flag", False)
+    
+    # --------------------------------------------------------------------------
+    # 1. СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ СТАНЦИИ АЛЯТ
+    # --------------------------------------------------------------------------
+    if "Ələt" in st_name or "Alat" in st_name or "Алят" in st_name:
+        # 1.1 Запрос с конкретным паромным терминалом (Курык / Актау / Туркменбаши)
+        if alat_terminal == "Kurik":
+            name = "Ələt-eksp. Kurik" if lang == "az" else "Алят-эксп. Курык" if lang == "ru" else "Alat-exp. Kuryk"
+            return f"{name} ({st_code or '553002'})"
+            
+        elif alat_terminal == "Aktau":
+            name = "Ələt-eksp. Aktau" if lang == "az" else "Алят-эксп. Актау" if lang == "ru" else "Alat-exp. Aktau"
+            return f"{name} ({st_code or '549204'})"
+            
+        elif alat_terminal == "Turk":
+            name = "Ələt-eksp. Türk." if lang == "az" else "Алят-эксп. Туркм." if lang == "ru" else "Alat-exp. Turk."
+            return f"{name} ({st_code or '548803'})"
+            
+        # 1.2 Обобщенный Алят-эксп (код ЕСР СТРОГО СКРЫВАЕТСЯ по нашему правилу)
+        elif is_exp_flag or "eksp" in st_name.lower():
+            name = f"Ələt{suf}" if lang == "az" else f"Алят{suf}" if lang == "ru" else f"Alat{suf}"
+            return name  # Возвращаем БЕЗ кода в скобках!
+
+        # 1.3 Алят новый (Ələt yeni)
+        elif "yeni" in st_name.lower() or "новый" in st_name.lower():
+            name = "Ələt yeni" if lang == "az" else "Алят новый" if lang == "ru" else "Alat yeni"
+            return f"{name} ({st_code or '548703'})"
+
+    # --------------------------------------------------------------------------
+    # 2. ЛОГИКА ДЛЯ ВСЕХ ОСТАЛЬНЫХ СТАНЦИЙ
+    # --------------------------------------------------------------------------
+    # Определяем, требуется ли приписка -эксп.
+    should_have_exp = False
+    if shipment_type == "tranzit":
+        should_have_exp = True
+    elif shipment_type in ["ixrac", "export"] and not is_from:
+        should_have_exp = True
+    elif shipment_type in ["idxal", "import"] and is_from:
+        should_have_exp = True
+
+    # Получаем перевод наименования
+    translations = STATION_TRANSLATIONS.get(st_name, {"az": st_name, "ru": st_name, "en": st_name})
+    base_name = translations.get(lang, st_name)
+    code_str = f" ({st_code})" if st_code else ""
+
+    if should_have_exp:
+        return f"{base_name}{suf}{code_str}"
+    else:
+        return f"{base_name}{code_str}"
+
+# ==============================================================================
+# ОСНОВНАЯ ФУНКЦИЯ РАСЧЕТА МАРШРУТА
+# ==============================================================================
+
+def get_route_info(parsed_data: dict, lang: str = "ru") -> dict:
+    """
+    Принимает отпарсенные данные из gemini_parser.py и вычисляет расстояние
+    по матрице Distances.txt, формируя отформатированные строки станций.
+    """
+    from_station = parsed_data.get("from_station", "")
+    to_station = parsed_data.get("to_station", "")
+
+    stations_data = parse_distances_file()
+
+    border_from = find_border_column(from_station)
+    border_to = find_border_column(to_station)
+
+    name_from, data_from = match_station(from_station, stations_data)
+    name_to, data_to = match_station(to_station, stations_data)
+
+    code_from = data_from["code"] if data_from else ""
+    code_to = data_to["code"] if data_to else ""
+
+    # Форматируем красивый вывод на выбранном языке
+    fmt_from = format_station_display(name_from or from_station, code_from, parsed_data, is_from=True, lang=lang)
+    fmt_to = format_station_display(name_to or to_station, code_to, parsed_data, is_from=False, lang=lang)
+
+    dist = None
+
+    # Поиск расстояния по матрице
+    if data_to and data_to.get("distances"):
+        for h_key, d_val in data_to["distances"].items():
+            if d_val is not None and d_val > 0:
+                norm_h = normalize_name(h_key)
+                if (name_from and normalize_name(name_from) in norm_h) or \
+                   (border_from and normalize_name(border_from) in norm_h) or \
+                   ("yalama" in norm_h if border_from == "Yalama (eksport)" else False):
+                    dist = d_val
+                    break
+
+    if dist is None and data_from and data_from.get("distances"):
+        for h_key, d_val in data_from["distances"].items():
+            if d_val is not None and d_val > 0:
+                norm_h = normalize_name(h_key)
+                if (name_to and normalize_name(name_to) in norm_h) or \
+                   (border_to and normalize_name(border_to) in norm_h) or \
+                   ("boyuk" in norm_h if border_to == "Böyük Kəsik (eksport)" else False):
+                    dist = d_val
+                    break
+
+    if dist is None and border_from and border_to:
+        for st_key, st_data in stations_data.items():
+            st_norm = normalize_name(st_key)
+            if "boyuk" in st_norm or "kesik" in st_norm:
+                for h_key, d_val in st_data["distances"].items():
+                    if "yalama" in normalize_name(h_key):
+                        if d_val is not None and d_val > 0:
+                            dist = d_val
+                            break
+            if dist:
+                break
+
+    if dist is None or dist == 0:
+        raise ValueError(f"Не удалось определить расстояние между '{from_station}' и '{to_station}'.")
+
+    return {
+        "distance_km": dist,
+        "from_formatted": fmt_from,
+        "to_formatted": fmt_to,
+        "route_formatted": f"{fmt_from} – {fmt_to}"
+    }
