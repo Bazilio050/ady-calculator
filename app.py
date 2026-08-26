@@ -5,6 +5,7 @@ from google import genai
 
 # Импорты из папки core
 from core.gemini_parser import parse_user_request
+from core.distance_finder import get_route_info
 from core.calculator import calculate_freight
 
 st.set_page_config(
@@ -339,7 +340,14 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             nlu_res = parse_user_request(current_input, lang=selected_lang)
             st.session_state.nlu_res = nlu_res
 
-            # 2. Расчет через calculator
+            # 2. Определение расстояния и форматирование станций через distance_finder
+            route_info = get_route_info(nlu_res, lang=selected_lang)
+            
+            # Добавляем данные маршрута в словарь для калькулятора
+            nlu_res["distance_km"] = route_info["distance_km"]
+            nlu_res["route_formatted"] = route_info["route_formatted"]
+
+            # 3. Расчет через calculator
             calc_res = calculate_freight(**nlu_res, lang=selected_lang)
             st.session_state.calc_result = calc_res
             st.session_state.missing_data = None
