@@ -1,4 +1,9 @@
+import sys
 import os
+
+# Добавляем путь к корневой директории проекта, чтобы избежать ImportError на Streamlit Cloud
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import re
 import streamlit as st
 from google import genai
@@ -340,14 +345,14 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             nlu_res = parse_user_request(current_input, lang=selected_lang)
             st.session_state.nlu_res = nlu_res
 
-            # 2. Определение расстояния и форматирование станций через distance_finder
+            # 2. Поиск расстояния и отформатированных наименований через distance_finder
             route_info = get_route_info(nlu_res, lang=selected_lang)
             
-            # Добавляем данные маршрута в словарь для калькулятора
+            # Добавляем вычисленное расстояние и отформатированный маршрут в словарь для расчёта
             nlu_res["distance_km"] = route_info["distance_km"]
             nlu_res["route_formatted"] = route_info["route_formatted"]
 
-            # 3. Расчет через calculator
+            # 3. Расчет тарифа через calculator
             calc_res = calculate_freight(**nlu_res, lang=selected_lang)
             st.session_state.calc_result = calc_res
             st.session_state.missing_data = None
