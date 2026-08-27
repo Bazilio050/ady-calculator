@@ -205,6 +205,11 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
     raw_text_from = nlu_data.get("raw_text", from_st) if isinstance(from_station, dict) else from_st
     raw_text_to = nlu_data.get("raw_text", to_st) if isinstance(from_station, dict) else to_st
 
+    # Извлекаем оригинальный текст пользователя для точной проверки вариаций "экс/эксп/экспорт"
+    raw_user_text = nlu_data.get("raw_input", "") if isinstance(from_station, dict) else ""
+    raw_text_from = raw_user_text if raw_user_text else from_st
+    raw_text_to = raw_user_text if raw_user_text else to_st
+
     fmt_from = format_display_name(raw_text_from, name_from or from_st, code_from, lang=lang)
     fmt_to = format_display_name(raw_text_to, name_to or to_st, code_to, lang=lang)
     dist = None
