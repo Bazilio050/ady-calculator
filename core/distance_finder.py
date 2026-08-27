@@ -1,153 +1,216 @@
-import json
-import logging
+# ==============================================================================
+# МОДУЛЬ ПОИСКА РАССТОЯНИЙ И КОДОВ СТАНЦИЙ ADY
+# ==============================================================================
+import os
 import re
-from typing import Dict, Optional, Tuple
 
-logger = logging.getLogger(__name__)
-
-# ==============================================================================
-# СЛОВАРИ И СООТВЕТСТВИЯ НАЗВАНИЙ И КОДОВ ЕСР
-# ==============================================================================
-
-STATION_CODES: Dict[str, str] = {
-    "Yalama": "547508",
-    "Böyük Kəsik": "548004",
-    "İmişli": "547103",
-    "Abşeron": "548405",
-    "Salyan": "547404",
-    "Bakı yük": "540000",
-    "Gəncə": "545000",
-    "Astara": "547904",
-    "Ələt": "548502",
-    "Ələt yeni": "548703",
-    "Ələt-eksp. Kurik": "553002",
-    "Ələt-eksp. Aktau": "549204",
-    "Ələt-eksp. Türk.": "548803"
+BORDER_NODES = {
+    "Yalama (eksport)": ["yalama", "yalama-eksport", "yalama eksport", "ялама", "ялама-эксп", "ялама экспорт"],
+    "Astara (eksport)": ["astara", "astara-eksport", "astara eksport", "астара", "астара-эксп", "астара экспорт"],
+    "Böyük Kəsik (eksport)": ["boyuk kesik", "böyük kəsik", "boyuk kesik-eksport", "беюк-кясик", "беюк кясик", "беюк-кясик-эксп"],
+    "Culfa (eksport)": ["culfa", "culfa-eksport", "джульфа", "джульфа-эксп"],
+    "Ələt eksp / Bakı liman": [
+        "alat", "ələt", "alat-eksport", "ələt-eksport", "алят", "алят-эксп",
+        "aktau", "актау", "kurik", "kuryk", "курык", "курыт", "turk", "turkmen", "трк", "туркменбаши"
+    ]
 }
 
-STATION_TRANSLATIONS: Dict[str, Dict[str, str]] = {
-    "Yalama": {"az": "Yalama", "ru": "Ялама", "en": "Yalama"},
-    "Böyük Kəsik": {"az": "Böyük Kəsik", "ru": "Беюк Кясик", "en": "Beyuk Kasik"},
-    "İmişli": {"az": "İmişli", "ru": "Имишли", "en": "Imishli"},
-    "Abşeron": {"az": "Abşeron", "ru": "Апшерон", "en": "Absheron"},
-    "Salyan": {"az": "Salyan", "ru": "Сальяны", "en": "Salyan"},
-    "Bakı yük": {"az": "Bakı yük", "ru": "Баку гл.", "en": "Baku freight"},
-    "Gəncə": {"az": "Gəncə", "ru": "Гянджа", "en": "Ganja"},
-    "Astara": {"az": "Astara", "ru": "Астара", "en": "Astara"},
-    "Ələt": {"az": "Ələt", "ru": "Алят", "en": "Alat"},
-    "Ələt yeni": {"az": "Ələt yeni", "ru": "Алят новый", "en": "Alat yeni"}
-}
-
-EXP_SUFFIX: Dict[str, str] = {
-    "az": "-eksp.",
-    "ru": "-эксп.",
-    "en": "-exp.",
-    "AZ": "-eksp.",
-    "RU": "-эксп.",
-    "EN": "-exp."
-}
-
-BORDER_STATIONS = {"Yalama", "Böyük Kəsik", "Astara", "Ələt-eksp.", "Ələt-eksp. Kurik", "Ələt-eksp. Aktau", "Ələt-eksp. Türk."}
-
-# ==============================================================================
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ФОРМАТИРОВАНИЯ
-# ==============================================================================
-
-def format_station_display(st_name: str, 
-                           parsed_data: dict, 
-                           is_from: bool, 
-                           lang: str = "ru") -> str:
-    lang_lower = lang.lower()
-    suf = EXP_SUFFIX.get(lang_lower, "-эксп.")
-    shipment_type = parsed_data.get("shipment_type")
-    alat_terminal = parsed_data.get("alat_terminal")
-    is_exp_flag = parsed_data.get("is_exp_flag", False)
+def normalize_name(text: str) -> str:
+    """ Нормализует название станции: регистр, символы **, азербайджанская кириллица/латиница, пробелы """
+    if not text:
+        return ""
+    text = text.lower().strip()
+    text = text.replace("*", "").replace("(", "").replace(")", "").replace("-", " ")
     
-    should_have_exp = False
-    if shipment_type in ["tranzit", "transit"]:
-        should_have_exp = True
-    elif is_exp_flag and "Ələt" in st_name:
-        should_have_exp = True
-    elif st_name in BORDER_STATIONS:
-        if (shipment_type in ["idxal", "import"] and is_from) or (shipment_type in ["ixrac", "export"] and not is_from):
-            should_have_exp = True
-
-    if "Ələt" in st_name:
-        if alat_terminal == "Kurik":
-            code = STATION_CODES.get("Ələt-eksp. Kurik", "553002")
-            name = "Ələt-eksp. Kurik" if lang_lower == "az" else "Алят-эксп. Курык" if lang_lower == "ru" else "Alat-exp. Kuryk"
-            return f"{name} ({code})"
-            
-        elif alat_terminal == "Aktau":
-            code = STATION_CODES.get("Ələt-eksp. Aktau", "549204")
-            name = "Ələt-eksp. Aktau" if lang_lower == "az" else "Алят-эксп. Актау" if lang_lower == "ru" else "Alat-exp. Aktau"
-            return f"{name} ({code})"
-            
-        elif alat_terminal == "Turk":
-            code = STATION_CODES.get("Ələt-eksp. Türk.", "548803")
-            name = "Ələt-eksp. Türk." if lang_lower == "az" else "Алят-эксп. Туркм." if lang_lower == "ru" else "Alat-exp. Turk."
-            return f"{name} ({code})"
-            
-        elif is_exp_flag or st_name == "Ələt-eksp.":
-            name = f"Ələt{suf}" if lang_lower == "az" else f"Алят{suf}" if lang_lower == "ru" else f"Alat{suf}"
-            return name
-
-        elif "yeni" in st_name.lower():
-            code = STATION_CODES.get("Ələt yeni", "548703")
-            name = "Ələt yeni" if lang_lower == "az" else "Алят новый" if lang_lower == "ru" else "Alat yeni"
-            return f"{name} ({code})"
-
-    code = STATION_CODES.get(st_name, "")
-    code_str = f" ({code})" if code else ""
-    
-    translations = STATION_TRANSLATIONS.get(st_name, {"az": st_name, "ru": st_name, "en": st_name})
-    base_name = translations.get(lang_lower, st_name)
-
-    if should_have_exp:
-        return f"{base_name}{suf}{code_str}"
-    else:
-        return f"{base_name}{code_str}"
-
-
-def calculate_distance(from_st: str, to_st: str, parsed_data: dict) -> int:
-    search_from = "Ələt-eksp. Kurik" if from_st in ["Ələt", "Ələt-eksp."] else from_st
-    search_to = "Ələt-eksp. Kurik" if to_st in ["Ələt", "Ələt-eksp."] else to_st
-
-    pair = tuple(sorted([search_from, search_to]))
-    
-    distances_db = {
-        tuple(sorted(["Yalama", "Ələt-eksp. Kurik"])): 291,
-        tuple(sorted(["Böyük Kəsik", "Ələt-eksp. Kurik"])): 448,
-        tuple(sorted(["Yalama", "Böyük Kəsik"])): 502,
-        tuple(sorted(["Yalama", "İmişli"])): 380,
-        tuple(sorted(["Yalama", "Ələt yeni"])): 243,
-        tuple(sorted(["Böyük Kəsik", "İmişli"])): 310,
+    replacements = {
+        'ə': 'e', 'ö': 'o', 'ü': 'u', 'ç': 'c', 'ş': 's', 'ı': 'i', 'ğ': 'g',
+        'ё': 'е', 'й': 'и'
     }
-    
-    return distances_db.get(pair, 300)
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+        
+    text = re.sub(r'[^a-z0-9\s]', '', text)
+    return re.sub(r'\s+', ' ', text).strip()
 
+def extract_code(text: str) -> str:
+    """Извлекает 6-значный код ЕСР из строки"""
+    match = re.search(r'\b\d{6}\b', str(text))
+    return match.group(0) if match else None
 
-def get_route_summary(parsed_data: dict, lang: str = "ru") -> dict:
-    from_st = parsed_data.get("from_station")
-    to_st = parsed_data.get("to_station")
-    
-    if not from_st or not to_st:
-        return {"error": "Станции отправления или назначения не распознаны"}
+def resolve_alat_code(text: str) -> tuple:
+    """ Применяет жесткие правила маппинга для Алята и морских направлений """
+    norm = normalize_name(text)
+    if "trk" in norm or "turk" in norm or "туркмен" in norm:
+        return "Ələt eksport-Türk.", "548803"
+    if "aktau" in norm or "актау" in norm:
+        return "Ələt eksport Aktau", "549204"
+    if "kurik" in norm or "kuryk" in norm or "курык" in norm or "курыт" in norm or "alat eksp" in norm or "alet eksp" in norm or "алят эксп" in norm:
+        return "Ələt eksport Kurik", "553002"
+    if "yeni" in norm or "новый" in norm:
+        return "Ələt yeni", "548703"
+    if "alat" in norm or "alet" in norm or "алят" in norm:
+        return "Ələt", "548502"
+    return None, None
 
-    display_from = format_station_display(from_st, parsed_data, is_from=True, lang=lang)
-    display_to = format_station_display(to_st, parsed_data, is_from=False, lang=lang)
-    
-    distance_km = calculate_distance(from_st, to_st, parsed_data)
+def find_border_column(station_name: str) -> str:
+    norm = normalize_name(station_name)
+    for main_node, aliases in BORDER_NODES.items():
+        for alias in aliases:
+            if normalize_name(alias) in norm:
+                return main_node
+    return None
+
+def parse_distances_file():
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(base_dir, "data", "Distances.txt")
+    if not os.path.exists(file_path):
+        # Резервный поиск, если запуск идет из другой рабочей директории
+        file_path = "Distances.txt"
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Файл {file_path} не найден!")
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+
+    header_idx = -1
+    headers = []
+    for idx, line in enumerate(lines):
+        if "| Stansiyanın adı |" in line or "| Stansiyanın" in line:
+            header_idx = idx
+            headers = [h.strip().replace("*", "") for h in line.split("|")[1:-1]]
+            break
+
+    if header_idx == -1:
+        raise ValueError("Не удалось распознать структуру таблицы в Distances.txt")
+
+    stations_data = {}
+    for line in lines[header_idx + 2:]:
+        if not line.strip() or not line.startswith("|"):
+            continue
+        cols = [c.strip() for c in line.split("|")[1:-1]]
+        if len(cols) < len(headers):
+            continue
+            
+        st_name = cols[0].replace("*", "").strip()
+        st_code = cols[1].replace("*", "").strip()
+        
+        distances = {}
+        for h_name, val in zip(headers[2:], cols[2:]):
+            clean_h_name = h_name.replace("*", "").strip()
+            try:
+                distances[clean_h_name] = int(val.strip())
+            except ValueError:
+                distances[clean_h_name] = None
+                
+        stations_data[st_name] = {
+            "code": st_code,
+            "distances": distances
+        }
+    return stations_data
+
+def match_station(target_name, stations_data):
+    if not target_name:
+        return None, None
+
+    # 1. Проверка маппинга для Алята (Курык, Актау, ТРК)
+    alat_name, alat_code = resolve_alat_code(target_name)
+    if alat_code:
+        for st_key, data in stations_data.items():
+            if data.get("code") == alat_code:
+                return st_key, data
+
+    # 2. Поиск по 6-значному коду ЕСР (самый надежный способ!)
+    target_code = extract_code(target_name)
+    if target_code:
+        for st_key, data in stations_data.items():
+            if data.get("code") == target_code:
+                return st_key, data
+
+    # 3. Поиск по строгому точному совпадению названия
+    norm_target = normalize_name(target_name)
+    for st_key, data in stations_data.items():
+        if normalize_name(st_key) == norm_target:
+            return st_key, data
+
+    # 4. Частичный поиск по названию
+    for st_key, data in stations_data.items():
+        st_norm = normalize_name(st_key)
+        if norm_target == st_norm or (len(norm_target) > 3 and norm_target in st_norm):
+            return st_key, data
+
+    return None, None
+
+def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
+    # Универсальная обработка: если передан dict (из NLU/app.py) или две строки (из calculator.py)
+    if isinstance(from_station, dict):
+        nlu_data = from_station
+        from_st = nlu_data.get("from_station", "")
+        to_st = nlu_data.get("to_station", "")
+        manual_dist = nlu_data.get("manual_distance_km")
+    else:
+        from_st = str(from_station)
+        to_st = str(to_station)
+        manual_dist = None
+
+    stations_data = parse_distances_file()
+
+    name_from, data_from = match_station(from_st, stations_data)
+    name_to, data_to = match_station(to_st, stations_data)
+
+    border_from = find_border_column(from_st)
+    border_to = find_border_column(to_st)
+
+    if not data_from and border_from:
+        name_from, data_from = match_station(border_from, stations_data)
+    if not data_to and border_to:
+        name_to, data_to = match_station(border_to, stations_data)
+
+    code_from = data_from["code"] if data_from else ""
+    code_to = data_to["code"] if data_to else ""
+
+    fmt_from = f"{name_from or from_st}" + (f" ({code_from})" if code_from else "")
+    fmt_to = f"{name_to or to_st}" + (f" ({code_to})" if code_to else "")
+
+    dist = None
+
+    # Если ручное расстояние передано
+    if manual_dist is not None and float(manual_dist or 0) > 0:
+        dist = int(float(manual_dist))
+
+    if dist is None and border_from and border_to:
+        _, data_border_to = match_station(border_to, stations_data)
+        if data_border_to:
+            for h_key, d_val in data_border_to["distances"].items():
+                if normalize_name(h_key) == normalize_name(border_from):
+                    dist = d_val
+                    break
+
+    if dist is None and border_to and data_from:
+        for h_key, d_val in data_from["distances"].items():
+            if normalize_name(h_key) == normalize_name(border_to):
+                dist = d_val
+                break
+
+    if dist is None and border_from and data_to:
+        for h_key, d_val in data_to["distances"].items():
+            if normalize_name(h_key) == normalize_name(border_from):
+                dist = d_val
+                break
+
+    if dist is None:
+        raise ValueError(f"Не удалось определить расстояние между '{from_st}' и '{to_st}'.")
 
     return {
-        "route_display": f"{display_from} – {display_to}",
-        "route_formatted": f"{display_from} – {display_to}",
-        "distance_km": distance_km,
-        "shipment_type": parsed_data.get("shipment_type"),
-        "from_station_raw": from_st,
-        "to_station_raw": to_st
+        "distance_km": dist,
+        "from_formatted": fmt_from,
+        "to_formatted": fmt_to,
+        "route_formatted": f"{fmt_from} – {fmt_to}",
+        "route_display": f"{fmt_from} – {fmt_to}"
     }
 
-# Обёртка для совместимости с app.py и calculator.py
-def get_route_info(nlu_data: dict, lang: str = "AZ") -> dict:
-    return get_route_summary(nlu_data, lang=lang)
+def get_route_distance(from_station: str, to_station: str) -> int:
+    return get_route_info(from_station, to_station)["distance_km"]
+
+get_distance_between_stations = get_route_distance
+get_route_summary = get_route_info
