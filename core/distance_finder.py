@@ -206,17 +206,18 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
     # 1. Форматируем станцию отправления
     fmt_from = format_display_name(raw_user_text or from_st, name_from or from_st, code_from, lang=lang)
 
-    # 2. Прямая проверка для станций назначения (Ələt-eksp):
-    # Если в запросе/JSON есть Алят и эксп/экс, но НЕТ конкретного порта (Курык/Актау/ТРК)
-    norm_check = normalize_name(f"{raw_user_text} {to_st}")
-    has_specific_port = bool(re.search(r'\b(kurik|kuryk|курык|курыт|aktau|актау|trk|turk|туркмен)\b', norm_check))
-    is_alat_exp = ("alat" in norm_check or "alet" in norm_check or "алят" in norm_check) and \
-                  any(e in norm_check for e in ["eksp", "eks", "exp", "экс", "эксп", "экспорт"])
+    # 2. Форматируем станцию назначения
+    fmt_to = format_display_name(raw_user_text or to_st, name_to or to_st, code_to, lang=lang)
 
-    if is_alat_exp and not has_specific_port:
+    # Жесткое правило форматирования для Алят:
+    # Если в тексте ввода или NLU есть Алят/эксп, но нет явного названия порта (Курык, Актау, ТРК)
+    combined_text = normalize_name(f"{raw_user_text} {to_st}")
+    has_specific_port = bool(re.search(r'\b(kurik|kuryk|курык|курыт|aktau|актау|trk|turk|туркмен)\b', combined_text))
+    is_general_alat = ("alat" in combined_text or "alet" in combined_text or "алят" in combined_text) and \
+                       any(e in combined_text for e in ["eksp", "eks", "exp", "экс", "эксп", "экспорт"])
+
+    if is_general_alat and not has_specific_port:
         fmt_to = "Ələt-eksp."
-    else:
-        fmt_to = format_display_name(raw_user_text or to_st, name_to or to_st, code_to, lang=lang)
 
     dist = None
 
