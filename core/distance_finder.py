@@ -145,14 +145,14 @@ def format_display_name(raw_input: str, matched_name: str, code: str, lang: str 
     norm_raw = normalize_name(raw_input)
     norm_matched = normalize_name(matched_name)
 
-    # 1. Проверяем, есть ли в тексте конкретно указанный порт переправы
-    has_specific_port = any(p in norm_raw for p in ["kurik", "kuryk", "курык", "курыт", "aktau", "актау", "trk", "turk", "туркмен"])
+    # 1. Точная проверка наличия конкретного порта (по отдельным словам, а не внутри других слов)
+    has_specific_port = bool(re.search(r'\b(kurik|kuryk|курык|курыт|aktau|актау|trk|turk|туркмен)\b', norm_raw))
 
-    # 2. Проверяем Алят и любой корень слова (экс, эксп, экспорт, exp, eksp) через regex
+    # 2. Проверяем Алят и любой корень слова (eks, eksp, exp, экс, эксп, экспорт)
     is_alat = any(a in norm_raw for a in ["alat", "alet", "алят"])
     has_exp_root = bool(re.search(r'\b(eks|eksp|exp|экс|эксп|экспорт)', norm_raw)) or "eksp" in norm_matched
 
-    # Если обобщенный Алят-эксп (без конкретного порта) — выводим без кода
+    # Если это обобщенный Алят-эксп без вызова конкретного порта — выводим без кода
     if is_alat and has_exp_root and not has_specific_port:
         return "Ələt-eksp."
 
