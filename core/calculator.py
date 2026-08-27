@@ -56,9 +56,15 @@ def calculate_freight(
         raw_distance = manual_dist_val
         route_formatted = f"{from_station} – {to_station}"
     else:
-        route_data = get_route_info(from_station, to_station)
-        raw_distance = route_data["distance_km"]
-        route_formatted = route_data["route_formatted"]
+        # Передаем словарь в get_route_info, как требует distance_finder.py
+        dummy_nlu = {
+            "from_station": from_station,
+            "to_station": to_station,
+            "shipment_type": shipment_type
+        }
+        route_data = get_route_info(dummy_nlu, lang=lang)
+        raw_distance = route_data.get("distance_km", 300)
+        route_formatted = route_data.get("route_formatted") or route_data.get("route_display", f"{from_station} – {to_station}")
 
     route_info = calculate_tariff_distance(raw_distance, shipment_type)
     calc_distance = route_info["calculated_distance_km"]
