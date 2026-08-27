@@ -204,10 +204,12 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
 
-    # Применяем новое динамическое форматирование
-    fmt_from = format_display_name(from_st, name_from or from_st, code_from, lang=lang)
-    fmt_to = format_display_name(to_st, name_to or to_st, code_to, lang=lang)
+    # Передаем исходный текст (из nlu_data или аргумента), чтобы корректно распознать "экс" / "эксп"
+    raw_text_from = nlu_data.get("raw_text", from_st) if isinstance(from_station, dict) else from_st
+    raw_text_to = nlu_data.get("raw_text", to_st) if isinstance(from_station, dict) else to_st
 
+    fmt_from = format_display_name(raw_text_from, name_from or from_st, code_from, lang=lang)
+    fmt_to = format_display_name(raw_text_to, name_to or to_st, code_to, lang=lang)
     dist = None
 
     if manual_dist is not None and float(manual_dist or 0) > 0:
