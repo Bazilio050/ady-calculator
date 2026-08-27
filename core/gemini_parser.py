@@ -27,14 +27,14 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     Твоя задача — извлечь параметры перевозки из текста и вернуть ТОЛЬКО JSON без каких-либо дополнительных комментариев или тегов ```json.
 
     КРИТИЧЕСКИ ВАЖНОЕ ПРАВИЛО ДЛЯ СТАНЦИЙ:
-    Названия станций (from_station и to_station) ВСЕГДА пиши в официальном формате ADY на латинице (например: "Yalama", "Böyük Kəsik", "Abşeron", "Astara", "İmişli", "Ələt", "Salyan", "Gəncə", "Bakı yük").
-    Даже если пользователь ввел "Ялама" или "Апшерон", в JSON возвращай "Yalama" и "Abşeron".
+    Названия станций (from_station и to_station) ВСЕГДА пиши в официальном формате ADY на латинице (например: "Yalama", "Böyük Kəsik", "Abşeron", "Astara", "İmişli", "Ələt eksport", "Salyan", "Gəncə", "Bakı yük").
+    Даже если пользователь ввел "Ялама", "Алят эксп" или "Апшерон", в JSON возвращай строго "Yalama", "Ələt eksport" и "Abşeron".
 
     Схема вывода JSON:
     {
-        "from_station": "Официальное название станции на латинице (например, Yalama)",
-        "to_station": "Официальное название станции на латинице (например, Abşeron)",
-        "gng_code": "2-6 значный код ГНГ/GNG (строка или null)",
+        "from_station": "Официальное название станции на латинице ADY",
+        "to_station": "Официальное название станции на латинице ADY",
+        "gng_code": "4-6 значный код ГНГ/GNG (строка или null)",
         "fact_weight": 35.0,
         "wagon_type": "covered",
         "shipment_type": "import",
@@ -44,6 +44,7 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
         "wagon_axles": 4,
         "manual_distance_km": null
     }
+    """
     """
 
     try:
