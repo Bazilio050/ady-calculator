@@ -153,15 +153,16 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
 
     stations_data = parse_distances_file()
 
+    # 1. Пограничный стык определяем только для пограничной станции
     border_from = find_border_column(from_st)
     border_to = find_border_column(to_st)
 
-    # Приоритет отдаем пограничной станции из таблицы, если это пограничный узел
+    # 2. Поиск первой станции (если это пограничный узел, запрашиваем его стык из таблицы)
     search_from = border_from if border_from else from_st
-    search_to = border_to if border_to else to_st
-
     name_from, data_from = match_station(search_from, stations_data)
-    name_to, data_to = match_station(search_to, stations_data)
+
+    # 3. Поиск второй станции (ВСЕГДА ищем точное название назначения)
+    name_to, data_to = match_station(to_st, stations_data)
 
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
@@ -174,7 +175,7 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
     if manual_dist is not None and float(manual_dist or 0) > 0:
         dist = int(float(manual_dist))
 
-    # Рассчитываем километрику через пограничный столб
+    # 4. Вычитываем расстояние до станции назначения из пограничной колонки
     if dist is None and border_from and data_to:
         for h_key, d_val in data_to["distances"].items():
             if normalize_name(h_key) == normalize_name(border_from):
