@@ -14,6 +14,7 @@ from google import genai
 from core.gemini_parser import parse_user_request
 from core.distance_finder import get_route_info
 from core.calculator import calculate_freight
+
 st.set_page_config(
     page_title="ADY — Tariff Calculator", 
     page_icon="🚆", 
@@ -346,18 +347,28 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             nlu_res = parse_user_request(current_input, lang=selected_lang)
             st.session_state.nlu_res = nlu_res
 
-            # 2. Поиск расстояния и отформатированных наименований через distance_finder
-            route_info = get_route_info(nlu_res, lang=selected_lang)
-            
-            # Добавляем вычисленное расстояние и отформатированный маршрут в словарь для расчёта
-            nlu_res["distance_km"] = route_info["distance_km"]
-            nlu_res["route_formatted"] = route_info["route_formatted"]
+            # ЗАЩИТА: Проверяем, вернул ли парсер корректный словарь
+            if not isinstance(nlu_res, dict):
+                loader_placeholder.empty()
+                st.error("Ошибка распознавания: ответ Gemini имеет неверный формат.")
+                st.session_state.calc_result = None
+            elif "error" in nlu_res:
+                loader_placeholder.empty()
+                st.error(nlu_res["error"])
+                st.session_state.calc_result = None
+            else:
+                # 2. Поиск расстояния и отформатированных наименований через distance_finder
+                route_info = get_route_info(nlu_res, lang=selected_lang)
+                
+                # Добавляем вычисленное расстояние и отформатированный маршрут в словарь для расчёта
+                nlu_res["distance_km"] = route_info.get("distance_km", 0)
+                nlu_res["route_formatted"] = route_info.get("route_formatted") or route_info.get("route_display", "")
 
-            # 3. Расчет тарифа через calculator
-            calc_res = calculate_freight(**nlu_res, lang=selected_lang)
-            st.session_state.calc_result = calc_res
-            st.session_state.missing_data = None
-            loader_placeholder.empty()
+                # 3. Расчет тарифа через calculator
+                calc_res = calculate_freight(**nlu_res, lang=selected_lang)
+                st.session_state.calc_result = calc_res
+                st.session_state.missing_data = None
+                loader_placeholder.empty()
 
         except ValueError as val_err:
             loader_placeholder.empty()
@@ -368,7 +379,7 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             st.error(f"Ошибка при расчете: {str(e)}")
             st.session_state.calc_result = None
 
-# ВЫВОД РЕЗУЛЬТАТОВ РАСЧЕТА (В ТОЧНОСТИ КАК НА СКРИНШОТЕ)
+# ВЫВОД РЕЗУЛЬТАТОВ РАСЧЕТА
 if st.session_state.calc_result:
     data = st.session_state.calc_result
     st.success(t["success"].format(selected_year))
