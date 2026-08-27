@@ -184,10 +184,12 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
         from_st = nlu_data.get("from_station", "")
         to_st = nlu_data.get("to_station", "")
         manual_dist = nlu_data.get("manual_distance_km")
+        raw_user_text = nlu_data.get("raw_input", "")
     else:
         from_st = str(from_station)
         to_st = str(to_station)
         manual_dist = None
+        raw_user_text = ""
 
     stations_data = parse_distances_file()
 
@@ -201,17 +203,21 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
 
-    # Передаем исходный текст (из nlu_data или аргумента), чтобы корректно распознать "экс" / "эксп"
-    raw_text_from = nlu_data.get("raw_text", from_st) if isinstance(from_station, dict) else from_st
-    raw_text_to = nlu_data.get("raw_text", to_st) if isinstance(from_station, dict) else to_st
+    # 1. Форматируем станцию отправления
+    fmt_from = format_display_name(raw_user_text or from_st, name_from or from_st, code_from, lang=lang)
 
-    # Извлекаем оригинальный текст пользователя для точной проверки вариаций "экс/эксп/экспорт"
-    raw_user_text = nlu_data.get("raw_input", "") if isinstance(from_station, dict) else ""
-    raw_text_from = raw_user_text if raw_user_text else from_st
-    raw_text_to = raw_user_text if raw_user_text else to_st
+    # 2. Прямая проверка для станций назначения (Ələt-eksp):
+    # Если в запросе/JSON есть Алят и эксп/экс, но НЕТ конкретного порта (Курык/Актау/ТРК)
+    norm_check = normalize_name(f"{raw_user_text} {to_st}")
+    has_specific_port = bool(re.search(r'\b(kurik|kuryk|курык|курыт|aktau|актау|trk|turk|туркмен)\b', norm_check))
+    is_alat_exp = ("alat" in norm_check or "alet" in norm_check or "алят" in norm_check) and \
+                  any(e in norm_check for e in ["eksp", "eks", "exp", "экс", "эксп", "экспорт"])
 
-    fmt_from = format_display_name(raw_text_from, name_from or from_st, code_from, lang=lang)
-    fmt_to = format_display_name(raw_text_to, name_to or to_st, code_to, lang=lang)
+    if is_alat_exp and not has_specific_port:
+        fmt_to = "Ələt-eksp."
+    else:
+        fmt_to = format_display_name(raw_user_text or to_st, name_to or to_st, code_to, lang=lang)
+
     dist = None
 
     if manual_dist is not None and float(manual_dist or 0) > 0:
