@@ -45,8 +45,7 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
         "manual_distance_km": null
     }
     """
-    """
-
+    
     try:
         response = client.models.generate_content(
             model="gemini-3.5-flash-lite",
