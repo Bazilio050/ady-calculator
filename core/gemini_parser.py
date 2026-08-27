@@ -68,6 +68,7 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
             return {"error": f"Gemini вернул не словарь, а {type(parsed_data).__name__}"}
 
         return {
+            "raw_input": user_prompt,  # <-- ДОБАВЛЕНО: сохраняем исходный текст ввода!
             "from_station": parsed_data.get("from_station", ""),
             "to_station": parsed_data.get("to_station", ""),
             "gng_code": str(parsed_data.get("gng_code")) if parsed_data.get("gng_code") else None,
