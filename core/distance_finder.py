@@ -145,20 +145,17 @@ def format_display_name(raw_input: str, matched_name: str, code: str, lang: str 
     norm_raw = normalize_name(raw_input)
     norm_matched = normalize_name(matched_name)
 
-    # 1. Проверяем наличие конкретного порта строго по отдельным словам (\b)
+    # 1. Проверяем, вводил ли пользователь КОНКРЕТНЫЙ порт (Курык, Актау, ТРК)
     has_specific_port = bool(re.search(r'\b(kurik|kuryk|курык|курыт|aktau|актау|trk|turk|туркмен)\b', norm_raw))
 
-    # 2. Проверяем Алят и любой корень слова (eks, eksp, exp, экс, эксп, экспорт)
-    is_alat = any(a in norm_raw for a in ["alat", "alet", "алят"])
-    has_exp_root = bool(re.search(r'\b(eks|eksp|exp|экс|эксп|экспорт)', norm_raw)) or "eksp" in norm_matched
-
-    # Если обобщенный Алят-эксп (без указания точного порта) — выводим без кода
-    if is_alat and has_exp_root and not has_specific_port:
+    # 2. Если в запросе просто обобщенный Алят (эксп, экс, экспорт) без указания порта — выводим Ələt-eksp. без кода
+    is_alat = any(a in norm_matched for a in ["alat", "alet", "алят"]) or any(a in norm_raw for a in ["alat", "alet", "алят"])
+    
+    if is_alat and not has_specific_port:
         return "Ələt-eksp."
 
     # 3. Правило для пограничных станций (Ялама, Астара, Беюк Кясик, Джульфа)
     suf = "-eksp." if lang.upper() in ["AZ", "RU"] else "-exp."
-    
     clean_name = matched_name.replace("(eksport)", "").replace("eksport", "").replace("eks.aşır", "").strip()
     
     if "yalama" in norm_matched:
