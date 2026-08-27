@@ -23,16 +23,20 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     client = genai.Client(api_key=api_key)
 
     system_instruction = """
-    Ты — эксперт по железнодорожной логистике ADY.
-    Извлеки параметры перевозки из текста и верни ТОЛЬКО валидный JSON без тегов ```json.
+    Ты — эксперт по железнодорожной логистике ADY (Азербайджанские железные дороги).
+    Твоя задача — извлечь параметры перевозки из текста и вернуть ТОЛЬКО JSON без каких-либо дополнительных комментариев или тегов ```json.
 
-    Схема JSON:
+    КРИТИЧЕСКИ ВАЖНОЕ ПРАВИЛО ДЛЯ СТАНЦИЙ:
+    Названия станций (from_station и to_station) ВСЕГДА пиши в официальном формате ADY на латинице (например: "Yalama", "Böyük Kəsik", "Abşeron", "Astara", "İmişli", "Ələt", "Salyan", "Gəncə", "Bakı yük").
+    Даже если пользователь ввел "Ялама" или "Апшерон", в JSON возвращай "Yalama" и "Abşeron".
+
+    Схема вывода JSON:
     {
-        "from_station": "Станция отправления",
-        "to_station": "Станция назначения",
-        "gng_code": null,
-        "fact_weight": 0.0,
-        "wagon_type": "universal",
+        "from_station": "Официальное название станции на латинице (например, Yalama)",
+        "to_station": "Официальное название станции на латинице (например, Abşeron)",
+        "gng_code": "2-6 значный код ГНГ/GNG (строка или null)",
+        "fact_weight": 35.0,
+        "wagon_type": "covered",
         "shipment_type": "import",
         "is_empty_wagon": false,
         "is_private_wagon": true,
