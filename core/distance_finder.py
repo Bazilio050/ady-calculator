@@ -145,13 +145,18 @@ def format_display_name(raw_input: str, matched_name: str, code: str, lang: str 
     norm_raw = normalize_name(raw_input)
     norm_matched = normalize_name(matched_name)
 
-    # 1. Если был абстрактный запрос "Алят эксп" (без явно указанных Курык, Актау, ТРК)
+    # 1. Проверяем, есть ли в тексте конкретно указанный порт переправы
     has_specific_port = any(p in norm_raw for p in ["kurik", "kuryk", "курык", "курыт", "aktau", "актау", "trk", "turk", "туркмен"])
-    if ("alat" in norm_raw or "alet" in norm_raw or "алят" in norm_raw) and ("eksp" in norm_raw or "эксп" in norm_raw):
-        if not has_specific_port:
-            return "Ələt-eksp."
 
-    # 2. Правило для пограничных станций (Ялама, Астара, Беюк Кясик, Джульфа)
+    # 2. Проверяем Алят и любой корень слова (экс, эксп, экспорт, exp, eksp) через regex
+    is_alat = any(a in norm_raw for a in ["alat", "alet", "алят"])
+    has_exp_root = bool(re.search(r'\b(eks|eksp|exp|экс|эксп|экспорт)', norm_raw)) or "eksp" in norm_matched
+
+    # Если обобщенный Алят-эксп (без конкретного порта) — выводим без кода
+    if is_alat and has_exp_root and not has_specific_port:
+        return "Ələt-eksp."
+
+    # 3. Правило для пограничных станций (Ялама, Астара, Беюк Кясик, Джульфа)
     suf = "-eksp." if lang.upper() in ["AZ", "RU"] else "-exp."
     
     clean_name = matched_name.replace("(eksport)", "").replace("eksport", "").replace("eks.aşır", "").strip()
