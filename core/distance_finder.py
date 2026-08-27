@@ -16,7 +16,7 @@ BORDER_NODES = {
 }
 
 def normalize_name(text: str) -> str:
-    """ Нормализует название станции """
+    """ Нормализует название станции: регистр, символы **, азербайджанская кириллица/латиница, пробелы """
     if not text:
         return ""
     text = text.lower().strip()
@@ -24,7 +24,7 @@ def normalize_name(text: str) -> str:
     
     replacements = {
         'ə': 'e', 'ö': 'o', 'ü': 'u', 'ç': 'c', 'ş': 's', 'ı': 'i', 'ğ': 'g',
-        'ё': 'е', 'й': 'и'
+        'ё': 'е', 'й': 'и', 'я': 'a'
     }
     for k, v in replacements.items():
         text = text.replace(k, v)
