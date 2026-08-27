@@ -140,6 +140,42 @@ def match_station(target_name, stations_data):
 
     return None, None
 
+def format_display_name(raw_input: str, matched_name: str, code: str, lang: str = "AZ") -> str:
+    """ Форматирует вывод станции на экран по правилам ADY """
+    norm_raw = normalize_name(raw_input)
+    norm_matched = normalize_name(matched_name)
+
+    # 1. Если был абстрактный запрос "Алят эксп" (без явно указанных Курык, Актау, ТРК)
+    has_specific_port = any(p in norm_raw for p in ["kurik", "kuryk", "курык", "курыт", "aktau", "актау", "trk", "turk", "туркмен"])
+    if ("alat" in norm_raw or "alet" in norm_raw or "алят" in norm_raw) and ("eksp" in norm_raw or "эксп" in norm_raw):
+        if not has_specific_port:
+            return "Ələt-eksp."
+
+    # 2. Правило для пограничных станций (Ялама, Астара, Беюк Кясик, Джульфа)
+    suf = "-eksp." if lang.upper() in ["AZ", "RU"] else "-exp."
+    
+    clean_name = matched_name.replace("(eksport)", "").replace("eksport", "").replace("eks.aşır", "").strip()
+    
+    if "yalama" in norm_matched:
+        clean_name = "Yalama"
+    elif "astara" in norm_matched:
+        clean_name = "Astara"
+    elif "boyuk" in norm_matched or "kesik" in norm_matched:
+        clean_name = "Böyük Kəsik"
+    elif "culfa" in norm_matched:
+        clean_name = "Culfa"
+
+    is_border = any(b_key in norm_matched for b_key in ["yalama", "astara", "boyuk", "kesik", "culfa"])
+    
+    if is_border:
+        display_name = f"{clean_name}{suf}"
+    else:
+        display_name = clean_name
+
+    if code:
+        return f"{display_name} ({code})"
+    return display_name
+
 def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
     if isinstance(from_station, dict):
         nlu_data = from_station
@@ -153,29 +189,25 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
 
     stations_data = parse_distances_file()
 
-    # 1. Пограничный стык определяем только для пограничной станции
     border_from = find_border_column(from_st)
     border_to = find_border_column(to_st)
 
-    # 2. Поиск первой станции (если это пограничный узел, запрашиваем его стык из таблицы)
     search_from = border_from if border_from else from_st
     name_from, data_from = match_station(search_from, stations_data)
-
-    # 3. Поиск второй станции (ВСЕГДА ищем точное название назначения)
     name_to, data_to = match_station(to_st, stations_data)
 
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
 
-    fmt_from = f"{name_from or from_st}" + (f" ({code_from})" if code_from else "")
-    fmt_to = f"{name_to or to_st}" + (f" ({code_to})" if code_to else "")
+    # Применяем новое динамическое форматирование
+    fmt_from = format_display_name(from_st, name_from or from_st, code_from, lang=lang)
+    fmt_to = format_display_name(to_st, name_to or to_st, code_to, lang=lang)
 
     dist = None
 
     if manual_dist is not None and float(manual_dist or 0) > 0:
         dist = int(float(manual_dist))
 
-    # 4. Вычитываем расстояние до станции назначения из пограничной колонки
     if dist is None and border_from and data_to:
         for h_key, d_val in data_to["distances"].items():
             if normalize_name(h_key) == normalize_name(border_from):
