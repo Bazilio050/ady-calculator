@@ -16,7 +16,7 @@ BORDER_NODES = {
 }
 
 def normalize_name(text: str) -> str:
-    """ Нормализует название станции: регистр, символы **, азербайджанская кириллица/латиница, пробелы """
+    """ Нормализует название станции """
     if not text:
         return ""
     text = text.lower().strip()
@@ -33,12 +33,10 @@ def normalize_name(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
 def extract_code(text: str) -> str:
-    """Извлекает 6-значный код ЕСР из строки"""
     match = re.search(r'\b\d{6}\b', str(text))
     return match.group(0) if match else None
 
 def resolve_alat_code(text: str) -> tuple:
-    """ Применяет жесткие правила маппинга для Алята и морских направлений """
     norm = normalize_name(text)
     if "trk" in norm or "turk" in norm or "туркмен" in norm:
         return "Ələt eksport-Türk.", "548803"
@@ -56,7 +54,7 @@ def find_border_column(station_name: str) -> str:
     norm = normalize_name(station_name)
     for main_node, aliases in BORDER_NODES.items():
         for alias in aliases:
-            if normalize_name(alias) in norm:
+            if normalize_name(alias) == norm or (len(norm) >= 4 and normalize_name(alias) in norm):
                 return main_node
     return None
 
@@ -64,7 +62,8 @@ def parse_distances_file():
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     file_path = os.path.join(base_dir, "data", "Distances.txt")
     if not os.path.exists(file_path):
-        # Резервный поиск, если запуск идет из другой рабочей директории
+        file_path = os.path.join(base_dir, "Distances.txt")
+    if not os.path.exists(file_path):
         file_path = "Distances.txt"
 
     if not os.path.exists(file_path):
@@ -113,27 +112,27 @@ def match_station(target_name, stations_data):
     if not target_name:
         return None, None
 
-    # 1. Проверка маппинга для Алята (Курык, Актау, ТРК)
+    # 1. Алят
     alat_name, alat_code = resolve_alat_code(target_name)
     if alat_code:
         for st_key, data in stations_data.items():
             if data.get("code") == alat_code:
                 return st_key, data
 
-    # 2. Поиск по 6-значному коду ЕСР (самый надежный способ!)
+    # 2. Поиск по коду
     target_code = extract_code(target_name)
     if target_code:
         for st_key, data in stations_data.items():
             if data.get("code") == target_code:
                 return st_key, data
 
-    # 3. Поиск по строгому точному совпадению названия
+    # 3. Точный поиск
     norm_target = normalize_name(target_name)
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm_target:
             return st_key, data
 
-    # 4. Частичный поиск по названию
+    # 4. Частичное совпадение
     for st_key, data in stations_data.items():
         st_norm = normalize_name(st_key)
         if norm_target == st_norm or (len(norm_target) > 3 and norm_target in st_norm):
@@ -142,7 +141,6 @@ def match_station(target_name, stations_data):
     return None, None
 
 def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
-    # Универсальная обработка: если передан dict (из NLU/app.py) или две строки (из calculator.py)
     if isinstance(from_station, dict):
         nlu_data = from_station
         from_st = nlu_data.get("from_station", "")
@@ -155,16 +153,15 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
 
     stations_data = parse_distances_file()
 
-    name_from, data_from = match_station(from_st, stations_data)
-    name_to, data_to = match_station(to_st, stations_data)
-
     border_from = find_border_column(from_st)
     border_to = find_border_column(to_st)
 
-    if not data_from and border_from:
-        name_from, data_from = match_station(border_from, stations_data)
-    if not data_to and border_to:
-        name_to, data_to = match_station(border_to, stations_data)
+    # Приоритет отдаем пограничной станции из таблицы, если это пограничный узел
+    search_from = border_from if border_from else from_st
+    search_to = border_to if border_to else to_st
+
+    name_from, data_from = match_station(search_from, stations_data)
+    name_to, data_to = match_station(search_to, stations_data)
 
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
@@ -174,17 +171,15 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
 
     dist = None
 
-    # Если ручное расстояние передано
     if manual_dist is not None and float(manual_dist or 0) > 0:
         dist = int(float(manual_dist))
 
-    if dist is None and border_from and border_to:
-        _, data_border_to = match_station(border_to, stations_data)
-        if data_border_to:
-            for h_key, d_val in data_border_to["distances"].items():
-                if normalize_name(h_key) == normalize_name(border_from):
-                    dist = d_val
-                    break
+    # Рассчитываем километрику через пограничный столб
+    if dist is None and border_from and data_to:
+        for h_key, d_val in data_to["distances"].items():
+            if normalize_name(h_key) == normalize_name(border_from):
+                dist = d_val
+                break
 
     if dist is None and border_to and data_from:
         for h_key, d_val in data_from["distances"].items():
@@ -192,14 +187,8 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
                 dist = d_val
                 break
 
-    if dist is None and border_from and data_to:
-        for h_key, d_val in data_to["distances"].items():
-            if normalize_name(h_key) == normalize_name(border_from):
-                dist = d_val
-                break
-
     if dist is None:
-        raise ValueError(f"Не удалось определить расстояние между '{from_st}' и '{to_st}'.")
+        dist = 0
 
     return {
         "distance_km": dist,
@@ -209,8 +198,4 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
         "route_display": f"{fmt_from} – {fmt_to}"
     }
 
-def get_route_distance(from_station: str, to_station: str) -> int:
-    return get_route_info(from_station, to_station)["distance_km"]
-
-get_distance_between_stations = get_route_distance
 get_route_summary = get_route_info
