@@ -166,18 +166,23 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     border_from = find_border_column(from_station)
     border_to = find_border_column(to_station)
 
-    # В приоритете пограничные стыки
-    name_from, data_from = match_station(border_from or from_station, stations_data)
-    name_to, data_to = match_station(border_to or to_station, stations_data)
+    # УНИВЕРСАЛЬНАЯ ЛОГИКА: если найден погранпереход, ищем его напрямую в базе
+    if border_from and border_from in stations_data:
+        name_from, data_from = border_from, stations_data[border_from]
+    else:
+        name_from, data_from = match_station(from_station, stations_data)
+
+    if border_to and border_to in stations_data:
+        name_to, data_to = border_to, stations_data[border_to]
+    else:
+        name_to, data_to = match_station(to_station, stations_data)
 
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
 
-    # Исходное имя ADY из файла Distances.txt
     raw_from_name = name_from or from_station
     raw_to_name = name_to or to_station
 
-    # Локализованное название под язык сайта (AZ / RU / EN)
     loc_from_name = get_localized_station_name(raw_from_name, lang=lang)
     loc_to_name = get_localized_station_name(raw_to_name, lang=lang)
 
@@ -196,7 +201,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
                 return d_val
         return None
 
-    # Поиск километража в матрице расстояний
     if data_to:
         dist = get_dist_from_data(data_to, border_from or name_from)
 
@@ -213,6 +217,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
         "route_formatted": f"{fmt_from} – {fmt_to}",
         "raw_from_name": raw_from_name,
         "raw_to_name": raw_to_name
+    }
     }
 
 def get_route_distance(from_station: str, to_station: str) -> int:
