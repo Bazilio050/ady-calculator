@@ -42,12 +42,11 @@ def resolve_alat_code(text: str) -> tuple:
         return "Ələt eksport-Türk.", "548803"
     if "aktau" in norm or "актау" in norm:
         return "Ələt eksport Aktau", "549204"
-    if "kurik" in norm or "kuryk" in norm or "курык" in norm or "курыт" in norm or "alat eksp" in norm or "alet eksp" in norm or "алят эксп" in norm:
+    if "kurik" in norm or "kuryk" in norm or "курык" in norm or "курыт" in norm:
         return "Ələt eksport Kurik", "553002"
-    if "yeni" in norm or "новый" in norm:
-        return "Ələt yeni", "548703"
+    # Для обобщенного Алят-эксп берем базовый код Алята (553002 / 548502) для расчета расстояния 271 км
     if "alat" in norm or "alet" in norm or "алят" in norm:
-        return "Ələt", "548502"
+        return "Ələt", "553002"
     return None, None
 
 def find_border_column(station_name: str) -> str:
@@ -210,11 +209,15 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
     fmt_to = format_display_name(raw_user_text or to_st, name_to or to_st, code_to, lang=lang)
 
     # Жесткое правило форматирования для Алят:
-    # Если в тексте ввода или NLU есть Алят/эксп, но нет явного названия порта (Курык, Актау, ТРК)
-    combined_text = normalize_name(f"{raw_user_text} {to_st}")
-    has_specific_port = bool(re.search(r'\b(kurik|kuryk|курык|курыт|aktau|актау|trk|turk|туркмен)\b', combined_text))
-    is_general_alat = ("alat" in combined_text or "alet" in combined_text or "алят" in combined_text) and \
-                       any(e in combined_text for e in ["eksp", "eks", "exp", "экс", "эксп", "экспорт"])
+    # Проверяем конкретные порты СТРОГО в исходном вводе пользователя (raw_user_text)
+    norm_raw_user = normalize_name(raw_user_text)
+    norm_to_st = normalize_name(to_st)
+    
+    has_specific_port = bool(re.search(r'\b(kurik|kuryk|курык|курыт|aktau|актау|trk|turk|туркмен)\b', norm_raw_user))
+    
+    combined_check = f"{norm_raw_user} {norm_to_st}"
+    is_general_alat = ("alat" in combined_check or "alet" in combined_check or "алят" in combined_check) and \
+                       any(e in combined_check for e in ["eksp", "eks", "exp", "экс", "эксп", "экспорт"])
 
     if is_general_alat and not has_specific_port:
         fmt_to = "Ələt-eksp."
