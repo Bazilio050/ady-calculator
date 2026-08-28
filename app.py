@@ -345,7 +345,6 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
         try:
             # 1. Распознавание через gemini_parser
             nlu_res = parse_user_request(current_input, lang=selected_lang)
-            st.session_state.nlu_res = nlu_res
 
             # ЗАЩИТА: Проверяем, вернул ли парсер корректный словарь
             if not isinstance(nlu_res, dict):
@@ -357,19 +356,21 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 st.error(nlu_res["error"])
                 st.session_state.calc_result = None
             else:
-                # Поиск расстояния и подготовка отформатированных имен
+                # 2. Поиск расстояния и подготовка отформатированных имен
                 route_info = get_route_info(nlu_res, lang=selected_lang)
                 
                 # Записываем дистанцию и отформатированный маршрут
                 nlu_res["distance_km"] = route_info.get("distance_km", 0)
                 nlu_res["route_formatted"] = route_info.get("route_formatted") or route_info.get("route_display", "")
 
-                # ПРИНУДИТЕЛЬНО обновляем станции значениями из route_info,
-                # чтобы в JSON выводилось Ələt-eksp. вместо Ələt Aktau
+                # ПРИНУДИТЕЛЬНО обновляем станции значениями из route_info
                 if route_info.get("from_formatted"):
                     nlu_res["from_station"] = route_info["from_formatted"]
                 if route_info.get("to_formatted"):
                     nlu_res["to_station"] = route_info["to_formatted"]
+
+                # СОХРАНЯЕМ ОБНОВЛЕННЫЙ NLU_RES В SESSION STATE ДЛЯ ДИСПЛЕЯ В ST.JSON
+                st.session_state.nlu_res = nlu_res
 
                 # 3. Расчет тарифа через calculator
                 calc_res = calculate_freight(**nlu_res, lang=selected_lang)
