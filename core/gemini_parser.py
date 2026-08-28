@@ -47,8 +47,7 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     }
     """
     
-    try:
-        max_retries = 3
+    max_retries = 3
     response = None
 
     for attempt in range(max_retries):
@@ -69,14 +68,24 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
                 time.sleep(1)
                 continue
             else:
-                raise e
+                return {"error": f"Ошибка Gemini API: {str(e)}"}
+
+    if not response or not response.text:
+        return {"error": "Не удалось получить ответ от Gemini API."}
+
+    try:
+        raw_text = response.text.strip()
+        raw_text = re.sub(r"^```json\s*", "", raw_text)
+        raw_text = re.sub(r"\s*```$", "", raw_text)
+
+        parsed_data = json.loads(raw_text)
 
         # Защита: проверяем, что распарсенный результат — это словарь
         if not isinstance(parsed_data, dict):
             return {"error": f"Gemini вернул не словарь, а {type(parsed_data).__name__}"}
 
         return {
-            "raw_input": user_prompt,  # <-- ДОБАВЛЕНО: сохраняем исходный текст ввода!
+            "raw_input": user_prompt,
             "from_station": parsed_data.get("from_station", ""),
             "to_station": parsed_data.get("to_station", ""),
             "gng_code": str(parsed_data.get("gng_code")) if parsed_data.get("gng_code") else None,
@@ -91,5 +100,4 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
         }
 
     except Exception as e:
-        # Гарантируем возврат словаря с ключом error
-        return {"error": f"Ошибка Gemini API: {str(e)}"}
+        return {"error": f"Ошибка обработки ответа Gemini: {str(e)}"}
