@@ -13,20 +13,6 @@ except ImportError:
         def get_localized_station_name(name, lang="AZ"):
             return name
 
-BORDER_NODES = {
-    "Yalama (eksport)": ["yalama", "yalama-eksport", "yalama eksport", "ялама", "ялама-эксп", "ялама экспорт"],
-    "Astara (eksport)": ["astara", "astara-eksport", "astara eksport", "астара", "астара-эксп", "астара экспорт"],
-    "Böyük Kəsik (eksport)": [
-        "boyuk kesik eksport", "böyük kəsik eksport", "boyuk kesik-eksport", 
-        "беюк-кясик-эксп", "беюк кясик эксп", "беюк кясик экспорт", "беюк-кясик эксп"
-    ],
-    "Culfa (eksport)": ["culfa", "culfa-eksport", "джульфа", "джульфа-эксп"],
-    "Ələt eksp / Bakı liman": [
-        "alat", "ələt", "alat-eksport", "ələt-eksport", "алят", "алят-эксп",
-        "aktau", "актау", "kurik", "kuryk", "курык", "курыт", "turk", "turkmen", "трк", "туркменбаши"
-    ]
-}
-
 def normalize_name(text: str) -> str:
     if not text:
         return ""
@@ -61,12 +47,19 @@ def resolve_alat_code(text: str) -> tuple:
         return "Ələt", "548502"
     return None, None
 
-def find_border_column(station_name: str) -> str:
+def detect_border_node(station_name: str) -> str:
+    """Точно определяет ключ погранперехода в файле Distances.txt"""
     norm = normalize_name(station_name)
-    for main_node, aliases in BORDER_NODES.items():
-        for alias in aliases:
-            if normalize_name(alias) in norm:
-                return main_node
+    if not norm:
+        return None
+    if "kesik" in norm or "kesik" in norm or "кясик" in norm or "касик" in norm:
+        return "Böyük Kəsik (eksport)"
+    if "yalama" in norm or "ялама" in norm:
+        return "Yalama (eksport)"
+    if "astara" in norm or "астара" in norm:
+        return "Astara (eksport)"
+    if "culfa" in norm or "джульфа" in norm:
+        return "Culfa (eksport)"
     return None
 
 def parse_distances_file():
@@ -118,23 +111,27 @@ def match_station(target_name, stations_data):
     if not target_name:
         return None, None
 
+    # 1. Проверка Алята
     alat_name, alat_code = resolve_alat_code(target_name)
     if alat_code:
         for st_key, data in stations_data.items():
             if data.get("code") == alat_code:
                 return st_key, data
 
+    # 2. Поиск по коду ЕСР
     target_code = extract_code(target_name)
     if target_code:
         for st_key, data in stations_data.items():
             if data.get("code") == target_code:
                 return st_key, data
 
+    # 3. Поиск по точному совпадению
     norm_target = normalize_name(target_name)
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm_target:
             return st_key, data
 
+    # 4. Частичный поиск
     for st_key, data in stations_data.items():
         st_norm = normalize_name(st_key)
         if norm_target == st_norm or (len(norm_target) > 3 and norm_target in st_norm):
@@ -153,16 +150,19 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
         from_station = from_st_val
         to_station = to_st_val
 
-    border_from = find_border_column(from_station)
-    border_to = find_border_column(to_station)
+    # ПРИОРИТЕТ 1: Проверяем, является ли станция погранпереходом
+    border_from = detect_border_node(from_station)
+    border_to = detect_border_node(to_station)
 
     if border_from and border_from in stations_data:
-        name_from, data_from = border_from, stations_data[border_from]
+        name_from = border_from
+        data_from = stations_data[border_from]
     else:
         name_from, data_from = match_station(from_station, stations_data)
 
     if border_to and border_to in stations_data:
-        name_to, data_to = border_to, stations_data[border_to]
+        name_to = border_to
+        data_to = stations_data[border_to]
     else:
         name_to, data_to = match_station(to_station, stations_data)
 
