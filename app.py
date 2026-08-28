@@ -363,11 +363,28 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 nlu_res["distance_km"] = route_info.get("distance_km", 0)
                 nlu_res["route_formatted"] = route_info.get("route_formatted") or route_info.get("route_display", "")
 
-                # ПРИНУДИТЕЛЬНО обновляем станции значениями из route_info
-                if route_info.get("from_formatted"):
-                    nlu_res["from_station"] = route_info["from_formatted"]
-                if route_info.get("to_formatted"):
-                    nlu_res["to_station"] = route_info["to_formatted"]
+                # 1. Проверяем, был ли порт в ИСХОДНОМ тексте пользователя
+                raw_text_lower = current_input.lower()
+                has_explicit_port = any(p in raw_text_lower for p in ["aktau", "актау", "kurik", "kuryk", "курык", "trk", "туркмен"])
+
+                # 2. Получаем отформатированные станции
+                from_fmt = route_info.get("from_formatted", nlu_res.get("from_station", ""))
+                to_fmt = route_info.get("to_formatted", nlu_res.get("to_station", ""))
+
+                # 3. ЕСЛИ порта в исходнике не было, а куда-то пролез Актау/Курык — режем его на корню
+                if not has_explicit_port:
+                    if "Ələt" in to_fmt or "Alat" in to_fmt or "Алят" in to_fmt:
+                        to_fmt = "Ələt-eksp."
+                    if "Ələt" in from_fmt or "Alat" in from_fmt or "Алят" in from_fmt:
+                        from_fmt = "Ələt-eksp."
+
+                # 4. Записываем чистые значения обратно в словарь
+                nlu_res["from_station"] = from_fmt
+                nlu_res["to_station"] = to_fmt
+                nlu_res["route_formatted"] = f"{from_fmt} – {to_fmt}"
+
+                # СОХРАНЯЕМ В SESSION STATE
+                st.session_state.nlu_res = nlu_res
 
                 # СОХРАНЯЕМ ОБНОВЛЕННЫЙ NLU_RES В SESSION STATE ДЛЯ ДИСПЛЕЯ В ST.JSON
                 st.session_state.nlu_res = nlu_res
