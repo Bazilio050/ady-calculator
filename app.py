@@ -383,13 +383,17 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 nlu_res["to_station"] = to_fmt
                 nlu_res["route_formatted"] = f"{from_fmt} – {to_fmt}"
 
-                # СОХРАНЯЕМ В SESSION STATE
-                st.session_state.nlu_res = nlu_res
+                # 5. Проверка транзита для межпограничных/экспортных маршрутов
+                st_from_lower = from_fmt.lower()
+                st_to_lower = to_fmt.lower()
+                border_kw = ["eksp", "exp", "эксп", "экс", "export"]
+                if any(b in st_from_lower for b in border_kw) and any(b in st_to_lower for b in border_kw):
+                    nlu_res["shipment_type"] = "transit"
 
                 # СОХРАНЯЕМ ОБНОВЛЕННЫЙ NLU_RES В SESSION STATE ДЛЯ ДИСПЛЕЯ В ST.JSON
                 st.session_state.nlu_res = nlu_res
 
-               # 3. Расчет тарифа через calculator
+                # 3. Расчет тарифа через calculator
                 calc_res = calculate_freight(**nlu_res, lang=selected_lang)
                 if calc_res and "part1" in calc_res:
                     calc_res["part1"]["route"] = nlu_res["route_formatted"]
