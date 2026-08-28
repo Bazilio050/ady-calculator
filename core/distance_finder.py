@@ -82,19 +82,32 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
     """Простая и надежная привязка ввода пользователя к строгим ключам из Distances.txt"""
     norm = normalize_name(input_text)
     
-    # 1. Алят и его порты
+    # 1. Точное определение Алята и его портов без автоподмены
     if "alat" in norm or "alet" in norm or "алят" in norm:
         if "trk" in norm or "turk" in norm or "туркмен" in norm:
             key = "Ələt eksport-Türk."
         elif "aktau" in norm or "актау" in norm:
             key = "Ələt eksport Aktau"
+        elif "kurik" in norm or "курык" in norm:
+            key = "Ələt eksport Kurik"
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
-        elif "eksp" in norm or "эксп" in norm or "экс" in norm or "kurik" in norm or "курык" in norm:
-            key = "Ələt eksport Kurik"
+        elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
+            # ЧИСТЫЙ ЭКСПОРТНЫЙ АЛЯТ БЕЗ ПРИПИСКИ ПОРТОВ
+            key = "Ələt eksport" if "Ələt eksport" in stations_data else "Ələt-eksp."
         else:
             key = "Ələt"
-        return key, stations_data.get(key)
+            
+        # Запасной вариант, если конкретный ключ отсутствует в Distances.txt
+        station_info = stations_data.get(key)
+        if not station_info and "Ələt eksport" in stations_data:
+            key = "Ələt eksport"
+            station_info = stations_data.get(key)
+        elif not station_info and "Ələt-eksp." in stations_data:
+            key = "Ələt-eksp."
+            station_info = stations_data.get(key)
+            
+        return key, station_info
 
     # 2. Беюк Кясик
     if "kesik" in norm or "кясик" in norm or "касик" in norm:
