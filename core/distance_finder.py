@@ -166,21 +166,34 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
         from_station = from_st_val
         to_station = to_st_val
 
-    # ПРИОРИТЕТ 1: Проверяем, является ли станция погранпереходом
-    border_from = detect_border_node(from_station)
-    border_to = detect_border_node(to_station)
-
-    if border_from and border_from in stations_data:
-        name_from = border_from
-        data_from = stations_data[border_from]
+    # 1. СНАЧАЛА ПРОВЕРЯЕМ ТОЧНЫЙ МАППИНГ ДЛЯ АЛЯТА (Актау / Курык / Туркменбаши / Чистый Алят-эксп)
+    alat_name_from, alat_code_from = resolve_alat_code(from_station)
+    if alat_code_from:
+        for st_key, data in stations_data.items():
+            if data.get("code") == alat_code_from:
+                name_from, data_from = st_key, data
+                border_from = st_key
+                break
     else:
-        name_from, data_from = match_station(from_station, stations_data)
+        border_from = detect_border_node(from_station)
+        if border_from and border_from in stations_data:
+            name_from, data_from = border_from, stations_data[border_from]
+        else:
+            name_from, data_from = match_station(from_station, stations_data)
 
-    if border_to and border_to in stations_data:
-        name_to = border_to
-        data_to = stations_data[border_to]
+    alat_name_to, alat_code_to = resolve_alat_code(to_station)
+    if alat_code_to:
+        for st_key, data in stations_data.items():
+            if data.get("code") == alat_code_to:
+                name_to, data_to = st_key, data
+                border_to = st_key
+                break
     else:
-        name_to, data_to = match_station(to_station, stations_data)
+        border_to = detect_border_node(to_station)
+        if border_to and border_to in stations_data:
+            name_to, data_to = border_to, stations_data[border_to]
+        else:
+            name_to, data_to = match_station(to_station, stations_data)
 
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
