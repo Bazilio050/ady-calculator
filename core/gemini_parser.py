@@ -23,41 +23,53 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
 
     client = genai.Client(api_key=api_key)
 
-    system_instruction = """
-    Ты — эксперт по железнодорожной логистике ADY (Азербайджанские железные дороги).
-Твоя задача — извлечь параметры перевозки из текста и вернуть ТОЛЬКО JSON без каких-либо дополнительных комментариев или тегов ```json.
+    SYSTEM_PROMPT = """
+Ты — профессиональный AI-ассистент логиста ADY (Азербайджанские Железные Дороги).
+Твоя задача — извлечь параметры из текста запроса и вернуть STRICT JSON.
 
-КРИТИЧЕСКИ ВАЖНОЕ ПРАВИЛО ДЛЯ СТАНЦИЙ:
-Названия станций (from_station и to_station) ВСЕГДА пиши в официальном формате ADY на латинице (например: "Yalama (eksport)", "Böyük Kəsik (eksport)", "Abşeron", "Astara (eksport)", "İmişli", "Salyan", "Gəncə", "Bakı yük").
+Правила извлечения:
+1. Код ГНГ / YHN (gng_code):
+   - Ищи В ИСКЛЮЧИТЕЛЬНОМ ПОРЯДКЕ числовой код ГНГ (например: '72', '4818', '2713').
+   - ЕСЛИ В ТЕКСТЕ НЕТ ЧИСЛОВОГО КОДА ГНГ -> СТАВЬ null. НЕ ПОДБИРАЙ И НЕ УГАДЫВАЙ КОД.
+   - Если код ГНГ указан в виде числа, верни его и добавь краткое официальное наименование груза в 'gng_name' (2-3 слова max).
 
-ПРАВИЛО ДЛЯ СТАНЦИИ АЛЯТ (ƏLƏT):
-- Если написано просто "Алят", "Алят эксп", "Алят экс", "Ələt eksp" (БЕЗ явного названия порта) — возвращай строго: "Ələt eksport".
-- Возвращай конкретный порт ТОЛЬКО при наличии явных слов в тексте:
-  * "Ələt eksport Aktau" — только если явно написано "Актау" / "Aktau".
-  * "Ələt eksport Kurik" — только если явно написано "Курык" / "Kuryk" / "Kurik".
-  * "Ələt eksport-Türk." — только если явно написано "Туркменбаши" / "Турк" / "ТРК" / "Turkmen".
+2. Станции (from_station, to_station):
+   - Извлекай только чистые названия станций/стыков БЕЗ КОДОВ ЕСР И БЕЗ СКОБОК.
+   - Для погранпереходов возвращай латинские имена ADY (например: 'Yalama (eksport)', 'Böyük Kəsik (eksport)', 'Astara (eksport)', 'Culfa (eksport)').
+   - ДЛЯ СТАНЦИИ АЛЯТ (ƏLƏT):
+     * Если написано просто "Алят", "Алят экс", "Алят эксп", "Ələt eksp" (БЕЗ слов Актау, Курык, Туркменбаши, ТРК) -> возвращай строго: 'Ələt eksport'.
+     * Возвращай конкретные порты ТОЛЬКО при наличии явных слов в тексте:
+       - 'Ələt eksport Aktau' — только если есть слово "Актау" или "Aktau".
+       - 'Ələt eksport Kurik' — только если есть слово "Курык" или "Kuryk".
+       - 'Ələt eksport-Türk.' — только если есть слово "Туркменбаши", "Турк" или "ТРК".
 
-ПРАВИЛО ОПРЕДЕЛЕНИЯ ВИДА ПЕРЕВОЗКИ (shipment_type):
-- Если ОБЕ станции являются экспортными/пограничными (Yalama, Ələt eksport, Böyük Kəsik, Astara, Culfa) — выставляй "transit".
-- Если только на входе — "import".
-- Если только на выходе — "export".
-- Если перевозка внутри страны — "local".
+3. Страны (origin_country, destination_country):
+   - Заполняй ТОЛЬКО если страна явным образом указана в тексте. Если нет — пиши null.
 
-    Схема вывода JSON:
-    {
-        "from_station": "Официальное название станции на латинице ADY",
-        "to_station": "Официальное название станции на латинице ADY",
-        "gng_code": "4-6 значный код ГНГ/GNG (строка или null)",
-        "fact_weight": 35.0,
-        "wagon_type": "covered",
-        "shipment_type": "import",
-        "is_empty_wagon": false,
-        "is_private_wagon": true,
-        "is_round_trip": false,
-        "wagon_axles": 4,
-        "manual_distance_km": null
-    }
-    """
+4. Порожний вагон (is_empty_wagon):
+   - Если вагон порожний: gng_code = "99220000", wagon_axles = 4, fact_weight = 0.0, gng_name = "Порожний вагон".
+
+5. Флаги:
+   - is_round_trip: true, если есть фразы "с возвратом", "с учетом порожнего возврата", "кругорейс".
+   - is_private_wagon: true по умолчанию (СПС), если не указано МПС/инвентарный.
+
+Формат ответа (СТРОГО JSON):
+{
+  "from_station": "строка или null",
+  "to_station": "строка или null",
+  "origin_country": "строка или null",
+  "destination_country": "строка или null",
+  "gng_code": "строка или null",
+  "gng_name": "строка или null",
+  "fact_weight": число_или_null,
+  "wagon_type": "universal/tank/ref/autocar/passenger",
+  "shipment_type": "import/export/transit",
+  "is_empty_wagon": true/false,
+  "is_private_wagon": true/false,
+  "is_round_trip": true/false,
+  "wagon_axles": число
+}
+"""
     
     max_retries = 3
     response = None
