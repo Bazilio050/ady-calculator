@@ -56,12 +56,11 @@ SYSTEM_PROMPT = """
 }
 """
 
-def parse_user_request(user_prompt: str) -> dict:
+def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     if not API_KEY:
         raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
 
     try:
-        # Инициализация актуального клиента google-genai
         client = genai.Client(api_key=API_KEY)
         
         response = client.models.generate_content(
@@ -75,6 +74,9 @@ def parse_user_request(user_prompt: str) -> dict:
         parsed_data = json.loads(response.text)
     except Exception as e:
         raise ValueError(f"Ошибка обращения к Gemini API: {str(e)}")
+
+    # Сохраняем выбранный язык в итоговом объекте
+    parsed_data["lang"] = lang
 
     # Автоподстановка для порожнего вагона
     if parsed_data.get("is_empty_wagon"):
