@@ -364,7 +364,7 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 nlu_res["to_station"] = route_info.get("to_formatted", nlu_res.get("to_station", ""))
                 nlu_res["route_formatted"] = route_info.get("route_formatted") or f"{nlu_res['from_station']} – {nlu_res['to_station']}"
 
-                # 3. Проверка транзита для межпограничных/экспортных маршрутов
+               # 3. Проверка транзита для межпограничных/экспортных маршрутов
                 st_from_lower = str(route_info.get("raw_from_name", "")).lower()
                 st_to_lower = str(route_info.get("raw_to_name", "")).lower()
                 border_kw = ["eksp", "exp", "эксп", "экс", "export"]
@@ -374,15 +374,17 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 # СОХРАНЯЕМ ОБНОВЛЕННЫЙ NLU_RES В SESSION STATE ДЛЯ ДИСПЛЕЯ В ST.JSON
                 st.session_state.nlu_res = nlu_res
 
-                # 4. Расчет тарифа через calculator
-                calc_res = calculate_freight(**nlu_res, lang=selected_lang)
+                # 4. Безопасная подготовка параметров без дублирования lang
+                calc_params = nlu_res.copy()
+                calc_params.pop("lang", None)  # Безопасно вытаскиваем lang из словаря
+
+                calc_res = calculate_freight(**calc_params, lang=selected_lang)
                 if calc_res and "part1" in calc_res:
                     calc_res["part1"]["route"] = nlu_res["route_formatted"]
 
                 st.session_state.calc_result = calc_res
                 st.session_state.missing_data = None
                 loader_placeholder.empty()
-
         except ValueError as val_err:
             loader_placeholder.empty()
             st.warning(str(val_err))
