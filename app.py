@@ -357,14 +357,15 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 st.error(nlu_res["error"])
                 st.session_state.calc_result = None
             else:
-                # 2. Поиск расстояния и отформатированных наименований через distance_finder
+                # Поиск расстояния и подготовка отформатированных имен
                 route_info = get_route_info(nlu_res, lang=selected_lang)
                 
-                # Добавляем вычисленное расстояние и отформатированный маршрут
+                # Записываем дистанцию и отформатированный маршрут
                 nlu_res["distance_km"] = route_info.get("distance_km", 0)
                 nlu_res["route_formatted"] = route_info.get("route_formatted") or route_info.get("route_display", "")
 
-                # Перезаписываем отформатированные станции для таблицы и JSON
+                # ПРИНУДИТЕЛЬНО обновляем станции значениями из route_info,
+                # чтобы в JSON выводилось Ələt-eksp. вместо Ələt Aktau
                 if route_info.get("from_formatted"):
                     nlu_res["from_station"] = route_info["from_formatted"]
                 if route_info.get("to_formatted"):
