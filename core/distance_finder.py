@@ -1,13 +1,27 @@
 # ==============================================================================
-# МОДУЛЬ ПОИСКА РАССТОЯНИЙ И КОДОВ СТАНЦИЙ ADY
+# МОДУЛЬ ПОИСКА РАССТОЯНИЙ И КОДОВ СТАНЦИЙ ADY (С ПОДДЕРЖКОЙ ЛОКАЛИЗАЦИИ)
 # ==============================================================================
 import os
 import re
+import sys
+
+# Подключение функции локализации из data/stations_mapping.py
+try:
+    from data.stations_mapping import get_localized_station_name
+except ImportError:
+    try:
+        from stations_mapping import get_localized_station_name
+    except ImportError:
+        def get_localized_station_name(name, lang="AZ"):
+            return name
 
 BORDER_NODES = {
     "Yalama (eksport)": ["yalama", "yalama-eksport", "yalama eksport", "ялама", "ялама-эксп", "ялама экспорт"],
     "Astara (eksport)": ["astara", "astara-eksport", "astara eksport", "астара", "астара-эксп", "астара экспорт"],
-    "Böyük Kəsik (eksport)": ["boyuk kesik", "böyük kəsik", "boyuk kesik-eksport", "беюк-кясик", "беюк кясик", "беюк-кясик-эксп"],
+    "Böyük Kəsik (eksport)": [
+        "boyuk kesik eksport", "böyük kəsik eksport", "boyuk kesik-eksport", 
+        "беюк-кясик-эксп", "беюк кясик эксп", "беюк кясик экспорт", "беюк-кясик эксп"
+    ],
     "Culfa (eksport)": ["culfa", "culfa-eksport", "джульфа", "джульфа-эксп"],
     "Ələt eksp / Bakı liman": [
         "alat", "ələt", "alat-eksport", "ələt-eksport", "алят", "алят-эксп",
@@ -16,55 +30,53 @@ BORDER_NODES = {
 }
 
 def normalize_name(text: str) -> str:
-    """ Нормализует название станции: регистр, символы **, азербайджанская кириллица/латиница, пробелы """
+    """ Нормализует название станции: регистр, символы, латиница/кириллица, пробелы """
     if not text:
         return ""
-    text = text.lower().strip()
+    text = str(text).lower().strip()
     text = text.replace("*", "").replace("(", "").replace(")", "").replace("-", " ")
     
     replacements = {
         'ə': 'e', 'ö': 'o', 'ü': 'u', 'ç': 'c', 'ş': 's', 'ı': 'i', 'ğ': 'g',
-        'ё': 'е', 'й': 'и', 'я': 'a'
+        'ё': 'е', 'й': 'и'
     }
     for k, v in replacements.items():
         text = text.replace(k, v)
         
-    text = re.sub(r'[^a-z0-9\s]', '', text)
+    text = re.sub(r'[^a-zа-я0-9\s]', '', text)
     return re.sub(r'\s+', ' ', text).strip()
 
 def extract_code(text: str) -> str:
+    """Извлекает 6-значный код ЕСР из строки"""
     match = re.search(r'\b\d{6}\b', str(text))
     return match.group(0) if match else None
 
 def resolve_alat_code(text: str) -> tuple:
+    """ Применяет жесткие правила маппинга для Алята и морских направлений """
     norm = normalize_name(text)
     if "trk" in norm or "turk" in norm or "туркмен" in norm:
         return "Ələt eksport-Türk.", "548803"
     if "aktau" in norm or "актау" in norm:
         return "Ələt eksport Aktau", "549204"
-    if "kurik" in norm or "kuryk" in norm or "курык" in norm or "курыт" in norm:
+    if "kurik" in norm or "kuryk" in norm or "курык" in norm or "курыт" in norm or "alat eksp" in norm or "alet eksp" in norm or "алят эксп" in norm:
         return "Ələt eksport Kurik", "553002"
-    # Для обобщенного Алят-эксп берем базовый код Алята (553002 / 548502) для расчета расстояния 271 км
+    if "yeni" in norm or "новый" in norm:
+        return "Ələt yeni", "548703"
     if "alat" in norm or "alet" in norm or "алят" in norm:
-        return "Ələt", "553002"
+        return "Ələt", "548502"
     return None, None
 
 def find_border_column(station_name: str) -> str:
     norm = normalize_name(station_name)
     for main_node, aliases in BORDER_NODES.items():
         for alias in aliases:
-            if normalize_name(alias) == norm or (len(norm) >= 4 and normalize_name(alias) in norm):
+            if normalize_name(alias) in norm:
                 return main_node
     return None
 
 def parse_distances_file():
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     file_path = os.path.join(base_dir, "data", "Distances.txt")
-    if not os.path.exists(file_path):
-        file_path = os.path.join(base_dir, "Distances.txt")
-    if not os.path.exists(file_path):
-        file_path = "Distances.txt"
-
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Файл {file_path} не найден!")
 
@@ -80,7 +92,7 @@ def parse_distances_file():
             break
 
     if header_idx == -1:
-        raise ValueError("Не удалось распознать структуру таблицы в Distances.txt")
+        raise ValueError("Не удалось распознать структуру таблицы в data/Distances.txt")
 
     stations_data = {}
     for line in lines[header_idx + 2:]:
@@ -111,27 +123,27 @@ def match_station(target_name, stations_data):
     if not target_name:
         return None, None
 
-    # 1. Алят
+    # 1. Проверка маппинга для Алята
     alat_name, alat_code = resolve_alat_code(target_name)
     if alat_code:
         for st_key, data in stations_data.items():
             if data.get("code") == alat_code:
                 return st_key, data
 
-    # 2. Поиск по коду
+    # 2. Поиск по 6-значному коду ЕСР
     target_code = extract_code(target_name)
     if target_code:
         for st_key, data in stations_data.items():
             if data.get("code") == target_code:
                 return st_key, data
 
-    # 3. Точный поиск
+    # 3. Поиск по строгому точечному совпадению
     norm_target = normalize_name(target_name)
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm_target:
             return st_key, data
 
-    # 4. Частичное совпадение
+    # 4. Частичный поиск по названию
     for st_key, data in stations_data.items():
         st_norm = normalize_name(st_key)
         if norm_target == st_norm or (len(norm_target) > 3 and norm_target in st_norm):
@@ -139,113 +151,71 @@ def match_station(target_name, stations_data):
 
     return None, None
 
-def format_display_name(raw_input: str, matched_name: str, code: str, lang: str = "AZ") -> str:
-    """ Форматирует вывод станции на экран по правилам ADY """
-    norm_raw = normalize_name(raw_input)
-    norm_matched = normalize_name(matched_name)
-
-    # 1. Проверяем, вводил ли пользователь КОНКРЕТНЫЙ порт (Курык, Актау, ТРК)
-    has_specific_port = bool(re.search(r'\b(kurik|kuryk|курык|курыт|aktau|актау|trk|turk|туркмен)\b', norm_raw))
-
-    # 2. Если в запросе просто обобщенный Алят (эксп, экс, экспорт) без указания порта — выводим Ələt-eksp. без кода
-    is_alat = any(a in norm_matched for a in ["alat", "alet", "алят"]) or any(a in norm_raw for a in ["alat", "alet", "алят"])
-    
-    if is_alat and not has_specific_port:
-        return "Ələt-eksp."
-
-    # 3. Правило для пограничных станций (Ялама, Астара, Беюк Кясик, Джульфа)
-    suf = "-eksp." if lang.upper() in ["AZ", "RU"] else "-exp."
-    clean_name = matched_name.replace("(eksport)", "").replace("eksport", "").replace("eks.aşır", "").strip()
-    
-    if "yalama" in norm_matched:
-        clean_name = "Yalama"
-    elif "astara" in norm_matched:
-        clean_name = "Astara"
-    elif "boyuk" in norm_matched or "kesik" in norm_matched:
-        clean_name = "Böyük Kəsik"
-    elif "culfa" in norm_matched:
-        clean_name = "Culfa"
-
-    is_border = any(b_key in norm_matched for b_key in ["yalama", "astara", "boyuk", "kesik", "culfa"])
-    
-    if is_border:
-        display_name = f"{clean_name}{suf}"
-    else:
-        display_name = clean_name
-
-    if code:
-        return f"{display_name} ({code})"
-    return display_name
-
-def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
-    if isinstance(from_station, dict):
-        nlu_data = from_station
-        from_st = nlu_data.get("from_station", "")
-        to_st = nlu_data.get("to_station", "")
-        manual_dist = nlu_data.get("manual_distance_km")
-        raw_user_text = nlu_data.get("raw_input", "")
-    else:
-        from_st = str(from_station)
-        to_st = str(to_station)
-        manual_dist = None
-        raw_user_text = ""
-
+def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") -> dict:
     stations_data = parse_distances_file()
 
-    border_from = find_border_column(from_st)
-    border_to = find_border_column(to_st)
+    # Защита: если первым аргументом пришел словарь nlu_res из app.py
+    if isinstance(from_station, dict):
+        if to_station is None and "lang" in from_station:
+            lang = from_station.get("lang", lang)
+        to_st_val = from_station.get("to_station", "")
+        from_st_val = from_station.get("from_station", "")
+        from_station = from_st_val
+        to_station = to_st_val
 
-    search_from = border_from if border_from else from_st
-    name_from, data_from = match_station(search_from, stations_data)
-    name_to, data_to = match_station(to_st, stations_data)
+    border_from = find_border_column(from_station)
+    border_to = find_border_column(to_station)
+
+    # В приоритете пограничные стыки
+    name_from, data_from = match_station(border_from or from_station, stations_data)
+    name_to, data_to = match_station(border_to or to_station, stations_data)
 
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
 
-    # 1. Форматируем станцию отправления
-    fmt_from = format_display_name(raw_user_text or from_st, name_from or from_st, code_from, lang=lang)
+    # Исходное имя ADY из файла Distances.txt
+    raw_from_name = name_from or from_station
+    raw_to_name = name_to or to_station
 
-    # 2. Форматируем станцию назначения
-    fmt_to = format_display_name(raw_user_text or to_st, name_to or to_st, code_to, lang=lang)
+    # Локализованное название под язык сайта (AZ / RU / EN)
+    loc_from_name = get_localized_station_name(raw_from_name, lang=lang)
+    loc_to_name = get_localized_station_name(raw_to_name, lang=lang)
 
-    # 1. Проверяем наличие порта СТРОГО в исходном тексте ввода пользователя
-    norm_raw_user = normalize_name(raw_user_text)
-    has_specific_port = bool(re.search(r'\b(kurik|kuryk|курык|курыт|aktau|актау|trk|turk|туркмен)\b', norm_raw_user))
-    
-    # 2. Проверяем, относится ли станция к Аляту (в исходном вводе или в найденном имени)
-    check_str = f"{norm_raw_user} {normalize_name(to_st)} {normalize_name(name_to)}"
-    is_alat = any(a in check_str for a in ["alat", "alet", "алят"])
-    
-    # 3. Если конкретный порт НЕ указан пользователем в raw_input — жестко перебиваем на Ələt-eksp.
-    if is_alat and not has_specific_port:
-        fmt_to = "Ələt-eksp."
+    fmt_from = f"{loc_from_name}" + (f" ({code_from})" if code_from else "")
+    fmt_to = f"{loc_to_name}" + (f" ({code_to})" if code_to else "")
 
     dist = None
 
-    if manual_dist is not None and float(manual_dist or 0) > 0:
-        dist = int(float(manual_dist))
+    def get_dist_from_data(st_data, target_border_or_name):
+        if not st_data or not target_border_or_name:
+            return None
+        target_norm = normalize_name(target_border_or_name)
+        for h_key, d_val in st_data.get("distances", {}).items():
+            h_norm = normalize_name(h_key)
+            if target_norm in h_norm or h_norm in target_norm:
+                return d_val
+        return None
 
-    if dist is None and border_from and data_to:
-        for h_key, d_val in data_to["distances"].items():
-            if normalize_name(h_key) == normalize_name(border_from):
-                dist = d_val
-                break
+    # Поиск километража в матрице расстояний
+    if data_to:
+        dist = get_dist_from_data(data_to, border_from or name_from)
 
-    if dist is None and border_to and data_from:
-        for h_key, d_val in data_from["distances"].items():
-            if normalize_name(h_key) == normalize_name(border_to):
-                dist = d_val
-                break
+    if dist is None and data_from:
+        dist = get_dist_from_data(data_from, border_to or name_to)
 
     if dist is None:
-        dist = 0
+        raise ValueError(f"Не удалось определить расстояние между '{from_station}' и '{to_station}'.")
 
     return {
         "distance_km": dist,
         "from_formatted": fmt_from,
         "to_formatted": fmt_to,
         "route_formatted": f"{fmt_from} – {fmt_to}",
-        "route_display": f"{fmt_from} – {fmt_to}"
+        "raw_from_name": raw_from_name,
+        "raw_to_name": raw_to_name
     }
 
-get_route_summary = get_route_info
+def get_route_distance(from_station: str, to_station: str) -> int:
+    return get_route_info(from_station, to_station)["distance_km"]
+
+get_distance_between_stations = get_route_distance
