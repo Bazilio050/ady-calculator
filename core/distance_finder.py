@@ -49,7 +49,7 @@ def resolve_alat_code(text: str) -> tuple:
     if "kurik" in norm or "kuryk" in norm or "курык" in norm or "курыт" in norm:
         return "Ələt eksport Kurik", "553002"
         
-    # 4. Если указан просто "Алят эксп / Алят экс" (без порта) — берем Курык/Баку Лиман как базовый погранпереход Алят
+    # 4. Если указан просто "Алят эксп / Алят экс" (без порта) — берем чистый погранпереход Алят
     if "eksp" in norm or "эксп" in norm or "экс" in norm:
         return "Ələt eksport", "553002"
         
