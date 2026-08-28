@@ -30,6 +30,11 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     КРИТИЧЕСКИ ВАЖНОЕ ПРАВИЛО ДЛЯ СТАНЦИЙ:
     Названия станций (from_station и to_station) ВСЕГДА пиши в официальном формате ADY на латинице (например: "Yalama", "Böyük Kəsik", "Abşeron", "Astara", "İmişli", "Ələt eksport", "Salyan", "Gəncə", "Bakı yük").
     Даже если пользователь ввел "Ялама", "Алят эксп" или "Апшерон", в JSON возвращай строго "Yalama", "Ələt eksport" и "Abşeron".
+    ПРАВИЛО ОПРЕДЕЛЕНИЯ ВИДА ПЕРЕВОЗКИ (shipment_type):
+    - Если ОБЕ станции (from_station и to_station) являются экспортными/пограничными (например: Yalama, Ələt eksport, Böyük Kəsik, Astara, Culfa) — выставляй "transit".
+    - Если введена только одна экспортная станция на входе — "import".
+    - Если только на выходе — "export".
+    - Если перевозка внутри страны — "local".
 
     Схема вывода JSON:
     {
