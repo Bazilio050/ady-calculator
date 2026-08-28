@@ -192,8 +192,14 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     loc_from_name = get_localized_station_name(key_from, lang=lang)
     loc_to_name = get_localized_station_name(key_to, lang=lang)
 
-    fmt_from = f"{loc_from_name}" + (f" ({code_from})" if code_from else "")
-    fmt_to = f"{loc_to_name}" + (f" ({code_to})" if code_to else "")
+    # Проверяем, является ли станция Алятом без указания конкретного порта
+    def build_station_label(loc_name, code, key_name):
+        if key_name in ["Ələt eksport", "Ələt-eksp."]:
+            return loc_name  # Возвращаем строго чистое имя без кода в скобках
+        return f"{loc_name} ({code})" if code else loc_name
+
+    fmt_from = build_station_label(loc_from_name, code_from, key_from)
+    fmt_to = build_station_label(loc_to_name, code_to, key_to)
 
     return {
         "distance_km": dist,
