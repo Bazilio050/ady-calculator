@@ -4,14 +4,14 @@
 
 STATIONS_MAPPING = {
     "Yalama (eksport)": {
-        "AZ": "Yalama eksport",
-        "RU": "Ялама (эксп)",
-        "EN": "Yalama (exp)"
+        "AZ": "Yalama-eksp.",
+        "RU": "Ялама-эксп.",
+        "EN": "Yalama-exp."
     },
     "Böyük Kəsik (eksport)": {
-        "AZ": "Böyük Kəsik eksport",
-        "RU": "Беюк-Кясик (эксп)",
-        "EN": "Boyuk Kasik (exp)"
+        "AZ": "Böyük Kəsik-eksp.",
+        "RU": "Беюк-Кясик-эксп.",
+        "EN": "Boyuk Kasik-exp."
     },
     "Böyük Kəsik": {
         "AZ": "Böyük Kəsik",
@@ -19,9 +19,9 @@ STATIONS_MAPPING = {
         "EN": "Boyuk Kasik"
     },
     "Astara (eksport)": {
-        "AZ": "Astara eksport",
-        "RU": "Астара (эксп)",
-        "EN": "Astara (exp)"
+        "AZ": "Astara-eksp.",
+        "RU": "Астара-эксп.",
+        "EN": "Astara-exp."
     },
     "Astara": {
         "AZ": "Astara",
@@ -29,9 +29,9 @@ STATIONS_MAPPING = {
         "EN": "Astara"
     },
     "Culfa (eksport)": {
-        "AZ": "Culfa eksport",
-        "RU": "Джульфа (эксп)",
-        "EN": "Julfa (exp)"
+        "AZ": "Culfa-eksp.",
+        "RU": "Джульфа-эксп.",
+        "EN": "Julfa-exp."
     },
     "Culfa": {
         "AZ": "Culfa",
@@ -39,29 +39,29 @@ STATIONS_MAPPING = {
         "EN": "Julfa"
     },
     "Ələt eksport": {
-        "AZ": "Ələt eksport",
-        "RU": "Алят (эксп)",
-        "EN": "Alat (exp)"
+        "AZ": "Ələt-eksp.",
+        "RU": "Алят-эксп.",
+        "EN": "Alat-exp."
     },
     "Ələt-eksp.": {
-        "AZ": "Ələt eksport",
-        "RU": "Алят (эксп)",
-        "EN": "Alat (exp)"
+        "AZ": "Ələt-eksp.",
+        "RU": "Алят-эксп.",
+        "EN": "Alat-exp."
     },
     "Ələt eksport Kurik": {
-        "AZ": "Ələt eksport Kurik",
-        "RU": "Алят эксп. (Курык)",
-        "EN": "Alat exp. (Kuryk)"
+        "AZ": "Ələt-eksp.Kurik",
+        "RU": "Алят-эксп.Курык",
+        "EN": "Alat-exp.Kuryk"
     },
     "Ələt eksport Aktau": {
-        "AZ": "Ələt eksport Aktau",
-        "RU": "Алят эксп. (Актау)",
-        "EN": "Alat exp. (Aktau)"
+        "AZ": "Ələt-eksp.Aktau",
+        "RU": "Алят-эксп.Актау",
+        "EN": "Alat-exp.Aktau"
     },
     "Ələt eksport-Türk.": {
-        "AZ": "Ələt eksport Türkmenbaşı",
-        "RU": "Алят эксп. (Туркменбаши)",
-        "EN": "Alat exp. (Turkmenbashi)"
+        "AZ": "Ələt-eksp.Türk.",
+        "RU": "Алят-эксп.Турк.",
+        "EN": "Alat-exp.Turk."
     },
     "Ələt": {
         "AZ": "Ələt",
@@ -170,7 +170,6 @@ def get_localized_station_name(station_name: str, lang: str = "AZ") -> str:
     if not station_name:
         return ""
     
-    # Прямая проверка по словарю
     if station_name in STATIONS_MAPPING:
         return STATIONS_MAPPING[station_name].get(lang, station_name)
     
