@@ -34,17 +34,33 @@ def extract_code(text: str) -> str:
     return match.group(0) if match else None
 
 def resolve_alat_code(text: str) -> tuple:
+    """Применяет жесткие правила маппинга для Алята и морских направлений"""
     norm = normalize_name(text)
+    
+    # 1. Если явно указан Туркменбаши
     if "trk" in norm or "turk" in norm or "туркмен" in norm:
         return "Ələt eksport-Türk.", "548803"
+        
+    # 2. Если явно указан Актау
     if "aktau" in norm or "актау" in norm:
         return "Ələt eksport Aktau", "549204"
-    if "kurik" in norm or "kuryk" in norm or "курык" in norm or "курыт" in norm or "alat eksp" in norm or "alet eksp" in norm or "алят эксп" in norm:
+        
+    # 3. Если явно указан Курык
+    if "kurik" in norm or "kuryk" in norm or "курык" in norm or "курыт" in norm:
         return "Ələt eksport Kurik", "553002"
+        
+    # 4. Если указан просто "Алят эксп / Алят экс" (без порта) — берем Курык/Баку Лиман как базовый погранпереход Алят
+    if "eksp" in norm or "эксп" in norm or "экс" in norm:
+        return "Ələt eksport", "553002"
+        
+    # 5. Новый порт
     if "yeni" in norm or "новый" in norm:
         return "Ələt yeni", "548703"
+        
+    # 6. Обычная внутренняя станция Алят
     if "alat" in norm or "alet" in norm or "алят" in norm:
         return "Ələt", "548502"
+        
     return None, None
 
 def detect_border_node(station_name: str) -> str:
