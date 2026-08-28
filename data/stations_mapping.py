@@ -166,11 +166,9 @@ STATIONS_MAPPING = {
 }
 
 def get_localized_station_name(station_name: str, lang: str = "AZ") -> str:
-    """Возвращает переведенное название станции или оригинал, если перевода нет"""
     if not station_name:
         return ""
 
-    # Очистка случайного маппинга Aktau для чистого Алята
     clean_name = station_name.strip()
     if clean_name in ["Ələt eksport", "Ələt-eksp."]:
         return STATIONS_MAPPING["Ələt eksport"].get(lang, "Ələt-eksp.")
