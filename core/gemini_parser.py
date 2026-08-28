@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import time
 from google import genai
 from google.genai import types
 
@@ -47,21 +48,28 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     """
     
     try:
-        response = client.models.generate_content(
-            model="gemini-3.5-flash-lite",
-            contents=user_prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.1,
-                response_mime_type="application/json"
+        max_retries = 3
+    response = None
+
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.5-flash-lite",
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.1,
+                    response_mime_type="application/json"
+                )
             )
-        )
-
-        raw_text = response.text.strip()
-        raw_text = re.sub(r"^```json\s*", "", raw_text)
-        raw_text = re.sub(r"\s*```$", "", raw_text)
-
-        parsed_data = json.loads(raw_text)
+            if response and response.text:
+                break
+        except Exception as e:
+            if ("503" in str(e) or "UNAVAILABLE" in str(e)) and attempt < max_retries - 1:
+                time.sleep(1)
+                continue
+            else:
+                raise e
 
         # Защита: проверяем, что распарсенный результат — это словарь
         if not isinstance(parsed_data, dict):
