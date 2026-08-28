@@ -357,18 +357,18 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 st.error(nlu_res["error"])
                 st.session_state.calc_result = None
             else:
-               # 2. Поиск расстояния и отформатированных наименований через distance_finder
-route_info = get_route_info(nlu_res, lang=selected_lang)
+                # 2. Поиск расстояния и отформатированных наименований через distance_finder
+                route_info = get_route_info(nlu_res, lang=selected_lang)
+                
+                # Добавляем вычисленное расстояние и отформатированный маршрут
+                nlu_res["distance_km"] = route_info.get("distance_km", 0)
+                nlu_res["route_formatted"] = route_info.get("route_formatted") or route_info.get("route_display", "")
 
-# Добавляем вычисленное расстояние и отформатированный маршрут в словарь для расчёта
-nlu_res["distance_km"] = route_info.get("distance_km", 0)
-nlu_res["route_formatted"] = route_info.get("route_formatted") or route_info.get("route_display", "")
-
-# Явно обновляем станции отформатированными значениями для таблицы и JSON
-if route_info.get("from_formatted"):
-    nlu_res["from_station"] = route_info["from_formatted"]
-if route_info.get("to_formatted"):
-    nlu_res["to_station"] = route_info["to_formatted"]
+                # Перезаписываем отформатированные станции для таблицы и JSON
+                if route_info.get("from_formatted"):
+                    nlu_res["from_station"] = route_info["from_formatted"]
+                if route_info.get("to_formatted"):
+                    nlu_res["to_station"] = route_info["to_formatted"]
 
                 # 3. Расчет тарифа через calculator
                 calc_res = calculate_freight(**nlu_res, lang=selected_lang)
