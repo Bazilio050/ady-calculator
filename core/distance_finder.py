@@ -208,15 +208,15 @@ def get_route_info(from_station, to_station=None, lang="AZ") -> dict:
     # 2. Форматируем станцию назначения
     fmt_to = format_display_name(raw_user_text or to_st, name_to or to_st, code_to, lang=lang)
 
-    # 1. Проверяем наличие порта СТРОГО в исходном тексте пользователя
+    # 1. Проверяем наличие порта СТРОГО в исходном тексте ввода пользователя
     norm_raw_user = normalize_name(raw_user_text)
     has_specific_port = bool(re.search(r'\b(kurik|kuryk|курык|курыт|aktau|актау|trk|turk|туркмен)\b', norm_raw_user))
     
-    # 2. Проверяем, относится ли станция к Аляту
+    # 2. Проверяем, относится ли станция к Аляту (в исходном вводе или в найденном имени)
     check_str = f"{norm_raw_user} {normalize_name(to_st)} {normalize_name(name_to)}"
     is_alat = any(a in check_str for a in ["alat", "alet", "алят"])
     
-    # 3. Если порт явно НЕ указан пользователем — принудительно ставим Ələt-eksp.
+    # 3. Если конкретный порт НЕ указан пользователем в raw_input — жестко перебиваем на Ələt-eksp.
     if is_alat and not has_specific_port:
         fmt_to = "Ələt-eksp."
 
