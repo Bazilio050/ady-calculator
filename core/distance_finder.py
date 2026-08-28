@@ -76,13 +76,20 @@ def parse_distances_file():
             "code": st_code,
             "distances": distances
         }
+
+    # Создаем виртуальную запись для чистого "Ələt eksport" на базе "Ələt eksport Kurik"
+    if "Ələt eksport Kurik" in stations_data and "Ələt eksport" not in stations_data:
+        stations_data["Ələt eksport"] = {
+            "code": "553002",
+            "distances": stations_data["Ələt eksport Kurik"]["distances"]
+        }
+
     return stations_data
 
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
-    """Простая и надежная привязка ввода пользователя к строгим ключам из Distances.txt"""
     norm = normalize_name(input_text)
     
-    # 1. Точное определение Алята и его портов без автоподмены
+    # 1. Точное определение Алята и его портов
     if "alat" in norm or "alet" in norm or "алят" in norm:
         if "trk" in norm or "turk" in norm or "туркмен" in norm:
             key = "Ələt eksport-Türk."
@@ -93,18 +100,13 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
         elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
-            # ЧИСТЫЙ ЭКСПОРТНЫЙ АЛЯТ БЕЗ ПРИПИСКИ ПОРТОВ
-            key = "Ələt eksport" if "Ələt eksport" in stations_data else "Ələt-eksp."
+            key = "Ələt eksport"
         else:
             key = "Ələt"
             
-        # Запасной вариант, если конкретный ключ отсутствует в Distances.txt
         station_info = stations_data.get(key)
-        if not station_info and "Ələt eksport" in stations_data:
+        if not station_info:
             key = "Ələt eksport"
-            station_info = stations_data.get(key)
-        elif not station_info and "Ələt-eksp." in stations_data:
-            key = "Ələt-eksp."
             station_info = stations_data.get(key)
             
         return key, station_info
@@ -158,7 +160,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
         raw_to_input = from_station.get("to_station", "")
         raw_from_input = from_station.get("from_station", "")
 
-    # Определение точных ключей станций
     key_from, data_from = resolve_exact_station_key(raw_from_input, stations_data)
     key_to, data_to = resolve_exact_station_key(raw_to_input, stations_data)
 
@@ -170,7 +171,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     code_from = data_from.get("code", "")
     code_to = data_to.get("code", "")
 
-    # Поиск километража в матрице
     dist = None
     target_norm_from = normalize_name(key_from)
     for h_key, d_val in data_to.get("distances", {}).items():
@@ -188,14 +188,13 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from_input}' и '{raw_to_input}'.")
 
-    # Форматирование названий под выгрузку
     loc_from_name = get_localized_station_name(key_from, lang=lang)
     loc_to_name = get_localized_station_name(key_to, lang=lang)
 
-    # Проверяем, является ли станция Алятом без указания конкретного порта
+    # Правило: для чистого Алята код в скобках НЕ выводится
     def build_station_label(loc_name, code, key_name):
         if key_name in ["Ələt eksport", "Ələt-eksp."]:
-            return loc_name  # Возвращаем строго чистое имя без кода в скобках
+            return loc_name
         return f"{loc_name} ({code})" if code else loc_name
 
     fmt_from = build_station_label(loc_from_name, code_from, key_from)
