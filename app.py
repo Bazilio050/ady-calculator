@@ -346,7 +346,6 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             # 1. Распознавание через gemini_parser
             nlu_res = parse_user_request(current_input, lang=selected_lang)
 
-            # ЗАЩИТА: Проверяем, вернул ли парсер корректный словарь
             if not isinstance(nlu_res, dict):
                 loader_placeholder.empty()
                 st.error("Ошибка распознавания: ответ Gemini имеет неверный формат.")
@@ -356,36 +355,18 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 st.error(nlu_res["error"])
                 st.session_state.calc_result = None
             else:
-                # 2. Поиск расстояния и подготовка отформатированных имен
+                # 2. Поиск расстояния и подготовка отформатированных имен на выбранном языке
                 route_info = get_route_info(nlu_res, lang=selected_lang)
                 
                 # Записываем дистанцию и отформатированный маршрут
                 nlu_res["distance_km"] = route_info.get("distance_km", 0)
-                nlu_res["route_formatted"] = route_info.get("route_formatted") or route_info.get("route_display", "")
+                nlu_res["from_station"] = route_info.get("from_formatted", nlu_res.get("from_station", ""))
+                nlu_res["to_station"] = route_info.get("to_formatted", nlu_res.get("to_station", ""))
+                nlu_res["route_formatted"] = route_info.get("route_formatted") or f"{nlu_res['from_station']} – {nlu_res['to_station']}"
 
-                # 1. Проверяем, был ли порт в ИСХОДНОМ тексте пользователя
-                raw_text_lower = current_input.lower()
-                has_explicit_port = any(p in raw_text_lower for p in ["aktau", "актау", "kurik", "kuryk", "курык", "trk", "туркмен"])
-
-                # 2. Получаем отформатированные станции
-                from_fmt = route_info.get("from_formatted", nlu_res.get("from_station", ""))
-                to_fmt = route_info.get("to_formatted", nlu_res.get("to_station", ""))
-
-                # 3. ЕСЛИ порта в исходнике не было, а куда-то пролез Актау/Курык — режем его на корню
-                if not has_explicit_port:
-                    if "Ələt" in to_fmt or "Alat" in to_fmt or "Алят" in to_fmt:
-                        to_fmt = "Ələt-eksp."
-                    if "Ələt" in from_fmt or "Alat" in from_fmt or "Алят" in from_fmt:
-                        from_fmt = "Ələt-eksp."
-
-                # 4. Записываем чистые значения обратно в словарь
-                nlu_res["from_station"] = from_fmt
-                nlu_res["to_station"] = to_fmt
-                nlu_res["route_formatted"] = f"{from_fmt} – {to_fmt}"
-
-                # 5. Проверка транзита для межпограничных/экспортных маршрутов
-                st_from_lower = from_fmt.lower()
-                st_to_lower = to_fmt.lower()
+                # 3. Проверка транзита для межпограничных/экспортных маршрутов
+                st_from_lower = str(route_info.get("raw_from_name", "")).lower()
+                st_to_lower = str(route_info.get("raw_to_name", "")).lower()
                 border_kw = ["eksp", "exp", "эксп", "экс", "export"]
                 if any(b in st_from_lower for b in border_kw) and any(b in st_to_lower for b in border_kw):
                     nlu_res["shipment_type"] = "transit"
@@ -393,7 +374,7 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 # СОХРАНЯЕМ ОБНОВЛЕННЫЙ NLU_RES В SESSION STATE ДЛЯ ДИСПЛЕЯ В ST.JSON
                 st.session_state.nlu_res = nlu_res
 
-                # 3. Расчет тарифа через calculator
+                # 4. Расчет тарифа через calculator
                 calc_res = calculate_freight(**nlu_res, lang=selected_lang)
                 if calc_res and "part1" in calc_res:
                     calc_res["part1"]["route"] = nlu_res["route_formatted"]
