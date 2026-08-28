@@ -34,7 +34,7 @@ def extract_code(text: str) -> str:
     return match.group(0) if match else None
 
 def resolve_alat_code(text: str) -> tuple:
-    """Применяет правила маппинга для Алята и морских направлений"""
+    """Применяет жесткие правила маппинга для Алята и морских направлений"""
     norm = normalize_name(text)
     
     if "trk" in norm or "turk" in norm or "туркмен" in norm:
@@ -141,48 +141,46 @@ def match_station(target_name, stations_data):
 def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") -> dict:
     stations_data = parse_distances_file()
 
+    # Защита при передаче словаря из app.py
+    raw_from_input = from_station
+    raw_to_input = to_station
+
     if isinstance(from_station, dict):
         if to_station is None and "lang" in from_station:
             lang = from_station.get("lang", lang)
-        to_st_val = from_station.get("to_station", "")
-        from_st_val = from_station.get("from_station", "")
-        from_station = from_st_val
-        to_station = to_st_val
+        raw_to_input = from_station.get("to_station", "")
+        raw_from_input = from_station.get("from_station", "")
 
-    # 1. Сначала проверяем порты Алята
-    alat_name_from, alat_code_from = resolve_alat_code(from_station)
+    # 1. Поиск исходных названий станций ADY (из файла Distances.txt)
+    alat_name_from, alat_code_from = resolve_alat_code(raw_from_input)
     if alat_code_from:
-        for st_key, data in stations_data.items():
-            if data.get("code") == alat_code_from:
-                name_from, data_from = st_key, data
-                break
+        name_from = alat_name_from
+        data_from = stations_data.get(alat_name_from)
     else:
-        border_from = detect_border_node(from_station)
+        border_from = detect_border_node(raw_from_input)
         if border_from and border_from in stations_data:
             name_from, data_from = border_from, stations_data[border_from]
         else:
-            name_from, data_from = match_station(from_station, stations_data)
+            name_from, data_from = match_station(raw_from_input, stations_data)
 
-    alat_name_to, alat_code_to = resolve_alat_code(to_station)
+    alat_name_to, alat_code_to = resolve_alat_code(raw_to_input)
     if alat_code_to:
-        for st_key, data in stations_data.items():
-            if data.get("code") == alat_code_to:
-                name_to, data_to = st_key, data
-                break
+        name_to = alat_name_to
+        data_to = stations_data.get(alat_name_to)
     else:
-        border_to = detect_border_node(to_station)
+        border_to = detect_border_node(raw_to_input)
         if border_to and border_to in stations_data:
             name_to, data_to = border_to, stations_data[border_to]
         else:
-            name_to, data_to = match_station(to_station, stations_data)
+            name_to, data_to = match_station(raw_to_input, stations_data)
 
     code_from = data_from["code"] if data_from else ""
     code_to = data_to["code"] if data_to else ""
 
-    raw_from_name = name_from or from_station
-    raw_to_name = name_to or to_station
+    raw_from_name = name_from or raw_from_input
+    raw_to_name = name_to or raw_to_input
 
-    # 2. Поиск расстояния только по чистым названиям ADY из файла
+    # 2. Поиск километража ТОЛЬКО по чистым названиям из файла Distances.txt
     dist = None
     if data_to and raw_from_name:
         target_norm = normalize_name(raw_from_name)
@@ -199,9 +197,9 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
                 break
 
     if dist is None:
-        raise ValueError(f"Не удалось определить расстояние между '{from_station}' и '{to_station}'.")
+        raise ValueError(f"Не удалось определить расстояние между '{raw_from_input}' и '{raw_to_input}'.")
 
-    # 3. Форматирование локализации только ПОСЛЕ определения километража
+    # 3. Локализация названий ПОСЛЕ получения расстояния
     loc_from_name = get_localized_station_name(raw_from_name, lang=lang)
     loc_to_name = get_localized_station_name(raw_to_name, lang=lang)
 
