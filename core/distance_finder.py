@@ -34,41 +34,28 @@ def extract_code(text: str) -> str:
     return match.group(0) if match else None
 
 def resolve_alat_code(text: str) -> tuple:
-    """Применяет жесткие правила маппинга для Алята и морских направлений"""
+    """Применяет правила маппинга для Алята и морских направлений"""
     norm = normalize_name(text)
     
-    # 1. Если явно указан Туркменбаши
     if "trk" in norm or "turk" in norm or "туркмен" in norm:
         return "Ələt eksport-Türk.", "548803"
-        
-    # 2. Если явно указан Актау
     if "aktau" in norm or "актау" in norm:
         return "Ələt eksport Aktau", "549204"
-        
-    # 3. Если явно указан Курык
     if "kurik" in norm or "kuryk" in norm or "курык" in norm or "курыт" in norm:
         return "Ələt eksport Kurik", "553002"
-        
-    # 4. Если указан просто "Алят эксп / Алят экс" (без порта) — берем чистый погранпереход Алят
     if "eksp" in norm or "эксп" in norm or "экс" in norm:
         return "Ələt eksport", "553002"
-        
-    # 5. Новый порт
     if "yeni" in norm or "новый" in norm:
         return "Ələt yeni", "548703"
-        
-    # 6. Обычная внутренняя станция Алят
     if "alat" in norm or "alet" in norm or "алят" in norm:
         return "Ələt", "548502"
-        
     return None, None
 
 def detect_border_node(station_name: str) -> str:
-    """Точно определяет ключ погранперехода в файле Distances.txt"""
     norm = normalize_name(station_name)
     if not norm:
         return None
-    if "kesik" in norm or "kesik" in norm or "кясик" in norm or "касик" in norm:
+    if "kesik" in norm or "кясик" in norm or "касик" in norm:
         return "Böyük Kəsik (eksport)"
     if "yalama" in norm or "ялама" in norm:
         return "Yalama (eksport)"
@@ -127,27 +114,23 @@ def match_station(target_name, stations_data):
     if not target_name:
         return None, None
 
-    # 1. Проверка Алята
     alat_name, alat_code = resolve_alat_code(target_name)
     if alat_code:
         for st_key, data in stations_data.items():
             if data.get("code") == alat_code:
                 return st_key, data
 
-    # 2. Поиск по коду ЕСР
     target_code = extract_code(target_name)
     if target_code:
         for st_key, data in stations_data.items():
             if data.get("code") == target_code:
                 return st_key, data
 
-    # 3. Поиск по точному совпадению
     norm_target = normalize_name(target_name)
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm_target:
             return st_key, data
 
-    # 4. Частичный поиск
     for st_key, data in stations_data.items():
         st_norm = normalize_name(st_key)
         if norm_target == st_norm or (len(norm_target) > 3 and norm_target in st_norm):
@@ -166,13 +149,12 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
         from_station = from_st_val
         to_station = to_st_val
 
-    # 1. СНАЧАЛА ПРОВЕРЯЕМ ТОЧНЫЙ МАППИНГ ДЛЯ АЛЯТА (Актау / Курык / Туркменбаши / Чистый Алят-эксп)
+    # 1. Сначала проверяем порты Алята
     alat_name_from, alat_code_from = resolve_alat_code(from_station)
     if alat_code_from:
         for st_key, data in stations_data.items():
             if data.get("code") == alat_code_from:
                 name_from, data_from = st_key, data
-                border_from = st_key
                 break
     else:
         border_from = detect_border_node(from_station)
@@ -186,7 +168,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
         for st_key, data in stations_data.items():
             if data.get("code") == alat_code_to:
                 name_to, data_to = st_key, data
-                border_to = st_key
                 break
     else:
         border_to = detect_border_node(to_station)
@@ -201,32 +182,31 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     raw_from_name = name_from or from_station
     raw_to_name = name_to or to_station
 
+    # 2. Поиск расстояния только по чистым названиям ADY из файла
+    dist = None
+    if data_to and raw_from_name:
+        target_norm = normalize_name(raw_from_name)
+        for h_key, d_val in data_to.get("distances", {}).items():
+            if target_norm in normalize_name(h_key) or normalize_name(h_key) in target_norm:
+                dist = d_val
+                break
+
+    if dist is None and data_from and raw_to_name:
+        target_norm = normalize_name(raw_to_name)
+        for h_key, d_val in data_from.get("distances", {}).items():
+            if target_norm in normalize_name(h_key) or normalize_name(h_key) in target_norm:
+                dist = d_val
+                break
+
+    if dist is None:
+        raise ValueError(f"Не удалось определить расстояние между '{from_station}' и '{to_station}'.")
+
+    # 3. Форматирование локализации только ПОСЛЕ определения километража
     loc_from_name = get_localized_station_name(raw_from_name, lang=lang)
     loc_to_name = get_localized_station_name(raw_to_name, lang=lang)
 
     fmt_from = f"{loc_from_name}" + (f" ({code_from})" if code_from else "")
     fmt_to = f"{loc_to_name}" + (f" ({code_to})" if code_to else "")
-
-    dist = None
-
-    def get_dist_from_data(st_data, target_border_or_name):
-        if not st_data or not target_border_or_name:
-            return None
-        target_norm = normalize_name(target_border_or_name)
-        for h_key, d_val in st_data.get("distances", {}).items():
-            h_norm = normalize_name(h_key)
-            if target_norm in h_norm or h_norm in target_norm:
-                return d_val
-        return None
-
-    if data_to:
-        dist = get_dist_from_data(data_to, border_from or name_from)
-
-    if dist is None and data_from:
-        dist = get_dist_from_data(data_from, border_to or name_to)
-
-    if dist is None:
-        raise ValueError(f"Не удалось определить расстояние между '{from_station}' и '{to_station}'.")
 
     return {
         "distance_km": dist,
