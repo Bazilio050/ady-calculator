@@ -389,8 +389,11 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 # СОХРАНЯЕМ ОБНОВЛЕННЫЙ NLU_RES В SESSION STATE ДЛЯ ДИСПЛЕЯ В ST.JSON
                 st.session_state.nlu_res = nlu_res
 
-                # 3. Расчет тарифа через calculator
+               # 3. Расчет тарифа через calculator
                 calc_res = calculate_freight(**nlu_res, lang=selected_lang)
+                if calc_res and "part1" in calc_res:
+                    calc_res["part1"]["route"] = nlu_res["route_formatted"]
+
                 st.session_state.calc_result = calc_res
                 st.session_state.missing_data = None
                 loader_placeholder.empty()
