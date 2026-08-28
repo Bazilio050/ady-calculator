@@ -1,29 +1,14 @@
-import os
+# ==============================================================================
+# МОДУЛЬ ИНТЕРПРЕТАЦИИ ЗАПРОСОВ ЧЕРЕЗ GEMINI AI (АКТУАЛЬНЫЙ GOOGLE-GENAI SDK)
+# ==============================================================================
 import json
-import re
-import time
-from google import genai
+import os
+import google.genai as genai
 from google.genai import types
 
-def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
-    """
-    Разбирает запрос пользователя и ВСЕГДА возвращает словарь (dict).
-    """
-    api_key = os.environ.get("GEMINI_API_KEY", "")
-    if not api_key:
-        try:
-            import streamlit as st
-            if "GEMINI_API_KEY" in st.secrets:
-                api_key = st.secrets["GEMINI_API_KEY"]
-        except Exception:
-            pass
+API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
-    if not api_key:
-        return {"error": "GEMINI_API_KEY не найден в переменных окружения или Secrets."}
-
-    client = genai.Client(api_key=api_key)
-
-    SYSTEM_PROMPT = """
+SYSTEM_PROMPT = """
 Ты — профессиональный AI-ассистент логиста ADY (Азербайджанские Железные Дороги).
 Твоя задача — извлечь параметры из текста запроса и вернуть STRICT JSON.
 
@@ -70,58 +55,52 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
   "wagon_axles": число
 }
 """
-    
-    max_retries = 3
-    response = None
 
-    for attempt in range(max_retries):
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.5-flash-lite",
-                contents=user_prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=0.1,
-                    response_mime_type="application/json"
-                )
-            )
-            if response and response.text:
-                break
-        except Exception as e:
-            if ("503" in str(e) or "UNAVAILABLE" in str(e)) and attempt < max_retries - 1:
-                time.sleep(1)
-                continue
-            else:
-                return {"error": f"Ошибка Gemini API: {str(e)}"}
-
-    if not response or not response.text:
-        return {"error": "Не удалось получить ответ от Gemini API."}
+def parse_user_request(user_prompt: str) -> dict:
+    if not API_KEY:
+        raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
 
     try:
-        raw_text = response.text.strip()
-        raw_text = re.sub(r"^```json\s*", "", raw_text)
-        raw_text = re.sub(r"\s*```$", "", raw_text)
-
-        parsed_data = json.loads(raw_text)
-
-        # Защита: проверяем, что распарсенный результат — это словарь
-        if not isinstance(parsed_data, dict):
-            return {"error": f"Gemini вернул не словарь, а {type(parsed_data).__name__}"}
-
-        return {
-            "raw_input": user_prompt,
-            "from_station": parsed_data.get("from_station", ""),
-            "to_station": parsed_data.get("to_station", ""),
-            "gng_code": str(parsed_data.get("gng_code")) if parsed_data.get("gng_code") else None,
-            "fact_weight": float(parsed_data.get("fact_weight", 0.0) or 0.0),
-            "wagon_type": parsed_data.get("wagon_type", "universal"),
-            "shipment_type": parsed_data.get("shipment_type", "import"),
-            "is_empty_wagon": bool(parsed_data.get("is_empty_wagon", False)),
-            "is_private_wagon": bool(parsed_data.get("is_private_wagon", True)),
-            "is_round_trip": bool(parsed_data.get("is_round_trip", False)),
-            "wagon_axles": int(parsed_data.get("wagon_axles", 4) or 4),
-            "manual_distance_km": float(parsed_data.get("manual_distance_km")) if parsed_data.get("manual_distance_km") else None
-        }
-
+        # Инициализация актуального клиента google-genai
+        client = genai.Client(api_key=API_KEY)
+        
+        response = client.models.generate_content(
+            model="gemini-3.5-flash-lite",
+            contents=f"Запрос пользователя: {user_prompt}",
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                response_mime_type="application/json"
+            )
+        )
+        parsed_data = json.loads(response.text)
     except Exception as e:
-        return {"error": f"Ошибка обработки ответа Gemini: {str(e)}"}
+        raise ValueError(f"Ошибка обращения к Gemini API: {str(e)}")
+
+    # Автоподстановка для порожнего вагона
+    if parsed_data.get("is_empty_wagon"):
+        parsed_data["gng_code"] = "99220000"
+        parsed_data["gng_name"] = "Порожний вагон"
+        if not parsed_data.get("wagon_axles"):
+            parsed_data["wagon_axles"] = 4
+        if parsed_data.get("fact_weight") is None:
+            parsed_data["fact_weight"] = 0.0
+
+    # Жесткая проверка обязательных полей
+    missing_fields = []
+    if not parsed_data.get("from_station"):
+        missing_fields.append("Станция отправления (from_station)")
+    if not parsed_data.get("to_station"):
+        missing_fields.append("Станция назначения (to_station)")
+
+    # Проверка ГНГ и веса для груженого вагона
+    if not parsed_data.get("is_empty_wagon"):
+        if not parsed_data.get("gng_code"):
+            missing_fields.append("Код ГНГ / YHN (укажите числовой код, например: 72, 4818)")
+        if parsed_data.get("fact_weight") is None or parsed_data.get("fact_weight") <= 0:
+            missing_fields.append("Фактический вес груза в тоннах (fact_weight)")
+
+    if missing_fields:
+        missing_str = "\n- ".join(missing_fields)
+        raise ValueError(f"Для расчета не хватает следующих обязательных данных:\n- {missing_str}")
+
+    return parsed_data
