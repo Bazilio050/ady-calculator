@@ -1,11 +1,9 @@
 # ==============================================================================
-# МОДУЛЬ ПОИСКА РАССТОЯНИЙ И КОДОВ СТАНЦИЙ ADY (С ПОДДЕРЖКОЙ ЛОКАЛИЗАЦИИ)
+# МОДУЛЬ ПОИСКА РАССТОЯНИЙ И КОДОВ СТАНЦИЙ ADY
 # ==============================================================================
 import os
 import re
-import sys
 
-# Подключение функции локализации из data/stations_mapping.py
 try:
     from data.stations_mapping import get_localized_station_name
 except ImportError:
@@ -30,7 +28,6 @@ BORDER_NODES = {
 }
 
 def normalize_name(text: str) -> str:
-    """ Нормализует название станции: регистр, символы, латиница/кириллица, пробелы """
     if not text:
         return ""
     text = str(text).lower().strip()
@@ -47,12 +44,10 @@ def normalize_name(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
 def extract_code(text: str) -> str:
-    """Извлекает 6-значный код ЕСР из строки"""
     match = re.search(r'\b\d{6}\b', str(text))
     return match.group(0) if match else None
 
 def resolve_alat_code(text: str) -> tuple:
-    """ Применяет жесткие правила маппинга для Алята и морских направлений """
     norm = normalize_name(text)
     if "trk" in norm or "turk" in norm or "туркмен" in norm:
         return "Ələt eksport-Türk.", "548803"
@@ -123,27 +118,23 @@ def match_station(target_name, stations_data):
     if not target_name:
         return None, None
 
-    # 1. Проверка маппинга для Алята
     alat_name, alat_code = resolve_alat_code(target_name)
     if alat_code:
         for st_key, data in stations_data.items():
             if data.get("code") == alat_code:
                 return st_key, data
 
-    # 2. Поиск по 6-значному коду ЕСР
     target_code = extract_code(target_name)
     if target_code:
         for st_key, data in stations_data.items():
             if data.get("code") == target_code:
                 return st_key, data
 
-    # 3. Поиск по строгому точечному совпадению
     norm_target = normalize_name(target_name)
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm_target:
             return st_key, data
 
-    # 4. Частичный поиск по названию
     for st_key, data in stations_data.items():
         st_norm = normalize_name(st_key)
         if norm_target == st_norm or (len(norm_target) > 3 and norm_target in st_norm):
@@ -154,7 +145,6 @@ def match_station(target_name, stations_data):
 def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") -> dict:
     stations_data = parse_distances_file()
 
-    # Защита: если первым аргументом пришел словарь nlu_res из app.py
     if isinstance(from_station, dict):
         if to_station is None and "lang" in from_station:
             lang = from_station.get("lang", lang)
@@ -166,7 +156,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     border_from = find_border_column(from_station)
     border_to = find_border_column(to_station)
 
-    # УНИВЕРСАЛЬНАЯ ЛОГИКА: если найден погранпереход, ищем его напрямую в базе
     if border_from and border_from in stations_data:
         name_from, data_from = border_from, stations_data[border_from]
     else:
@@ -217,7 +206,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
         "route_formatted": f"{fmt_from} – {fmt_to}",
         "raw_from_name": raw_from_name,
         "raw_to_name": raw_to_name
-    }
     }
 
 def get_route_distance(from_station: str, to_station: str) -> int:
