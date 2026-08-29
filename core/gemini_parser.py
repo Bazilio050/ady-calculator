@@ -78,6 +78,7 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
                 response_mime_type="application/json"
+                max_output_tokens=500,
             )
         )
         parsed_data = json.loads(response.text)
