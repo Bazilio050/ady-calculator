@@ -102,13 +102,20 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
             key = "Ələt eksport"
         else:
+            # Для чистой внутренней станции
             key = "Ələt"
             
+        # Поиск информации о станции
         station_info = stations_data.get(key)
+        
+        # Если ключ "Ələt" не найден напрямую, ищем его без учета звездочек
         if not station_info:
-            key = "Ələt eksport"
-            station_info = stations_data.get(key)
-            
+            for st_key, st_data in stations_data.items():
+                if normalize_name(st_key) == normalize_name(key):
+                    key = st_key
+                    station_info = st_data
+                    break
+
         return key, station_info
 
     # 2. Беюк Кясик
