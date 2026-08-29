@@ -15,7 +15,7 @@ def normalize_nlu_stations(nlu_res: dict) -> dict:
     to_lower = to_st.lower()
     from_lower = from_st.lower()
 
-    # 1. Точные названия портов Алят (Тесты 2 и 3)
+    # 1. Точные названия портов Алят из реестра Distances
     if "kurik" in to_lower or "курык" in to_lower:
         res["to_station"] = "Ələt eksport Kurik"
     elif "aktau" in to_lower or "актау" in to_lower:
