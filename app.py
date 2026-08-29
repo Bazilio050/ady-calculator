@@ -14,6 +14,7 @@ from google import genai
 from core.gemini_parser import parse_user_request
 from core.distance_finder import get_route_info
 from core.calculator import calculate_freight
+from core.route_helpers import normalize_nlu_stations
 
 st.set_page_config(
     page_title="ADY — Tariff Calculator", 
@@ -346,6 +347,10 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             # 1. Распознавание через gemini_parser
             nlu_res = parse_user_request(current_input, lang=selected_lang)
 
+            # Применяем нормализацию через наш отдельный модуль route_helpers
+            if isinstance(nlu_res, dict) and "error" not in nlu_res:
+                nlu_res = normalize_nlu_stations(nlu_res)
+
             if not isinstance(nlu_res, dict):
                 loader_placeholder.empty()
                 st.error("Ошибка распознавания: ответ Gemini имеет неверный формат.")
@@ -355,27 +360,7 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 st.error(nlu_res["error"])
                 st.session_state.calc_result = None
             else:
-                # --- Корректировка пограничных станций для транзита ---
-                if nlu_res.get("shipment_type") == "transit":
-                    from_st_lower = str(nlu_res.get("from_station", "")).lower()
-                    to_st_lower = str(nlu_res.get("to_station", "")).lower()
-
-                    # Корректируем станцию назначения (to_station -> Böyük Kəsik (eksport))
-                    if any(k in to_st_lower for k in ["böyük kəsik", "boyuk", "кясик"]):
-                        nlu_res["to_station"] = "Böyük Kəsik (eksport)"
-                    elif any(k in to_st_lower for k in ["yalama", "ялама"]):
-                        nlu_res["to_station"] = "Yalama (eksport)"
-                    elif any(k in to_st_lower for k in ["astara", "астара"]):
-                        nlu_res["to_station"] = "Astara (eksport)"
-
-                    # Корректируем станцию отправления (from_station -> Yalama (eksport) / etc)
-                    if any(k in from_st_lower for k in ["böyük kəsik", "boyuk", "кясик"]):
-                        nlu_res["from_station"] = "Böyük Kəsik (eksport)"
-                    elif any(k in from_st_lower for k in ["yalama", "ялама"]):
-                        nlu_res["from_station"] = "Yalama (eksport)"
-                    elif any(k in from_st_lower for k in ["astara", "астара"]):
-                        nlu_res["from_station"] = "Astara (eksport)"
-                
+                               
                 # 2. Поиск расстояния и подготовка отформатированных имен на выбранном языке
                 route_info = get_route_info(nlu_res, lang=selected_lang)
                 
