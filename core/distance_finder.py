@@ -77,6 +77,21 @@ def parse_distances_file():
             "distances": distances
         }
 
+    # Полноценная системная инъекция обобщенной станции Ələt eksport в структуру данных
+    base_port_key = "Ələt eksport Kurik"
+    if base_port_key in stations_data:
+        # 1. Создаем отдельную строку для Ələt eksport (без ЕСР)
+        alat_exp_distances = stations_data[base_port_key]["distances"].copy()
+        stations_data["Ələt eksport"] = {
+            "code": "",
+            "distances": alat_exp_distances
+        }
+        
+        # 2. Прописываем Ələt eksport как отдельную колонку во ВСЕ станции
+        for st_key, st_info in stations_data.items():
+            if base_port_key in st_info["distances"]:
+                st_info["distances"]["Ələt eksport"] = st_info["distances"][base_port_key]
+
     return stations_data
 
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
@@ -93,10 +108,12 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
             key = "Ələt eksport-Türk."
         elif "aktau" in norm or "актау" in norm:
             key = "Ələt eksport Aktau"
+        elif "kurik" in norm or "курык" in norm:
+            key = "Ələt eksport Kurik"
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
-        elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm or "kurik" in norm or "курык" in norm:
-            key = "Ələt eksport Kurik"
+        elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
+            key = "Ələt eksport"
         else:
             key = "Ələt"
             
@@ -158,7 +175,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     code_from = data_from.get("code", "")
     code_to = data_to.get("code", "")
 
-    # Поиск расстояния в обе стороны
+    # Прямая выборка расстояния без поиска по частям строк
     dist = None
     if data_from and "distances" in data_from:
         dist = data_from["distances"].get(key_to)
@@ -171,18 +188,13 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     loc_from_name = get_localized_station_name(key_from, lang=lang)
     loc_to_name = get_localized_station_name(key_to, lang=lang)
 
-    # Отображение: если это обобщенный Алят, показываем "Ələt-eksp." без ЕСР-кода
-    def build_station_label(loc_name, code, key_name, raw_input):
-        raw_norm = normalize_name(raw_input)
-        if "alat" in raw_norm or "alet" in raw_norm or "алят" in raw_norm:
-            if "kurik" not in raw_norm and "aktau" not in raw_norm and "turk" not in raw_norm:
-                return "Ələt-eksp."
-        if not code:
+    def build_station_label(loc_name, code, key_name):
+        if key_name in ["Ələt eksport", "Ələt-eksp."] or not code:
             return loc_name
         return f"{loc_name} ({code})"
 
-    fmt_from = build_station_label(loc_from_name, code_from, key_from, raw_from_input)
-    fmt_to = build_station_label(loc_to_name, code_to, key_to, raw_to_input)
+    fmt_from = build_station_label(loc_from_name, code_from, key_from)
+    fmt_to = build_station_label(loc_to_name, code_to, key_to)
 
     return {
         "distance_km": dist,
