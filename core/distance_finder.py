@@ -77,17 +77,15 @@ def parse_distances_file():
             "distances": distances
         }
 
-    # Виртуальная запись для обобщенного "Ələt eksport"
+    # Создаем виртуальную запись для обобщенного "Ələt eksport" и прописываем его всем станциям
     if "Ələt eksport Kurik" in stations_data and "Ələt eksport" not in stations_data:
         stations_data["Ələt eksport"] = {
             "code": "",
             "distances": stations_data["Ələt eksport Kurik"]["distances"]
         }
-        # Добавляем ключ "Ələt eksport" во все словари расстояний других станций
         for st_key, st_info in stations_data.items():
             if "distances" in st_info and "Ələt eksport Kurik" in st_info["distances"]:
                 st_info["distances"]["Ələt eksport"] = st_info["distances"]["Ələt eksport Kurik"]
-        }
 
     return stations_data
 
@@ -172,7 +170,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     code_from = data_from.get("code", "")
     code_to = data_to.get("code", "")
 
-    # Исправленный толерантный поиск расстояния
     def lookup_distance(source_data, target_key):
         if not source_data or "distances" not in source_data:
             return None
@@ -180,14 +177,12 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
         target_norm = normalize_name(target_key)
         distances_dict = source_data.get("distances", {})
 
-        # 1. Прямой и подстрочный поиск
         for h_key, d_val in distances_dict.items():
             h_norm = normalize_name(h_key)
             if target_norm == h_norm or target_norm in h_norm or h_norm in target_norm:
                 if d_val is not None:
                     return d_val
 
-        # 2. Фолбэк для Ələt eksport -> Ələt eksport Kurik
         if "alat eksport" in target_norm or "alet eksport" in target_norm:
             for h_key, d_val in distances_dict.items():
                 h_norm = normalize_name(h_key)
@@ -207,7 +202,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     loc_from_name = get_localized_station_name(key_from, lang=lang)
     loc_to_name = get_localized_station_name(key_to, lang=lang)
 
-    # Формирование ж/д наименования: Станция (ЕСР)
     def build_station_label(loc_name, code, key_name):
         if key_name in ["Ələt eksport", "Ələt-eksp."] or not code:
             return loc_name
