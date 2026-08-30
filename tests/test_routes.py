@@ -78,7 +78,7 @@ def run_tests():
                 "weight_tons": 35,
                 "wagon_type": "крытый"
             },
-            "expected_to": "Astara-eksp. (554109)",
+            "expected_to": "Astara (eks.aşır) (554503)",
             "expected_dist": 504,
             "expected_type": "transit"
         },
