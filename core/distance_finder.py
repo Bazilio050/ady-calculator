@@ -103,12 +103,11 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
             key = "Ələt eksport-Türk."
         elif "aktau" in norm or "актау" in norm:
             key = "Ələt eksport Aktau"
-        elif "kurik" in norm or "курык" in norm:
-            key = "Ələt eksport Kurik"
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
-        elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
-            key = "Ələt eksport"
+        elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm or "kurik" in norm or "курык" in norm:
+            # Для любого обобщенного "Алят эксп" ссылаемся на базовую колонку матрицы
+            key = "Ələt eksport Kurik"
         else:
             key = "Ələt"
             
