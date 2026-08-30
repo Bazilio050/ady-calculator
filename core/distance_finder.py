@@ -77,16 +77,6 @@ def parse_distances_file():
             "distances": distances
         }
 
-    # Создаем виртуальную запись для обобщенного "Ələt eksport" и прописываем его всем станциям
-    if "Ələt eksport Kurik" in stations_data and "Ələt eksport" not in stations_data:
-        stations_data["Ələt eksport"] = {
-            "code": "",
-            "distances": stations_data["Ələt eksport Kurik"]["distances"]
-        }
-        for st_key, st_info in stations_data.items():
-            if "distances" in st_info and "Ələt eksport Kurik" in st_info["distances"]:
-                st_info["distances"]["Ələt eksport"] = st_info["distances"]["Ələt eksport Kurik"]
-
     return stations_data
 
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
@@ -106,7 +96,6 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
         elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm or "kurik" in norm or "курык" in norm:
-            # Для любого обобщенного "Алят эксп" ссылаемся на базовую колонку матрицы
             key = "Ələt eksport Kurik"
         else:
             key = "Ələt"
@@ -169,39 +158,12 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     code_from = data_from.get("code", "")
     code_to = data_to.get("code", "")
 
-    # Вспомогательная функция поиска расстояния по любому названию станции
-    def find_distance_in_dict(source_dict, search_key):
-        if not source_dict or "distances" not in source_dict:
-            return None
-        
-        target_norm = normalize_name(search_key)
-        
-        # 1. Прямой поиск по названию столбца/строки
-        for h_key, d_val in source_dict.get("distances", {}).items():
-            h_norm = normalize_name(h_key)
-            if target_norm == h_norm or target_norm in h_norm or h_norm in target_norm:
-                if d_val is not None:
-                    return d_val
-
-        # 2. Фолбэк: если ищем "Ələt eksport", а в матрице записан порт "Ələt eksport Kurik"
-        if "alat eksport" in target_norm or "alet eksport" in target_norm:
-            for h_key, d_val in source_dict.get("distances", {}).items():
-                h_norm = normalize_name(h_key)
-                if "kurik" in h_norm or "alat eksport" in h_norm:
-                    if d_val is not None:
-                        return d_val
-        return None
-
-    # Поиск в обе стороны (Abşeron -> Ələt eksport и Ələt eksport -> Abşeron)
-    dist = find_distance_in_dict(data_from, key_to)
-    if dist is None:
-        dist = find_distance_in_dict(data_to, key_from)
-
-    # Фолбэк для виртуального Ələt eksport через Ələt eksport Kurik
-    if dist is None and ("alat eksport" in normalize_name(key_to) or "alet eksport" in normalize_name(key_to)):
-        alt_key, alt_data = resolve_exact_station_key("Ələt eksport Kurik", stations_data)
-        if alt_data:
-            dist = find_distance_in_dict(data_from, alt_key) or find_distance_in_dict(alt_data, key_from)
+    # Поиск расстояния в обе стороны
+    dist = None
+    if data_from and "distances" in data_from:
+        dist = data_from["distances"].get(key_to)
+    if dist is None and data_to and "distances" in data_to:
+        dist = data_to["distances"].get(key_from)
 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from_input}' и '{raw_to_input}'.")
@@ -209,13 +171,18 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     loc_from_name = get_localized_station_name(key_from, lang=lang)
     loc_to_name = get_localized_station_name(key_to, lang=lang)
 
-    def build_station_label(loc_name, code, key_name):
-        if key_name in ["Ələt eksport", "Ələt-eksp."] or not code:
+    # Отображение: если это обобщенный Алят, показываем "Ələt-eksp." без ЕСР-кода
+    def build_station_label(loc_name, code, key_name, raw_input):
+        raw_norm = normalize_name(raw_input)
+        if "alat" in raw_norm or "alet" in raw_norm or "алят" in raw_norm:
+            if "kurik" not in raw_norm and "aktau" not in raw_norm and "turk" not in raw_norm:
+                return "Ələt-eksp."
+        if not code:
             return loc_name
         return f"{loc_name} ({code})"
 
-    fmt_from = build_station_label(loc_from_name, code_from, key_from)
-    fmt_to = build_station_label(loc_to_name, code_to, key_to)
+    fmt_from = build_station_label(loc_from_name, code_from, key_from, raw_from_input)
+    fmt_to = build_station_label(loc_to_name, code_to, key_to, raw_to_input)
 
     return {
         "distance_km": dist,
