@@ -170,31 +170,39 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     code_from = data_from.get("code", "")
     code_to = data_to.get("code", "")
 
-    def lookup_distance(source_data, target_key):
-        if not source_data or "distances" not in source_data:
+    # Вспомогательная функция поиска расстояния по любому названию станции
+    def find_distance_in_dict(source_dict, search_key):
+        if not source_dict or "distances" not in source_dict:
             return None
         
-        target_norm = normalize_name(target_key)
-        distances_dict = source_data.get("distances", {})
-
-        for h_key, d_val in distances_dict.items():
+        target_norm = normalize_name(search_key)
+        
+        # 1. Прямой поиск по названию столбца/строки
+        for h_key, d_val in source_dict.get("distances", {}).items():
             h_norm = normalize_name(h_key)
             if target_norm == h_norm or target_norm in h_norm or h_norm in target_norm:
                 if d_val is not None:
                     return d_val
 
+        # 2. Фолбэк: если ищем "Ələt eksport", а в матрице записан порт "Ələt eksport Kurik"
         if "alat eksport" in target_norm or "alet eksport" in target_norm:
-            for h_key, d_val in distances_dict.items():
+            for h_key, d_val in source_dict.get("distances", {}).items():
                 h_norm = normalize_name(h_key)
                 if "kurik" in h_norm or "alat eksport" in h_norm:
                     if d_val is not None:
                         return d_val
-
         return None
 
-    dist = lookup_distance(data_to, key_from)
+    # Поиск в обе стороны (Abşeron -> Ələt eksport и Ələt eksport -> Abşeron)
+    dist = find_distance_in_dict(data_from, key_to)
     if dist is None:
-        dist = lookup_distance(data_from, key_to)
+        dist = find_distance_in_dict(data_to, key_from)
+
+    # Фолбэк для виртуального Ələt eksport через Ələt eksport Kurik
+    if dist is None and ("alat eksport" in normalize_name(key_to) or "alet eksport" in normalize_name(key_to)):
+        alt_key, alt_data = resolve_exact_station_key("Ələt eksport Kurik", stations_data)
+        if alt_data:
+            dist = find_distance_in_dict(data_from, alt_key) or find_distance_in_dict(alt_data, key_from)
 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from_input}' и '{raw_to_input}'.")
