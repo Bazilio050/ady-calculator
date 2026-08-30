@@ -77,10 +77,10 @@ def parse_distances_file():
             "distances": distances
         }
 
-    # Создаем виртуальную запись для чистого "Ələt eksport" на базе "Ələt eksport Kurik"
+    # Создаем виртуальную запись для обобщенного "Ələt eksport" (без привязки к порту)
     if "Ələt eksport Kurik" in stations_data and "Ələt eksport" not in stations_data:
         stations_data["Ələt eksport"] = {
-            "code": "553002",
+            "code": "",  # Код ЕСР скрыт для обобщенного Алята
             "distances": stations_data["Ələt eksport Kurik"]["distances"]
         }
 
@@ -89,12 +89,12 @@ def parse_distances_file():
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
     norm = normalize_name(input_text)
     
-    # 1. Поиск по прямому совпадению ключа (если передано полное название из NLU)
+    # 1. Поиск по прямому совпадению ключа
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm:
             return st_key, data
 
-    # 2. Точное определение Алята и его портов
+    # 2. Определение Алята
     if "alat" in norm or "alet" in norm or "алят" in norm:
         if "trk" in norm or "turk" in norm or "туркмен" in norm:
             key = "Ələt eksport-Türk."
@@ -109,14 +109,7 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         else:
             key = "Ələt"
             
-        station_info = stations_data.get(key)
-        if not station_info:
-            for st_key, st_data in stations_data.items():
-                if normalize_name(st_key) == normalize_name(key):
-                    key = st_key
-                    station_info = st_data
-                    break
-        return key, station_info
+        return key, stations_data.get(key)
 
     # 3. Беюк Кясик
     if "kesik" in norm or "кясик" in norm or "касик" in norm:
@@ -125,10 +118,10 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
 
     # 4. Ялама
     if "yalama" in norm or "ялама" in norm:
-        key = "Yalama (eksport)"
+        key = "Yalama (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Yalama"
         return key, stations_data.get(key)
 
-    # 5. Астара (Точное название экспортной станции в Distances.txt: "Astara (eks.aşır)")
+    # 5. Астара
     if "astara" in norm or "астара" in norm:
         key = "Astara (eks.aşır)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Astara"
         return key, stations_data.get(key)
@@ -138,7 +131,7 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         key = "Culfa (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Culfa"
         return key, stations_data.get(key)
 
-    # 7. Поиск по коду ЕСР или общему подстроковому совпадению
+    # 7. Поиск по коду ЕСР или подстроке
     code = extract_code(input_text)
     if code:
         for st_key, data in stations_data.items():
@@ -194,11 +187,11 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     loc_from_name = get_localized_station_name(key_from, lang=lang)
     loc_to_name = get_localized_station_name(key_to, lang=lang)
 
-    # Форматирование отображения названий станций
+    # Формирование ж/д наименования: Станция (ЕСР)
     def build_station_label(loc_name, code, key_name):
-        if key_name in ["Ələt eksport", "Ələt-eksp."]:
+        if key_name in ["Ələt eksport", "Ələt-eksp."] or not code:
             return loc_name
-        return f"{loc_name} ({code})" if code else loc_name
+        return f"{loc_name} ({code})"
 
     fmt_from = build_station_label(loc_from_name, code_from, key_from)
     fmt_to = build_station_label(loc_to_name, code_to, key_to)
@@ -209,7 +202,9 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
         "to_formatted": fmt_to,
         "route_formatted": f"{fmt_from} – {fmt_to}",
         "raw_from_name": key_from,
-        "raw_to_name": key_to
+        "raw_to_name": key_to,
+        "from_code": code_from,
+        "to_code": code_to
     }
 
 def get_route_distance(from_station: str, to_station: str) -> int:
