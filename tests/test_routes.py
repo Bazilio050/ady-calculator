@@ -94,16 +94,9 @@ def run_tests():
         from_fmt = route_info.get("from_formatted", "")
         to_fmt = route_info.get("to_formatted", "")
         dist = route_info.get("distance_km", 0)
-
-        # Корректировка отображения обобщенного Алята
-        raw_text_lower = case["input"]["raw_input"].lower()
-        has_explicit_port = any(p in raw_text_lower for p in ["aktau", "актау", "kurik", "kuryk", "курык", "trk", "туркмен"])
-        if not has_explicit_port and ("Ələt" in to_fmt or "Alat" in to_fmt or "Алят" in to_fmt):
-            to_fmt = "Ələt-eksp."
-
         shipment_type = nlu_data.get("shipment_type", "import")
 
-        # 3. Сравнение
+        # 3. Честная проверка без подделок
         is_ok = (
             (to_fmt == case["expected_to"]) and 
             (dist == case["expected_dist"]) and 
