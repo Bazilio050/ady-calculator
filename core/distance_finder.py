@@ -77,11 +77,16 @@ def parse_distances_file():
             "distances": distances
         }
 
-    # Создаем виртуальную запись для обобщенного "Ələt eksport" (без привязки к порту)
+    # Виртуальная запись для обобщенного "Ələt eksport"
     if "Ələt eksport Kurik" in stations_data and "Ələt eksport" not in stations_data:
         stations_data["Ələt eksport"] = {
-            "code": "",  # Код ЕСР скрыт для обобщенного Алята
+            "code": "",
             "distances": stations_data["Ələt eksport Kurik"]["distances"]
+        }
+        # Добавляем ключ "Ələt eksport" во все словари расстояний других станций
+        for st_key, st_info in stations_data.items():
+            if "distances" in st_info and "Ələt eksport Kurik" in st_info["distances"]:
+                st_info["distances"]["Ələt eksport"] = st_info["distances"]["Ələt eksport Kurik"]
         }
 
     return stations_data
@@ -168,26 +173,27 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     code_to = data_to.get("code", "")
 
     # Исправленный толерантный поиск расстояния
-    def lookup_distance(data_dict, target_key):
-        if not data_dict or "distances" not in data_dict:
+    def lookup_distance(source_data, target_key):
+        if not source_data or "distances" not in source_data:
             return None
         
         target_norm = normalize_name(target_key)
-        
-        # 1. Прямой поиск по всем ключам колонок
-        for h_key, d_val in data_dict.get("distances", {}).items():
+        distances_dict = source_data.get("distances", {})
+
+        # 1. Прямой и подстрочный поиск
+        for h_key, d_val in distances_dict.items():
             h_norm = normalize_name(h_key)
             if target_norm == h_norm or target_norm in h_norm or h_norm in target_norm:
                 if d_val is not None:
                     return d_val
 
-        # 2. Фолбэк: если ищем "Ələt eksport" (обобщенный) или подставляем его как целое
-        is_target_alat_exp = "alat eksport" in target_norm or "alet eksport" in target_norm
-        for h_key, d_val in data_dict.get("distances", {}).items():
-            h_norm = normalize_name(h_key)
-            if is_target_alat_exp and ("alat eksport" in h_norm or "kurik" in h_norm):
-                if d_val is not None:
-                    return d_val
+        # 2. Фолбэк для Ələt eksport -> Ələt eksport Kurik
+        if "alat eksport" in target_norm or "alet eksport" in target_norm:
+            for h_key, d_val in distances_dict.items():
+                h_norm = normalize_name(h_key)
+                if "kurik" in h_norm or "alat eksport" in h_norm:
+                    if d_val is not None:
+                        return d_val
 
         return None
 
