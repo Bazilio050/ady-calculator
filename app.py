@@ -112,6 +112,7 @@ st.markdown("""
         top: 6px;
         white-space: nowrap;
         animation: trainDrive 2.2s linear infinite;
+        transform: scaleX(-1); /* Разворачиваем поезд в сторону движения */
     }
     .train-loader-text {
         text-align: center;
