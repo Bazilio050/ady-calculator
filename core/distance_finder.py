@@ -167,19 +167,31 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     code_from = data_from.get("code", "")
     code_to = data_to.get("code", "")
 
-    dist = None
-    target_norm_from = normalize_name(key_from)
-    for h_key, d_val in data_to.get("distances", {}).items():
-        if target_norm_from in normalize_name(h_key) or normalize_name(h_key) in target_norm_from:
-            dist = d_val
-            break
+    # Новый толерантный поиск расстояния
+    def lookup_distance(data_dict, target_key):
+        if not data_dict or "distances" not in data_dict:
+            return None
+        
+        target_norm = normalize_name(target_key)
+        
+        # 1. Прямое или подстрочное совпадение
+        for h_key, d_val in data_dict.get("distances", {}).items():
+            h_norm = normalize_name(h_key)
+            if target_norm == h_norm or target_norm in h_norm or h_norm in target_norm:
+                if d_val is not None:
+                    return d_val
 
+        # 2. Фолбэк для обобщенного Алята (если ищем "Ələt eksport", а в колонках есть "Ələt eksport Kurik")
+        if "alat eksport" in target_norm:
+            for h_key, d_val in data_dict.get("distances", {}).items():
+                if "alat eksport kurik" in normalize_name(h_key):
+                    if d_val is not None:
+                        return d_val
+        return None
+
+    dist = lookup_distance(data_to, key_from)
     if dist is None:
-        target_norm_to = normalize_name(key_to)
-        for h_key, d_val in data_from.get("distances", {}).items():
-            if target_norm_to in normalize_name(h_key) or normalize_name(h_key) in target_norm_to:
-                dist = d_val
-                break
+        dist = lookup_distance(data_from, key_to)
 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from_input}' и '{raw_to_input}'.")
