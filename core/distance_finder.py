@@ -89,7 +89,12 @@ def parse_distances_file():
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
     norm = normalize_name(input_text)
     
-    # 1. Точное определение Алята и его портов
+    # 1. Поиск по прямому совпадению ключа (если передано полное название из NLU)
+    for st_key, data in stations_data.items():
+        if normalize_name(st_key) == norm:
+            return st_key, data
+
+    # 2. Точное определение Алята и его портов
     if "alat" in norm or "alet" in norm or "алят" in norm:
         if "trk" in norm or "turk" in norm or "туркмен" in norm:
             key = "Ələt eksport-Türk."
@@ -102,52 +107,43 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
             key = "Ələt eksport"
         else:
-            # Для чистой внутренней станции
             key = "Ələt"
             
-        # Поиск информации о станции
         station_info = stations_data.get(key)
-        
-        # Если ключ "Ələt" не найден напрямую, ищем его без учета звездочек
         if not station_info:
             for st_key, st_data in stations_data.items():
                 if normalize_name(st_key) == normalize_name(key):
                     key = st_key
                     station_info = st_data
                     break
-
         return key, station_info
 
-    # 2. Беюк Кясик
+    # 3. Беюк Кясик
     if "kesik" in norm or "кясик" in norm or "касик" in norm:
         key = "Böyük Kəsik (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Böyük Kəsik"
         return key, stations_data.get(key)
 
-    # 3. Ялама
+    # 4. Ялама
     if "yalama" in norm or "ялама" in norm:
         key = "Yalama (eksport)"
         return key, stations_data.get(key)
 
-    # 4. Астара
+    # 5. Астара (Точное название экспортной станции в Distances.txt: "Astara (eks.aşır)")
     if "astara" in norm or "астара" in norm:
-        key = "Astara (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Astara"
+        key = "Astara (eks.aşır)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Astara"
         return key, stations_data.get(key)
 
-    # 5. Джульфа
+    # 6. Джульфа
     if "culfa" in norm or "джульфа" in norm:
         key = "Culfa (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Culfa"
         return key, stations_data.get(key)
 
-    # 6. Поиск по коду ЕСР или обычному совпадению
+    # 7. Поиск по коду ЕСР или общему подстроковому совпадению
     code = extract_code(input_text)
     if code:
         for st_key, data in stations_data.items():
             if data.get("code") == code:
                 return st_key, data
-
-    for st_key, data in stations_data.items():
-        if normalize_name(st_key) == norm:
-            return st_key, data
 
     for st_key, data in stations_data.items():
         if len(norm) > 3 and norm in normalize_name(st_key):
@@ -198,7 +194,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     loc_from_name = get_localized_station_name(key_from, lang=lang)
     loc_to_name = get_localized_station_name(key_to, lang=lang)
 
-    # Правило: для чистого Алята код в скобках НЕ выводится
+    # Форматирование отображения названий станций
     def build_station_label(loc_name, code, key_name):
         if key_name in ["Ələt eksport", "Ələt-eksp."]:
             return loc_name
