@@ -1,18 +1,16 @@
 import sys
 import os
 
-# Явно добавляем корень проекта и папку core в пути импорта Python
+# Добавляем корень проекта в пути импорта Python
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 import re
 import streamlit as st
-from google import genai
 
 # Импорты из папки core
 from core.gemini_parser import parse_user_request
-from core.distance_finder import get_route_info
 from core.calculator import calculate_freight
 from core.route_helpers import normalize_nlu_stations
 
@@ -323,7 +321,7 @@ user_api_key = os.environ.get("GEMINI_API_KEY", "")
 if not user_api_key and "GEMINI_API_KEY" in st.secrets:
     user_api_key = st.secrets["GEMINI_API_KEY"]
 
-# ЕДИНСТВЕННАЯ ГЛАВНАЯ КНОПКА РАСЧЕТА
+# КНОПКА РАСЧЕТА
 if st.button(t["calc_btn"], type="primary", use_container_width=False):
     current_input = st.session_state.get("main_input_area", user_input)
     if not current_input.strip():
@@ -347,7 +345,7 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             # 1. Распознавание через gemini_parser
             nlu_res = parse_user_request(current_input, lang=selected_lang)
 
-            # Применяем нормализацию через наш отдельный модуль route_helpers
+            # 2. Нормализация станций и определение транзита через route_helpers
             if isinstance(nlu_res, dict) and "error" not in nlu_res:
                 nlu_res = normalize_nlu_stations(nlu_res)
 
@@ -360,33 +358,14 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 st.error(nlu_res["error"])
                 st.session_state.calc_result = None
             else:
-                               
-                # 2. Поиск расстояния и подготовка отформатированных имен на выбранном языке
-                route_info = get_route_info(nlu_res, lang=selected_lang)
-                
-                # Записываем дистанцию и отформатированный маршрут
-                nlu_res["distance_km"] = route_info.get("distance_km", 0)
-                nlu_res["from_station"] = route_info.get("from_formatted", nlu_res.get("from_station", ""))
-                nlu_res["to_station"] = route_info.get("to_formatted", nlu_res.get("to_station", ""))
-                nlu_res["route_formatted"] = route_info.get("route_formatted") or f"{nlu_res['from_station']} – {nlu_res['to_station']}"
-
-               # 3. Проверка транзита для межпограничных/экспортных маршрутов
-               # st_from_lower = str(route_info.get("raw_from_name", "")).lower()
-               #  st_to_lower = str(route_info.get("raw_to_name", "")).lower()
-               # border_kw = ["eksp", "exp", "эксп", "экс", "export"]
-               # if any(b in st_from_lower for b in border_kw) and any(b in st_to_lower for b in border_kw):
-               #    nlu_res["shipment_type"] = "transit"
-
-                # СОХРАНЯЕМ ОБНОВЛЕННЫЙ NLU_RES В SESSION STATE ДЛЯ ДИСПЛЕЯ В ST.JSON
+                # Сохраняем NLU-результат для отображения JSON
                 st.session_state.nlu_res = nlu_res
 
-                # 4. Безопасная подготовка параметров без дублирования lang
+                # 3. Передача параметров в главный калькулятор
                 calc_params = nlu_res.copy()
-                calc_params.pop("lang", None)  # Безопасно вытаскиваем lang из словаря
+                calc_params.pop("lang", None)
 
                 calc_res = calculate_freight(**calc_params, lang=selected_lang)
-                if calc_res and "part1" in calc_res:
-                    calc_res["part1"]["route"] = nlu_res["route_formatted"]
 
                 st.session_state.calc_result = calc_res
                 st.session_state.missing_data = None
