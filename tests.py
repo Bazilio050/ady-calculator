@@ -1,2 +1,2 @@
-import tests.test_full_calculator
-tests.test_full_calculator.run_tests()
+import tests.test_routes.py
+tests.test_routes.py.run_tests()
