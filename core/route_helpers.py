@@ -34,16 +34,16 @@ def normalize_nlu_stations(nlu_res: dict) -> dict:
     if is_from_border and is_to_border:
         res["shipment_type"] = "transit"
 
-    # 3. При транзите точно указываем экспортные стыки для подтягивания правильных кодов ЕСР
+    # 3. При транзите точно подставляем экспортные стыки
     if res.get("shipment_type") == "transit":
         if any(b in to_lower for b in ["böyük kəsik", "boyuk", "кясик", "беюк"]):
             res["to_station"] = "Böyük Kəsik (eksport)"
         elif any(b in to_lower for b in ["astara", "астара"]):
-            res["to_station"] = "Astara (eksport)"
+            res["to_station"] = "Astara (eks.aşır)"
 
         if any(b in from_lower for b in ["böyük kəsik", "boyuk", "кясик", "беюк"]):
             res["from_station"] = "Böyük Kəsik (eksport)"
         elif any(b in from_lower for b in ["astara", "астара"]):
-            res["from_station"] = "Astara (eksport)"
+            res["from_station"] = "Astara (eks.aşır)"
 
     return res
