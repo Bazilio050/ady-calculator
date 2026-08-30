@@ -77,21 +77,6 @@ def parse_distances_file():
             "distances": distances
         }
 
-    # Полноценная системная инъекция обобщенной станции Ələt eksport в структуру данных
-    base_port_key = "Ələt eksport Kurik"
-    if base_port_key in stations_data:
-        # 1. Создаем отдельную строку для Ələt eksport (без ЕСР)
-        alat_exp_distances = stations_data[base_port_key]["distances"].copy()
-        stations_data["Ələt eksport"] = {
-            "code": "",
-            "distances": alat_exp_distances
-        }
-        
-        # 2. Прописываем Ələt eksport как отдельную колонку во ВСЕ станции
-        for st_key, st_info in stations_data.items():
-            if base_port_key in st_info["distances"]:
-                st_info["distances"]["Ələt eksport"] = st_info["distances"][base_port_key]
-
     return stations_data
 
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
@@ -167,23 +152,30 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     key_from, data_from = resolve_exact_station_key(raw_from_input, stations_data)
     key_to, data_to = resolve_exact_station_key(raw_to_input, stations_data)
 
-    if not data_from:
+    # Определяем реальные ключи матрицы для поиска километров
+    lookup_key_from = "Ələt eksport Kurik" if key_from == "Ələt eksport" else key_from
+    lookup_key_to = "Ələt eksport Kurik" if key_to == "Ələt eksport" else key_to
+
+    real_data_from = stations_data.get(lookup_key_from, data_from)
+    real_data_to = stations_data.get(lookup_key_to, data_to)
+
+    if not real_data_from:
         raise ValueError(f"Станция отправления '{raw_from_input}' не найдена.")
-    if not data_to:
+    if not real_data_to:
         raise ValueError(f"Станция назначения '{raw_to_input}' не найдена.")
 
-    code_from = data_from.get("code", "")
-    code_to = data_to.get("code", "")
-
-    # Прямая выборка расстояния без поиска по частям строк
+    # Выборка дистанции с прямым сопоставлением
     dist = None
-    if data_from and "distances" in data_from:
-        dist = data_from["distances"].get(key_to)
-    if dist is None and data_to and "distances" in data_to:
-        dist = data_to["distances"].get(key_from)
+    if real_data_from and "distances" in real_data_from:
+        dist = real_data_from["distances"].get(lookup_key_to)
+    if dist is None and real_data_to and "distances" in real_data_to:
+        dist = real_data_to["distances"].get(lookup_key_from)
 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from_input}' и '{raw_to_input}'.")
+
+    code_from = data_from.get("code", "") if data_from else ""
+    code_to = data_to.get("code", "") if data_to else ""
 
     loc_from_name = get_localized_station_name(key_from, lang=lang)
     loc_to_name = get_localized_station_name(key_to, lang=lang)
