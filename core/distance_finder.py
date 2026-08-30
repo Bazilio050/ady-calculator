@@ -167,26 +167,28 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     code_from = data_from.get("code", "")
     code_to = data_to.get("code", "")
 
-    # Новый толерантный поиск расстояния
+    # Исправленный толерантный поиск расстояния
     def lookup_distance(data_dict, target_key):
         if not data_dict or "distances" not in data_dict:
             return None
         
         target_norm = normalize_name(target_key)
         
-        # 1. Прямое или подстрочное совпадение
+        # 1. Прямой поиск по всем ключам колонок
         for h_key, d_val in data_dict.get("distances", {}).items():
             h_norm = normalize_name(h_key)
             if target_norm == h_norm or target_norm in h_norm or h_norm in target_norm:
                 if d_val is not None:
                     return d_val
 
-        # 2. Фолбэк для обобщенного Алята (если ищем "Ələt eksport", а в колонках есть "Ələt eksport Kurik")
-        if "alat eksport" in target_norm:
-            for h_key, d_val in data_dict.get("distances", {}).items():
-                if "alat eksport kurik" in normalize_name(h_key):
-                    if d_val is not None:
-                        return d_val
+        # 2. Фолбэк: если ищем "Ələt eksport" (обобщенный) или подставляем его как целое
+        is_target_alat_exp = "alat eksport" in target_norm or "alet eksport" in target_norm
+        for h_key, d_val in data_dict.get("distances", {}).items():
+            h_norm = normalize_name(h_key)
+            if is_target_alat_exp and ("alat eksport" in h_norm or "kurik" in h_norm):
+                if d_val is not None:
+                    return d_val
+
         return None
 
     dist = lookup_distance(data_to, key_from)
