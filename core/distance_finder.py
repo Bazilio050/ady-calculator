@@ -77,25 +77,12 @@ def parse_distances_file():
             "distances": distances
         }
 
-    # Системная линковка всех названий Алята из Distances.txt
-    for st_name, st_info in stations_data.items():
-        d_map = st_info["distances"]
-        target_val = None
-        for col_key, dist_val in d_map.items():
-            col_norm = normalize_name(col_key)
-            if ("alat" in col_norm or "baki liman" in col_norm or "kurik" in col_norm) and dist_val is not None:
-                target_val = dist_val
-                break
-        if target_val is not None:
-            d_map["Ələt eksport"] = target_val
-            d_map["Ələt-eksp."] = target_val
-
     return stations_data
 
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
     norm = normalize_name(input_text)
     
-    # 1. Прямое совпадение
+    # 1. Поиск по прямому совпадению ключа
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm:
             return st_key, data
@@ -111,7 +98,7 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
         elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
-            key = "Ələt eksport"
+            key = "Ələt-eksp."
         else:
             key = "Ələt"
             
@@ -129,7 +116,7 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
 
     # 5. Астара
     if "astara" in norm or "астара" in norm:
-        key = "Astara (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Astara"
+        key = "Astara (eks.aşır)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Astara"
         return key, stations_data.get(key)
 
     # 6. Джульфа
@@ -137,7 +124,7 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         key = "Culfa (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Culfa"
         return key, stations_data.get(key)
 
-    # 7. Поиск по коду или подстроке
+    # 7. Поиск по коду ЕСР или подстроке
     code = extract_code(input_text)
     if code:
         for st_key, data in stations_data.items():
@@ -165,15 +152,36 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     key_from, data_from = resolve_exact_station_key(raw_from_input, stations_data)
     key_to, data_to = resolve_exact_station_key(raw_to_input, stations_data)
 
-    if not data_from and not data_to:
-        raise ValueError(f"Станции не найдены.")
+    # Функция поиска расстояния в матрице с учётом подстрок заголовков (например, "Ələt eksp / Bakı liman")
+    def lookup_distance(source_data, target_key):
+        if not source_data or "distances" not in source_data:
+            return None
+        
+        target_norm = normalize_name(target_key)
+        distances_dict = source_data.get("distances", {})
 
-    # Получение расстояния
+        # Прямой и толерантный поиск
+        for h_key, d_val in distances_dict.items():
+            h_norm = normalize_name(h_key)
+            if target_norm == h_norm or target_norm in h_norm or h_norm in target_norm:
+                if d_val is not None:
+                    return d_val
+
+        # Связка экспортных наименований Алята с колонкой "Ələt eksp / Bakı liman"
+        if "alat" in target_norm or "alet" in target_norm or "алят" in target_norm:
+            for h_key, d_val in distances_dict.items():
+                h_norm = normalize_name(h_key)
+                if "alat" in h_norm or "baki liman" in h_norm:
+                    if d_val is not None:
+                        return d_val
+
+        return None
+
     dist = None
-    if data_from and "distances" in data_from:
-        dist = data_from["distances"].get(key_to)
-    if dist is None and data_to and "distances" in data_to:
-        dist = data_to["distances"].get(key_from)
+    if data_from:
+        dist = lookup_distance(data_from, key_to)
+    if dist is None and data_to:
+        dist = lookup_distance(data_to, key_from)
 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from_input}' и '{raw_to_input}'.")
@@ -184,13 +192,11 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     loc_from_name = get_localized_station_name(key_from, lang=lang)
     loc_to_name = get_localized_station_name(key_to, lang=lang)
 
-    # Красивое отображение станции
     def build_station_label(loc_name, code, key_name):
-        if key_name in ["Ələt eksport", "Ələt-eksp."]:
-            return "Ələt-eksp."
-        if not code:
-            return loc_name
-        return f"{loc_name} ({code})"
+        if "eksp" in key_name.lower() or "export" in key_name.lower() or not code:
+            if "alat" in key_name.lower() or "ələt" in key_name.lower():
+                return "Ələt-eksp."
+        return f"{loc_name} ({code})" if code else loc_name
 
     fmt_from = build_station_label(loc_from_name, code_from, key_from)
     fmt_to = build_station_label(loc_to_name, code_to, key_to)
