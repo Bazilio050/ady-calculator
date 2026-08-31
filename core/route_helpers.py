@@ -1,5 +1,8 @@
 # core/route_helpers.py
 
+def normalize_simple(text: str) -> str:
+    return str(text).lower().replace("ə", "e").replace("ö", "o").replace("ü", "u")
+
 def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
     if not isinstance(nlu_res, dict):
         return nlu_res
@@ -8,33 +11,37 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
     from_st = str(res.get("from_station", "")).strip()
     to_st = str(res.get("to_station", "")).strip()
     full_text = f"{raw_text} {from_st} {to_st}".lower()
+    
+    norm_from = normalize_simple(from_st)
+    norm_to = normalize_simple(to_st)
+    norm_raw = normalize_simple(raw_text)
 
-    # Списки ключевых слов
-    border_keywords = ["yalama", "ялама", "böyük kəsik", "boyuk", "беюк", "кясик", "astara", "астара", "culfa", "джульфа"]
+    border_keywords = ["yalama", "ялама", "boyuk kesik", "boyuk", "беюк", "кясик", "astara", "астара", "culfa", "джульфа"]
     port_keywords = ["aktau", "актау", "kurik", "курык", "trk", "туркмен"]
 
-    # Определение граничных точек
-    is_from_border = any(b in normalize_simple(from_st) or b in full_text for b in border_keywords if b in full_text)
-    is_to_border = any(b in normalize_simple(to_st) or b in full_text for b in border_keywords if b in full_text)
+    # Точная проверка ОТКУДА и КУДА по отдельности
+    is_from_border = any(b in norm_from or b in norm_raw.split()[:2] for b in border_keywords)
+    is_to_border = any(b in norm_to for b in border_keywords)
     is_to_port = any(p in full_text for p in port_keywords)
 
-    is_from_border_or_port = is_from_border
-    is_to_border_or_port = is_to_border or is_to_port
+    # Проверка Абшерона как явной внутренней станции
+    is_to_absheron = "absheron" in norm_to or "abseron" in norm_to or "апшерон" in full_text or "абшерон" in full_text
 
-    # 1. Жесткое определение вида перевозки (shipment_type)
-    if is_from_border_or_port and is_to_border_or_port:
+    # Определение вида перевозки
+    if is_from_border and (is_to_border or is_to_port):
         res["shipment_type"] = "transit"
-    elif is_from_border and not is_to_border_or_port:
+    elif is_from_border and is_to_absheron:
         res["shipment_type"] = "import"
-    elif not is_from_border_or_port and is_to_border_or_port:
+    elif is_from_border and not (is_to_border or is_to_port):
+        res["shipment_type"] = "import"
+    elif not is_from_border and (is_to_border or is_to_port):
         res["shipment_type"] = "export"
 
     shipment_type = res.get("shipment_type", "export")
     is_transit_or_export = shipment_type in ["transit", "export"]
 
-    # 2. Нормализация станции НАЗНАЧЕНИЯ (to_station)
-    # Алят и Порты
-    if any(a in full_text for a in ["alat", "ələt", "алят"]):
+    # Приведение станций назначения к экспортным стыкам
+    if any(a in full_text for a in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
         if "kurik" in full_text or "курык" in full_text:
             res["to_station"] = "Ələt-eksp.Kurik"
         elif "aktau" in full_text or "актау" in full_text:
@@ -46,14 +53,12 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
         else:
             res["to_station"] = "Ələt"
 
-    # Беюк Кясик
     elif any(k in full_text for k in ["kesik", "кясик", "касик"]):
         if is_transit_or_export or any(e in full_text for e in ["eksp", "эксп", "экс"]):
             res["to_station"] = "Böyük Kəsik-eksp."
         else:
             res["to_station"] = "Böyük Kəsik"
 
-    # Астара
     elif "astara" in full_text or "астара" in full_text:
         if is_transit_or_export or any(e in full_text for e in ["eksp", "эксп", "экс"]):
             res["to_station"] = "Astara (eks.aşır)"
@@ -61,6 +66,3 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
             res["to_station"] = "Astara"
 
     return res
-
-def normalize_simple(text: str) -> str:
-    return str(text).lower().replace("ə", "e").replace("ö", "o").replace("ü", "u")
