@@ -80,38 +80,42 @@ def parse_distances_file():
 def resolve_exact_station_key(input_text: str, stations_data: dict, is_transit: bool = False) -> tuple:
     norm = normalize_name(input_text)
     
-    # 1. Если отправление/назначение — Ялама при транзите, берем строго Yalama (eksport)
+    # Флаг экспорта/транзита или наличия ключевых слов стыка
+    has_exp_kw = any(k in norm for k in ["eksp", "экс", "эксп", "export", "ashir", "ашир"])
+    use_export_profile = is_transit or has_exp_kw
+
+    # 1. Ялама (Любое направление)
     if "yalama" in norm or "ялама" in norm:
-        key = "Yalama (eksport)" if (is_transit or any(k in norm for k in ["eksp", "экс", "эксп", "export"])) else "Yalama"
+        key = "Yalama (eksport)" if use_export_profile else "Yalama"
         if key not in stations_data and "Yalama (eksport)" in stations_data:
             key = "Yalama (eksport)"
         return key, stations_data.get(key)
 
-    # 2. Алят (Экспортные направления Порта и Перехода)
+    # 2. Беюк Кясик (Любое направление)
+    if any(k in norm for k in ["kesik", "кясик", "касик"]):
+        key = "Böyük Kəsik (eksport)" if use_export_profile else "Böyük Kəsik"
+        if key not in stations_data and "Böyük Kəsik (eksport)" in stations_data:
+            key = "Böyük Kəsik (eksport)"
+        return key, stations_data.get(key)
+
+    # 3. Астара (Любое направление)
+    if "astara" in norm or "астара" in norm:
+        key = "Astara (eks.aşır)" if use_export_profile else "Astara"
+        if key not in stations_data and "Astara (eks.aşır)" in stations_data:
+            key = "Astara (eks.aşır)"
+        return key, stations_data.get(key)
+
+    # 4. Алят (Экспортные направления Порта и Перехода)
     if any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
         if "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
-        elif any(k in norm for k in ["eksp", "эксп", "экс", "export", "kurik", "курык", "aktau", "актау", "liman"]) or is_transit:
+        elif use_export_profile or any(k in norm for k in ["liman", "port"]):
             key = "Ələt eksport Kurik"
         else:
             key = "Ələt"
         return key, stations_data.get(key)
 
-    # 3. Беюк Кясик
-    if "kesik" in norm or "кясик" in norm or "касик" in norm:
-        key = "Böyük Kəsik (eksport)" if (any(k in norm for k in ["eksp", "экс", "эксп", "export"]) or is_transit) else "Böyük Kəsik"
-        if key == "Böyük Kəsik" and "Böyük Kəsik (eksport)" in stations_data:
-            key = "Böyük Kəsik (eksport)"
-        return key, stations_data.get(key)
-
-    # 4. Астара
-    if "astara" in norm or "астара" in norm:
-        key = "Astara (eks.aşır)" if (any(k in norm for k in ["eksp", "экс", "эксп", "export"]) or is_transit) else "Astara"
-        if key == "Astara" and "Astara (eks.aşır)" in stations_data and is_transit:
-            key = "Astara (eks.aşır)"
-        return key, stations_data.get(key)
-
-    # Прямой поиск по названию
+    # 5. Прямой поиск по совпадению названий или кодам
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm:
             return st_key, data
@@ -203,6 +207,12 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         elif "alat" in raw_norm or "elet" in raw_norm or "алят" in raw_norm:
             if "eksp" in raw_norm or "export" in raw_norm or "эксп" in raw_norm or is_transit:
                 return "Ələt-eksp."
+        elif "astara" in raw_norm or "астара" in raw_norm:
+            if is_transit or "eksp" in raw_norm or "эксп" in raw_norm:
+                return "Astara (eks.aşır)"
+        elif "kesik" in raw_norm or "кясик" in raw_norm:
+            if is_transit or "eksp" in raw_norm or "эксп" in raw_norm:
+                return "Böyük Kəsik-eksp."
         if not code:
             return loc_name
         return f"{loc_name} ({code})"
