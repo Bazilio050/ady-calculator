@@ -77,6 +77,28 @@ def parse_distances_file():
             "distances": distances
         }
 
+    stations_data[st_name] = {
+            "code": st_code,
+            "distances": distances
+        }
+
+    # === ВИРТУАЛЬНЫЙ МАППИНГ ДЛЯ Ələt-eksp. ===
+    # 1. Создаем виртуальную станцию Ələt-eksp.
+    base_alat = stations_data.get("Ələt eksport Kurik", {})
+    alat_distances = base_alat.get("distances", {}).copy()
+    alat_distances["Ələt-eksp."] = 0
+
+    stations_data["Ələt-eksp."] = {
+        "code": "553002",
+        "distances": alat_distances
+    }
+
+    # 2. Добавляем ключ "Ələt-eksp." во все остальные станции (включая Abşeron)
+    for st_info in stations_data.values():
+        d_map = st_info.get("distances", {})
+        if "Ələt eksp / Bakı liman" in d_map:
+            d_map["Ələt-eksp."] = d_map["Ələt eksp / Bakı liman"]
+
     return stations_data
 
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
