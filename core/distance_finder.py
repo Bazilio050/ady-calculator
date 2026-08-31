@@ -136,17 +136,20 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
 
     def build_label(raw_in, fallback_key, code):
         norm = normalize_name(raw_in)
-        if "kurik" in norm or "курык" in norm:
+        # Добавляем кириллические "трк" и "туркмен"
+        if any(k in norm for k in ["kurik", "курык"]):
             return "Ələt-eksp.Kurik"
-        elif "aktau" in norm or "актау" in norm:
+        elif any(k in norm for k in ["aktau", "актау"]):
             return "Ələt-eksp.Aktau"
-        elif "kesik" in norm or "кясик" in norm:
+        elif any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
+            return "Ələt-eksp.Türk."
+        elif any(k in norm for k in ["kesik", "кясик"]):
             return "Böyük Kəsik-eksp." if is_transit else "Böyük Kəsik"
-        elif "astara" in norm or "астара" in norm:
+        elif any(k in norm for k in ["astara", "астара"]):
             return "Astara (eks.aşır)" if is_transit else "Astara"
-        elif "alat" in norm or "elet" in norm or "алят" in norm:
+        elif any(k in norm for k in ["alat", "elet", "алят"]):
             return "Ələt-eksp." if is_transit else "Ələt"
-        elif "yalama" in norm or "ялама" in norm:
+        elif any(k in norm for k in ["yalama", "ялама"]):
             return "Yalama"
         return f"{fallback_key} ({code})" if code else fallback_key
 
