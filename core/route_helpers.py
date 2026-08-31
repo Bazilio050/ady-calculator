@@ -1,106 +1,66 @@
 # core/route_helpers.py
 
 def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
-    """
-    Модуль бизнес-логики нормализации станций и определения типа перевозки (ADY).
-    """
     if not isinstance(nlu_res, dict):
         return nlu_res
 
     res = nlu_res.copy()
     from_st = str(res.get("from_station", "")).strip()
     to_st = str(res.get("to_station", "")).strip()
-
     full_text = f"{raw_text} {from_st} {to_st}".lower()
 
-    # Пограничные стыки ADY
-    border_keywords = [
-        "yalama", "ялама", 
-        "böyük kəsik", "boyuk", "беюк", "кясик", 
-        "astara", "астара", 
-        "culfa", "джульфа"
-    ]
+    # Списки ключевых слов
+    border_keywords = ["yalama", "ялама", "böyük kəsik", "boyuk", "беюк", "кясик", "astara", "астара", "culfa", "джульфа"]
+    port_keywords = ["aktau", "актау", "kurik", "курык", "trk", "туркмен"]
 
-    is_from_border = any(b in full_text for b in border_keywords)
-    is_to_border = any(b in full_text for b in border_keywords)
-    is_from_port = any(b in full_text for b in ["aktau", "актау", "kurik", "курык", "trk", "туркмен"])
-    is_to_port = any(b in full_text for b in ["aktau", "актау", "kurik", "курык", "trk", "туркмен"])
+    # Определение граничных точек
+    is_from_border = any(b in normalize_simple(from_st) or b in full_text for b in border_keywords if b in full_text)
+    is_to_border = any(b in normalize_simple(to_st) or b in full_text for b in border_keywords if b in full_text)
+    is_to_port = any(p in full_text for p in port_keywords)
 
-    if (is_from_border or is_from_port) and (is_to_border or is_to_port):
+    is_from_border_or_port = is_from_border
+    is_to_border_or_port = is_to_border or is_to_port
+
+    # 1. Жесткое определение вида перевозки (shipment_type)
+    if is_from_border_or_port and is_to_border_or_port:
         res["shipment_type"] = "transit"
+    elif is_from_border and not is_to_border_or_port:
+        res["shipment_type"] = "import"
+    elif not is_from_border_or_port and is_to_border_or_port:
+        res["shipment_type"] = "export"
 
     shipment_type = res.get("shipment_type", "export")
+    is_transit_or_export = shipment_type in ["transit", "export"]
 
-    # Перехват и нормализация Алята
+    # 2. Нормализация станции НАЗНАЧЕНИЯ (to_station)
+    # Алят и Порты
     if any(a in full_text for a in ["alat", "ələt", "алят"]):
         if "kurik" in full_text or "курык" in full_text:
-            res["to_station"] = "Ələt eksport Kurik"
+            res["to_station"] = "Ələt-eksp.Kurik"
         elif "aktau" in full_text or "актау" in full_text:
-            res["to_station"] = "Ələt eksport Aktau"
+            res["to_station"] = "Ələt-eksp.Aktau"
         elif "türk" in full_text or "туркмен" in full_text or "трк" in full_text:
-            res["to_station"] = "Ələt eksport-Türk."
-        elif any(e in full_text for e in ["eksp", "эксп", "экс", "export"]) or shipment_type == "export":
+            res["to_station"] = "Ələt-eksp.Türk."
+        elif any(e in full_text for e in ["eksp", "эксп", "экс", "export"]) or is_transit_or_export:
             res["to_station"] = "Ələt-eksp."
         else:
             res["to_station"] = "Ələt"
 
-    return res
-
-    res = nlu_res.copy()
-    from_st = str(res.get("from_station", "")).strip()
-    to_st = str(res.get("to_station", "")).strip()
-
-    from_lower = from_st.lower()
-    to_lower = to_st.lower()
-
-    # Пограничные стыки ADY
-    border_keywords = [
-        "yalama", "ялама", 
-        "böyük kəsik", "boyuk", "беюк", "кясик", 
-        "astara", "астара", 
-        "culfa", "джульфа"
-    ]
-
-    is_from_border = any(b in from_lower for b in border_keywords)
-    is_to_border = any(b in to_lower for b in border_keywords)
-
-    is_from_port = any(b in from_lower for b in ["aktau", "актау", "kurik", "курык", "trk", "туркмен"])
-    is_to_port = any(b in to_lower for b in ["aktau", "актау", "kurik", "курык", "trk", "туркмен"])
-
-    # Определение транзита
-    if (is_from_border or is_from_port) and (is_to_border or is_to_port):
-        res["shipment_type"] = "transit"
-
-    shipment_type = res.get("shipment_type", "export")
-
-    # Обработка станции назначения (TO)
-    if "kurik" in to_lower or "курык" in to_lower:
-        res["to_station"] = "Ələt eksport Kurik"
-    elif "aktau" in to_lower or "актау" in to_lower:
-        res["to_station"] = "Ələt eksport Aktau"
-    elif "türk" in to_lower or "туркмен" in to_lower or "трк" in to_lower:
-        res["to_station"] = "Ələt eksport-Türk."
-    elif any(b in to_lower for b in ["alat", "ələt", "алят"]):
-        if shipment_type == "transit":
-            res["to_station"] = "Ələt eksport Kurik"
+    # Беюк Кясик
+    elif any(k in full_text for k in ["kesik", "кясик", "касик"]):
+        if is_transit_or_export or any(e in full_text for e in ["eksp", "эксп", "экс"]):
+            res["to_station"] = "Böyük Kəsik-eksp."
         else:
-            # Мапим экспортный Алят на эталонную станцию матрицы Distances.txt
-            res["to_station"] = "Ələt"
+            res["to_station"] = "Böyük Kəsik"
 
-    # Обработка станции отправления (FROM)
-    if shipment_type == "transit":
-        if any(b in to_lower for b in ["böyük kəsik", "boyuk", "кясик", "беюк"]):
-            res["to_station"] = "Böyük Kəsik (eksport)"
-        elif any(b in to_lower for b in ["astara", "астара"]):
+    # Астара
+    elif "astara" in full_text or "астара" in full_text:
+        if is_transit_or_export or any(e in full_text for e in ["eksp", "эксп", "экс"]):
             res["to_station"] = "Astara (eks.aşır)"
-        elif any(b in to_lower for b in ["yalama", "ялама"]):
-            res["to_station"] = "Yalama (eksport)"
-
-        if any(b in from_lower for b in ["böyük kəsik", "boyuk", "кясик", "беюк"]):
-            res["from_station"] = "Böyük Kəsik (eksport)"
-        elif any(b in from_lower for b in ["astara", "астара"]):
-            res["from_station"] = "Astara (eks.aşır)"
-        elif any(b in from_lower for b in ["yalama", "ялама"]):
-            res["from_station"] = "Yalama (eksport)"
+        else:
+            res["to_station"] = "Astara"
 
     return res
+
+def normalize_simple(text: str) -> str:
+    return str(text).lower().replace("ə", "e").replace("ö", "o").replace("ü", "u")
