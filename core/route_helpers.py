@@ -36,7 +36,7 @@ def normalize_nlu_stations(nlu_res: dict) -> dict:
 
     shipment_type = res.get("shipment_type", "export")
 
-    # Правило 2: Обработка портов Алята по направлениям
+    # Правило 2: Обработка портов/стыков Алята по направлениям
     if "kurik" in to_lower or "курык" in to_lower:
         res["to_station"] = "Ələt eksport Kurik"
     elif "aktau" in to_lower or "актау" in to_lower:
@@ -44,10 +44,11 @@ def normalize_nlu_stations(nlu_res: dict) -> dict:
     elif "türk" in to_lower or "туркмен" in to_lower or "трк" in to_lower:
         res["to_station"] = "Ələt eksport-Türk."
     elif any(b in to_lower for b in ["alat", "ələt", "алят"]):
-        if shipment_type == "transit":
-            res["to_station"] = "Ələt eksport Kurik"
+        if any(e in to_lower for e in ["eksp", "эксп", "экс", "export"]):
+            # Если пользователь прямо указал "эксп", сохраняем экспортный Алят
+            res["to_station"] = "Ələt eksport"
         else:
-            # Для экспорта / внутренних перевозок приводим к базовому ключу матрицы
+            # Если написано просто "Алят", берем линейную станцию
             res["to_station"] = "Ələt"
 
     # Правило 3: Обработка пограничных переходов для транзита
