@@ -77,19 +77,20 @@ def parse_distances_file():
 
     return stations_data
 
-def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
+def resolve_exact_station_key(input_text: str, stations_data: dict, is_transit: bool = False) -> tuple:
     norm = normalize_name(input_text)
     
-    # 1. Прямой поиск
-    for st_key, data in stations_data.items():
-        if normalize_name(st_key) == norm:
-            return st_key, data
+    # 1. Если транзит/экспорт и станция отправления Ялама — используем Yalama (eksport)
+    if ("yalama" in norm or "ялама" in norm) and is_transit:
+        key = "Yalama (eksport)"
+        if key in stations_data:
+            return key, stations_data.get(key)
 
     # 2. Алят (Экспортные направления Порта и Перехода)
     if any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
         if "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
-        elif any(k in norm for k in ["eksp", "эксп", "экс", "export", "kurik", "курык", "aktau", "актау", "liman"]):
+        elif any(k in norm for k in ["eksp", "эксп", "экс", "export", "kurik", "курык", "aktau", "актау", "liman"]) or is_transit:
             key = "Ələt eksport Kurik"
         else:
             key = "Ələt"
@@ -97,12 +98,12 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
 
     # 3. Беюк Кясик
     if "kesik" in norm or "кясик" in norm or "касик" in norm:
-        key = "Böyük Kəsik (eksport)" if any(k in norm for k in ["eksp", "экс", "эксп", "export"]) else "Böyük Kəsik"
+        key = "Böyük Kəsik (eksport)" if (any(k in norm for k in ["eksp", "экс", "эксп", "export"]) or is_transit) else "Böyük Kəsik"
         if key == "Böyük Kəsik" and "Böyük Kəsik (eksport)" in stations_data:
             key = "Böyük Kəsik (eksport)"
         return key, stations_data.get(key)
 
-    # 4. Ялама
+    # 4. Ялама (обычный выбор)
     if "yalama" in norm or "ялама" in norm:
         key = "Yalama (eksport)" if any(k in norm for k in ["eksp", "экс", "эксп", "export"]) else "Yalama"
         return key, stations_data.get(key)
@@ -111,6 +112,11 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
     if "astara" in norm or "астара" in norm:
         key = "Astara (eks.aşır)" if any(k in norm for k in ["eksp", "экс", "эксп", "export"]) else "Astara"
         return key, stations_data.get(key)
+
+    # Прямой поиск по названию
+    for st_key, data in stations_data.items():
+        if normalize_name(st_key) == norm:
+            return st_key, data
 
     code = extract_code(input_text)
     if code:
@@ -130,25 +136,24 @@ def lookup_dist(source_data, target_key):
     
     t_norm = normalize_name(target_key)
     distances_dict = source_data.get("distances", {})
-
-    # 1. Если цель — экспортный Алят / Порт (Актау, Курык, ТРК, Лиман), ищем колонку с "elet" / "liman"
-    if any(k in t_norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык", "liman"]):
+    
+    # 1. Поиск для Алята (колонки Ələt eksp / Bakı liman)
+    if any(k in t_norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
         for h_key, d_val in distances_dict.items():
             h_norm = normalize_name(h_key)
             if ("elet" in h_norm or "alat" in h_norm) and ("eksp" in h_norm or "liman" in h_norm or "eksport" in h_norm):
                 if d_val is not None:
                     return d_val
 
-    # 2. Если цель — экспортный Беюк Кясик, ищем колонку "Boyuk Kesik (eksport)"
+    # 2. Поиск для Беюк Кясик (колонка Boyuk Kesik eksport)
     if "kesik" in t_norm or "кясик" in t_norm or "касик" in t_norm:
-        if "eksp" in t_norm or "eksport" in t_norm:
-            for h_key, d_val in distances_dict.items():
-                h_norm = normalize_name(h_key)
-                if ("kesik" in h_norm or "кясик" in h_norm) and ("eksp" in h_norm or "eksport" in h_norm):
-                    if d_val is not None:
-                        return d_val
+        for h_key, d_val in distances_dict.items():
+            h_norm = normalize_name(h_key)
+            if ("kesik" in h_norm or "кясик" in h_norm) and ("eksp" in h_norm or "eksport" in h_norm):
+                if d_val is not None:
+                    return d_val
 
-    # 3. Стандартный поиск по совпадению названий
+    # 3. Точный поиск совпадений по заголовку
     for h_key, d_val in distances_dict.items():
         h_norm = normalize_name(h_key)
         if t_norm == h_norm or t_norm in h_norm or h_norm in t_norm:
@@ -157,7 +162,7 @@ def lookup_dist(source_data, target_key):
 
     return None
 
-def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") -> dict:
+def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", shipment_type: str = None) -> dict:
     stations_data = parse_distances_file()
 
     raw_from_input = from_station
@@ -169,8 +174,10 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
         raw_to_input = from_station.get("to_station", "")
         raw_from_input = from_station.get("from_station", "")
 
-    key_from, data_from = resolve_exact_station_key(raw_from_input, stations_data)
-    key_to, data_to = resolve_exact_station_key(raw_to_input, stations_data)
+    is_transit = shipment_type in ["transit", "export"]
+
+    key_from, data_from = resolve_exact_station_key(raw_from_input, stations_data, is_transit=is_transit)
+    key_to, data_to = resolve_exact_station_key(raw_to_input, stations_data, is_transit=is_transit)
 
     dist = None
     if data_from:
@@ -196,7 +203,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
         elif "trk" in raw_norm or "turk" in raw_norm or "туркмен" in raw_norm:
             return "Ələt-eksp.Türk."
         elif "alat" in raw_norm or "elet" in raw_norm or "алят" in raw_norm:
-            if "eksp" in raw_norm or "export" in raw_norm or "эксп" in raw_norm:
+            if "eksp" in raw_norm or "export" in raw_norm or "эксп" in raw_norm or is_transit:
                 return "Ələt-eksp."
         if not code:
             return loc_name
