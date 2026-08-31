@@ -348,7 +348,7 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
 
             # 2. Нормализация станций и определение транзита через route_helpers
             if isinstance(nlu_res, dict) and "error" not in nlu_res:
-                nlu_res = normalize_nlu_stations(nlu_res)
+                nlu_res = normalize_nlu_stations(nlu_res, raw_text=current_input)
 
             if not isinstance(nlu_res, dict):
                 loader_placeholder.empty()
