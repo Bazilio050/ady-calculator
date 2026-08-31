@@ -155,18 +155,25 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
 
     # Поиск расстояния
     def lookup_dist(source_data, target_key):
-        if not source_data or "distances" not in source_data:
-            return None
-        t_norm = normalize_name(target_key)
-        for h_key, d_val in source_data["distances"].items():
-            h_norm = normalize_name(h_key)
-            if t_norm == h_norm or t_norm in h_norm or h_norm in t_norm:
-                if d_val is not None:
-                    return d_val
-            if ("alat" in t_norm or "alet" in t_norm) and ("alat" in h_norm or "baki liman" in h_norm):
-                if d_val is not None:
-                    return d_val
+    if not source_data or "distances" not in source_data:
         return None
+    
+    t_norm = normalize_name(target_key)
+    distances_dict = source_data.get("distances", {})
+    
+    # 1. Прямой поиск по имеющимся колонкам
+    for h_key, d_val in distances_dict.items():
+        h_norm = normalize_name(h_key)
+        if t_norm == h_norm or t_norm in h_norm or h_norm in t_norm:
+            if d_val is not None:
+                return d_val
+
+    # 2. АЛИАС: Вынесен за пределы цикла
+    if "alat" in t_norm or "alet" in t_norm or "алят" in t_norm:
+        if any(k in t_norm for k in ["eksp", "kurik", "aktau", "turk", "liman"]):
+            return distances_dict.get("Ələt eksp / Bakı liman")
+
+    return None
 
     dist = None
     if data_from:
