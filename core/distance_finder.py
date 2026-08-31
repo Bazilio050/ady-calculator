@@ -1,5 +1,5 @@
 # ==============================================================================
-# МОДУЛЬ ПОИСКА РАССТОЯНИЙ И КОДОВ СТАНЦИЙ ADY
+# МОДУЛЬ ПОИСКА РАССТОЯНИЙ И КОДОВ СТАНЦИЙ ADY (БЕЗ ЗАГЛУШЕК И HARDCODE-КИЛОМЕТРОВ)
 # ==============================================================================
 import os
 import re
@@ -77,55 +77,32 @@ def parse_distances_file():
             "distances": distances
         }
 
-    stations_data[st_name] = {
-            "code": st_code,
-            "distances": distances
-        }
-
-    # Виртуальная станция для прямого поиска
-    base_alat = stations_data.get("Ələt eksport Kurik", {})
-    alat_distances = base_alat.get("distances", {}).copy()
-    alat_distances["Ələt-eksp."] = 0
-
-    stations_data["Ələt-eksp."] = {
-        "code": "553002",
-        "distances": alat_distances
-    }
-
-    # Прокидываем 67 км во все станции матрицы
-    for st_info in stations_data.values():
-        d_map = st_info.get("distances", {})
-        if "Ələt eksp / Bakı liman" in d_map:
-            d_map["Ələt-eksp."] = d_map["Ələt eksp / Bakı liman"]
-
     return stations_data
 
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
     norm = normalize_name(input_text)
     
-    # 1. Поиск по прямому совпадению
+    # 1. Прямой поиск по названию в Distances.txt
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm:
             return st_key, data
 
-    # 2. Определение Алята
-    if "alat" in norm or "alet" in norm or "алят" in norm:
-        if "trk" in norm or "turk" in norm or "туркмен" in norm:
-            key = "Ələt eksport-Türk."
-        elif "aktau" in norm or "актау" in norm:
+    # 2. Определение Алята и Портов по строкам из Distances.txt
+    if any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык", "baki liman"]):
+        if "aktau" in norm or "актау" in norm:
             key = "Ələt eksport Aktau"
-        elif "kurik" in norm or "курык" in norm:
-            key = "Ələt eksport Kurik"
+        elif "trk" in norm or "turk" in norm or "туркмен" in norm:
+            key = "Ələt eksport-Türk."
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
-        elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
-            key = "Ələt-eksp."  # Теперь ссылается на созданный виртуальный ключ!
+        elif any(k in norm for k in ["eksp", "эксп", "экс", "export", "kurik", "курык", "liman"]):
+            key = "Ələt eksport Kurik"  # Базовая строка для всех экспортных выходов Алята (553002)
         else:
             key = "Ələt"
             
         return key, stations_data.get(key)
 
-    # 3. Беюк Кясик
+    # 3. Беюк Кясик (Берем честные экспортные строки таблицы)
     if "kesik" in norm or "кясик" in norm or "касик" in norm:
         key = "Böyük Kəsik (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Böyük Kəsik"
         return key, stations_data.get(key)
@@ -140,18 +117,14 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         key = "Astara (eks.aşır)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Astara"
         return key, stations_data.get(key)
 
-    # 6. Джульфа
-    if "culfa" in norm or "джульфа" in norm:
-        key = "Culfa (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Culfa"
-        return key, stations_data.get(key)
-
-    # 7. Поиск по коду ЕСР или подстроке
+    # 6. Поиск по коду ЕСР
     code = extract_code(input_text)
     if code:
         for st_key, data in stations_data.items():
             if data.get("code") == code:
                 return st_key, data
 
+    # 7. Неточный поиск по подстроке
     for st_key, data in stations_data.items():
         if len(norm) > 3 and norm in normalize_name(st_key):
             return st_key, data
@@ -165,16 +138,16 @@ def lookup_dist(source_data, target_key):
     t_norm = normalize_name(target_key)
     distances_dict = source_data.get("distances", {})
     
-    # 1. Прямой поиск по имеющимся колонкам
+    # Прямой поиск по ключам колонок
     for h_key, d_val in distances_dict.items():
         h_norm = normalize_name(h_key)
         if t_norm == h_norm or t_norm in h_norm or h_norm in t_norm:
             if d_val is not None:
                 return d_val
 
-    # 2. АЛИАС: Вынесен за пределы цикла
-    if "alat" in t_norm or "alet" in t_norm or "алят" in t_norm:
-        if any(k in t_norm for k in ["eksp", "kurik", "aktau", "turk", "liman"]):
+    # Профессиональный маппинг на колонку Алята в Distances.txt без ручных прибавок
+    if any(k in t_norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
+        if "Ələt eksp / Bakı liman" in distances_dict:
             return distances_dict.get("Ələt eksp / Bakı liman")
 
     return None
@@ -211,8 +184,14 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
 
     def build_station_label(loc_name, code, key_name, raw_input):
         raw_norm = normalize_name(raw_input)
-        if "alat" in raw_norm or "alet" in raw_norm:
-            if "eksp" in raw_norm or "export" in raw_norm:
+        if "kurik" in raw_norm or "курык" in raw_norm:
+            return "Ələt-eksp.Kurik"
+        elif "aktau" in raw_norm or "актау" in raw_norm:
+            return "Ələt-eksp.Aktau"
+        elif "trk" in raw_norm or "turk" in raw_norm or "туркмен" in raw_norm:
+            return "Ələt-eksp.Türk."
+        elif "alat" in raw_norm or "elet" in raw_norm or "алят" in raw_norm:
+            if "eksp" in raw_norm or "export" in raw_norm or "эксп" in raw_norm:
                 return "Ələt-eksp."
         if not code:
             return loc_name
