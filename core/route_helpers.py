@@ -1,12 +1,29 @@
 # core/route_helpers.py
 
-def normalize_nlu_stations(nlu_res: dict) -> dict:
-    """
-    Модуль бизнес-логики нормализации станций и определения типа перевозки (ADY).
-    Приводит пользовательский ввод от NLU к эталонным названиям из Distances.txt.
-    """
+def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
     if not isinstance(nlu_res, dict):
         return nlu_res
+
+    res = nlu_res.copy()
+    from_st = str(res.get("from_station", "")).strip()
+    to_st = str(res.get("to_station", "")).strip()
+    
+    # Объединяем текст для поиска ключевых слов
+    full_text = f"{raw_text} {from_st} {to_st}".lower()
+    
+    shipment_type = res.get("shipment_type", "export")
+
+    # Перехват экспортного Алята
+    if any(a in full_text for a in ["alat", "ələt", "алят"]):
+        if any(e in full_text for e in ["eksp", "эксп", "экс", "export"]) or shipment_type == "export":
+            if "kurik" in full_text or "курык" in full_text:
+                res["to_station"] = "Ələt eksport Kurik"
+            elif "aktau" in full_text or "актау" in full_text:
+                res["to_station"] = "Ələt eksport Aktau"
+            else:
+                res["to_station"] = "Ələt eksport"
+
+    return res
 
     res = nlu_res.copy()
     from_st = str(res.get("from_station", "")).strip()
