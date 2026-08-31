@@ -82,7 +82,7 @@ def parse_distances_file():
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
     norm = normalize_name(input_text)
     
-    # 1. Поиск по прямому совпадению ключа
+    # 1. Прямое совпадение
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm:
             return st_key, data
@@ -97,14 +97,10 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
             key = "Ələt eksport Kurik"
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
-        else:
-            # Для экспортного Алята ищем совпадение с колонкой Matrix
+        elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
             key = "Ələt eksport"
-            for st_key in stations_data.keys():
-                st_norm = normalize_name(st_key)
-                if "alat eksp" in st_norm or "baki liman" in st_norm:
-                    key = st_key
-                    break
+        else:
+            key = "Ələt"
             
         return key, stations_data.get(key)
 
@@ -128,7 +124,7 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         key = "Culfa (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Culfa"
         return key, stations_data.get(key)
 
-    # 7. Поиск по коду ЕСР или подстроке
+    # 7. Поиск по коду или подстроке
     code = extract_code(input_text)
     if code:
         for st_key, data in stations_data.items():
@@ -156,43 +152,56 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     key_from, data_from = resolve_exact_station_key(raw_from_input, stations_data)
     key_to, data_to = resolve_exact_station_key(raw_to_input, stations_data)
 
-    if not data_from:
+    # Находим первый существующий ключ Алята в матрице
+    def find_matrix_key(st_key):
+        if st_key == "Ələt eksport":
+            for k in stations_data.keys():
+                k_norm = normalize_name(k)
+                if "alat eksp" in k_norm or "baki liman" in k_norm or "kurik" in k_norm:
+                    return k
+        return st_key
+
+    lookup_from = find_matrix_key(key_from)
+    lookup_to = find_matrix_key(key_to)
+
+    real_data_from = stations_data.get(lookup_from, data_from)
+    real_data_to = stations_data.get(lookup_to, data_to)
+
+    if not real_data_from:
         raise ValueError(f"Станция отправления '{raw_from_input}' не найдена.")
-    if not data_to:
+    if not real_data_to:
         raise ValueError(f"Станция назначения '{raw_to_input}' не найдена.")
 
-    # Толерантная выборка расстояний по подстрокам колонок таблицы
-    def extract_distance(source_data, target_key):
-        if not source_data or "distances" not in source_data:
-            return None
-        
-        target_norm = normalize_name(target_key)
-        for h_key, d_val in source_data["distances"].items():
-            h_norm = normalize_name(h_key)
-            if target_norm == h_norm or target_norm in h_norm or h_norm in target_norm:
-                if d_val is not None:
-                    return d_val
-            # Сопоставление с Алятом / Бакинским портом
-            if ("alat" in target_norm or "alet" in target_norm) and ("alat" in h_norm or "baki liman" in h_norm):
-                if d_val is not None:
-                    return d_val
-        return None
+    # Толерантный выбор расстояния
+    dist = None
+    if real_data_from and "distances" in real_data_from:
+        dist = real_data_from["distances"].get(lookup_to)
+        if dist is None:
+            # Ищем подстрокой в ключах колонок
+            for h_key, d_val in real_data_from["distances"].items():
+                if normalize_name(lookup_to) in normalize_name(h_key) or normalize_name(h_key) in normalize_name(lookup_to):
+                    dist = d_val
+                    break
 
-    dist = extract_distance(data_from, key_to)
-    if dist is None:
-        dist = extract_distance(data_to, key_from)
+    if dist is None and real_data_to and "distances" in real_data_to:
+        dist = real_data_to["distances"].get(lookup_from)
+        if dist is None:
+            for h_key, d_val in real_data_to["distances"].items():
+                if normalize_name(lookup_from) in normalize_name(h_key) or normalize_name(h_key) in normalize_name(lookup_from):
+                    dist = d_val
+                    break
 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from_input}' и '{raw_to_input}'.")
 
-    code_from = data_from.get("code", "")
-    code_to = data_to.get("code", "")
+    code_from = data_from.get("code", "") if data_from else ""
+    code_to = data_to.get("code", "") if data_to else ""
 
     loc_from_name = get_localized_station_name(key_from, lang=lang)
     loc_to_name = get_localized_station_name(key_to, lang=lang)
 
     def build_station_label(loc_name, code, key_name):
-        if "alat" in normalize_name(key_name) or "baki liman" in normalize_name(key_name) or not code:
+        if key_name in ["Ələt eksport", "Ələt-eksp."] or not code:
             return "Ələt-eksp."
         return f"{loc_name} ({code})"
 
