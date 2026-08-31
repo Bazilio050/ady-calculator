@@ -1,7 +1,9 @@
 # core/route_helpers.py
 
 def normalize_simple(text: str) -> str:
-    return str(text).lower().replace("ə", "e").replace("ö", "o").replace("ü", "u")
+    if not text:
+        return ""
+    return str(text).lower().replace("ə", "e").replace("ö", "o").replace("ü", "u").replace("ç", "c").replace("ş", "s")
 
 def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
     if not isinstance(nlu_res, dict):
@@ -17,30 +19,28 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
     norm_raw = normalize_simple(raw_text)
 
     border_keywords = ["yalama", "ялама", "boyuk kesik", "boyuk", "беюк", "кясик", "astara", "астара", "culfa", "джульфа"]
-    port_keywords = ["aktau", "актау", "kurik", "курык", "trk", "туркмен"]
+    port_keywords = ["aktau", "актау", "kurik", "курык", "trk", "туркмен", "alat", "elet", "алят", "liman"]
 
-    # Точная проверка ОТКУДА и КУДА по отдельности
     is_from_border = any(b in norm_from or b in norm_raw.split()[:2] for b in border_keywords)
     is_to_border = any(b in norm_to for b in border_keywords)
-    is_to_port = any(p in full_text for p in port_keywords)
+    is_to_port_or_export = any(p in full_text for p in port_keywords)
 
-    # Проверка Абшерона как явной внутренней станции
     is_to_absheron = "absheron" in norm_to or "abseron" in norm_to or "апшерон" in full_text or "абшерон" in full_text
 
-    # Определение вида перевозки
-    if is_from_border and (is_to_border or is_to_port):
+    # 1. Точное определение вида перевозки
+    if is_from_border and is_to_absheron:
+        res["shipment_type"] = "import"
+    elif is_from_border and (is_to_border or is_to_port_or_export):
         res["shipment_type"] = "transit"
-    elif is_from_border and is_to_absheron:
+    elif is_from_border and not (is_to_border or is_to_port_or_export):
         res["shipment_type"] = "import"
-    elif is_from_border and not (is_to_border or is_to_port):
-        res["shipment_type"] = "import"
-    elif not is_from_border and (is_to_border or is_to_port):
+    elif not is_from_border and (is_to_border or is_to_port_or_export):
         res["shipment_type"] = "export"
 
     shipment_type = res.get("shipment_type", "export")
     is_transit_or_export = shipment_type in ["transit", "export"]
 
-    # Приведение станций назначения к экспортным стыкам
+    # 2. Нормализация станции назначения для ADY
     if any(a in full_text for a in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
         if "kurik" in full_text or "курык" in full_text:
             res["to_station"] = "Ələt-eksp.Kurik"
