@@ -98,7 +98,7 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
         elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
-            key = "Ələt-eksp."
+            key = "Ələt eksport Kurik"
         else:
             key = "Ələt"
             
