@@ -82,7 +82,7 @@ def parse_distances_file():
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
     norm = normalize_name(input_text)
     
-    # 1. Поиск по прямому совпадению ключа
+    # 1. Поиск по прямому совпадению
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm:
             return st_key, data
@@ -98,8 +98,7 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
         elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
-            # Ссылаемся на реальную строку таблицы (Ələt eksport Kurik имеет ЕСР 553002 и километраж)
-            key = "Ələt eksport Kurik"
+            key = "Ələt-eksp."
         else:
             key = "Ələt"
             
@@ -125,7 +124,7 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         key = "Culfa (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Culfa"
         return key, stations_data.get(key)
 
-    # 7. Поиск по коду ЕСР или подстроке
+    # 7. Поиск по коду или подстроке
     code = extract_code(input_text)
     if code:
         for st_key, data in stations_data.items():
@@ -153,36 +152,27 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     key_from, data_from = resolve_exact_station_key(raw_from_input, stations_data)
     key_to, data_to = resolve_exact_station_key(raw_to_input, stations_data)
 
-    # Функция поиска расстояния в матрице с учётом подстрок заголовков (например, "Ələt eksp / Bakı liman")
-    def lookup_distance(source_data, target_key):
+    # Функция поиска расстояний в матрице с подстрочным сопоставлением
+    def lookup_dist(source_data, target_key):
         if not source_data or "distances" not in source_data:
             return None
-        
-        target_norm = normalize_name(target_key)
-        distances_dict = source_data.get("distances", {})
-
-        # Прямой и толерантный поиск
-        for h_key, d_val in distances_dict.items():
+        t_norm = normalize_name(target_key)
+        for h_key, d_val in source_data["distances"].items():
             h_norm = normalize_name(h_key)
-            if target_norm == h_norm or target_norm in h_norm or h_norm in target_norm:
+            if t_norm == h_norm or t_norm in h_norm or h_norm in t_norm:
                 if d_val is not None:
                     return d_val
-
-        # Связка экспортных наименований Алята с колонкой "Ələt eksp / Bakı liman"
-        if "alat" in target_norm or "alet" in target_norm or "алят" in target_norm:
-            for h_key, d_val in distances_dict.items():
-                h_norm = normalize_name(h_key)
-                if "alat" in h_norm or "baki liman" in h_norm:
-                    if d_val is not None:
-                        return d_val
-
+            # Сопоставление Ələt-eksp. с колонкой "Ələt eksp / Bakı liman"
+            if ("alat" in t_norm or "alet" in t_norm) and ("alat" in h_norm or "baki liman" in h_norm):
+                if d_val is not None:
+                    return d_val
         return None
 
     dist = None
     if data_from:
-        dist = lookup_distance(data_from, key_to)
+        dist = lookup_dist(data_from, key_to)
     if dist is None and data_to:
-        dist = lookup_distance(data_to, key_from)
+        dist = lookup_dist(data_to, key_from)
 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from_input}' и '{raw_to_input}'.")
@@ -194,10 +184,13 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     loc_to_name = get_localized_station_name(key_to, lang=lang)
 
     def build_station_label(loc_name, code, key_name):
-        if "eksp" in key_name.lower() or "export" in key_name.lower() or not code:
-            if "alat" in key_name.lower() or "ələt" in key_name.lower():
+        k_norm = normalize_name(key_name)
+        if "alat" in k_norm or "alet" in k_norm:
+            if "eksp" in k_norm or "export" in k_norm:
                 return "Ələt-eksp."
-        return f"{loc_name} ({code})" if code else loc_name
+        if not code:
+            return loc_name
+        return f"{loc_name} ({code})"
 
     fmt_from = build_station_label(loc_from_name, code_from, key_from)
     fmt_to = build_station_label(loc_to_name, code_to, key_to)
