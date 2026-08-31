@@ -134,26 +134,35 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     target_data = stations_data.get(to_row_key, {})
     code_to = target_data.get("code", "")
 
+    # 1. Получаем реальные коды из прочитанной базы
+    from_target_data = stations_data.get(from_row_key if dist is None else to_row_key, {})
+    code_from = stations_data.get(from_col, {}).get("code", "") if from_col else target_data.get("code", "")
+    code_to = target_data.get("code", "")
+
+    # 2. Универсальное построение наименований с кодами станций
     def build_label(raw_in, fallback_key, code):
         norm = normalize_name(raw_in)
-        # Добавляем кириллические "трк" и "туркмен"
+        
         if any(k in norm for k in ["kurik", "курык"]):
-            return "Ələt-eksp.Kurik"
+            label = "Ələt-eksp.Kurik"
         elif any(k in norm for k in ["aktau", "актау"]):
-            return "Ələt-eksp.Aktau"
+            label = "Ələt-eksp.Aktau"
         elif any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
-            return "Ələt-eksp.Türk."
+            label = "Ələt-eksp.Türk."
         elif any(k in norm for k in ["kesik", "кясик"]):
-            return "Böyük Kəsik-eksp." if is_transit else "Böyük Kəsik"
+            label = "Böyük Kəsik-eksp." if is_transit else "Böyük Kəsik"
         elif any(k in norm for k in ["astara", "астара"]):
-            return "Astara (eks.aşır)" if is_transit else "Astara"
+            label = "Astara (eks.aşır)" if is_transit else "Astara"
         elif any(k in norm for k in ["alat", "elet", "алят"]):
-            return "Ələt-eksp." if is_transit else "Ələt"
+            label = "Ələt-eksp." if is_transit else "Ələt"
         elif any(k in norm for k in ["yalama", "ялама"]):
-            return "Yalama"
-        return f"{fallback_key} ({code})" if code else fallback_key
+            label = "Yalama"
+        else:
+            label = fallback_key
 
-    fmt_from = f"{raw_from.split()[0].title()} (545006)" if "ялама" in normalize_name(raw_from) else raw_from
+        return f"{label} ({code})" if code else label
+
+    fmt_from = build_label(raw_from, from_col or raw_from, code_from)
     fmt_to = build_label(raw_to, to_row_key, code_to)
 
     return {
@@ -163,7 +172,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         "route_formatted": f"{fmt_from} – {fmt_to}",
         "raw_from_name": raw_from,
         "raw_to_name": to_row_key,
-        "from_code": "545006",
+        "from_code": code_from,
         "to_code": code_to
     }
 
