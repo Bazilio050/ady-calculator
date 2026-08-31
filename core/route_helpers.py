@@ -2,7 +2,7 @@
 
 def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
     """
-    Нормализация станций и определение типа перевозки (ADY).
+    Модуль бизнес-логики нормализации станций и определения типа перевозки (ADY).
     """
     if not isinstance(nlu_res, dict):
         return nlu_res
@@ -10,21 +10,42 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
     res = nlu_res.copy()
     from_st = str(res.get("from_station", "")).strip()
     to_st = str(res.get("to_station", "")).strip()
-    
-    full_text = f"{raw_text} {from_st} {to_st}".lower()
+
+    from_lower = from_st.lower()
+    to_lower = to_st.lower()
+    full_text = f"{raw_text} {from_lower} {to_lower}".lower()
+
+    # Пограничные стыки ADY
+    border_keywords = [
+        "yalama", "ялама", 
+        "böyük kəsik", "boyuk", "беюк", "кясик", 
+        "astara", "астара", 
+        "culfa", "джульфа"
+    ]
+
+    is_from_border = any(b in from_lower for b in border_keywords)
+    is_to_border = any(b in to_lower for b in border_keywords)
+
+    is_from_port = any(b in full_text for b in ["aktau", "актау", "kurik", "курык", "trk", "туркмен"])
+    is_to_port = any(b in full_text for b in ["aktau", "актау", "kurik", "курык", "trk", "туркмен"])
+
+    if (is_from_border or is_from_port) and (is_to_border or is_to_port):
+        res["shipment_type"] = "transit"
+
     shipment_type = res.get("shipment_type", "export")
 
-    # Перехват экспортного Алята
-    if any(a in full_text for a in ["alat", "ələt", "алят"]):
+    # Обработка станции назначения
+    if "kurik" in full_text or "курык" in full_text:
+        res["to_station"] = "Ələt eksport Kurik"
+    elif "aktau" in full_text or "актау" in full_text:
+        res["to_station"] = "Ələt eksport Aktau"
+    elif "türk" in full_text or "туркмен" in full_text or "трк" in full_text:
+        res["to_station"] = "Ələt eksport-Türk."
+    elif any(b in full_text for b in ["alat", "ələt", "алят"]):
         if any(e in full_text for e in ["eksp", "эксп", "экс", "export"]) or shipment_type == "export":
-            if "kurik" in full_text or "курык" in full_text:
-                res["to_station"] = "Ələt eksport Kurik"
-            elif "aktau" in full_text or "актау" in full_text:
-                res["to_station"] = "Ələt eksport Aktau"
-            elif "türk" in full_text or "туркмен" in full_text or "трк" in full_text:
-                res["to_station"] = "Ələt eksport-Türk."
-            else:
-                res["to_station"] = "Ələt eksport"
+            res["to_station"] = "Ələt-eksp."
+        else:
+            res["to_station"] = "Ələt"
 
     return res
 
