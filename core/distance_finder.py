@@ -130,15 +130,25 @@ def lookup_dist(source_data, target_key):
     
     t_norm = normalize_name(target_key)
     distances_dict = source_data.get("distances", {})
-    
-    # Забор колонки "Ələt eksp / Bakı liman" (дает 271 км для экспортного Алята)
-    if any(k in t_norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
+
+    # 1. Если цель — экспортный Алят / Порт (Актау, Курык, ТРК, Лиман), ищем колонку с "elet" / "liman"
+    if any(k in t_norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык", "liman"]):
         for h_key, d_val in distances_dict.items():
-            if "elet eksp" in normalize_name(h_key) or "baki liman" in normalize_name(h_key):
+            h_norm = normalize_name(h_key)
+            if ("elet" in h_norm or "alat" in h_norm) and ("eksp" in h_norm or "liman" in h_norm or "eksport" in h_norm):
                 if d_val is not None:
                     return d_val
 
-    # Поиск по остальным колонкам
+    # 2. Если цель — экспортный Беюк Кясик, ищем колонку "Boyuk Kesik (eksport)"
+    if "kesik" in t_norm or "кясик" in t_norm or "касик" in t_norm:
+        if "eksp" in t_norm or "eksport" in t_norm:
+            for h_key, d_val in distances_dict.items():
+                h_norm = normalize_name(h_key)
+                if ("kesik" in h_norm or "кясик" in h_norm) and ("eksp" in h_norm or "eksport" in h_norm):
+                    if d_val is not None:
+                        return d_val
+
+    # 3. Стандартный поиск по совпадению названий
     for h_key, d_val in distances_dict.items():
         h_norm = normalize_name(h_key)
         if t_norm == h_norm or t_norm in h_norm or h_norm in t_norm:
