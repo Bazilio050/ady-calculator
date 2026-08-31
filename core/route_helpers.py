@@ -15,51 +15,55 @@ def normalize_nlu_stations(nlu_res: dict) -> dict:
     from_lower = from_st.lower()
     to_lower = to_st.lower()
 
-    # Ключевые слова пограничных стыков и портов ADY
+    # Пограничные стыки ADY (исключая внутренние станции вроде Abşeron)
     border_keywords = [
         "yalama", "ялама", 
         "böyük kəsik", "boyuk", "беюк", "кясик", 
         "astara", "астара", 
-        "culfa", "джульфа",
-        "alat", "ələt", "алят",
-        "aktau", "актау", "kurik", "курык", "trk", "туркмен"
+        "culfa", "джульфа"
     ]
 
     is_from_border = any(b in from_lower for b in border_keywords)
     is_to_border = any(b in to_lower for b in border_keywords)
 
-    # Правило 1: Принцип двух границ — если обе станции являются стыками/портами, это 100% транзит
-    if is_from_border and is_to_border:
+    # Пограничные морские порты (Алят Порт / Бакинский порт)
+    is_from_port = any(b in from_lower for b in ["aktau", "актау", "kurik", "курык", "trk", "туркмен"])
+    is_to_port = any(b in to_lower for b in ["aktau", "актау", "kurik", "курык", "trk", "туркмен"])
+
+    # Правило 1: Только два сухопутных стыка или стык + порт образуют чистый транзит
+    if (is_from_border or is_from_port) and (is_to_border or is_to_port):
         res["shipment_type"] = "transit"
 
-    shipment_type = res.get("shipment_type", "import")
+    shipment_type = res.get("shipment_type", "export")
 
-    # Правило 2: Обработка станции назначения (TO)
+    # Правило 2: Обработка портов Алята по направлениям
     if "kurik" in to_lower or "курык" in to_lower:
         res["to_station"] = "Ələt eksport Kurik"
     elif "aktau" in to_lower or "актау" in to_lower:
         res["to_station"] = "Ələt eksport Aktau"
     elif "türk" in to_lower or "туркмен" in to_lower or "трк" in to_lower:
         res["to_station"] = "Ələt eksport-Türk."
-    elif shipment_type == "transit":
+    elif any(b in to_lower for b in ["alat", "ələt", "алят"]):
+        if shipment_type == "transit":
+            res["to_station"] = "Ələt eksport Kurik"
+        else:
+            # Для экспорта / внутренних перевозок приводим к базовому ключу матрицы
+            res["to_station"] = "Ələt"
+
+    # Правило 3: Обработка пограничных переходов для транзита
+    if shipment_type == "transit":
         if any(b in to_lower for b in ["böyük kəsik", "boyuk", "кясик", "беюк"]):
             res["to_station"] = "Böyük Kəsik (eksport)"
         elif any(b in to_lower for b in ["astara", "астара"]):
             res["to_station"] = "Astara (eks.aşır)"
         elif any(b in to_lower for b in ["yalama", "ялама"]):
             res["to_station"] = "Yalama (eksport)"
-        elif any(b in to_lower for b in ["alat", "ələt", "алят"]):
-            res["to_station"] = "Ələt eksport"
 
-    # Правило 3: Обработка станции отправления (FROM)
-    if shipment_type == "transit":
         if any(b in from_lower for b in ["böyük kəsik", "boyuk", "кясик", "беюк"]):
             res["from_station"] = "Böyük Kəsik (eksport)"
         elif any(b in from_lower for b in ["astara", "астара"]):
             res["from_station"] = "Astara (eks.aşır)"
         elif any(b in from_lower for b in ["yalama", "ялама"]):
             res["from_station"] = "Yalama (eksport)"
-        elif any(b in from_lower for b in ["alat", "ələt", "алят"]):
-            res["from_station"] = "Ələt eksport"
 
     return res
