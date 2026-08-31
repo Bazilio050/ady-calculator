@@ -168,7 +168,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
             if d_val is not None:
                 return d_val
 
-    # 2. АЛИАС: Вынесен за пределы цикла
+    # 2. АЛИАС
     if "alat" in t_norm or "alet" in t_norm or "алят" in t_norm:
         if any(k in t_norm for k in ["eksp", "kurik", "aktau", "turk", "liman"]):
             return distances_dict.get("Ələt eksp / Bakı liman")
