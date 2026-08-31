@@ -1,6 +1,9 @@
 # core/route_helpers.py
 
 def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
+    """
+    Нормализация станций и определение типа перевозки (ADY).
+    """
     if not isinstance(nlu_res, dict):
         return nlu_res
 
@@ -8,9 +11,7 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
     from_st = str(res.get("from_station", "")).strip()
     to_st = str(res.get("to_station", "")).strip()
     
-    # Объединяем текст для поиска ключевых слов
     full_text = f"{raw_text} {from_st} {to_st}".lower()
-    
     shipment_type = res.get("shipment_type", "export")
 
     # Перехват экспортного Алята
@@ -20,6 +21,8 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
                 res["to_station"] = "Ələt eksport Kurik"
             elif "aktau" in full_text or "актау" in full_text:
                 res["to_station"] = "Ələt eksport Aktau"
+            elif "türk" in full_text or "туркмен" in full_text or "трк" in full_text:
+                res["to_station"] = "Ələt eksport-Türk."
             else:
                 res["to_station"] = "Ələt eksport"
 
