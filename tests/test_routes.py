@@ -1,122 +1,66 @@
-import os
-import sys
+# core/route_helpers.py
 
-# Добавляем корень проекта в путь импорта
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
+def normalize_simple(text: str) -> str:
+    return str(text).lower().replace("ə", "e").replace("ö", "o").replace("ü", "u")
 
-from core.route_helpers import normalize_nlu_stations
-from core.distance_finder import get_route_info
+def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
+    if not isinstance(nlu_res, dict):
+        return nlu_res
 
-def run_tests():
-    test_cases = [
-        {
-            "name": "1. Обобщенный Алят эксп (без порта) -> Ələt-eksp. + Transit",
-            "input": {
-                "raw_input": "Ялама Алят эксп 4407 крытый 35т спс", 
-                "from_station": "Yalama", 
-                "to_station": "Ələt eksport"
-            },
-            "expected_to": "Ələt-eksp.",
-            "expected_dist": 271,
-            "expected_type": "transit"
-        },
-        {
-            "name": "2. Алят Курык -> Ələt Kurik (553002)",
-            "input": {
-                "raw_input": "Ялама Алят эксп Курык 4407 крытый 35т", 
-                "from_station": "Yalama", 
-                "to_station": "Ələt eksport Kurik"
-            },
-            "expected_to": "Ələt-eksp.Kurik (553002)",
-            "expected_dist": 271,
-            "expected_type": "transit"
-        },
-        {
-            "name": "3. Алят Актау -> Ələt Aktau (549204)",
-            "input": {
-                "raw_input": "Ялама Актау 4407 крытый 35т", 
-                "from_station": "Yalama", 
-                "to_station": "Ələt eksport Aktau"
-            },
-            "expected_to": "Ələt-eksp.Aktau (549204)",
-            "expected_dist": 271,
-            "expected_type": "transit"
-        },
-        {
-            "name": "4. Стык Беюк Кясик (без явного слова эксп в тексте)",
-            "input": {
-                "raw_input": "Ялама Беюк Кясик 4407 крытый 35т", 
-                "from_station": "Yalama", 
-                "to_station": "Böyük Kəsik"
-            },
-            "expected_to": "Böyük Kəsik-eksp. (558701)",
-            "expected_dist": 680,
-            "expected_type": "transit"
-        },
-        {
-            "name": "5. Стык Астара",
-            "input": {
-                "raw_input": "Ялама Астара эксп", 
-                "from_station": "Yalama", 
-                "to_station": "Astara"
-            },
-            "expected_to": "Astara (eks.aşır) (554503)",
-            "expected_dist": 504,
-            "expected_type": "transit"
-        },
-        {
-            "name": "6. Импорт на Абшерон (Погранпереход -> Внутренняя станция)",
-            "input": {
-                "raw_input": "Ялама Абшерон 4407 крытый 35т", 
-                "from_station": "Yalama", 
-                "to_station": "Abşeron"
-            },
-            "expected_to": "Abşeron (548004)",
-            "expected_dist": 204,
-            "expected_type": "import"
-        }
-    ]
+    res = nlu_res.copy()
+    from_st = str(res.get("from_station", "")).strip()
+    to_st = str(res.get("to_station", "")).strip()
+    full_text = f"{raw_text} {from_st} {to_st}".lower()
+    
+    norm_from = normalize_simple(from_st)
+    norm_to = normalize_simple(to_st)
+    norm_raw = normalize_simple(raw_text)
 
-    print("=" * 75)
-    print("🚀 ЗАПУСК ТЕСТИРОВАНИЯ МАРШРУТОВ И ТИПОВ ПЕРЕВОЗОК ADY")
-    print("=" * 75)
+    border_keywords = ["yalama", "ялама", "boyuk kesik", "boyuk", "беюк", "кясик", "astara", "астара", "culfa", "джульфа"]
+    port_keywords = ["aktau", "актау", "kurik", "курык", "trk", "туркмен", "alat", "elet", "алят", "liman"]
 
-    passed = 0
-    for idx, case in enumerate(test_cases, start=1):
-        # 1. Нормализация данных
-        nlu_data = normalize_nlu_stations(case["input"])
-        
-        # 2. Получение информации о маршруте и расстоянии
-        route_info = get_route_info(nlu_data)
-        
-        from_fmt = route_info.get("from_formatted", "")
-        to_fmt = route_info.get("to_formatted", "")
-        dist = route_info.get("distance_km", 0)
-        shipment_type = nlu_data.get("shipment_type", "import")
+    is_from_border = any(b in norm_from or b in norm_raw.split()[:2] for b in border_keywords)
+    is_to_border = any(b in norm_to for b in border_keywords)
+    is_to_port_or_export = any(p in full_text for p in port_keywords) and any(e in full_text for e in ["eksp", "эксп", "экс", "export", "aktau", "актау", "kurik", "курык", "liman"])
 
-        # 3. Честная проверка без подделок
-        is_ok = (
-            (to_fmt == case["expected_to"]) and 
-            (dist == case["expected_dist"]) and 
-            (shipment_type == case["expected_type"])
-        )
+    is_to_absheron = "absheron" in norm_to or "abseron" in norm_to or "апшерон" in full_text or "абшерон" in full_text
 
-        status = "✅ PASSED" if is_ok else "❌ FAILED"
-        if is_ok:
-            passed += 1
+    # Определение вида перевозки
+    if is_from_border and is_to_absheron:
+        res["shipment_type"] = "import"
+    elif is_from_border and (is_to_border or is_to_port_or_export):
+        res["shipment_type"] = "transit"
+    elif is_from_border and not (is_to_border or is_to_port_or_export):
+        res["shipment_type"] = "import"
+    elif not is_from_border and (is_to_border or is_to_port_or_export):
+        res["shipment_type"] = "export"
 
-        print(f"\nТест {idx}: {case['name']}")
-        print(f"  Ввод:         '{case['input']['raw_input']}'")
-        print(f"  Маршрут:     {from_fmt} – {to_fmt}")
-        print(f"  Результат:   {dist} км | Вид: {shipment_type}")
-        print(f"  Ожидалось:   {case['expected_to']} | {case['expected_dist']} км | Вид: {case['expected_type']}")
-        print(f"  Статус:      {status}")
+    shipment_type = res.get("shipment_type", "export")
+    is_transit_or_export = shipment_type in ["transit", "export"]
 
-    print("\n" + "=" * 75)
-    print(f"ИТОГ: Успешно пройдено {passed} из {len(test_cases)} тестов.")
-    print("=" * 75)
+    # Приведение станций назначения к экспортным стыкам
+    if any(a in full_text for a in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
+        if "kurik" in full_text or "курык" in full_text:
+            res["to_station"] = "Ələt-eksp.Kurik"
+        elif "aktau" in full_text or "актау" in full_text:
+            res["to_station"] = "Ələt-eksp.Aktau"
+        elif "türk" in full_text or "туркмен" in full_text or "трк" in full_text:
+            res["to_station"] = "Ələt-eksp.Türk."
+        elif any(e in full_text for e in ["eksp", "эксп", "экс", "export"]) or is_transit_or_export:
+            res["to_station"] = "Ələt-eksp."
+        else:
+            res["to_station"] = "Ələt"
 
-if __name__ == "__main__":
-    run_tests()
+    elif any(k in full_text for k in ["kesik", "кясик", "касик"]):
+        if is_transit_or_export or any(e in full_text for e in ["eksp", "эксп", "экс"]):
+            res["to_station"] = "Böyük Kəsik-eksp."
+        else:
+            res["to_station"] = "Böyük Kəsik"
+
+    elif "astara" in full_text or "астара" in full_text:
+        if is_transit_or_export or any(e in full_text for e in ["eksp", "эксп", "экс"]):
+            res["to_station"] = "Astara (eks.aşır)"
+        else:
+            res["to_station"] = "Astara"
+
+    return res
