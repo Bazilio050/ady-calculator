@@ -343,12 +343,37 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
         """, unsafe_allow_html=True)
 
         try:
+            try:
             # 1. Распознавание через gemini_parser
             nlu_res = parse_user_request(current_input, lang=selected_lang)
 
-            # 2. Нормализация станций и определение транзита через route_helpers
-            if isinstance(nlu_res, dict) and "error" not in nlu_res:
-                nlu_res = normalize_nlu_stations(nlu_res, raw_text=current_input)
+            # Если Gemini вернет не словарь или ошибку, создаем базовую структуру для спасения
+            if not isinstance(nlu_res, dict):
+                nlu_res = {}
+            elif "error" in nlu_res:
+                nlu_res = {"from_station": "", "to_station": ""}
+
+            # 2. Нормализация станций (вытаскиваем ТРК / Актау / Курык / Алят из текста, даже если Gemini их упустил)
+            nlu_res = normalize_nlu_stations(nlu_res, raw_text=current_input)
+
+            # Проверяем: если после нормализации станция назначения всё еще не найдена
+            if not nlu_res.get("to_station"):
+                loader_placeholder.empty()
+                st.warning(f"{t['missing_title']}\n- {t['lbl_route']} (to_station)")
+                st.session_state.calc_result = None
+            else:
+                # Сохраняем NLU-результат для отображения JSON
+                st.session_state.nlu_res = nlu_res
+
+                # 3. Передача параметров в главный калькулятор
+                calc_params = nlu_res.copy()
+                calc_params.pop("lang", None)
+
+                calc_res = calculate_freight(**calc_params, lang=selected_lang)
+
+                st.session_state.calc_result = calc_res
+                st.session_state.missing_data = None
+                loader_placeholder.empty()
 
             if not isinstance(nlu_res, dict):
                 loader_placeholder.empty()
