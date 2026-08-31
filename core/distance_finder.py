@@ -82,8 +82,7 @@ def parse_distances_file():
             "distances": distances
         }
 
-    # === ВИРТУАЛЬНЫЙ МАППИНГ ДЛЯ Ələt-eksp. ===
-    # 1. Создаем виртуальную станцию Ələt-eksp.
+    # Виртуальная станция для прямого поиска
     base_alat = stations_data.get("Ələt eksport Kurik", {})
     alat_distances = base_alat.get("distances", {}).copy()
     alat_distances["Ələt-eksp."] = 0
@@ -93,7 +92,7 @@ def parse_distances_file():
         "distances": alat_distances
     }
 
-    # 2. Добавляем ключ "Ələt-eksp." во все остальные станции (включая Abşeron)
+    # Прокидываем 67 км во все станции матрицы
     for st_info in stations_data.values():
         d_map = st_info.get("distances", {})
         if "Ələt eksp / Bakı liman" in d_map:
