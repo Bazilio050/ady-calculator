@@ -152,24 +152,39 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     key_from, data_from = resolve_exact_station_key(raw_from_input, stations_data)
     key_to, data_to = resolve_exact_station_key(raw_to_input, stations_data)
 
-    # Определяем реальные ключи матрицы для поиска километров
-    lookup_key_from = "Ələt eksport Kurik" if key_from == "Ələt eksport" else key_from
-    lookup_key_to = "Ələt eksport Kurik" if key_to == "Ələt eksport" else key_to
+    if not data_from and not data_to:
+        raise ValueError(f"Станции '{raw_from_input}' и '{raw_to_input}' не найдены.")
 
-    real_data_from = stations_data.get(lookup_key_from, data_from)
-    real_data_to = stations_data.get(lookup_key_to, data_to)
+    def lookup_distance(source_data, target_key):
+        if not source_data or "distances" not in source_data:
+            return None
+        
+        target_norm = normalize_name(target_key)
+        distances_dict = source_data.get("distances", {})
 
-    if not real_data_from:
-        raise ValueError(f"Станция отправления '{raw_from_input}' не найдена.")
-    if not real_data_to:
-        raise ValueError(f"Станция назначения '{raw_to_input}' не найдена.")
+        # 1. Прямой поиск ключа
+        for h_key, d_val in distances_dict.items():
+            h_norm = normalize_name(h_key)
+            if target_norm == h_norm or target_norm in h_norm or h_norm in target_norm:
+                if d_val is not None:
+                    return d_val
 
-    # Выборка дистанции с прямым сопоставлением
+        # 2. Поиск для Ələt eksport
+        if "alat eksport" in target_norm or "alet eksport" in target_norm:
+            for h_key, d_val in distances_dict.items():
+                h_norm = normalize_name(h_key)
+                if "kurik" in h_norm or "alat eksport" in h_norm:
+                    if d_val is not None:
+                        return d_val
+
+        return None
+
+    # Поиск расстояния в прямом и обратном направлении
     dist = None
-    if real_data_from and "distances" in real_data_from:
-        dist = real_data_from["distances"].get(lookup_key_to)
-    if dist is None and real_data_to and "distances" in real_data_to:
-        dist = real_data_to["distances"].get(lookup_key_from)
+    if data_from:
+        dist = lookup_distance(data_from, key_to)
+    if dist is None and data_to:
+        dist = lookup_distance(data_to, key_from)
 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from_input}' и '{raw_to_input}'.")
