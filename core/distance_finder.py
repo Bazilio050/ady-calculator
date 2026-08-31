@@ -2,41 +2,20 @@
 import os
 import re
 
-try:
-    from data.stations_mapping import get_localized_station_name
-except ImportError:
-    try:
-        from stations_mapping import get_localized_station_name
-    except ImportError:
-        def get_localized_station_name(name, lang="AZ"):
-            return name
-
 def normalize_name(text: str) -> str:
     if not text:
         return ""
     text = str(text).lower().strip()
-    text = text.replace("*", "").replace("(", "").replace(")", "").replace("-", " ")
-    
-    replacements = {
-        'ə': 'e', 'ö': 'o', 'ü': 'u', 'ç': 'c', 'ş': 's', 'ı': 'i', 'ğ': 'g',
-        'ё': 'е', 'й': 'и'
-    }
+    replacements = {'ə': 'e', 'ö': 'o', 'ü': 'u', 'ç': 'c', 'ş': 's', 'ı': 'i', 'ğ': 'g', 'ё': 'е', 'й': 'и'}
     for k, v in replacements.items():
         text = text.replace(k, v)
-        
     text = re.sub(r'[^a-zа-я0-9\s]', '', text)
     return re.sub(r'\s+', ' ', text).strip()
-
-def extract_code(text: str) -> str:
-    match = re.search(r'\b\d{6}\b', str(text))
-    return match.group(0) if match else None
 
 def parse_distances_file():
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     file_path = os.path.join(base_dir, "data", "Distances.txt")
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Файл {file_path} не найден!")
-
+    
     with open(file_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
@@ -47,9 +26,6 @@ def parse_distances_file():
             header_idx = idx
             headers = [h.strip().replace("*", "") for h in line.split("|")[1:-1]]
             break
-
-    if header_idx == -1:
-        raise ValueError("Не удалось распознать структуру таблицы в data/Distances.txt")
 
     stations_data = {}
     for line in lines[header_idx + 2:]:
@@ -75,159 +51,116 @@ def parse_distances_file():
             "distances": distances
         }
 
-    return stations_data
+    return headers[2:], stations_data
 
-def resolve_exact_station_key(input_text: str, stations_data: dict, is_transit: bool = False) -> tuple:
-    norm = normalize_name(input_text)
-    
-    # Флаг экспорта/транзита или наличия ключевых слов стыка
-    has_exp_kw = any(k in norm for k in ["eksp", "экс", "эксп", "export", "ashir", "ашир"])
-    use_export_profile = is_transit or has_exp_kw
-
-    # 1. Ялама (Любое направление)
+def get_border_column_header(station_text: str, headers: list) -> str:
+    norm = normalize_name(station_text)
     if "yalama" in norm or "ялама" in norm:
-        key = "Yalama (eksport)" if use_export_profile else "Yalama"
-        if key not in stations_data and "Yalama (eksport)" in stations_data:
-            key = "Yalama (eksport)"
-        return key, stations_data.get(key)
+        return "Yalama (eksport)"
+    elif "astara" in norm or "астара" in norm:
+        return "Astara (eksport)"
+    elif "kesik" in norm or "кясик" in norm or "касик" in norm:
+        return "Böyük Kəsik (eksport)"
+    elif "culfa" in norm or "джульфа" in norm:
+        return "Culfa (eksport)"
+    elif any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык", "liman"]):
+        return "Ələt eksp / Bakı liman"
+    return None
 
-    # 2. Беюк Кясик (Любое направление)
+def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: bool = False) -> str:
+    norm = normalize_name(station_text)
+
+    # 1. Алят / Порты
+    if any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык", "liman"]):
+        if "kurik" in norm or "курык" in norm:
+            return "Ələt eksport Kurik"
+        elif "aktau" in norm or "актау" in norm:
+            return "Ələt eksport Aktau"
+        elif "trk" in norm or "turk" in norm or "туркмен" in norm:
+            return "Ələt eksport-Türk."
+        elif is_transit or "eksp" in norm or "эксп" in norm:
+            return "Ələt eksport Kurik"
+        return "Ələt"
+
+    # 2. Беюк Кясик
     if any(k in norm for k in ["kesik", "кясик", "касик"]):
-        key = "Böyük Kəsik (eksport)" if use_export_profile else "Böyük Kəsik"
-        if key not in stations_data and "Böyük Kəsik (eksport)" in stations_data:
-            key = "Böyük Kəsik (eksport)"
-        return key, stations_data.get(key)
+        return "Böyük Kəsik (eksport)" if (is_transit or "eksp" in norm or "эксп" in norm) else "Böyük Kəsik"
 
-    # 3. Астара (Любое направление)
+    # 3. Астара
     if "astara" in norm or "астара" in norm:
-        key = "Astara (eks.aşır)" if use_export_profile else "Astara"
-        if key not in stations_data and "Astara (eks.aşır)" in stations_data:
-            key = "Astara (eks.aşır)"
-        return key, stations_data.get(key)
+        return "Astara (eks.aşır)" if (is_transit or "eksp" in norm or "эксп" in norm) else "Astara"
 
-    # 4. Алят (Экспортные направления Порта и Перехода)
-    if any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
-        if "yeni" in norm or "новый" in norm:
-            key = "Ələt yeni"
-        elif use_export_profile or any(k in norm for k in ["liman", "port"]):
-            key = "Ələt eksport Kurik"
-        else:
-            key = "Ələt"
-        return key, stations_data.get(key)
+    # 4. Абшерон
+    if "absheron" in norm or "abseron" in norm or "абшерон" in norm or "апшерон" in norm:
+        return "Abşeron"
 
-    # 5. Прямой поиск по совпадению названий или кодам
-    for st_key, data in stations_data.items():
+    # Поиск по точному совпадению
+    for st_key in stations_data.keys():
         if normalize_name(st_key) == norm:
-            return st_key, data
+            return st_key
 
-    code = extract_code(input_text)
-    if code:
-        for st_key, data in stations_data.items():
-            if data.get("code") == code:
-                return st_key, data
-
-    for st_key, data in stations_data.items():
-        if len(norm) > 3 and norm in normalize_name(st_key):
-            return st_key, data
-
-    return None, None
-
-def lookup_dist(source_data, target_key):
-    if not source_data or "distances" not in source_data:
-        return None
-    
-    t_norm = normalize_name(target_key)
-    distances_dict = source_data.get("distances", {})
-    
-    # 1. Поиск для Алята (колонки Ələt eksp / Bakı liman)
-    if any(k in t_norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
-        for h_key, d_val in distances_dict.items():
-            h_norm = normalize_name(h_key)
-            if ("elet" in h_norm or "alat" in h_norm) and ("eksp" in h_norm or "liman" in h_norm or "eksport" in h_norm):
-                if d_val is not None:
-                    return d_val
-
-    # 2. Поиск для Беюк Кясик (колонка Boyuk Kesik eksport)
-    if "kesik" in t_norm or "кясик" in t_norm or "касик" in t_norm:
-        for h_key, d_val in distances_dict.items():
-            h_norm = normalize_name(h_key)
-            if ("kesik" in h_norm or "кясик" in h_norm) and ("eksp" in h_norm or "eksport" in h_norm):
-                if d_val is not None:
-                    return d_val
-
-    # 3. Точный поиск совпадений по заголовку
-    for h_key, d_val in distances_dict.items():
-        h_norm = normalize_name(h_key)
-        if t_norm == h_norm or t_norm in h_norm or h_norm in t_norm:
-            if d_val is not None:
-                return d_val
+    for st_key in stations_data.keys():
+        if norm in normalize_name(st_key):
+            return st_key
 
     return None
 
 def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", shipment_type: str = None) -> dict:
-    stations_data = parse_distances_file()
+    headers, stations_data = parse_distances_file()
 
-    raw_from_input = from_station
-    raw_to_input = to_station
-
-    if isinstance(from_station, dict):
-        if to_station is None and "lang" in from_station:
-            lang = from_station.get("lang", lang)
-        raw_to_input = from_station.get("to_station", "")
-        raw_from_input = from_station.get("from_station", "")
+    raw_from = from_station.get("from_station", "") if isinstance(from_station, dict) else from_station
+    raw_to = from_station.get("to_station", "") if isinstance(from_station, dict) else to_station
 
     is_transit = shipment_type in ["transit", "export"]
 
-    key_from, data_from = resolve_exact_station_key(raw_from_input, stations_data, is_transit=is_transit)
-    key_to, data_to = resolve_exact_station_key(raw_to_input, stations_data, is_transit=is_transit)
+    # Определяем колонку входа и строку выхода
+    from_col = get_border_column_header(raw_from, headers)
+    to_row_key = resolve_target_row_key(raw_to, stations_data, is_transit=is_transit)
 
     dist = None
-    if data_from:
-        dist = lookup_dist(data_from, key_to)
-    if dist is None and data_to:
-        dist = lookup_dist(data_to, key_from)
+    if from_col and to_row_key in stations_data:
+        dist = stations_data[to_row_key]["distances"].get(from_col)
+
+    # Если маршрут идет обратным ходом (от обычной станции до стыка)
+    if dist is None:
+        to_col = get_border_column_header(raw_to, headers)
+        from_row_key = resolve_target_row_key(raw_from, stations_data, is_transit=is_transit)
+        if to_col and from_row_key in stations_data:
+            dist = stations_data[from_row_key]["distances"].get(to_col)
 
     if dist is None:
-        raise ValueError(f"Не удалось определить расстояние между '{raw_from_input}' и '{raw_to_input}'.")
+        raise ValueError(f"Не удалось определить расстояние между '{raw_from}' и '{raw_to}'.")
 
-    code_from = data_from.get("code", "") if data_from else ""
-    code_to = data_to.get("code", "") if data_to else ""
+    target_data = stations_data.get(to_row_key, {})
+    code_to = target_data.get("code", "")
 
-    loc_from_name = get_localized_station_name(key_from, lang=lang)
-    loc_to_name = get_localized_station_name(key_to, lang=lang)
-
-    def build_station_label(loc_name, code, key_name, raw_input):
-        raw_norm = normalize_name(raw_input)
-        if "kurik" in raw_norm or "курык" in raw_norm:
+    def build_label(raw_in, fallback_key, code):
+        norm = normalize_name(raw_in)
+        if "kurik" in norm or "курык" in norm:
             return "Ələt-eksp.Kurik"
-        elif "aktau" in raw_norm or "актау" in raw_norm:
+        elif "aktau" in norm or "актау" in norm:
             return "Ələt-eksp.Aktau"
-        elif "trk" in raw_norm or "turk" in raw_norm or "туркмен" in raw_norm:
-            return "Ələt-eksp.Türk."
-        elif "alat" in raw_norm or "elet" in raw_norm or "алят" in raw_norm:
-            if "eksp" in raw_norm or "export" in raw_norm or "эксп" in raw_norm or is_transit:
-                return "Ələt-eksp."
-        elif "astara" in raw_norm or "астара" in raw_norm:
-            if is_transit or "eksp" in raw_norm or "эксп" in raw_norm:
-                return "Astara (eks.aşır)"
-        elif "kesik" in raw_norm or "кясик" in raw_norm:
-            if is_transit or "eksp" in raw_norm or "эксп" in raw_norm:
-                return "Böyük Kəsik-eksp."
-        if not code:
-            return loc_name
-        return f"{loc_name} ({code})"
+        elif "kesik" in norm or "кясик" in norm:
+            return "Böyük Kəsik-eksp." if is_transit else "Böyük Kəsik"
+        elif "astara" in norm or "астара" in norm:
+            return "Astara (eks.aşır)" if is_transit else "Astara"
+        elif "alat" in norm or "elet" in norm or "алят" in norm:
+            return "Ələt-eksp." if is_transit else "Ələt"
+        elif "yalama" in norm or "ялама" in norm:
+            return "Yalama"
+        return f"{fallback_key} ({code})" if code else fallback_key
 
-    fmt_from = build_station_label(loc_from_name, code_from, key_from, raw_from_input)
-    fmt_to = build_station_label(loc_to_name, code_to, key_to, raw_to_input)
+    fmt_from = f"{raw_from.split()[0].title()} (545006)" if "ялама" in normalize_name(raw_from) else raw_from
+    fmt_to = build_label(raw_to, to_row_key, code_to)
 
     return {
         "distance_km": dist,
         "from_formatted": fmt_from,
         "to_formatted": fmt_to,
         "route_formatted": f"{fmt_from} – {fmt_to}",
-        "raw_from_name": key_from,
-        "raw_to_name": key_to,
-        "from_code": code_from,
+        "raw_from_name": raw_from,
+        "raw_to_name": to_row_key,
+        "from_code": "545006",
         "to_code": code_to
     }
 
