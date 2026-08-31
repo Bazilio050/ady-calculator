@@ -98,8 +98,7 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
         elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
-            # Возвращаем существуюший ключ из Distances.txt
-            key = "Ələt eksport Kurik"
+            key = "Ələt-eksp."
         else:
             key = "Ələt"
             
@@ -125,7 +124,7 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         key = "Culfa (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Culfa"
         return key, stations_data.get(key)
 
-    # 7. Поиск по коду или подстроке
+    # 7. Поиск по коду ЕСР или подстроке
     code = extract_code(input_text)
     if code:
         for st_key, data in stations_data.items():
@@ -137,6 +136,27 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
             return st_key, data
 
     return None, None
+
+def lookup_dist(source_data, target_key):
+    if not source_data or "distances" not in source_data:
+        return None
+    
+    t_norm = normalize_name(target_key)
+    distances_dict = source_data.get("distances", {})
+    
+    # 1. Прямой поиск по имеющимся колонкам
+    for h_key, d_val in distances_dict.items():
+        h_norm = normalize_name(h_key)
+        if t_norm == h_norm or t_norm in h_norm or h_norm in t_norm:
+            if d_val is not None:
+                return d_val
+
+    # 2. АЛИАС: Вынесен за пределы цикла
+    if "alat" in t_norm or "alet" in t_norm or "алят" in t_norm:
+        if any(k in t_norm for k in ["eksp", "kurik", "aktau", "turk", "liman"]):
+            return distances_dict.get("Ələt eksp / Bakı liman")
+
+    return None
 
 def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") -> dict:
     stations_data = parse_distances_file()
@@ -153,28 +173,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     key_from, data_from = resolve_exact_station_key(raw_from_input, stations_data)
     key_to, data_to = resolve_exact_station_key(raw_to_input, stations_data)
 
-    # Поиск расстояния
-    def lookup_dist(source_data, target_key):
-    if not source_data or "distances" not in source_data:
-        return None
-    
-    t_norm = normalize_name(target_key)
-    distances_dict = source_data.get("distances", {})
-    
-    # 1. Прямой поиск по имеющимся колонкам
-    for h_key, d_val in distances_dict.items():
-        h_norm = normalize_name(h_key)
-        if t_norm == h_norm or t_norm in h_norm or h_norm in t_norm:
-            if d_val is not None:
-                return d_val
-
-    # 2. АЛИАС
-    if "alat" in t_norm or "alet" in t_norm or "алят" in t_norm:
-        if any(k in t_norm for k in ["eksp", "kurik", "aktau", "turk", "liman"]):
-            return distances_dict.get("Ələt eksp / Bakı liman")
-
-    return None
-
     dist = None
     if data_from:
         dist = lookup_dist(data_from, key_to)
@@ -190,7 +188,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") 
     loc_from_name = get_localized_station_name(key_from, lang=lang)
     loc_to_name = get_localized_station_name(key_to, lang=lang)
 
-    # Форматирование подписи для UI
     def build_station_label(loc_name, code, key_name, raw_input):
         raw_norm = normalize_name(raw_input)
         if "alat" in raw_norm or "alet" in raw_norm:
