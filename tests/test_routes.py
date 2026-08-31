@@ -2,15 +2,16 @@
 import sys
 import os
 
-# Добавляем корень проекта в путь поиска модулей
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.calculator import calculate_freight
+from core.route_helpers import normalize_nlu_stations
+from core.distance_finder import get_route_info
 
 TEST_CASES = [
     {
         "name": "1. Обобщенный Алят эксп (без порта) -> Ələt-eksp. + Transit",
         "input": "Ялама Алят эксп 4407 крытый 35т спс",
+        "mock_nlu": {"from_station": "Yalama", "to_station": "Ələt"},
         "expected_to": "Ələt-eksp.",
         "expected_dist": 271,
         "expected_type": "transit"
@@ -18,6 +19,7 @@ TEST_CASES = [
     {
         "name": "2. Алят Курык -> Ələt Kurik (553002)",
         "input": "Ялама Алят эксп Курык 4407 крытый 35т",
+        "mock_nlu": {"from_station": "Yalama", "to_station": "Ələt"},
         "expected_to": "Ələt-eksp.Kurik",
         "expected_dist": 271,
         "expected_type": "transit"
@@ -26,12 +28,14 @@ TEST_CASES = [
         "name": "3. Алят Актау -> Ələt Aktau (549204)",
         "input": "Ялама Актау 4407 крытый 35т",
         "expected_to": "Ələt-eksp.Aktau",
+        "mock_nlu": {"from_station": "Yalama", "to_station": "Aktau"},
         "expected_dist": 271,
         "expected_type": "transit"
     },
     {
         "name": "4. Стык Беюк Кясик (без явного слова эксп в тексте)",
         "input": "Ялама Беюк Кясик 4407 крытый 35т",
+        "mock_nlu": {"from_station": "Yalama", "to_station": "Böyük Kəsik"},
         "expected_to": "Böyük Kəsik-eksp.",
         "expected_dist": 680,
         "expected_type": "transit"
@@ -39,6 +43,7 @@ TEST_CASES = [
     {
         "name": "5. Стык Астара",
         "input": "Ялама Астара эксп",
+        "mock_nlu": {"from_station": "Yalama", "to_station": "Astara"},
         "expected_to": "Astara (eks.aşır)",
         "expected_dist": 504,
         "expected_type": "transit"
@@ -46,6 +51,7 @@ TEST_CASES = [
     {
         "name": "6. Импорт на Абшерон (Погранпереход -> Внутренняя станция)",
         "input": "Ялама Абшерон 4407 крытый 35т",
+        "mock_nlu": {"from_station": "Yalama", "to_station": "Abşeron"},
         "expected_to": "Abşeron",
         "expected_dist": 204,
         "expected_type": "import"
@@ -53,7 +59,7 @@ TEST_CASES = [
 ]
 
 def run_tests():
-    print("🚀 ЗАПУСК ТЕСТИРОВАНИЯ МАРШРУТОВ И ТИПОВ ПЕРЕВОЗОК ADY")
+    print("🚀 ЗАПУСК ТЕСТИРОВАНИЯ МАРШРУТОВ И ТИПОВ ПЕРЕВОЗОК ADY (OFFLINE)")
     print("=" * 75)
     
     passed = 0
@@ -62,17 +68,26 @@ def run_tests():
     for idx, test in enumerate(TEST_CASES, 1):
         name = test["name"]
         raw_in = test["input"]
+        mock_nlu = test["mock_nlu"]
         exp_to = test["expected_to"]
         exp_dist = test["expected_dist"]
         exp_type = test["expected_type"]
 
         try:
-            res = calculate_freight(raw_in)
-            actual_route = res.get("route_formatted", "")
-            actual_dist = res.get("distance_km", 0)
-            actual_type = res.get("shipment_type", "")
+            # 1. Прогоняем данные через нормализатор без обращения к Gemini
+            norm_res = normalize_nlu_stations(mock_nlu, raw_in)
+            
+            # 2. Получаем километраж и коды из справочника Distances.txt
+            route_info = get_route_info(
+                from_station=norm_res.get("from_station"),
+                to_station=norm_res.get("to_station")
+            )
 
-            to_ok = exp_to in actual_route or exp_to in str(res.get("to_station", ""))
+            actual_route = route_info.get("route_formatted", "")
+            actual_dist = route_info.get("distance_km", 0)
+            actual_type = norm_res.get("shipment_type", "")
+
+            to_ok = exp_to in actual_route or exp_to in norm_res.get("to_station", "")
             dist_ok = (actual_dist == exp_dist)
             type_ok = (actual_type == exp_type)
 
