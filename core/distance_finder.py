@@ -82,12 +82,12 @@ def parse_distances_file():
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
     norm = normalize_name(input_text)
     
-    # 1. Поиск по прямому совпадению ключа
+    # 1. Прямое совпадение
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm:
             return st_key, data
 
-    # 2. Определение Алята
+    # 2. Обработка Алята с учетом заголовков вашей таблицы
     if "alat" in norm or "alet" in norm or "алят" in norm:
         if "trk" in norm or "turk" in norm or "туркмен" in norm:
             key = "Ələt eksport-Türk."
@@ -98,33 +98,35 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         elif "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
         elif "eksp" in norm or "эксп" in norm or "экс" in norm or "export" in norm:
+            # Ищем ключ, содержащий 'Ələt eksp' или 'Bakı liman' в заголовках
             key = "Ələt eksport"
+            for k in stations_data.get("Abşeron", {}).get("distances", {}).keys():
+                if "alat eksp" in normalize_name(k) or "baki liman" in normalize_name(k):
+                    key = k
+                    break
         else:
             key = "Ələt"
             
         return key, stations_data.get(key)
 
-    # 3. Беюк Кясик
+    # 3. Остальные пограничные переходы
     if "kesik" in norm or "кясик" in norm or "касик" in norm:
-        key = "Böyük Kəsik (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Böyük Kəsik"
+        key = "Böyük Kəsik (eksport)"
         return key, stations_data.get(key)
 
-    # 4. Ялама
     if "yalama" in norm or "ялама" in norm:
-        key = "Yalama (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Yalama"
+        key = "Yalama (eksport)"
         return key, stations_data.get(key)
 
-    # 5. Астара
     if "astara" in norm or "астара" in norm:
-        key = "Astara (eks.aşır)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Astara"
+        key = "Astara (eks.aşır)" if "Astara (eks.aşır)" in stations_data else "Astara (eksport)"
         return key, stations_data.get(key)
 
-    # 6. Джульфа
     if "culfa" in norm or "джульфа" in norm:
-        key = "Culfa (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Culfa"
+        key = "Culfa (eksport)"
         return key, stations_data.get(key)
 
-    # 7. Поиск по коду ЕСР или подстроке
+    # 4. Поиск по коду или подстроке
     code = extract_code(input_text)
     if code:
         for st_key, data in stations_data.items():
@@ -136,48 +138,6 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
             return st_key, data
 
     return None, None
-
-def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ") -> dict:
-    stations_data = parse_distances_file()
-
-    raw_from_input = from_station
-    raw_to_input = to_station
-
-    if isinstance(from_station, dict):
-        if to_station is None and "lang" in from_station:
-            lang = from_station.get("lang", lang)
-        raw_to_input = from_station.get("to_station", "")
-        raw_from_input = from_station.get("from_station", "")
-
-    key_from, data_from = resolve_exact_station_key(raw_from_input, stations_data)
-    key_to, data_to = resolve_exact_station_key(raw_to_input, stations_data)
-
-    if not data_from and not data_to:
-        raise ValueError(f"Станции '{raw_from_input}' и '{raw_to_input}' не найдены.")
-
-    def lookup_distance(source_data, target_key):
-        if not source_data or "distances" not in source_data:
-            return None
-        
-        target_norm = normalize_name(target_key)
-        distances_dict = source_data.get("distances", {})
-
-        # 1. Прямой поиск ключа
-        for h_key, d_val in distances_dict.items():
-            h_norm = normalize_name(h_key)
-            if target_norm == h_norm or target_norm in h_norm or h_norm in target_norm:
-                if d_val is not None:
-                    return d_val
-
-        # 2. Поиск для Ələt eksport
-        if "alat eksport" in target_norm or "alet eksport" in target_norm:
-            for h_key, d_val in distances_dict.items():
-                h_norm = normalize_name(h_key)
-                if "kurik" in h_norm or "alat eksport" in h_norm:
-                    if d_val is not None:
-                        return d_val
-
-        return None
 
     # Поиск расстояния в прямом и обратном направлении
     dist = None
