@@ -82,54 +82,52 @@ def parse_distances_file():
 def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
     norm = normalize_name(input_text)
     
-    # 1. Прямой поиск по названию в Distances.txt
+    # 1. Прямой поиск
     for st_key, data in stations_data.items():
         if normalize_name(st_key) == norm:
             return st_key, data
 
-    # 2. Определение Алята и Портов по строкам из Distances.txt
-    if any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык", "baki liman"]):
-        if "aktau" in norm or "актау" in norm:
-            key = "Ələt eksport Aktau"
-        elif "trk" in norm or "turk" in norm or "туркмен" in norm:
-            key = "Ələt eksport-Türk."
-        elif "yeni" in norm or "новый" in norm:
+    # 2. Определение Алята
+    if any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
+        if "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
-        elif any(k in norm for k in ["eksp", "эксп", "экс", "export", "kurik", "курык", "liman"]):
-            key = "Ələt eksport Kurik"  # Базовая строка для всех экспортных выходов Алята (553002)
+        elif any(k in norm for k in ["eksp", "эксп", "экс", "export", "kurik", "курык", "aktau", "актау", "liman"]):
+            key = "Ələt eksport Kurik"  # Берём экспортную строку файла (код 553002)
         else:
             key = "Ələt"
             
         return key, stations_data.get(key)
 
-    # 3. Беюк Кясик (Берем честные экспортные строки таблицы)
+    # 3. Беюк Кясик
     if "kesik" in norm or "кясик" in norm or "касик" in norm:
-        key = "Böyük Kəsik (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Böyük Kəsik"
+        key = "Böyük Kəsik (eksport)" if any(k in norm for k in ["eksp", "экс", "эксп", "export"]) else "Böyük Kəsik"
+        # Если искали стык, но в тексте не было слова "эксп", выбираем экспортную запись из таблицы (680 км)
+        if key == "Böyük Kəsik" and "Böyük Kəsik (eksport)" in stations_data:
+            key = "Böyük Kəsik (eksport)"
         return key, stations_data.get(key)
 
     # 4. Ялама
     if "yalama" in norm or "ялама" in norm:
-        key = "Yalama (eksport)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Yalama"
+        key = "Yalama (eksport)" if any(k in norm for k in ["eksp", "экс", "эксп", "export"]) else "Yalama"
         return key, stations_data.get(key)
 
     # 5. Астара
     if "astara" in norm or "астара" in norm:
-        key = "Astara (eks.aşır)" if ("eksp" in norm or "экс" in norm or "эксп" in norm) else "Astara"
+        key = "Astara (eks.aşır)" if any(k in norm for k in ["eksp", "экс", "эксп", "export"]) else "Astara"
         return key, stations_data.get(key)
 
-    # 6. Поиск по коду ЕСР
     code = extract_code(input_text)
     if code:
         for st_key, data in stations_data.items():
             if data.get("code") == code:
                 return st_key, data
 
-    # 7. Неточный поиск по подстроке
     for st_key, data in stations_data.items():
         if len(norm) > 3 and norm in normalize_name(st_key):
             return st_key, data
 
     return None, None
+
 
 def lookup_dist(source_data, target_key):
     if not source_data or "distances" not in source_data:
@@ -138,17 +136,17 @@ def lookup_dist(source_data, target_key):
     t_norm = normalize_name(target_key)
     distances_dict = source_data.get("distances", {})
     
-    # Прямой поиск по ключам колонок
+    # Приоритетный забор экспортной колонки "Ələt eksp / Bakı liman" (271 км для Яламы)
+    if any(k in t_norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
+        if "Ələt eksp / Bakı liman" in distances_dict and distances_dict["Ələt eksp / Bakı liman"] is not None:
+            return distances_dict["Ələt eksp / Bakı liman"]
+
+    # Прямой поиск по всем имеющимся колонкам
     for h_key, d_val in distances_dict.items():
         h_norm = normalize_name(h_key)
         if t_norm == h_norm or t_norm in h_norm or h_norm in t_norm:
             if d_val is not None:
                 return d_val
-
-    # Профессиональный маппинг на колонку Алята в Distances.txt без ручных прибавок
-    if any(k in t_norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
-        if "Ələt eksp / Bakı liman" in distances_dict:
-            return distances_dict.get("Ələt eksp / Bakı liman")
 
     return None
 
