@@ -1,6 +1,4 @@
-# ==============================================================================
-# МОДУЛЬ ПОИСКА РАССТОЯНИЙ И КОДОВ СТАНЦИЙ ADY (БЕЗ ЗАГЛУШЕК И HARDCODE-КИЛОМЕТРОВ)
-# ==============================================================================
+# core/distance_finder.py
 import os
 import re
 
@@ -87,21 +85,19 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
         if normalize_name(st_key) == norm:
             return st_key, data
 
-    # 2. Определение Алята
+    # 2. Алят (Экспортные направления Порта и Перехода)
     if any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
         if "yeni" in norm or "новый" in norm:
             key = "Ələt yeni"
         elif any(k in norm for k in ["eksp", "эксп", "экс", "export", "kurik", "курык", "aktau", "актау", "liman"]):
-            key = "Ələt eksport Kurik"  # Берём экспортную строку файла (код 553002)
+            key = "Ələt eksport Kurik"
         else:
             key = "Ələt"
-            
         return key, stations_data.get(key)
 
     # 3. Беюк Кясик
     if "kesik" in norm or "кясик" in norm or "касик" in norm:
         key = "Böyük Kəsik (eksport)" if any(k in norm for k in ["eksp", "экс", "эксп", "export"]) else "Böyük Kəsik"
-        # Если искали стык, но в тексте не было слова "эксп", выбираем экспортную запись из таблицы (680 км)
         if key == "Böyük Kəsik" and "Böyük Kəsik (eksport)" in stations_data:
             key = "Böyük Kəsik (eksport)"
         return key, stations_data.get(key)
@@ -128,7 +124,6 @@ def resolve_exact_station_key(input_text: str, stations_data: dict) -> tuple:
 
     return None, None
 
-
 def lookup_dist(source_data, target_key):
     if not source_data or "distances" not in source_data:
         return None
@@ -136,12 +131,14 @@ def lookup_dist(source_data, target_key):
     t_norm = normalize_name(target_key)
     distances_dict = source_data.get("distances", {})
     
-    # Приоритетный забор экспортной колонки "Ələt eksp / Bakı liman" (271 км для Яламы)
+    # Забор колонки "Ələt eksp / Bakı liman" (дает 271 км для экспортного Алята)
     if any(k in t_norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык"]):
-        if "Ələt eksp / Bakı liman" in distances_dict and distances_dict["Ələt eksp / Bakı liman"] is not None:
-            return distances_dict["Ələt eksp / Bakı liman"]
+        for h_key, d_val in distances_dict.items():
+            if "elet eksp" in normalize_name(h_key) or "baki liman" in normalize_name(h_key):
+                if d_val is not None:
+                    return d_val
 
-    # Прямой поиск по всем имеющимся колонкам
+    # Поиск по остальным колонкам
     for h_key, d_val in distances_dict.items():
         h_norm = normalize_name(h_key)
         if t_norm == h_norm or t_norm in h_norm or h_norm in t_norm:
