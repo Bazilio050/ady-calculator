@@ -7,7 +7,20 @@ import time
 import google.genai as genai
 from google.genai import types
 
-API_KEY = os.environ.get("GEMINI_API_KEY", "")
+def get_api_key() -> str:
+    """Универсальное извлечение API-ключа: из os.environ или из Streamlit Secrets"""
+    key = os.environ.get("GEMINI_API_KEY", "")
+    if key:
+        return key
+    
+    try:
+        import streamlit as st
+        if "GEMINI_API_KEY" in st.secrets:
+            return st.secrets["GEMINI_API_KEY"]
+    except Exception:
+        pass
+        
+    return ""
 
 SYSTEM_PROMPT = """
 Ты — профессиональный AI-ассистент логиста ADY (Азербайджанские Железные Дороги).
@@ -72,7 +85,8 @@ EMPTY_WAGON_NAMES = {
 }
 
 def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
-    if not API_KEY:
+    api_key = get_api_key()
+    if not api_key:
         raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
 
     parsed_data = {}
@@ -82,7 +96,7 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     # 1. Цикл с авто-повтором (Retry) для устранения ошибок 503 UNAVAILABLE
     for attempt in range(max_retries):
         try:
-            client = genai.Client(api_key=API_KEY)
+            client = genai.Client(api_key=api_key)
             
             # Передаем выбранный язык интерфейса прямо в запрос
             contents_text = f"Текущий язык интерфейса: {current_lang}\nЗапрос пользователя: {user_prompt}"
