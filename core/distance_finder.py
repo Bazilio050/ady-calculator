@@ -77,7 +77,7 @@ def get_border_column_header(station_text: str, headers: list) -> str:
 
 def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: bool = False, shipment_type: str = None) -> str:
     norm = normalize_name(station_text)
-    is_border_mode = is_transit or shipment_type in ["export", "transit"]
+    is_border_mode = is_transit or shipment_type in ["export", "import", "transit"]
 
     # 1. Порт-паром на Туркменбаши / ТРК
     if any(k in norm for k in ["trk", "трк", "turkmenbasy", "туркменбаши", "туркменбашы", "turkm", "туркм"]):
@@ -95,12 +95,15 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
             return "Ələt eksport Kurik"
         return "Ələt"
 
-    # 4. Погранпереходы (Астара, Беюк Кясик)
+    # 4. Погранпереходы (Астара, Беюк Кясик, Ялама)
     if any(k in norm for k in ["kesik", "кясик", "касик"]):
         return "Böyük Kəsik (eksport)" if is_border_mode else "Böyük Kəsik"
     
     if "astara" in norm or "астара" in norm:
         return "Astara (eksport)" if is_border_mode else "Astara"
+
+    if "yalama" in norm or "ялама" in norm:
+        return "Yalama (eksport)" if is_border_mode else "Yalama"
 
     # 5. Абшерон
     if any(k in norm for k in ["absheron", "abseron", "абшерон", "апшерон"]):
@@ -124,8 +127,22 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     raw_to = from_station.get("to_station", "") if isinstance(from_station, dict) else to_station
 
     current_lang = (lang or "AZ").upper()
-    is_transit = shipment_type in ["transit", "export"]
-    is_border_mode = is_transit or shipment_type in ["export", "transit"]
+    
+    # Автоопределение вида перевозки, если он не был передан явно
+    norm_from = normalize_name(raw_from)
+    norm_to = normalize_name(raw_to)
+    border_keywords = ["astara", "астара", "kesik", "кясик", "yalama", "ялама", "aktau", "актау", "kurik", "курык"]
+
+    if not shipment_type or shipment_type == "import":
+        if any(k in norm_from for k in border_keywords) and not any(k in norm_to for k in border_keywords):
+            shipment_type = "import"
+        elif not any(k in norm_from for k in border_keywords) and any(k in norm_to for k in border_keywords):
+            shipment_type = "export"
+        elif any(k in norm_from for k in border_keywords) and any(k in norm_to for k in border_keywords):
+            shipment_type = "transit"
+
+    is_transit = shipment_type in ["transit", "export", "import"]
+    is_border_mode = True
 
     from_col = get_border_column_header(raw_from, headers)
     to_row_key = resolve_target_row_key(raw_to, stations_data, is_transit=is_transit, shipment_type=shipment_type)
@@ -150,7 +167,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         if key_name in stations_data and stations_data[key_name].get("code"):
             return stations_data[key_name]["code"]
             
-        # Забираем код от базовой станции Astara (554109) / Böyük Kəsik (553106)
         clean_base = key_name.replace("(eksport)", "").replace("(eks.aşır)", "").strip()
         for st_k, st_v in stations_data.items():
             if normalize_name(st_k) == normalize_name(clean_base):
