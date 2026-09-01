@@ -86,12 +86,12 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
             return "Ələt eksport Kurik"
         return "Ələt"
 
-    # 4. Погранпереходы (Беюк Кясик и Астара)
+    # 4. Погранпереходы (Берём экспортный стык Астары по умолчанию, если это экспорт/транзит)
     if any(k in norm for k in ["kesik", "кясик", "касик"]):
         return "Böyük Kəsik (eksport)" if is_transit else "Böyük Kəsik"
     
     if "astara" in norm or "астара" in norm:
-        return "Astara (eks.aşır)" if is_transit else "Astara"
+        return "Astara (eks.aşır)" if (is_transit or "eks" in norm or "астара" in norm) else "Astara"
 
     # 5. Абшерон
     if any(k in norm for k in ["absheron", "abseron", "абшерон", "апшерон"]):
