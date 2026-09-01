@@ -108,15 +108,20 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
 
     return None
 
+# Не забудь импортировать функцию из своего справочника локализации (например, из core.stations_data или data.stations)
+from core.stations_data import get_localized_station_name
+
 def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", shipment_type: str = None) -> dict:
     headers, stations_data = parse_distances_file()
 
     raw_from = from_station.get("from_station", "") if isinstance(from_station, dict) else from_station
     raw_to = from_station.get("to_station", "") if isinstance(from_station, dict) else to_station
 
+    # Если lang пришел строкой с нижним регистром (например, "ru"), переводим в верхний ("RU")
+    current_lang = (lang or "AZ").upper()
+
     is_transit = shipment_type in ["transit", "export"]
 
-    # Определяем ключевые строки/колонки для обеих станций
     from_col = get_border_column_header(raw_from, headers)
     to_row_key = resolve_target_row_key(raw_to, stations_data, is_transit=is_transit)
 
@@ -124,63 +129,62 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     to_col = get_border_column_header(raw_to, headers)
 
     dist = None
-    # 1. Прямой поиск: погранпереход (колонка) -> станция назначения (строка)
     if from_col and to_row_key in stations_data:
         dist = stations_data[to_row_key]["distances"].get(from_col)
 
-    # 2. Обратный поиск: станция отправления (строка) -> погранпереход (колонка)
     if dist is None and to_col and from_row_key in stations_data:
         dist = stations_data[from_row_key]["distances"].get(to_col)
 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from}' и '{raw_to}'.")
 
-    # Корректное получение объектов станций из базы
     from_target_data = stations_data.get(from_row_key, {})
     to_target_data = stations_data.get(to_row_key, {})
 
     code_from = from_target_data.get("code", "")
     code_to = to_target_data.get("code", "")
 
-    def build_label(raw_in, fallback_key, code, is_from=False):
+    # Построение меток с учетом выбранного языка (current_lang)
+    def build_label(raw_in, fallback_key, code):
         norm = normalize_name(raw_in)
         hide_code = False
+        base_key = fallback_key
         
         if any(k in norm for k in ["kurik", "курык"]):
-            label = "Ələt-eksp.Kurik"
+            base_key = "Ələt eksport Kurik"
             hide_code = True
         elif any(k in norm for k in ["aktau", "актау"]):
-            label = "Ələt-eksp.Aktau"
+            base_key = "Ələt eksport Aktau"
             hide_code = True
         elif any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
-            label = "Ələt-eksp.Türk."
+            base_key = "Ələt eksport-Türk."
             hide_code = True
         elif any(k in norm for k in ["kesik", "кясик", "касик"]):
-            label = "Böyük Kəsik-eksp." if (is_transit or fallback_key == "Böyük Kəsik (eksport)") else "Böyük Kəsik"
+            base_key = "Böyük Kəsik (eksport)" if is_transit else "Böyük Kəsik"
         elif any(k in norm for k in ["astara", "астара"]):
-            # Если это пограничный стык Astara (eks.aşır) — прячем код и пишем экспортное имя
-            if fallback_key == "Astara (eks.aşır)" or is_transit or "eks" in norm:
-                label = "Astara (eks.aşır)"
+            if fallback_key in ["Astara (eks.aşır)", "Astara (eksport)"] or is_transit or "eks" in norm:
+                base_key = "Astara (eksport)"
                 hide_code = True
             else:
-                label = "Astara"
+                base_key = "Astara"
         elif any(k in norm for k in ["alat", "elet", "алят"]):
             if is_transit or "eksp" in norm or "эксп" in norm or fallback_key == "Ələt eksport Kurik":
-                label = "Ələt-eksp."
+                base_key = "Ələt eksport"
                 hide_code = True
             else:
-                label = "Ələt"
+                base_key = "Ələt"
         elif any(k in norm for k in ["yalama", "ялама"]):
-            label = "Yalama"
-        else:
-            label = fallback_key
+            base_key = "Yalama (eksport)" if is_transit else "Yalama"
+
+        # Прогоняем имя через справочник локализации STATIONS_MAPPING
+        localized_name = get_localized_station_name(base_key, lang=current_lang)
 
         if code and not hide_code:
-            return f"{label} ({code})"
-        return label
+            return f"{localized_name} ({code})"
+        return localized_name
 
-    fmt_from = build_label(raw_from, from_row_key or raw_from, code_from, is_from=True)
-    fmt_to = build_label(raw_to, to_row_key or raw_to, code_to, is_from=False)
+    fmt_from = build_label(raw_from, from_row_key or raw_from, code_from)
+    fmt_to = build_label(raw_to, to_row_key or raw_to, code_to)
 
     return {
         "distance_km": dist,
