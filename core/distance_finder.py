@@ -141,63 +141,88 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     code_from = from_target_data.get("code", "")
     code_to = to_target_data.get("code", "")
 
-    # Построение меток с учетом выбранного языка
-    def build_label(raw_in, fallback_key, code):
-        norm = normalize_name(raw_in)
-        hide_code = False
-        base_key = fallback_key
-        is_border_mode = is_transit or shipment_type in ["export", "transit"]
-        
-        if any(k in norm for k in ["kurik", "курык"]):
-            base_key = "Ələt eksport Kurik"
+    def build_label(
+    raw_in: str,
+    fallback_key: str,
+    code: str,
+    is_border_mode: bool,
+    current_lang: str,
+) -> str:
+    norm = normalize_name(raw_in)
+    hide_code = False
+    base_key = fallback_key
+
+    # 1. Специфические портовые направления (высший приоритет)
+    if any(k in norm for k in ["kurik", "курык"]):
+        base_key = "Ələt eksport Kurik"
+        hide_code = True
+    elif any(k in norm for k in ["aktau", "актау"]):
+        base_key = "Ələt eksport Aktau"
+        hide_code = True
+    elif any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
+        base_key = "Ələt eksport-Türk."
+        hide_code = True
+
+    # 2. Пограничные стыковые пункты
+    elif any(k in norm for k in ["kesik", "кясик", "касик"]):
+        base_key = (
+            "Böyük Kəsik (eksport)" if is_border_mode else "Böyük Kəsik"
+        )
+        hide_code = is_border_mode
+    elif any(k in norm for k in ["astara", "астара"]):
+        if (
+            is_border_mode
+            or fallback_key in ["Astara (eksport)", "Astara (eks.aşır)"]
+            or "eks" in norm
+        ):
+            base_key = "Astara (eksport)"
             hide_code = True
-        elif any(k in norm for k in ["aktau", "актау"]):
-            base_key = "Ələt eksport Aktau"
+        else:
+            base_key = "Astara"
+    elif any(k in norm for k in ["yalama", "ялама"]):
+        base_key = "Yalama (eksport)" if is_border_mode else "Yalama"
+        hide_code = is_border_mode
+
+    # 3. Базовый Алят (обрабатывается после конкретных морских направлений)
+    elif any(k in norm for k in ["alat", "elet", "алят"]):
+        if is_border_mode or "eksp" in norm or "эксп" in norm:
+            base_key = "Ələt eksport"
             hide_code = True
-        elif any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
-            base_key = "Ələt eksport-Türk."
-            hide_code = True
-        elif any(k in norm for k in ["kesik", "кясик", "касик"]):
-            base_key = "Böyük Kəsik (eksport)" if is_border_mode else "Böyük Kəsik"
-            if is_border_mode:
-                hide_code = True
-        elif any(k in norm for k in ["astara", "астара"]):
-            if is_border_mode or fallback_key in ["Astara (eksport)", "Astara (eks.aşır)"] or "eks" in norm:
-                base_key = "Astara (eksport)"
-                hide_code = True
-            else:
-                base_key = "Astara"
-        elif any(k in norm for k in ["alat", "elet", "алят"]):
-            if is_border_mode or "eksp" in norm or "эксп" in norm or fallback_key == "Ələt eksport Kurik":
-                base_key = "Ələt eksport"
-                hide_code = True
-            else:
-                base_key = "Ələt"
-        elif any(k in norm for k in ["yalama", "ялама"]):
-            base_key = "Yalama (eksport)" if is_border_mode else "Yalama"
-            if is_border_mode:
-                hide_code = True
+        else:
+            base_key = "Ələt"
 
-        # Локализация наименований
-        localized_name = get_localized_station_name(base_key, lang=current_lang)
+    # Локализация и сборка итоговой метки
+    localized_name = get_localized_station_name(base_key, lang=current_lang)
 
-        if code and not hide_code:
-            return f"{localized_name} ({code})"
-        return localized_name
+    if code and not hide_code:
+        return f"{localized_name} ({code})"
+    return localized_name
 
-    fmt_from = build_label(raw_from, from_row_key or raw_from, code_from)
-    fmt_to = build_label(raw_to, to_row_key or raw_to, code_to)
 
-    return {
-        "distance_km": dist,
-        "from_formatted": fmt_from,
-        "to_formatted": fmt_to,
-        "route_formatted": f"{fmt_from} – {fmt_to}",
-        "raw_from_name": raw_from,
-        "raw_to_name": to_row_key,
-        "from_code": code_from,
-        "to_code": code_to
-    }
+# --- Вызов функции в основном потоке ---
+is_border_mode = is_transit or shipment_type in ["export", "transit"]
+
+fmt_from = build_label(
+    raw_from,
+    from_row_key or raw_from,
+    code_from,
+    is_border_mode,
+    current_lang,
+)
+fmt_to = build_label(
+    raw_to, to_row_key or raw_to, code_to, is_border_mode, current_lang
+)
+
+return {
+    "distance_km": dist,
+    "from_formatted": fmt_from,
+    "to_formatted": fmt_to,
+    "route_formatted": f"{fmt_from} – {fmt_to}",
+    "raw_from_name": raw_from,
+    "raw_to_name": to_row_key,
+    "from_code": code_from,
+    "to_code": code_to,
+}
 
 def get_route_distance(from_station: str, to_station: str) -> int:
     return get_route_info(from_station, to_station)["distance_km"]
