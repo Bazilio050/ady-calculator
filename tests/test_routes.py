@@ -6,9 +6,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.route_helpers import normalize_nlu_stations
 from core.calculator import calculate_freight
 
-TEST_CASES = [
+# ==============================================================================
+# КОМПЛЕКСНАЯ МАТРИЦА ТЕСТОВ ADY TARIFF CALCULATOR 2026
+# ==============================================================================
+
+# БЛОК A: Позитивные сценарии (Маршруты, виды перевозок, весовые нормы)
+POSITIVE_TEST_CASES = [
     {
-        "name": "1. Обобщенный Алят эксп (без порта) -> Ələt-eksp. + Transit",
+        "name": "A1. Транзит: Погранпереход -> Погранпереход (Ялама -> Ələt-eksp.)",
         "input": "Ялама Алят эксп 4407 крытый 35т спс",
         "mock_nlu": {
             "from_station": "Yalama",
@@ -24,7 +29,7 @@ TEST_CASES = [
         "expected_min_ton": 45
     },
     {
-        "name": "2. Алят Курык -> Ələt Kurik (553002)",
+        "name": "A2. Транзит с паромом: Порт Курык (Ələt Kurik 553002)",
         "input": "Ялама Алят эксп Курык 4407 крытый 35т",
         "mock_nlu": {
             "from_station": "Yalama",
@@ -40,7 +45,7 @@ TEST_CASES = [
         "expected_min_ton": 45
     },
     {
-        "name": "3. Алят Актау -> Ələt Aktau (549204)",
+        "name": "A3. Транзит с паромом: Порт Актау (Ələt Aktau 549204)",
         "input": "Ялама Актау 4407 крытый 35т",
         "mock_nlu": {
             "from_station": "Yalama",
@@ -56,7 +61,7 @@ TEST_CASES = [
         "expected_min_ton": 45
     },
     {
-        "name": "4. Стык Беюк Кясик (без явного слова эксп в тексте)",
+        "name": "A4. Транзит на стык: Беюк Кясик-експ (558701)",
         "input": "Ялама Беюк Кясик 4407 крытый 35т",
         "mock_nlu": {
             "from_station": "Yalama",
@@ -72,7 +77,7 @@ TEST_CASES = [
         "expected_min_ton": 45
     },
     {
-        "name": "5. Импорт на Абшерон (Погранпереход -> Внутренняя станция)",
+        "name": "A5. Импорт: Погранпереход -> Внутренняя станция (Ялама -> Абшерон)",
         "input": "Ялама Абшерон 4407 крытый 35т импорт",
         "mock_nlu": {
             "from_station": "Yalama",
@@ -89,14 +94,56 @@ TEST_CASES = [
     }
 ]
 
+# БЛОК B: Негативные сценарии (Отрицательные тесты и валидация ошибок)
+NEGATIVE_TEST_CASES = [
+    {
+        "name": "B1. Ошибка: Отсутствует код ГНГ для груженого вагона",
+        "params": {
+            "from_station": "Yalama-eksp.",
+            "to_station": "Abşeron",
+            "gng_code": "",
+            "fact_weight": 35.0,
+            "shipment_type": "import",
+            "is_empty_wagon": False
+        },
+        "expected_error": "gng_code_required"
+    },
+    {
+        "name": "B2. Ошибка: Маршрут отсутствует в справочнике",
+        "params": {
+            "from_station": "UnknownStation1",
+            "to_station": "UnknownStation2",
+            "gng_code": "4407",
+            "fact_weight": 35.0,
+            "shipment_type": "import",
+            "is_empty_wagon": False
+        },
+        "expected_error": "route_not_found"
+    },
+    {
+        "name": "B3. Ошибка: Дата вычисления выходит за границы справочника FX_RATES",
+        "params": {
+            "from_station": "Yalama-eksp.",
+            "to_station": "Abşeron",
+            "gng_code": "4407",
+            "fact_weight": 35.0,
+            "shipment_type": "import",
+            "calculation_date": "2030-01-01"
+        },
+        "expected_error": "fx_rate_not_found"
+    }
+]
+
 def run_tests():
-    print("🚀 ЗАПУСК ТЕСТИРОВАНИЯ: СТРОГАЯ ВАЛИДАЦИЯ ТАРИФОВ И МАРШРУТОВ ADY 2026")
+    print("🚀 ЗАПУСК ПОЛНОЙ МАТРИЦЫ ТЕСТИРОВАНИЯ ADY 2026 (RULES.md COMPLIANT)")
     print("=" * 85)
     
     passed = 0
-    total = len(TEST_CASES)
+    total = len(POSITIVE_TEST_CASES) + len(NEGATIVE_TEST_CASES)
 
-    for idx, test in enumerate(TEST_CASES, 1):
+    # 1. Прогон позитивных тестов
+    print("\n--- ЧАСТЬ 1: Позитивные сценарии расчетов ---")
+    for idx, test in enumerate(POSITIVE_TEST_CASES, 1):
         name = test["name"]
         raw_in = test["input"]
         mock_nlu = test["mock_nlu"]
@@ -106,10 +153,8 @@ def run_tests():
         exp_min_ton = test.get("expected_min_ton")
 
         try:
-            # 1. Нормализация станций и видов перевозок
             norm_res = normalize_nlu_stations(mock_nlu, raw_in)
             
-            # 2. Расчет калькулятором без передаваемого вручную километража
             calc_result = calculate_freight(
                 from_station=norm_res.get("from_station"),
                 to_station=norm_res.get("to_station"),
@@ -137,25 +182,33 @@ def run_tests():
             min_ton_ok = f"{exp_min_ton} t" in part1.get("weight_info", "") if exp_min_ton else True
 
             if to_ok and type_ok and calc_ok and table_ok and min_ton_ok:
-                print(f"\nТест {idx}: {name}")
-                print(f"  Ввод:         '{raw_in}'")
-                print(f"  Маршрут:      {actual_route} ({actual_dist_str})")
-                print(f"  Вид / Вес:    {norm_res.get('shipment_type').upper()} | {part1.get('weight_info')}")
-                print(f"  Ставка CHF:   {part2.get('base_tariff')}")
-                print(f"  Формула:      {part3.get('formula')}")
-                print(f"  Итого USD:    {total_usd:.2f} $")
-                print(f"  Статус:       ✅ PASSED")
+                print(f"  [PASSED] Тест A{idx}: {name}")
                 passed += 1
             else:
-                print(f"\nТест {idx}: {name}")
-                print(f"  Ввод:         '{raw_in}'")
-                print(f"  Маршрут:      {actual_route}")
-                print(f"  Вид:          Получено: {norm_res.get('shipment_type')} | Ожидалось: {exp_type}")
-                print(f"  Тариф:        Итого: {total_usd:.2f} $ | {part2.get('base_tariff')}")
-                print(f"  Статус:       ❌ FAILED")
+                print(f"  [FAILED] Тест A{idx}: {name}")
+                print(f"    Получено: Route='{actual_route}', Type='{norm_res.get('shipment_type')}', USD={total_usd}")
 
         except Exception as e:
-            print(f"\nТест {idx}: {name}\n  Ошибка выполнения: {e}\n  Статус:      ❌ FAILED")
+            print(f"  [FAILED] Тест A{idx}: {name} | Исключение: {e}")
+
+    # 2. Прогон негативных тестов
+    print("\n--- ЧАСТЬ 2: Отрицательные тесты и перехват исключений ---")
+    for idx, test in enumerate(NEGATIVE_TEST_CASES, 1):
+        name = test["name"]
+        params = test["params"]
+        exp_err = test["expected_error"]
+
+        try:
+            calculate_freight(**params)
+            print(f"  [FAILED] Тест B{idx}: {name} | Ошибка не выброшена!")
+        except ValueError as e:
+            if exp_err in str(e):
+                print(f"  [PASSED] Тест B{idx}: {name} (Корректно выброшено '{exp_err}')")
+                passed += 1
+            else:
+                print(f"  [FAILED] Тест B{idx}: {name} | Ожидалось '{exp_err}', получено '{e}'")
+        except Exception as e:
+            print(f"  [FAILED] Тест B{idx}: {name} | Неожиданное исключение: {e}")
 
     print("\n" + "=" * 85)
     print(f"ИТОГ: Успешно пройдено {passed} из {total} тестов.")
