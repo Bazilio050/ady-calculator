@@ -163,8 +163,9 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     if dist is None and to_col and from_row_key in stations_data:
         dist = stations_data[from_row_key]["distances"].get(to_col)
 
+    
     if dist is None:
-        raise ValueError(f"Не удалось определить расстояние между '{raw_from}' и '{raw_to}'.")
+        raise ValueError(f"route_not_found: Не удалось определить расстояние между '{raw_from}' и '{raw_to}'.")
 
     def get_station_code(key_name):
         if not key_name:
