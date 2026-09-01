@@ -35,6 +35,19 @@ def calculate_freight(
     lang="AZ",
     **kwargs
 ):
+    # ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ ВИДА ПЕРЕВОЗКИ ИЗ ТЕКСТА ЗАПРОСА
+    raw_prompt = kwargs.get("raw_prompt", "") or kwargs.get("user_prompt", "")
+    if raw_prompt:
+        prompt_low = str(raw_prompt).lower()
+        if any(w in prompt_low for w in ["импорт", "import", "idhal", "idxal"]):
+            shipment_type = "import"
+        elif any(w in prompt_low for w in ["экспорт", "export", "ixrac"]):
+            shipment_type = "export"
+        elif any(w in prompt_low for w in ["транзит", "transit", "tranzit"]):
+            shipment_type = "transit"
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    data_dir = os.path.join(base_dir, "data")
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     data_dir = os.path.join(base_dir, "data")
 
