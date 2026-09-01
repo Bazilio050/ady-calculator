@@ -76,7 +76,9 @@ def get_border_column_header(station_text: str, headers: list) -> str:
 
 def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: bool = False, shipment_type: str = None) -> str:
     norm = normalize_name(station_text)
-    use_border_joint = (shipment_type == "transit") or (is_transit and shipment_type not in ["import", "export"])
+    
+    # Стыки (-эксп.) применяются ТОЛЬКО если вид перевозки — транзит
+    use_border_joint = (shipment_type == "transit")
 
     # 1. Порт-паром на Туркменбаши / ТРК
     if any(k in norm for k in ["trk", "трк", "turkmenbasy", "туркменбаши", "туркменбашы", "turkm", "туркм"]):
@@ -94,7 +96,7 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
             return "Ələt eksport Kurik"
         return "Ələt"
 
-    # 4. Пограничные стыковые пункты
+    # 4. Погранпереходы
     if any(k in norm for k in ["kesik", "кясик", "касик"]):
         return "Böyük Kəsik (eksport)" if use_border_joint else "Böyük Kəsik"
     
@@ -106,10 +108,6 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
 
     if "culfa" in norm or "джульфа" in norm:
         return "Culfa (eksport)" if use_border_joint else "Culfa"
-
-    # 5. Абшерон
-    if any(k in norm for k in ["absheron", "abseron", "абшерон", "апшерон"]):
-        return "Abşeron"
 
     # Поиск по базе
     for st_key in stations_data.keys():
