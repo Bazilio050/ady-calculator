@@ -145,6 +145,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     def build_label(raw_in, fallback_key, code, is_from=False):
         norm = normalize_name(raw_in)
         hide_code = False
+        is_border_route = is_transit or shipment_type in ["export", "transit"]
         
         if any(k in norm for k in ["kurik", "курык"]):
             label = "Ələt-eksp.Kurik"
@@ -156,11 +157,15 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
             label = "Ələt-eksp.Türk."
             hide_code = True
         elif any(k in norm for k in ["kesik", "кясик", "касик"]):
-            label = "Böyük Kəsik-eksp." if is_transit else "Böyük Kəsik"
+            label = "Böyük Kəsik-eksp." if is_border_route else "Böyük Kəsik"
         elif any(k in norm for k in ["astara", "астара"]):
-            label = "Astara (eks.aşır)" if is_transit else "Astara"
+            if is_border_route:
+                label = "Astara (eks.aşır)"
+                hide_code = True
+            else:
+                label = "Astara"
         elif any(k in norm for k in ["alat", "elet", "алят"]):
-            if is_transit or "eksp" in norm or "эксп" in norm:
+            if is_border_route or "eksp" in norm or "эксп" in norm:
                 label = "Ələt-eksp."
                 hide_code = True
             else:
