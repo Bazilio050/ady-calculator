@@ -1,6 +1,4 @@
-# ==============================================================================
-# ГЛАВНЫЙ МОДУЛЬ РАСЧЕТА ТАРИФНЫХ СТАВОК ADY 2026
-# ==============================================================================
+# core/calculator.py
 import os
 import re
 from datetime import datetime
@@ -56,13 +54,13 @@ def calculate_freight(
         raw_distance = manual_dist_val
         route_formatted = f"{from_station} – {to_station}"
     else:
-        # Передаем словарь в get_route_info, как требует distance_finder.py
+        # Передаем полный словарь и явный shipment_type в get_route_info
         dummy_nlu = {
             "from_station": from_station,
             "to_station": to_station,
             "shipment_type": shipment_type
         }
-        route_data = get_route_info(dummy_nlu, lang=lang)
+        route_data = get_route_info(dummy_nlu, lang=lang, shipment_type=shipment_type)
         raw_distance = route_data.get("distance_km", 300)
         route_formatted = route_data.get("route_formatted") or route_data.get("route_display", f"{from_station} – {to_station}")
 
@@ -71,13 +69,12 @@ def calculate_freight(
 
     clean_gng = re.sub(r'\D', '', str(gng_code or "")) if gng_code else ("99220000" if is_empty_wagon else "00000000")
 
-    # 2. Расчет веса (с учетом минимальных норм со стр. 11-12)
+    # 2. Расчет веса
     weight_info = calculate_chargeable_weight(fact_weight_val, clean_gng, wagon_type)
     chargeable_tons = weight_info["chargeable_tons"]
     min_norm = weight_info.get("min_weight_norm", 0)
     weight_category = weight_info["weight_category"]
 
-    # Форматирование отображения веса
     if min_norm > 0 and fact_weight_val < min_norm:
         weight_str = f"{int(fact_weight_val)} t / min. {int(chargeable_tons)} t"
     else:
@@ -108,7 +105,6 @@ def calculate_freight(
     )
     total_multiplier = coeff_info["total_multiplier"]
 
-    # Математика расчета
     base_rate_usd = base_rate_chf / fx_rate
     rate_usd_per_ton = base_rate_usd * total_multiplier
     total_usd = rate_usd_per_ton * chargeable_tons
@@ -135,7 +131,6 @@ def calculate_freight(
         "EN": "Table"
     }.get(lang_key, "Cədvəl")
 
-    # Формула расчета
     coeffs_list = coeff_info["coefficients_list"]
     coeff_str_elements = [str(c["value"]) for c in coeffs_list]
     coeff_formula_part = " * ".join(coeff_str_elements) if coeff_str_elements else "1.0"
@@ -162,12 +157,12 @@ def calculate_freight(
             "distance": f"{calc_distance} km",
             "cargo_and_wagon": cargo_status,
             "weight_info": weight_str,
-            "period": "2026-cı fraxt ili"
+            "period": period_title
         },
         
         "part2": {
             "exchange_rate": f"{fx_rate:.2f} CHF/USD",
-            "base_tariff": f"{base_rate_chf:.2f} CHF/t (Cədvəl {table_num} ({calc_distance} km, {int(chargeable_tons)} t))",
+            "base_tariff": f"{base_rate_chf:.2f} CHF/t ({table_word} {table_num} ({calc_distance} km, {int(chargeable_tons)} t))",
             "coefficients": coeffs_list
         },
         "part3": {
