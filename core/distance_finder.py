@@ -146,10 +146,10 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     is_transit_mode = (shipment_type == "transit")
 
     from_col = get_border_column_header(raw_from, headers)
-    to_row_key = resolve_target_row_key(raw_to, stations_data, is_transit=is_transit_mode, shipment_type=shipment_type)
-
-    from_row_key = resolve_target_row_key(raw_from, stations_data, is_transit=is_transit_mode, shipment_type=shipment_type)
     to_col = get_border_column_header(raw_to, headers)
+
+    from_row_key = resolve_target_row_key(raw_from, stations_data, is_origin=True, is_transit=is_transit_mode, shipment_type=shipment_type)
+    to_row_key = resolve_target_row_key(raw_to, stations_data, is_origin=False, is_transit=is_transit_mode, shipment_type=shipment_type)
 
     dist = None
     if from_col and to_row_key in stations_data:
@@ -180,7 +180,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         fallback_key: str,
         code: str,
         shipment_type: str,
-        is_origin: bool,  # True если это станция отправления, False если назначения
+        is_origin: bool,
         current_lang: str,
     ) -> str:
         norm = normalize_name(raw_in)
@@ -188,10 +188,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         hide_code = False
         base_key = fallback_key
 
-        # Определяем, должен ли данный пункт быть экспортным стыком (-эксп.)
-        # 1. При транзите — обе станции стыки
-        # 2. При импорте — только первая станция (вход в страну)
-        # 3. При экспорте — только вторая станция (выход из страны)
         is_border_joint = (
             (shipment_type == "transit") or
             (shipment_type == "import" and is_origin) or
@@ -215,7 +211,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
             else:
                 base_key = "Ələt"
 
-        # 2. Пограничные пункты (стык или чистая станция)
+        # 2. Пограничные пункты
         elif any(k in norm or k in norm_fallback for k in ["kesik", "кясик", "касик"]):
             base_key = "Böyük Kəsik (eksport)" if is_border_joint else "Böyük Kəsik"
             hide_code = False
