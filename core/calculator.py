@@ -1,4 +1,3 @@
-# core/calculator.py
 import os
 import re
 from datetime import datetime
@@ -52,8 +51,6 @@ def calculate_freight(
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     data_dir = os.path.join(base_dir, "data")
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    data_dir = os.path.join(base_dir, "data")
 
     calculation_date = calculation_date or datetime.now().strftime("%Y-%m-%d")
     fact_weight_val = safe_float(fact_weight, 0.0)
@@ -64,11 +61,11 @@ def calculate_freight(
         wagon_axles_val = 4
 
     is_empty_wagon = bool(is_empty_wagon)
-    # Получение курса строго по периоду (выбросит ValueError, если период не найден)
+
+    # ШАГ 2: Курс валют с выбросом ValueError при отсутствии периода
     fx_rate = get_chf_usd_rate(calculation_date)
 
-    
-    # 1. Расстояние и форматирование станций с кодами ADY
+    # ШАГ 1: Расстояние с жесткой проверкой (без затычки 300 км)
     if manual_dist_val > 0:
         raw_distance = manual_dist_val
         route_formatted = f"{from_station} – {to_station}"
@@ -81,7 +78,6 @@ def calculate_freight(
         route_data = get_route_info(dummy_nlu, lang=lang, shipment_type=shipment_type)
         raw_distance = route_data.get("distance_km")
 
-        # Жесткая валидация: если расстояние не найдено в базе — выбрасываем ValueError
         if not raw_distance or raw_distance <= 0:
             raise ValueError(f"route_not_found: Расстояние для маршрута {from_station} – {to_station} не найдено в справочнике.")
 
@@ -90,7 +86,13 @@ def calculate_freight(
     route_info = calculate_tariff_distance(raw_distance, shipment_type)
     calc_distance = route_info["calculated_distance_km"]
 
-    clean_gng = re.sub(r'\D', '', str(gng_code or "")) if gng_code else ("99220000" if is_empty_wagon else "00000000")
+    # ШАГ 3: Валидация кода ГНГ (без заглушки 00000000)
+    if is_empty_wagon:
+        clean_gng = "99220000"
+    else:
+        clean_gng = re.sub(r'\D', '', str(gng_code or ""))
+        if not clean_gng:
+            raise ValueError("gng_code_required: Для расчета груженого вагона необходимо указать код ГНГ.")
 
     # 2. Расчет веса
     weight_info = calculate_chargeable_weight(fact_weight_val, clean_gng, wagon_type)
@@ -182,7 +184,6 @@ def calculate_freight(
             "weight_info": weight_str,
             "period": period_title
         },
-        
         "part2": {
             "exchange_rate": f"{fx_rate:.2f} CHF/USD",
             "base_tariff": f"{base_rate_chf:.2f} CHF/t ({table_word} {table_num} ({calc_distance} km, {int(chargeable_tons)} t))",
