@@ -11,44 +11,51 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
         nlu_res = {}
 
     res = nlu_res.copy()
-    
-    # Полный список синонимов для Туркменбаши/ТРК
-    trk_synonyms = ["trk", "трк", "туркм", "turkm", "туркменбаши", "туркменбашы", "turkmenbasy", "turkmenbashi", "паром трк", "паром туркмен"]
-    aktau_synonyms = ["aktau", "актау"]
-    kurik_synonyms = ["kurik", "курык"]
 
+    # Очищаем сырой текст и нормализуем
     raw_norm = normalize_simple(raw_text)
-    from_st = normalize_simple(res.get("from_station", ""))
-    to_st = normalize_simple(res.get("to_station", ""))
+    
+    # Синонимы для порта Туркменбаши (ТРК)
+    trk_keywords = ["trk", "трк", "туркм", "turkm", "туркменбаши", "туркменбашы", "turkmenbasy", "паром трк"]
+    aktau_keywords = ["aktau", "актау"]
+    kurik_keywords = ["kurik", "курык"]
+    border_keywords = ["yalama", "ялама", "boyuk kesik", "boyuk", "беюк", "кясик", "astara", "астара", "culfa", "джульфа", "elet", "алят"]
 
-    full_text = f"{raw_norm} {from_st} {to_st}"
-
-    # Перехватываем Туркменбаши / ТРК
-    if any(s in full_text for s in trk_synonyms):
-        if any(s in from_st for s in trk_synonyms) or (raw_norm.split() and any(s in raw_norm.split()[0] for s in trk_synonyms)):
+    # 1. ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ ТРК / ТУРКМЕНБАШИ
+    if any(k in raw_norm for k in trk_keywords):
+        words = raw_norm.split()
+        # Если ТРК стоит первым словом (Импорт)
+        if words and any(k in words[0] for k in trk_keywords):
             res["from_station"] = "Ələt-eksp.Türk."
         else:
+            # Во всех остальных случаях ТРК — это станция назначения (Экспорт / Транзит)
             res["to_station"] = "Ələt-eksp.Türk."
 
-    # Перехватываем Актау
-    elif any(s in full_text for s in aktau_synonyms):
-        if any(s in from_st for s in aktau_synonyms):
+    # 2. ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ АКТАУ
+    elif any(k in raw_norm for k in aktau_keywords):
+        words = raw_norm.split()
+        if words and any(k in words[0] for k in aktau_keywords):
             res["from_station"] = "Ələt-eksp.Aktau"
         else:
             res["to_station"] = "Ələt-eksp.Aktau"
 
-    # Перехватываем Курык
-    elif any(s in full_text for s in kurik_synonyms):
-        if any(s in from_st for s in kurik_synonyms):
+    # 3. ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ КУРЫК
+    elif any(k in raw_norm for k in kurik_keywords):
+        words = raw_norm.split()
+        if words and any(k in words[0] for k in kurik_keywords):
             res["from_station"] = "Ələt-eksp.Kurik"
         else:
             res["to_station"] = "Ələt-eksp.Kurik"
 
-    # Определение вида перевозки
-    border_keywords = ["yalama", "ялама", "boyuk kesik", "boyuk", "беюк", "кясик", "astara", "астара", "culfa", "джульфа", "elet", "алят"]
-    
-    norm_from = normalize_simple(res.get("from_station", ""))
-    norm_to = normalize_simple(res.get("to_station", ""))
+    # 4. Если станция отправления все еще пустая, берем первое слово запроса
+    if not res.get("from_station"):
+        words = [w for w in raw_text.split() if w.lower() not in ["4407", "крытый", "35т", "спс", "вагон"]]
+        if words:
+            res["from_station"] = words[0].title()
+
+    # 5. Определение вида перевозки
+    norm_from = normalize_simple(str(res.get("from_station", "")))
+    norm_to = normalize_simple(str(res.get("to_station", "")))
 
     is_from_border = any(b in norm_from for b in border_keywords)
     is_to_border = any(b in norm_to for b in border_keywords)
