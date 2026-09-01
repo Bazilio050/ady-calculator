@@ -3,7 +3,6 @@
 # ==============================================================================
 from datetime import datetime
 
-# Таблица официальных коэффициентов пересчета USD/CHF по периодам
 FX_RATES = [
     {"start": "2023-01-01", "end": "2023-01-31", "rate": 0.98},
     {"start": "2023-04-01", "end": "2023-06-30", "rate": 0.93},
@@ -25,11 +24,15 @@ def get_chf_usd_rate(target_date_str: str = None) -> float:
     """
     Возвращает курс USD/CHF на указанную дату (YYYY-MM-DD).
     Если дата не передана, берёт текущую системную дату.
+    Если период не найден в таблице FX_RATES, выбрасывает ValueError.
     """
     if not target_date_str:
         target_date = datetime.now().date()
     else:
-        target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+        try:
+            target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError(f"invalid_date_format: Неверный формат даты '{target_date_str}'. Используйте YYYY-MM-DD.")
 
     for item in FX_RATES:
         s_date = datetime.strptime(item["start"], "%Y-%m-%d").date()
@@ -37,5 +40,4 @@ def get_chf_usd_rate(target_date_str: str = None) -> float:
         if s_date <= target_date <= e_date:
             return item["rate"]
 
-    # Резервный курс по умолчанию для актуального периода 2026
-    return 0.79
+    raise ValueError(f"fx_rate_not_found: Официальный курс CHF/USD на дату {target_date} не найден в справочнике.")
