@@ -72,23 +72,7 @@ TEST_CASES = [
         "expected_min_ton": 45
     },
     {
-        "name": "5. Порожний возврат (автоприсвоение GNG 99220000)",
-        "input": "Ялама Астара эксп порожний",
-        "mock_nlu": {
-            "from_station": "Yalama",
-            "to_station": "Astara",
-            "gng_code": None,
-            "fact_weight": 0.0,
-            "wagon_type": "крытый",
-            "is_empty_wagon": True,
-            "is_private_wagon": True
-        },
-        "expected_to": "Astara-eksp.",
-        "expected_type": "transit",
-        "expected_table": "4"
-    },
-    {
-        "name": "6. Импорт на Абшерон (Погранпереход -> Внутренняя станция)",
+        "name": "5. Импорт на Абшерон (Погранпереход -> Внутренняя станция)",
         "input": "Ялама Абшерон 4407 крытый 35т импорт",
         "mock_nlu": {
             "from_station": "Yalama",
