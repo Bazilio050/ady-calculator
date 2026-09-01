@@ -72,7 +72,7 @@ def get_border_column_header(station_text: str, headers: list) -> str:
 def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: bool = False) -> str:
     norm = normalize_name(station_text)
 
-    # 1. Все варианты порт-парома на Туркменбаши / ТРК
+    # 1. Порт-паром на Туркменбаши / ТРК
     if any(k in norm for k in ["trk", "трк", "turkmenbasy", "туркменбаши", "туркменбашы", "turkm", "туркм"]):
         return "Ələt eksport-Türk."
 
@@ -82,9 +82,11 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
     if "aktau" in norm or "актау" in norm:
         return "Ələt eksport Aktau"
 
-    # 3. Алят
+    # 3. Алят (Разделение обычного Ələt и экспортного Ələt-eksp)
     if any(k in norm for k in ["alat", "elet", "алят"]):
-        return "Ələt eksport Kurik" if is_transit else "Ələt"
+        if is_transit or any(k in norm for k in ["eksp", "эксп", "eksport", "экспорт"]):
+            return "Ələt eksport Kurik"  # Берет экспортную колонку/строку Алята (429 км)
+        return "Ələt"
 
     # 4. Погранпереходы
     if any(k in norm for k in ["kesik", "кясик", "касик"]):
@@ -96,7 +98,7 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
     if any(k in norm for k in ["absheron", "abseron", "абшерон", "апшерон"]):
         return "Abşeron"
 
-    # Прямой и подстрочный поиск по именам матрицы
+    # Прямой и подстрочный поиск
     for st_key in stations_data.keys():
         if normalize_name(st_key) == norm:
             return st_key
