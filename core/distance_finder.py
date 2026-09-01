@@ -76,9 +76,6 @@ def get_border_column_header(station_text: str, headers: list) -> str:
 
 def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: bool = False, shipment_type: str = None) -> str:
     norm = normalize_name(station_text)
-    
-    # Стыки (-эксп.) применяются ТОЛЬКО если вид перевозки — транзит
-    use_border_joint = (shipment_type == "transit")
 
     # 1. Порт-паром на Туркменбаши / ТРК
     if any(k in norm for k in ["trk", "трк", "turkmenbasy", "туркменбаши", "туркменбашы", "turkm", "туркм"]):
@@ -92,22 +89,26 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
 
     # 3. Алят
     if any(k in norm for k in ["alat", "elet", "алят"]):
-        if use_border_joint or any(k in norm for k in ["eksp", "эксп", "eksport", "экспорт"]):
+        if any(k in norm for k in ["eksp", "эксп", "eksport", "экспорт"]):
             return "Ələt eksport Kurik"
         return "Ələt"
 
-    # 4. Погранпереходы
+    # 4. Пограничные стыковые пункты (ВСЕГДА отдаем экспортный стык)
     if any(k in norm for k in ["kesik", "кясик", "касик"]):
-        return "Böyük Kəsik (eksport)" if use_border_joint else "Böyük Kəsik"
+        return "Böyük Kəsik (eksport)"
     
     if "astara" in norm or "астара" in norm:
-        return "Astara (eks.aşır)" if use_border_joint else "Astara"
+        return "Astara (eks.aşır)"
 
     if "yalama" in norm or "ялама" in norm:
-        return "Yalama (eksport)" if use_border_joint else "Yalama"
+        return "Yalama (eksport)"
 
     if "culfa" in norm or "джульфа" in norm:
-        return "Culfa (eksport)" if use_border_joint else "Culfa"
+        return "Culfa (eksport)"
+
+    # 5. Внутренние станции (Абшерон и др.)
+    if any(k in norm for k in ["absheron", "abseron", "абшерон", "апшерон"]):
+        return "Abşeron"
 
     # Поиск по базе
     for st_key in stations_data.keys():
