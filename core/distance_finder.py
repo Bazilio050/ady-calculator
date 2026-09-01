@@ -93,7 +93,7 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
         return "Böyük Kəsik (eksport)" if is_border_mode else "Böyük Kəsik"
     
     if "astara" in norm or "астара" in norm:
-        return "Astara (eksport)" if (is_border_mode or "eks" in norm) else "Astara"
+        return "Astara (eksport)" if is_border_mode else "Astara"
 
     # 5. Абшерон
     if any(k in norm for k in ["absheron", "abseron", "абшерон", "апшерон"]):
