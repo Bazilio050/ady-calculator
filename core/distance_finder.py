@@ -176,7 +176,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         hide_code = False
         base_key = fallback_key
 
-        # 1. Порты и виртуальные терминалы Алята (КОД СКРЫВАЕТСЯ СТРОГО ЗДЕСЬ)
+        # 1. Порты и виртуальные терминалы Алята (КОД СКРЫВАЕТСЯ)
         if any(k in norm or k in norm_fallback for k in ["kurik", "курык"]):
             base_key = "Ələt eksport Kurik"
             hide_code = True
