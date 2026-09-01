@@ -100,8 +100,14 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bo
 
     # 3. Алят
     if any(k in norm for k in ["alat", "elet", "алят"]):
-        if use_border_joint or any(k in norm for k in ["eksp", "эксп", "eksport", "экспорт"]):
+        if any(k in norm for k in ["kurik", "курык"]):
             return "Ələt eksport Kurik"
+        if any(k in norm for k in ["aktau", "актау"]):
+            return "Ələt eksport Aktau"
+        if any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
+            return "Ələt eksport-Türk."
+        if use_border_joint or any(k in norm for k in ["eksp", "эксп", "eksport", "экспорт"]):
+            return "Ələt eksport"
         return "Ələt"
 
     # 4. Пограничные стыковые пункты
@@ -194,18 +200,18 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
             (shipment_type == "export" and not is_origin)
         )
 
-        # 1. Порты и терминалы Алята (КОД СКРЫВАЕТСЯ)
-        if any(k in norm or k in norm_fallback for k in ["kurik", "курык"]):
+        # 1. Порты и терминалы Алята (КОД СТРОГО СКРЫВАЕТСЯ)
+        if any(k in norm for k in ["kurik", "курык"]):
             base_key = "Ələt eksport Kurik"
             hide_code = True
-        elif any(k in norm or k in norm_fallback for k in ["aktau", "актау"]):
+        elif any(k in norm for k in ["aktau", "актау"]):
             base_key = "Ələt eksport Aktau"
             hide_code = True
-        elif any(k in norm or k in norm_fallback for k in ["trk", "трк", "turk", "туркмен"]):
+        elif any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
             base_key = "Ələt eksport-Türk."
             hide_code = True
         elif any(k in norm or k in norm_fallback for k in ["alat", "elet", "алят"]):
-            if is_border_joint or "eksp" in norm or "эксп" in norm:
+            if is_border_joint or "eksp" in norm or "эксп" in norm or "eksport" in norm:
                 base_key = "Ələt eksport"
                 hide_code = True
             else:
