@@ -35,6 +35,10 @@ def calculate_freight(
     lang="AZ",
     **kwargs
 ):
+    # Валидация станции назначения
+    if not to_station:
+        raise ValueError("to_station")
+        
     # ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ ВИДА ПЕРЕВОЗКИ ИЗ ТЕКСТА ЗАПРОСА
     raw_prompt = kwargs.get("raw_prompt", "") or kwargs.get("user_prompt", "")
     if raw_prompt:
