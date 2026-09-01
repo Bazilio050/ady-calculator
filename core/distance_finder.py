@@ -169,6 +169,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         fallback_key: str,
         code: str,
         shipment_type: str,
+        is_origin: bool,  # True если это станция отправления, False если назначения
         current_lang: str,
     ) -> str:
         norm = normalize_name(raw_in)
@@ -176,7 +177,17 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         hide_code = False
         base_key = fallback_key
 
-        # 1. Порты и виртуальные терминалы Алята (КОД СКРЫВАЕТСЯ)
+        # Определяем, должен ли данный пункт быть экспортным стыком (-эксп.)
+        # 1. При транзите — обе станции стыки
+        # 2. При импорте — только первая станция (вход в страну)
+        # 3. При экспорте — только вторая станция (выход из страны)
+        is_border_joint = (
+            (shipment_type == "transit") or
+            (shipment_type == "import" and is_origin) or
+            (shipment_type == "export" and not is_origin)
+        )
+
+        # 1. Порты и терминалы Алята (КОД СКРЫВАЕТСЯ)
         if any(k in norm or k in norm_fallback for k in ["kurik", "курык"]):
             base_key = "Ələt eksport Kurik"
             hide_code = True
@@ -187,24 +198,24 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
             base_key = "Ələt eksport-Türk."
             hide_code = True
         elif any(k in norm or k in norm_fallback for k in ["alat", "elet", "алят"]):
-            if shipment_type == "transit" or "eksp" in norm or "эксп" in norm:
+            if is_border_joint or "eksp" in norm or "эксп" in norm:
                 base_key = "Ələt eksport"
                 hide_code = True
             else:
                 base_key = "Ələt"
 
-        # 2. Пограничные стыковые пункты (ВСЕГДА выводится стык с кодом)
+        # 2. Пограничные пункты (стык или чистая станция)
         elif any(k in norm or k in norm_fallback for k in ["kesik", "кясик", "касик"]):
-            base_key = "Böyük Kəsik (eksport)"
+            base_key = "Böyük Kəsik (eksport)" if is_border_joint else "Böyük Kəsik"
             hide_code = False
         elif any(k in norm or k in norm_fallback for k in ["astara", "астара"]):
-            base_key = "Astara (eksport)"
+            base_key = "Astara (eksport)" if is_border_joint else "Astara"
             hide_code = False
         elif any(k in norm or k in norm_fallback for k in ["yalama", "ялама"]):
-            base_key = "Yalama (eksport)"
+            base_key = "Yalama (eksport)" if is_border_joint else "Yalama"
             hide_code = False
         elif any(k in norm or k in norm_fallback for k in ["culfa", "джульфа"]):
-            base_key = "Culfa (eksport)"
+            base_key = "Culfa (eksport)" if is_border_joint else "Culfa"
             hide_code = False
 
         localized_name = get_localized_station_name(base_key, lang=current_lang)
@@ -218,14 +229,16 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         from_row_key or raw_from,
         code_from,
         shipment_type,
-        current_lang,
+        is_origin=True,
+        current_lang=current_lang,
     )
     fmt_to = build_label(
         raw_to, 
         to_row_key or raw_to, 
         code_to, 
         shipment_type, 
-        current_lang,
+        is_origin=False,
+        current_lang=current_lang,
     )
 
     return {
