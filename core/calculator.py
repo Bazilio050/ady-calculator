@@ -66,20 +66,25 @@ def calculate_freight(
     is_empty_wagon = bool(is_empty_wagon)
     fx_rate = get_chf_usd_rate(calculation_date) or 1.0
 
+    
     # 1. Расстояние и форматирование станций с кодами ADY
     if manual_dist_val > 0:
         raw_distance = manual_dist_val
         route_formatted = f"{from_station} – {to_station}"
     else:
-        # Передаем полный словарь и явный shipment_type в get_route_info
         dummy_nlu = {
             "from_station": from_station,
             "to_station": to_station,
             "shipment_type": shipment_type
         }
         route_data = get_route_info(dummy_nlu, lang=lang, shipment_type=shipment_type)
-        raw_distance = route_data.get("distance_km", 300)
-        route_formatted = route_data.get("route_formatted") or route_data.get("route_display", f"{from_station} – {to_station}")
+        raw_distance = route_data.get("distance_km")
+
+        # Жесткая валидация: если расстояние не найдено в базе — выбрасываем ValueError
+        if not raw_distance or raw_distance <= 0:
+            raise ValueError(f"route_not_found: Расстояние для маршрута {from_station} – {to_station} не найдено в справочнике.")
+
+        route_formatted = route_data.get("route_formatted") or f"{from_station} – {to_station}"
 
     route_info = calculate_tariff_distance(raw_distance, shipment_type)
     calc_distance = route_info["calculated_distance_km"]
