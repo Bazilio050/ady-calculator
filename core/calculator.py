@@ -64,7 +64,8 @@ def calculate_freight(
         wagon_axles_val = 4
 
     is_empty_wagon = bool(is_empty_wagon)
-    fx_rate = get_chf_usd_rate(calculation_date) or 1.0
+    # Получение курса строго по периоду (выбросит ValueError, если период не найден)
+    fx_rate = get_chf_usd_rate(calculation_date)
 
     
     # 1. Расстояние и форматирование станций с кодами ADY
