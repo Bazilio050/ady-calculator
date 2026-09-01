@@ -53,8 +53,6 @@ def parse_distances_file():
 
     return headers[2:], stations_data
 
-# core/distance_finder.py
-
 def get_border_column_header(station_text: str, headers: list) -> str:
     norm = normalize_name(station_text)
     if "yalama" in norm or "ялама" in norm:
@@ -85,7 +83,7 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
     # 3. Алят (Разделение обычного Ələt и экспортного Ələt-eksp)
     if any(k in norm for k in ["alat", "elet", "алят"]):
         if is_transit or any(k in norm for k in ["eksp", "эксп", "eksport", "экспорт"]):
-            return "Ələt eksport Kurik"  # Берет экспортную колонку/строку Алята (429 км)
+            return "Ələt eksport Kurik"
         return "Ələt"
 
     # 4. Погранпереходы
@@ -117,34 +115,34 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
 
     is_transit = shipment_type in ["transit", "export"]
 
-    # Определяем колонку входа и строку выхода
+    # Определяем ключевые строки/колонки для обеих станций
     from_col = get_border_column_header(raw_from, headers)
     to_row_key = resolve_target_row_key(raw_to, stations_data, is_transit=is_transit)
 
+    from_row_key = resolve_target_row_key(raw_from, stations_data, is_transit=is_transit)
+    to_col = get_border_column_header(raw_to, headers)
+
     dist = None
+    # 1. Прямой поиск: погранпереход (колонка) -> станция назначения (строка)
     if from_col and to_row_key in stations_data:
         dist = stations_data[to_row_key]["distances"].get(from_col)
 
-    # Если маршрут идет обратным ходом (от обычной станции до стыка)
-    if dist is None:
-        to_col = get_border_column_header(raw_to, headers)
-        from_row_key = resolve_target_row_key(raw_from, stations_data, is_transit=is_transit)
-        if to_col and from_row_key in stations_data:
-            dist = stations_data[from_row_key]["distances"].get(to_col)
+    # 2. Обратный поиск: станция отправления (строка) -> погранпереход (колонка)
+    if dist is None and to_col and from_row_key in stations_data:
+        dist = stations_data[from_row_key]["distances"].get(to_col)
 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from}' и '{raw_to}'.")
 
-    target_data = stations_data.get(to_row_key, {})
-    code_to = target_data.get("code", "")
+    # Корректное получение объектов станций из базы
+    from_target_data = stations_data.get(from_row_key, {})
+    to_target_data = stations_data.get(to_row_key, {})
 
-    # 1. Получаем реальные коды из прочитанной базы
-    from_target_data = stations_data.get(from_row_key if dist is None else to_row_key, {})
-    code_from = stations_data.get(from_col, {}).get("code", "") if from_col else target_data.get("code", "")
-    code_to = target_data.get("code", "")
+    code_from = from_target_data.get("code", "")
+    code_to = to_target_data.get("code", "")
 
-    # 2. Универсальное построение наименований с кодами станций
-    def build_label(raw_in, fallback_key, code):
+    # Построение меток
+    def build_label(raw_in, fallback_key, code, is_from=False):
         norm = normalize_name(raw_in)
         
         if any(k in norm for k in ["kurik", "курык"]):
@@ -153,12 +151,12 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
             label = "Ələt-eksp.Aktau"
         elif any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
             label = "Ələt-eksp.Türk."
-        elif any(k in norm for k in ["kesik", "кясик"]):
+        elif any(k in norm for k in ["kesik", "кясик", "касик"]):
             label = "Böyük Kəsik-eksp." if is_transit else "Böyük Kəsik"
         elif any(k in norm for k in ["astara", "астара"]):
             label = "Astara (eks.aşır)" if is_transit else "Astara"
         elif any(k in norm for k in ["alat", "elet", "алят"]):
-            label = "Ələt-eksp." if is_transit else "Ələt"
+            label = "Ələt-eksp." if (is_transit or "eksp" in norm or "эксп" in norm) else "Ələt"
         elif any(k in norm for k in ["yalama", "ялама"]):
             label = "Yalama"
         else:
@@ -166,8 +164,8 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
 
         return f"{label} ({code})" if code else label
 
-    fmt_from = build_label(raw_from, from_col or raw_from, code_from)
-    fmt_to = build_label(raw_to, to_row_key, code_to)
+    fmt_from = build_label(raw_from, from_row_key or raw_from, code_from, is_from=True)
+    fmt_to = build_label(raw_to, to_row_key or raw_to, code_to, is_from=False)
 
     return {
         "distance_km": dist,
