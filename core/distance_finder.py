@@ -109,7 +109,7 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
     return None
 
 # Не забудь импортировать функцию из своего справочника локализации (например, из core.stations_data или data.stations)
-from core.stations_data import get_localized_station_name
+from core.stations_mapping import get_localized_station_name
 
 def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", shipment_type: str = None) -> dict:
     headers, stations_data = parse_distances_file()
