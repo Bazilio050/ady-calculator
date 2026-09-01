@@ -3,6 +3,7 @@
 # ==============================================================================
 import json
 import os
+import time
 import google.genai as genai
 from google.genai import types
 
@@ -68,26 +69,40 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     if not API_KEY:
         raise ValueError("Ошибка: Не задан API-ключ Gemini (GEMINI_API_KEY).")
 
-    try:
-        client = genai.Client(api_key=API_KEY)
-        
-        response = client.models.generate_content(
-            model="gemini-3.5-flash-lite",
-            contents=f"Запрос пользователя: {user_prompt}",
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                response_mime_type="application/json",
-                max_output_tokens=500,
+    parsed_data = {}
+    max_retries = 3
+    
+    # 1. Цикл с авто-повтором (Retry) для устранения ошибок 503 UNAVAILABLE
+    for attempt in range(max_retries):
+        try:
+            client = genai.Client(api_key=API_KEY)
+            
+            response = client.models.generate_content(
+                model="gemini-3.5-flash-lite",
+                contents=f"Запрос пользователя: {user_prompt}",
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    response_mime_type="application/json",
+                    max_output_tokens=500,
+                )
             )
-        )
-        parsed_data = json.loads(response.text)
-    except Exception as e:
-        raise ValueError(f"Ошибка обращения к Gemini API: {str(e)}")
+            parsed_data = json.loads(response.text)
+            break  # Успешный ответ — выходим из цикла retry
+        except Exception as e:
+            err_msg = str(e)
+            # При сбоях 503 / UNAVAILABLE ждем 1.5 секунды и делаем повтор
+            if ("503" in err_msg or "UNAVAILABLE" in err_msg or "overloaded" in err_msg) and attempt < max_retries - 1:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            parsed_data = {"error": f"Ошибка обращения к Gemini API: {str(e)}"}
 
-    # Сохраняем выбранный язык в итоговом объекте
+    if not isinstance(parsed_data, dict):
+        parsed_data = {}
+
+    # Сохраняем язык
     parsed_data["lang"] = lang
 
-    # Автоподстановка для порожнего вагона
+    # 2. Автоподстановка для порожнего вагона
     if parsed_data.get("is_empty_wagon"):
         parsed_data["gng_code"] = "99220000"
         parsed_data["gng_name"] = "Порожний вагон"
@@ -95,23 +110,5 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
             parsed_data["wagon_axles"] = 4
         if parsed_data.get("fact_weight") is None:
             parsed_data["fact_weight"] = 0.0
-
-    # Жесткая проверка обязательных полей
-    missing_fields = []
-    if not parsed_data.get("from_station"):
-        missing_fields.append("Станция отправления (from_station)")
-    if not parsed_data.get("to_station"):
-        missing_fields.append("Станция назначения (to_station)")
-
-    # Проверка ГНГ и веса для груженого вагона
-    if not parsed_data.get("is_empty_wagon"):
-        if not parsed_data.get("gng_code"):
-            missing_fields.append("Код ГНГ / YHN (укажите числовой код, например: 72, 4818)")
-        if parsed_data.get("fact_weight") is None or parsed_data.get("fact_weight") <= 0:
-            missing_fields.append("Фактический вес груза в тоннах (fact_weight)")
-
-    if missing_fields:
-        missing_str = "\n- ".join(missing_fields)
-        raise ValueError(f"Для расчета не хватает следующих обязательных данных:\n- {missing_str}")
 
     return parsed_data
