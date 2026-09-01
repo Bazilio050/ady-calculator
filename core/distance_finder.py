@@ -53,6 +53,8 @@ def parse_distances_file():
 
     return headers[2:], stations_data
 
+# core/distance_finder.py
+
 def get_border_column_header(station_text: str, headers: list) -> str:
     norm = normalize_name(station_text)
     if "yalama" in norm or "ялама" in norm:
@@ -63,38 +65,38 @@ def get_border_column_header(station_text: str, headers: list) -> str:
         return "Böyük Kəsik (eksport)"
     elif "culfa" in norm or "джульфа" in norm:
         return "Culfa (eksport)"
-    elif any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык", "liman"]):
+    elif any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык", "liman", "trk", "трк", "turkm", "туркм"]):
         return "Ələt eksp / Bakı liman"
     return None
 
 def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: bool = False) -> str:
     norm = normalize_name(station_text)
 
-    # 1. Алят / Порты
-    if any(k in norm for k in ["alat", "elet", "алят", "aktau", "актау", "kurik", "курык", "liman"]):
-        if "kurik" in norm or "курык" in norm:
-            return "Ələt eksport Kurik"
-        elif "aktau" in norm or "актау" in norm:
-            return "Ələt eksport Aktau"
-        elif "trk" in norm or "turk" in norm or "туркмен" in norm:
-            return "Ələt eksport-Türk."
-        elif is_transit or "eksp" in norm or "эксп" in norm:
-            return "Ələt eksport Kurik"
-        return "Ələt"
+    # 1. Все варианты порт-парома на Туркменбаши / ТРК
+    if any(k in norm for k in ["trk", "трк", "turkmenbasy", "туркменбаши", "туркменбашы", "turkm", "туркм"]):
+        return "Ələt eksport-Türk."
 
-    # 2. Беюк Кясик
+    # 2. Порты Актау и Курык
+    if "kurik" in norm or "курык" in norm:
+        return "Ələt eksport Kurik"
+    if "aktau" in norm or "актау" in norm:
+        return "Ələt eksport Aktau"
+
+    # 3. Алят
+    if any(k in norm for k in ["alat", "elet", "алят"]):
+        return "Ələt eksport Kurik" if is_transit else "Ələt"
+
+    # 4. Погранпереходы
     if any(k in norm for k in ["kesik", "кясик", "касик"]):
-        return "Böyük Kəsik (eksport)" if (is_transit or "eksp" in norm or "эксп" in norm) else "Böyük Kəsik"
-
-    # 3. Астара
+        return "Böyük Kəsik (eksport)" if is_transit else "Böyük Kəsik"
     if "astara" in norm or "астара" in norm:
-        return "Astara (eks.aşır)" if (is_transit or "eksp" in norm or "эксп" in norm) else "Astara"
+        return "Astara (eks.aşır)" if is_transit else "Astara"
 
-    # 4. Абшерон
-    if "absheron" in norm or "abseron" in norm or "абшерон" in norm or "апшерон" in norm:
+    # 5. Абшерон
+    if any(k in norm for k in ["absheron", "abseron", "абшерон", "апшерон"]):
         return "Abşeron"
 
-    # Поиск по точному совпадению
+    # Прямой и подстрочный поиск по именам матрицы
     for st_key in stations_data.keys():
         if normalize_name(st_key) == norm:
             return st_key
