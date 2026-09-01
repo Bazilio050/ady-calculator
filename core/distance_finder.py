@@ -143,19 +143,19 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from}' и '{raw_to}'.")
 
-    # Вспомогательная функция поиска кода станции с фолбэком на базовую станцию
+    # Поиск кода ЕСР с гарантийным фолбэком на базовое имя станции
     def get_station_code(key_name):
-        if not key_name or key_name not in stations_data:
+        if not key_name:
             return ""
-        code = stations_data[key_name].get("code", "")
-        if not code:
-            # Если у экспортного ключа нет кода (как у Astara (eksport)), подтягиваем код базовой станции Astara -> 554109
-            clean_base = key_name.replace("(eksport)", "").replace("(eks.aşır)", "").strip()
-            for st_k, st_v in stations_data.items():
-                if normalize_name(st_k) == normalize_name(clean_base):
-                    code = st_v.get("code", "")
-                    break
-        return code
+        if key_name in stations_data and stations_data[key_name].get("code"):
+            return stations_data[key_name]["code"]
+            
+        # Забираем код от базовой станции Astara (554109) / Böyük Kəsik (553106)
+        clean_base = key_name.replace("(eksport)", "").replace("(eks.aşır)", "").strip()
+        for st_k, st_v in stations_data.items():
+            if normalize_name(st_k) == normalize_name(clean_base):
+                return st_v.get("code", "")
+        return ""
 
     code_from = get_station_code(from_row_key)
     code_to = get_station_code(to_row_key)
@@ -168,37 +168,38 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         current_lang: str,
     ) -> str:
         norm = normalize_name(raw_in)
+        norm_fallback = normalize_name(fallback_key)
         hide_code = False
         base_key = fallback_key
 
-        # 1. Порты и терминалы Алята (КОД СКРЫВАЕТСЯ)
-        if any(k in norm for k in ["kurik", "курык"]):
+        # 1. Порты и виртуальные узлы Алята (КОД СТРОГО СКРЫВАЕТСЯ)
+        if any(k in norm or k in norm_fallback for k in ["kurik", "курык"]):
             base_key = "Ələt eksport Kurik"
             hide_code = True
-        elif any(k in norm for k in ["aktau", "актау"]):
+        elif any(k in norm or k in norm_fallback for k in ["aktau", "актау"]):
             base_key = "Ələt eksport Aktau"
             hide_code = True
-        elif any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
+        elif any(k in norm or k in norm_fallback for k in ["trk", "трк", "turk", "туркмен"]):
             base_key = "Ələt eksport-Türk."
             hide_code = True
-        elif any(k in norm for k in ["alat", "elet", "алят"]):
+        elif any(k in norm or k in norm_fallback for k in ["alat", "elet", "алят"]):
             if is_border_mode or "eksp" in norm or "эксп" in norm:
                 base_key = "Ələt eksport"
                 hide_code = True
             else:
                 base_key = "Ələt"
 
-        # 2. Пограничные стыковые пункты (КОД ПОКАЗЫВАЕТСЯ)
-        elif any(k in norm for k in ["kesik", "кясик", "касик"]):
+        # 2. Пограничные стыковые пункты (КОД ОБЯЗАТЕЛЬНО ПОКАЗЫВАЕТСЯ)
+        elif any(k in norm or k in norm_fallback for k in ["kesik", "кясик", "касик"]):
             base_key = "Böyük Kəsik (eksport)" if is_border_mode else "Böyük Kəsik"
             hide_code = False
-        elif any(k in norm for k in ["astara", "астара"]):
+        elif any(k in norm or k in norm_fallback for k in ["astara", "астара"]):
             if is_border_mode or fallback_key in ["Astara (eksport)", "Astara (eks.aşır)"] or "eks" in norm:
                 base_key = "Astara (eksport)"
             else:
                 base_key = "Astara"
             hide_code = False
-        elif any(k in norm for k in ["yalama", "ялама"]):
+        elif any(k in norm or k in norm_fallback for k in ["yalama", "ялама"]):
             base_key = "Yalama (eksport)" if is_border_mode else "Yalama"
             hide_code = False
 
