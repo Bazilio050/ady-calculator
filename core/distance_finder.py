@@ -193,18 +193,18 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
             else:
                 base_key = "Ələt"
 
-        # 2. Пограничные стыковые пункты (КОД ВСЕГДА ВЫВОДИТСЯ)
+        # 2. Пограничные стыковые пункты (ВСЕГДА выводится стык с кодом)
         elif any(k in norm or k in norm_fallback for k in ["kesik", "кясик", "касик"]):
-            base_key = "Böyük Kəsik (eksport)" if shipment_type == "transit" else "Böyük Kəsik"
+            base_key = "Böyük Kəsik (eksport)"
             hide_code = False
         elif any(k in norm or k in norm_fallback for k in ["astara", "астара"]):
-            base_key = "Astara (eksport)" if shipment_type == "transit" else "Astara"
+            base_key = "Astara (eksport)"
             hide_code = False
         elif any(k in norm or k in norm_fallback for k in ["yalama", "ялама"]):
-            base_key = "Yalama (eksport)" if shipment_type == "transit" else "Yalama"
+            base_key = "Yalama (eksport)"
             hide_code = False
         elif any(k in norm or k in norm_fallback for k in ["culfa", "джульфа"]):
-            base_key = "Culfa (eksport)" if shipment_type == "transit" else "Culfa"
+            base_key = "Culfa (eksport)"
             hide_code = False
 
         localized_name = get_localized_station_name(base_key, lang=current_lang)
