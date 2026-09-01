@@ -74,17 +74,18 @@ def get_border_column_header(station_text: str, headers: list) -> str:
         return "Ələt eksp / Bakı liman"
     return None
 
-def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bool = True, shipment_type: str = None) -> str:
+def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bool = True, is_transit: bool = False, shipment_type: str = None) -> str:
     norm = normalize_name(station_text)
 
-    # Пограничный стык выбирается:
-    # 1. При транзите — для обеих станций
-    # 2. При импорте — только для первой станции (вход)
-    # 3. При экспорте — только для второй станции (выход)
+    # Определяем, нужен ли экспортный стык:
+    # 1. При транзите — всегда стык
+    # 2. При импорте — стык только для 1-й станции (вход)
+    # 3. При экспорте — стык только для 2-й станции (выход)
     use_border_joint = (
         (shipment_type == "transit") or
         (shipment_type == "import" and is_origin) or
-        (shipment_type == "export" and not is_origin)
+        (shipment_type == "export" and not is_origin) or
+        (is_transit and shipment_type is None)
     )
 
     # 1. Порт-паром на Туркменбаши / ТРК
