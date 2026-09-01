@@ -366,7 +366,11 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
                 calc_params = nlu_res.copy()
                 calc_params.pop("lang", None)
 
-                calc_res = calculate_freight(**calc_params, lang=selected_lang)
+                calc_res = calculate_freight(
+                    **calc_params, 
+                    lang=selected_lang, 
+                    raw_prompt=current_input
+                )
 
                 st.session_state.calc_result = calc_res
                 st.session_state.missing_data = None
