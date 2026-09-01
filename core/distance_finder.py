@@ -143,16 +143,18 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from}' и '{raw_to}'.")
 
-    # Вспомогательная функция поиска кода станции (с фолбэком на базовую станцию)
+    # Вспомогательная функция поиска кода станции с фолбэком на базовую станцию
     def get_station_code(key_name):
         if not key_name or key_name not in stations_data:
             return ""
         code = stations_data[key_name].get("code", "")
         if not code:
-            # Если у экспортного ключа нет кода, забираем код базовой станции (напр. Astara -> 554109)
-            base_name = key_name.replace(" (eksport)", "").replace(" (eks.aşır)", "").strip()
-            if base_name in stations_data:
-                code = stations_data[base_name].get("code", "")
+            # Если у экспортного ключа нет кода (как у Astara (eksport)), подтягиваем код базовой станции Astara -> 554109
+            clean_base = key_name.replace("(eksport)", "").replace("(eks.aşır)", "").strip()
+            for st_k, st_v in stations_data.items():
+                if normalize_name(st_k) == normalize_name(clean_base):
+                    code = st_v.get("code", "")
+                    break
         return code
 
     code_from = get_station_code(from_row_key)
@@ -169,7 +171,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         hide_code = False
         base_key = fallback_key
 
-        # 1. Порты и терминалы Алята (КОД ССКРЫВАЕТСЯ)
+        # 1. Порты и терминалы Алята (КОД СКРЫВАЕТСЯ)
         if any(k in norm for k in ["kurik", "курык"]):
             base_key = "Ələt eksport Kurik"
             hide_code = True
