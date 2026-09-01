@@ -144,25 +144,35 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     # Построение меток
     def build_label(raw_in, fallback_key, code, is_from=False):
         norm = normalize_name(raw_in)
+        hide_code = False
         
         if any(k in norm for k in ["kurik", "курык"]):
             label = "Ələt-eksp.Kurik"
+            hide_code = True
         elif any(k in norm for k in ["aktau", "актау"]):
             label = "Ələt-eksp.Aktau"
+            hide_code = True
         elif any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
             label = "Ələt-eksp.Türk."
+            hide_code = True
         elif any(k in norm for k in ["kesik", "кясик", "касик"]):
             label = "Böyük Kəsik-eksp." if is_transit else "Böyük Kəsik"
         elif any(k in norm for k in ["astara", "астара"]):
             label = "Astara (eks.aşır)" if is_transit else "Astara"
         elif any(k in norm for k in ["alat", "elet", "алят"]):
-            label = "Ələt-eksp." if (is_transit or "eksp" in norm or "эксп" in norm) else "Ələt"
+            if is_transit or "eksp" in norm or "эксп" in norm:
+                label = "Ələt-eksp."
+                hide_code = True
+            else:
+                label = "Ələt"
         elif any(k in norm for k in ["yalama", "ялама"]):
             label = "Yalama"
         else:
             label = fallback_key
 
-        return f"{label} ({code})" if code else label
+        if code and not hide_code:
+            return f"{label} ({code})"
+        return label
 
     fmt_from = build_label(raw_from, from_row_key or raw_from, code_from, is_from=True)
     fmt_to = build_label(raw_to, to_row_key or raw_to, code_to, is_from=False)
