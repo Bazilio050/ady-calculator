@@ -44,7 +44,7 @@ TEST_CASES = [
         "name": "5. Стык Астара",
         "input": "Ялама Астара эксп",
         "mock_nlu": {"from_station": "Yalama", "to_station": "Astara"},
-        "expected_to": "Astara (eks.aşır)",
+        "expected_to": "Astara-eksp.",
         "expected_dist": 504,
         "expected_type": "transit"
     },
