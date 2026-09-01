@@ -125,7 +125,7 @@ def run_tests():
             # 1. Нормализация станций и видов перевозок
             norm_res = normalize_nlu_stations(mock_nlu, raw_in)
             
-            # 2. Полный расчет калькулятором БЕЗ РУЧНОГО КИЛОМЕТРАЖА
+            # 2. Расчет калькулятором без передаваемого вручную километража
             calc_result = calculate_freight(
                 from_station=norm_res.get("from_station"),
                 to_station=norm_res.get("to_station"),
@@ -138,36 +138,36 @@ def run_tests():
                 raw_prompt=raw_in
             )
 
-            total_usd = calc_result.get("total_usd", 0.0)[cite: 10, 11]
-            part1 = calc_result.get("part1", {})[cite: 10, 11]
-            part2 = calc_result.get("part2", {})[cite: 10, 11]
-            part3 = calc_result.get("part3", {})[cite: 10, 11]
+            total_usd = calc_result.get("total_usd", 0.0)
+            part1 = calc_result.get("part1", {})
+            part2 = calc_result.get("part2", {})
+            part3 = calc_result.get("part3", {})
 
-            actual_route = part1.get("route", "")[cite: 10, 11]
-            actual_dist_str = part1.get("distance", "")[cite: 10, 11]
+            actual_route = part1.get("route", "")
+            actual_dist_str = part1.get("distance", "")
             
             to_ok = exp_to in actual_route or exp_to in str(norm_res.get("to_station", ""))
             type_ok = (norm_res.get("shipment_type") == exp_type)
             calc_ok = total_usd > 0
-            table_ok = exp_table in part2.get("base_tariff", "") if exp_table else True[cite: 10, 11]
-            min_ton_ok = f"{exp_min_ton} t" in part1.get("weight_info", "") if exp_min_ton else True[cite: 10, 11]
+            table_ok = exp_table in part2.get("base_tariff", "") if exp_table else True
+            min_ton_ok = f"{exp_min_ton} t" in part1.get("weight_info", "") if exp_min_ton else True
 
             if to_ok and type_ok and calc_ok and table_ok and min_ton_ok:
                 print(f"\nТест {idx}: {name}")
                 print(f"  Ввод:         '{raw_in}'")
-                print(f"  Маршрут:      {actual_route} ({actual_dist_str})")[cite: 10, 11]
-                print(f"  Вид / Вес:    {norm_res.get('shipment_type').upper()} | {part1.get('weight_info')}")[cite: 10, 11]
-                print(f"  Ставка CHF:   {part2.get('base_tariff')}")[cite: 10, 11]
-                print(f"  Формула:      {part3.get('formula')}")[cite: 10, 11]
+                print(f"  Маршрут:      {actual_route} ({actual_dist_str})")
+                print(f"  Вид / Вес:    {norm_res.get('shipment_type').upper()} | {part1.get('weight_info')}")
+                print(f"  Ставка CHF:   {part2.get('base_tariff')}")
+                print(f"  Формула:      {part3.get('formula')}")
                 print(f"  Итого USD:    {total_usd:.2f} $")
                 print(f"  Статус:       ✅ PASSED")
                 passed += 1
             else:
                 print(f"\nТест {idx}: {name}")
                 print(f"  Ввод:         '{raw_in}'")
-                print(f"  Маршрут:      {actual_route}")[cite: 10, 11]
+                print(f"  Маршрут:      {actual_route}")
                 print(f"  Вид:          Получено: {norm_res.get('shipment_type')} | Ожидалось: {exp_type}")
-                print(f"  Тариф:        Итого: {total_usd:.2f} $ | {part2.get('base_tariff')}")[cite: 10, 11]
+                print(f"  Тариф:        Итого: {total_usd:.2f} $ | {part2.get('base_tariff')}")
                 print(f"  Статус:       ❌ FAILED")
 
         except Exception as e:
