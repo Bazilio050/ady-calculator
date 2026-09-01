@@ -74,8 +74,18 @@ def get_border_column_header(station_text: str, headers: list) -> str:
         return "Ələt eksp / Bakı liman"
     return None
 
-def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: bool = False, shipment_type: str = None) -> str:
+def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bool = True, shipment_type: str = None) -> str:
     norm = normalize_name(station_text)
+
+    # Пограничный стык выбирается:
+    # 1. При транзите — для обеих станций
+    # 2. При импорте — только для первой станции (вход)
+    # 3. При экспорте — только для второй станции (выход)
+    use_border_joint = (
+        (shipment_type == "transit") or
+        (shipment_type == "import" and is_origin) or
+        (shipment_type == "export" and not is_origin)
+    )
 
     # 1. Порт-паром на Туркменбаши / ТРК
     if any(k in norm for k in ["trk", "трк", "turkmenbasy", "туркменбаши", "туркменбашы", "turkm", "туркм"]):
@@ -89,24 +99,24 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
 
     # 3. Алят
     if any(k in norm for k in ["alat", "elet", "алят"]):
-        if any(k in norm for k in ["eksp", "эксп", "eksport", "экспорт"]):
+        if use_border_joint or any(k in norm for k in ["eksp", "эксп", "eksport", "экспорт"]):
             return "Ələt eksport Kurik"
         return "Ələt"
 
-    # 4. Пограничные стыковые пункты (ВСЕГДА отдаем экспортный стык)
+    # 4. Пограничные стыковые пункты
     if any(k in norm for k in ["kesik", "кясик", "касик"]):
-        return "Böyük Kəsik (eksport)"
+        return "Böyük Kəsik (eksport)" if use_border_joint else "Böyük Kəsik"
     
     if "astara" in norm or "астара" in norm:
-        return "Astara (eks.aşır)"
+        return "Astara (eks.aşır)" if use_border_joint else "Astara"
 
     if "yalama" in norm or "ялама" in norm:
-        return "Yalama (eksport)"
+        return "Yalama (eksport)" if use_border_joint else "Yalama"
 
     if "culfa" in norm or "джульфа" in norm:
-        return "Culfa (eksport)"
+        return "Culfa (eksport)" if use_border_joint else "Culfa"
 
-    # 5. Внутренние станции (Абшерон и др.)
+    # 5. Внутренние станции
     if any(k in norm for k in ["absheron", "abseron", "абшерон", "апшерон"]):
         return "Abşeron"
 
