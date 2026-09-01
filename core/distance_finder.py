@@ -3,7 +3,6 @@ import os
 import re
 import sys
 
-# Гарантируем видимость корневой папки проекта
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
@@ -66,7 +65,7 @@ def get_border_column_header(station_text: str, headers: list) -> str:
     if "yalama" in norm or "ялама" in norm:
         return "Yalama (eksport)"
     elif "astara" in norm or "астара" in norm:
-        return "Astara (eksport)"
+        return "Astara (eks.aşır)"
     elif "kesik" in norm or "кясик" in norm or "касик" in norm:
         return "Böyük Kəsik (eksport)"
     elif "culfa" in norm or "джульфа" in norm:
@@ -77,7 +76,7 @@ def get_border_column_header(station_text: str, headers: list) -> str:
 
 def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: bool = False, shipment_type: str = None) -> str:
     norm = normalize_name(station_text)
-    is_border_mode = is_transit or shipment_type in ["export", "import", "transit"]
+    use_border_joint = (shipment_type == "transit") or (is_transit and shipment_type not in ["import", "export"])
 
     # 1. Порт-паром на Туркменбаши / ТРК
     if any(k in norm for k in ["trk", "трк", "turkmenbasy", "туркменбаши", "туркменбашы", "turkm", "туркм"]):
@@ -91,19 +90,22 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_transit: b
 
     # 3. Алят
     if any(k in norm for k in ["alat", "elet", "алят"]):
-        if is_border_mode or any(k in norm for k in ["eksp", "эксп", "eksport", "экспорт"]):
+        if use_border_joint or any(k in norm for k in ["eksp", "эксп", "eksport", "экспорт"]):
             return "Ələt eksport Kurik"
         return "Ələt"
 
-    # 4. Погранпереходы (Астара, Беюк Кясик, Ялама)
+    # 4. Пограничные стыковые пункты
     if any(k in norm for k in ["kesik", "кясик", "касик"]):
-        return "Böyük Kəsik (eksport)" if is_border_mode else "Böyük Kəsik"
+        return "Böyük Kəsik (eksport)" if use_border_joint else "Böyük Kəsik"
     
     if "astara" in norm or "астара" in norm:
-        return "Astara (eksport)" if is_border_mode else "Astara"
+        return "Astara (eks.aşır)" if use_border_joint else "Astara"
 
     if "yalama" in norm or "ялама" in norm:
-        return "Yalama (eksport)" if is_border_mode else "Yalama"
+        return "Yalama (eksport)" if use_border_joint else "Yalama"
+
+    if "culfa" in norm or "джульфа" in norm:
+        return "Culfa (eksport)" if use_border_joint else "Culfa"
 
     # 5. Абшерон
     if any(k in norm for k in ["absheron", "abseron", "абшерон", "апшерон"]):
@@ -128,26 +130,15 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
 
     current_lang = (lang or "AZ").upper()
     
-    # Автоопределение вида перевозки, если он не был передан явно
-    norm_from = normalize_name(raw_from)
-    norm_to = normalize_name(raw_to)
-    border_keywords = ["astara", "астара", "kesik", "кясик", "yalama", "ялама", "aktau", "актау", "kurik", "курык"]
+    if not shipment_type:
+        shipment_type = "transit"
 
-    if not shipment_type or shipment_type == "import":
-        if any(k in norm_from for k in border_keywords) and not any(k in norm_to for k in border_keywords):
-            shipment_type = "import"
-        elif not any(k in norm_from for k in border_keywords) and any(k in norm_to for k in border_keywords):
-            shipment_type = "export"
-        elif any(k in norm_from for k in border_keywords) and any(k in norm_to for k in border_keywords):
-            shipment_type = "transit"
-
-    is_transit = shipment_type in ["transit", "export", "import"]
-    is_border_mode = True
+    is_transit_mode = (shipment_type == "transit")
 
     from_col = get_border_column_header(raw_from, headers)
-    to_row_key = resolve_target_row_key(raw_to, stations_data, is_transit=is_transit, shipment_type=shipment_type)
+    to_row_key = resolve_target_row_key(raw_to, stations_data, is_transit=is_transit_mode, shipment_type=shipment_type)
 
-    from_row_key = resolve_target_row_key(raw_from, stations_data, is_transit=is_transit, shipment_type=shipment_type)
+    from_row_key = resolve_target_row_key(raw_from, stations_data, is_transit=is_transit_mode, shipment_type=shipment_type)
     to_col = get_border_column_header(raw_to, headers)
 
     dist = None
@@ -160,13 +151,11 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     if dist is None:
         raise ValueError(f"Не удалось определить расстояние между '{raw_from}' и '{raw_to}'.")
 
-    # Поиск кода ЕСР с гарантийным фолбэком на базовое имя станции
     def get_station_code(key_name):
         if not key_name:
             return ""
         if key_name in stations_data and stations_data[key_name].get("code"):
             return stations_data[key_name]["code"]
-            
         clean_base = key_name.replace("(eksport)", "").replace("(eks.aşır)", "").strip()
         for st_k, st_v in stations_data.items():
             if normalize_name(st_k) == normalize_name(clean_base):
@@ -180,7 +169,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         raw_in: str,
         fallback_key: str,
         code: str,
-        is_border_mode: bool,
+        shipment_type: str,
         current_lang: str,
     ) -> str:
         norm = normalize_name(raw_in)
@@ -188,7 +177,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         hide_code = False
         base_key = fallback_key
 
-        # 1. Порты и виртуальные узлы Алята (КОД СТРОГО СКРЫВАЕТСЯ)
+        # 1. Порты и виртуальные терминалы Алята (КОД СКРЫВАЕТСЯ СТРОГО ЗДЕСЬ)
         if any(k in norm or k in norm_fallback for k in ["kurik", "курык"]):
             base_key = "Ələt eksport Kurik"
             hide_code = True
@@ -199,24 +188,24 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
             base_key = "Ələt eksport-Türk."
             hide_code = True
         elif any(k in norm or k in norm_fallback for k in ["alat", "elet", "алят"]):
-            if is_border_mode or "eksp" in norm or "эксп" in norm:
+            if shipment_type == "transit" or "eksp" in norm or "эксп" in norm:
                 base_key = "Ələt eksport"
                 hide_code = True
             else:
                 base_key = "Ələt"
 
-        # 2. Пограничные стыковые пункты (КОД ОБЯЗАТЕЛЬНО ПОКАЗЫВАЕТСЯ)
+        # 2. Пограничные стыковые пункты (КОД ВСЕГДА ВЫВОДИТСЯ)
         elif any(k in norm or k in norm_fallback for k in ["kesik", "кясик", "касик"]):
-            base_key = "Böyük Kəsik (eksport)" if is_border_mode else "Böyük Kəsik"
+            base_key = "Böyük Kəsik (eksport)" if shipment_type == "transit" else "Böyük Kəsik"
             hide_code = False
         elif any(k in norm or k in norm_fallback for k in ["astara", "астара"]):
-            if is_border_mode or fallback_key in ["Astara (eksport)", "Astara (eks.aşır)"] or "eks" in norm:
-                base_key = "Astara (eksport)"
-            else:
-                base_key = "Astara"
+            base_key = "Astara (eksport)" if shipment_type == "transit" else "Astara"
             hide_code = False
         elif any(k in norm or k in norm_fallback for k in ["yalama", "ялама"]):
-            base_key = "Yalama (eksport)" if is_border_mode else "Yalama"
+            base_key = "Yalama (eksport)" if shipment_type == "transit" else "Yalama"
+            hide_code = False
+        elif any(k in norm or k in norm_fallback for k in ["culfa", "джульфа"]):
+            base_key = "Culfa (eksport)" if shipment_type == "transit" else "Culfa"
             hide_code = False
 
         localized_name = get_localized_station_name(base_key, lang=current_lang)
@@ -229,14 +218,14 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         raw_from,
         from_row_key or raw_from,
         code_from,
-        is_border_mode,
+        shipment_type,
         current_lang,
     )
     fmt_to = build_label(
         raw_to, 
         to_row_key or raw_to, 
         code_to, 
-        is_border_mode, 
+        shipment_type, 
         current_lang,
     )
 
