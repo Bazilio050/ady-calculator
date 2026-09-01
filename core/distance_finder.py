@@ -160,7 +160,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         hide_code = False
         base_key = fallback_key
 
-        # 1. Порты и терминалы Алята (КОД ССКРЫВАЕТСЯ)
+        # 1. Порты и виртуальные терминалы Алята (КОД ССКРЫВАЕТСЯ СТРОГО ЗДЕСЬ)
         if any(k in norm for k in ["kurik", "курык"]):
             base_key = "Ələt eksport Kurik"
             hide_code = True
@@ -177,18 +177,21 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
             else:
                 base_key = "Ələt"
 
-        # 2. Пограничные стыковые пункты (КОД ОСТАЕТСЯ)
+        # 2. Пограничные стыковые пункты (КОД ВСЕГДА ПОКАЗЫВАЕТСЯ -> hide_code = False)
         elif any(k in norm for k in ["kesik", "кясик", "касик"]):
             base_key = "Böyük Kəsik (eksport)" if is_border_mode else "Böyük Kəsik"
+            hide_code = False
         elif any(k in norm for k in ["astara", "астара"]):
             if is_border_mode or fallback_key in ["Astara (eksport)", "Astara (eks.aşır)"] or "eks" in norm:
                 base_key = "Astara (eksport)"
             else:
                 base_key = "Astara"
+            hide_code = False
         elif any(k in norm for k in ["yalama", "ялама"]):
             base_key = "Yalama (eksport)" if is_border_mode else "Yalama"
+            hide_code = False
 
-        # Локализация и сборка итоговой метки
+        # Локализация наименований
         localized_name = get_localized_station_name(base_key, lang=current_lang)
 
         if code and not hide_code:
