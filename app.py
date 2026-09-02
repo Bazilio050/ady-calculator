@@ -155,11 +155,7 @@ UI_TEXT = {
         "lbl_weight": "Faktiki / Hesablama çəkisi", "lbl_period": "Dövr", "lbl_exchange": "CHF/USD", 
         "lbl_base_rate": "Baza tarifi", "lbl_net_rate": "Yekun ADY tarifi", 
         "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur.",
-        "json_expander": "🔍 Gemini NLU JSON (Tanınmanın yoxlanılması üçün)",
-        "notes": [
-            "Tarif ADY 2026 Tarif Siyasətinə uyğun hesablanmışdır.",
-            "ADY-nin rəsmi artırıcı və azaldıcı əmsalları tətbiq edilmişdir."
-        ]
+        "json_expander": "🔍 Gemini NLU JSON (Tanınmanın yoxlanılması üçün)"
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
@@ -178,11 +174,7 @@ UI_TEXT = {
         "lbl_weight": "Фактический / Расчетный вес", "lbl_period": "Период", "lbl_exchange": "CHF/USD", 
         "lbl_base_rate": "Базовый тариф", "lbl_net_rate": "Итоговый тариф ADY", 
         "footer_owner": "Данный проект принадлежит компании **AGT Cargo**.",
-        "json_expander": "🔍 Gemini NLU JSON (Для проверки распознавания)",
-        "notes": [
-            "Тариф рассчитан согласно Тарифной политике ADY 2026.",
-            "Применены официальные повышающие и понижающие коэффициенты ADY."
-        ]
+        "json_expander": "🔍 Gemini NLU JSON (Для проверки распознавания)"
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
@@ -201,11 +193,7 @@ UI_TEXT = {
         "lbl_weight": "Actual / Billable Weight", "lbl_period": "Period", "lbl_exchange": "CHF/USD", 
         "lbl_base_rate": "Base Tariff", "lbl_net_rate": "Final ADY Tariff", 
         "footer_owner": "This project belongs to **AGT Cargo**.",
-        "json_expander": "🔍 Gemini NLU JSON (For recognition check)",
-        "notes": [
-            "Tariff is calculated according to ADY 2026 Tariff Policy.",
-            "Official ADY increasing and decreasing coefficients are applied."
-        ]
+        "json_expander": "🔍 Gemini NLU JSON (For recognition check)"
     }
 }
 
@@ -339,8 +327,8 @@ if st.session_state.calc_result:
         "\n".join(table_rows)
     )
 
-    # Сноски и примечания (из словаря UI_TEXT на выбранном языке)
-    notes_list = t.get("notes", p3.get("notes", []))
+    # Динамические сноски и примечания напрямую из calculator.py
+    notes_list = p3.get("notes", [])
     if notes_list:
         st.markdown(f"**{t['notes_title']}**")
         for idx, note in enumerate(notes_list, start=1):
