@@ -3,7 +3,7 @@
 # ==============================================================================
 import re
 from core.distance_finder import get_route_info
-from core.table_parser import get_base_tariff
+from core.table_parser import get_base_rate_from_table
 from core.table_selector import select_tariff_table
 from core.coefficients import get_applicable_coefficients
 from core.currency import convert_chf_to_usd, get_chf_usd_rate
@@ -52,11 +52,10 @@ def calculate_freight(
     column_num = int(table_info["column"])
 
     # 5. Получение базовой ставки (в CHF)
-    base_tariff_chf = get_base_tariff(
+    base_tariff_chf = get_base_rate_from_table(
         table_number=table_num,
         distance_km=distance,
-        column_number=column_num,
-        weight_tons=fact_weight
+        weight_category=int(fact_weight)
     )
 
     # 6. Расчет применимых коэффициентов
