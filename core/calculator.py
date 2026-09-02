@@ -9,7 +9,7 @@ from core.table_parser import get_base_rate_from_table
 from core.table_selector import select_tariff_table
 from core.coefficients import get_applicable_coefficients
 from core.currency import get_chf_usd_rate
-from stations_mapping import format_station_display
+from data.stations_mapping import format_station_display
 
 
 
