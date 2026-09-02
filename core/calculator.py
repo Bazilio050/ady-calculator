@@ -43,7 +43,9 @@ WAGON_TYPES_LANG = {
     "cattle": {"AZ": "Mal-qara vaqonu", "RU": "Скотовоз", "EN": "Cattle wagon"},
     "transporter": {"AZ": "Nəqledici (Transporter)", "RU": "Транспортер", "EN": "Heavy transporter"},
     "dumpcar": {"AZ": "Dumpkar (Özüdökən)", "RU": "Думпкар (Самосвал)", "EN": "Dumpcar"},
-    "special": {"AZ": "Xüsusi vaqon", "RU": "Специализированный вагон", "EN": "Special wagon"}
+    "special": {"AZ": "Xüsusi vaqon", "RU": "Специализированный вагон", "EN": "Special wagon"},
+    "refr": {"AZ": "Refrijerator", "RU": "Рефрижератор", "EN": "Refrigerated wagon"},
+    "ref_section": {"AZ": "Refrijerator seksiyası", "RU": "Рефрижераторная секция", "EN": "Refrigerated section"}
 }
 
 
