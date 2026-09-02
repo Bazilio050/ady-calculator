@@ -94,6 +94,7 @@ COEFF_LABELS = {
     }
 }
 
+
 def is_special_non_ferrous_metal(gng_code: str) -> bool:
     code = re.sub(r'\D', '', str(gng_code or ""))
     if not code:
