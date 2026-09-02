@@ -177,3 +177,18 @@ def get_localized_station_name(station_name: str, lang: str = "AZ") -> str:
         return STATIONS_MAPPING[clean_name].get(lang, clean_name)
 
     return clean_name
+
+def format_station_display(station_name: str, station_code: str = "", lang: str = "AZ") -> str:
+    """
+    Безопасное форматирование названия станции и кода для UI.
+    Не влияет на внутренний поиск калькулятора.
+    """
+    if not station_name:
+        return ""
+    
+    localized_name = get_localized_station_name(station_name, lang=lang)
+    
+    if station_code and str(station_code).strip():
+        return f"{localized_name} ({str(station_code).strip()})"
+    
+    return localized_name
