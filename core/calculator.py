@@ -151,21 +151,21 @@ def calculate_freight(
     coeffs_list = coeff_data["coefficients_list"]
 
     # --------------------------------------------------------------------------
-    # БЛОК 7: Математический расчет стоимости (CHF -> USD, фикс/потонный тариф)
+    # БЛОК 7: Математический расчет (Расчет ставки за 1 тонну в USD)
     # --------------------------------------------------------------------------
     is_per_wagon_flat_rate = (table_num == "5" and column_num in [2, 4])
 
     if is_per_wagon_flat_rate:
         final_tariff_chf = base_tariff_chf * total_multiplier
         final_tariff_usd = final_tariff_chf / chf_rate
-        
         calc_weight = max(fact_weight, 1.0)
         usd_per_ton = final_tariff_usd / calc_weight
         total_usd_wagon = final_tariff_usd
     else:
-        calc_weight = fact_weight
+        # Ставка за 1 тонну в USD = (Базовый тариф CHF * Все коэффициенты) / Курс CHF
         final_tariff_chf = base_tariff_chf * total_multiplier
         usd_per_ton = final_tariff_chf / chf_rate
+        calc_weight = fact_weight
         total_usd_wagon = usd_per_ton * calc_weight
 
     # --------------------------------------------------------------------------
