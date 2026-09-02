@@ -60,6 +60,19 @@ SYSTEM_PROMPT = """
    - Если в тексте есть слово "экспорт", "export", "ixrac" -> возвращай "shipment_type": "export".
    - Если в тексте есть слово "транзит", "transit", "tranzit" -> возвращай "shipment_type": "transit".
 
+7. Тип вагона (wagon_type) и структуры рефсекций:
+   - "universal" — крытые, полувагоны, платформы.
+   - "tank" — цистерны.
+   - "arv" — автономные рефрижераторные вагоны (АРВ / ARV / автономный реф).
+   - "thermos" — вагон-термос / вагон-ледник / ИВ / ВТ.
+   - "autocar" — автомобилевозы и 2-ярусные платформы для авто.
+   - "ref_section" — рефрижераторная секция (РС / рефсекция).
+     * Извлекай число ГРУЗОВЫХ вагонов в ref_cars_count.
+     * Схемы формата '1+4', '4+1', '4 грузовых и 1 дизель' -> ref_cars_count = 4.
+     * Схемы формата '1+5', '5+1', '5 вагонов' -> ref_cars_count = 5.
+     * Схемы формата '1+6', '6+1' -> ref_cars_count = 6.
+     * Если написано просто "рефсекция" без указания состава -> ref_cars_count = 4.
+
 Формат ответа (СТРОГО JSON):
 {
   "from_station": "строка или null",
@@ -69,7 +82,8 @@ SYSTEM_PROMPT = """
   "gng_code": "строка или null",
   "gng_name": "строка или null",
   "fact_weight": число_или_null,
-  "wagon_type": "universal/tank/ref/autocar/passenger",
+  "wagon_type": "universal/tank/arv/thermos/autocar/ref_section/passenger",
+  "ref_cars_count": число_или_null,
   "shipment_type": "import/export/transit",
   "is_empty_wagon": true/false,
   "is_private_wagon": true/false,
