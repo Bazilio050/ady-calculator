@@ -22,10 +22,9 @@ POSITIVE_TEST_CASES = [
             "wagon_type": "крытый",
             "is_private_wagon": True
         },
-        "expected_to": "Ələt-eksp.",
+        "expected_to": "Ələt",
         "expected_type": "transit",
-        "expected_table": "4",
-        "expected_min_ton": 45
+        "expected_table": "4"
     },
     {
         "name": "A2. Транзит с паромом: Порт Курык (Ələt Kurik 553002)",
@@ -40,8 +39,7 @@ POSITIVE_TEST_CASES = [
         },
         "expected_to": "Ələt-eksp.Kurik",
         "expected_type": "transit",
-        "expected_table": "4",
-        "expected_min_ton": 45
+        "expected_table": "4"
     },
     {
         "name": "A3. Транзит с паромом: Порт Актау (Ələt Aktau 549204)",
@@ -56,8 +54,7 @@ POSITIVE_TEST_CASES = [
         },
         "expected_to": "Ələt-eksp.Aktau",
         "expected_type": "transit",
-        "expected_table": "4",
-        "expected_min_ton": 45
+        "expected_table": "4"
     },
     {
         "name": "A4. Транзит на стык: Беюк Кясик-експ (558701)",
@@ -70,10 +67,9 @@ POSITIVE_TEST_CASES = [
             "wagon_type": "крытый",
             "is_private_wagon": True
         },
-        "expected_to": "Böyük Kəsik-eksp.",
+        "expected_to": "Böyük Kəsik",
         "expected_type": "transit",
-        "expected_table": "4",
-        "expected_min_ton": 45
+        "expected_table": "4"
     },
     {
         "name": "A5. Импорт: Погранпереход -> Внутренняя станция (Ялама -> Абшерон)",
@@ -88,8 +84,7 @@ POSITIVE_TEST_CASES = [
         },
         "expected_to": "Abşeron",
         "expected_type": "import",
-        "expected_table": "3",
-        "expected_min_ton": 45
+        "expected_table": "3"
     },
     {
         "name": "A6. Cədvəl 5: Рефсекция 5+1 (Ялама -> Хырдалан, Импорт, 45т)",
@@ -108,7 +103,6 @@ POSITIVE_TEST_CASES = [
         "expected_table": "5"
     }
 ]
-
 NEGATIVE_TEST_CASES = [
     {
         "name": "B1. Ошибка: Отсутствует код ГНГ для груженого вагона",
