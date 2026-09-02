@@ -4,9 +4,7 @@
 import re
 
 def get_table_6_column(gng_code: str, is_private_tank: bool = False) -> int:
-    """
-    Определяет номер колонки (2-8) в Таблице 6 по коду ГНГ.
-    """
+    """Определяет номер колонки (2-8) в Таблице 6 по коду ГНГ."""
     code = re.sub(r'\D', '', str(gng_code or ""))
     if not code:
         return 7
@@ -44,12 +42,13 @@ def select_tariff_table(
     shipment_type: str, 
     is_empty_inventory: bool = False, 
     gng_code: str = "",
+    fact_weight: float = 0.0,
     is_medium_container: bool = False,
     container_tonnage: int = 3,
     is_container_empty: bool = False
 ) -> dict:
     """
-    Определяет номер тарифной таблицы и номер колонки.
+    Определяет номер тарифной таблицы (3, 4, 5, 6, 7) и номер колонки.
     """
     if is_empty_inventory:
         return {"table": "FREE_INVENTORY", "column": 1}
@@ -57,11 +56,11 @@ def select_tariff_table(
     clean_gng = re.sub(r'\D', '', str(gng_code or ""))
     w_type = str(wagon_category or "").strip().lower()
 
-    # Почтовые отправления и пассажирские вагоны (п. 3.1.2.5) -> Cədvəl 7, Колонка 6
+    # 1. Почтовые отправления и пассажирские вагоны (п. 3.1.2.5) -> Cədvəl 7, Колонка 6
     if clean_gng == "99910000" or "passenger" in w_type or "пассажир" in w_type:
         return {"table": "7", "column": 6}
 
-    # Среднетоннажные контейнеры (Cədvəl 7, Колонки 7-10)
+    # 2. Среднетоннажные контейнеры (Cədvəl 7, Колонки 7-10)
     if is_medium_container:
         if not is_container_empty:
             col = 7 if container_tonnage == 3 else 8
@@ -69,15 +68,27 @@ def select_tariff_table(
             col = 9 if container_tonnage == 3 else 10
         return {"table": "7", "column": col}
 
-    # Наливные грузы в цистернах (Cədvəl 6)
+    # 3. Наливные грузы в цистернах (Cədvəl 6)
     if any(k in w_type for k in ["цистерна", "tank", "çənd", "bunker", "бункер"]):
         col_num = get_table_6_column(gng_code)
         return {"table": "6", "column": col_num}
 
+    # 4. Изотермические вагоны, рефсекции, ARV, термосы и автовозы (Cədvəl 5)
+    if any(k in w_type for k in ["ref_section", "ref", "arv", "арв", "реф", "thermos", "термос", "autocar", "автовоз"]):
+        if "autocar" in w_type or "автовоз" in w_type:
+            return {"table": "5", "column": 6}
+        elif "thermos" in w_type or "термос" in w_type:
+            col = 4 if fact_weight < 25.0 else 5
+            return {"table": "5", "column": col}
+        else:
+            # ARV и Рефсекции
+            col = 2 if fact_weight < 25.0 else 3
+            return {"table": "5", "column": col}
+
+    # 5. Универсальные вагоны (Cədvəl 3 и 4)
     mode = str(shipment_type or "").strip().lower()
     is_transit = any(k in mode for k in ["tranzit", "transit", "транзит"])
 
-    # Универсальные вагоны (Cədvəl 3 и 4)
     if is_transit:
         return {"table": "4", "column": 1}
     else:
