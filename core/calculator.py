@@ -209,12 +209,13 @@ def calculate_freight(
     else:
         weight_info_str = f"{fact_weight} {weight_unit}"
 
-    # Формирование строки математической формулы расчета
+    # Формирование строки математической формулы расчета (CHF / Rate * Coeffs)
     coeffs_formula_str = " * ".join([f"{c['value']}" for c in coeffs_list]) if coeffs_list else "1.00"
+    
     if is_per_wagon_flat_rate:
-        formula_text = f"({base_tariff_chf:.2f} CHF * {coeffs_formula_str}) / {chf_rate:.2f} = ${total_usd_wagon:.2f} USD"
+        formula_text = f"{base_tariff_chf:.2f} CHF/{chf_rate:.2f} * {coeffs_formula_str} = ${total_usd_wagon:.2f} USD / вагон"
     else:
-        formula_text = f"({base_tariff_chf:.2f} CHF * {coeffs_formula_str}) / {chf_rate:.2f} * {calc_weight:.1f}{weight_unit} = ${total_usd_wagon:.2f} USD"
+        formula_text = f"{base_tariff_chf:.2f} CHF/{chf_rate:.2f} * {coeffs_formula_str} = ${usd_per_ton:.2f} USD/{weight_unit}"
 
     # --------------------------------------------------------------------------
     # БЛОК 9: Сборка и возврат итоговых словарей (part1, part2, part3) для app.py
@@ -239,7 +240,7 @@ def calculate_freight(
 
     part3 = {
         "formula": formula_text,
-        "net_ady_rate": f"${total_usd_wagon:.2f} USD (${usd_per_ton:.2f} USD/{weight_unit})",
+        "net_ady_rate": f"${usd_per_ton:.2f} USD/{weight_unit}" if not is_per_wagon_flat_rate else f"${total_usd_wagon:.2f} USD",
         "usd_per_ton": round(usd_per_ton, 2),
         "total_usd_wagon": round(total_usd_wagon, 2),
         "is_flat_rate": is_per_wagon_flat_rate,
