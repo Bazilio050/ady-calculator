@@ -20,6 +20,8 @@ def calculate_freight(
     ref_cars_count: int = None,
     apply_fresh_produce_discount: bool = False,
     is_long_platform_over_19m: bool = False,
+    origin_country: str = None,
+    destination_country: str = None,
     calculation_date: str = None,
     lang: str = "AZ",
     raw_prompt: str = ""
