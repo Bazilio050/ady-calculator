@@ -232,7 +232,7 @@ def calculate_freight(
 
     part2 = {
         "exchange_rate": f"1 USD = {chf_rate} CHF",
-        "base_tariff": f"{base_tariff_chf:.2f} CHF (Cədvəl {table_num}, Sütun {column_num})",
+        "base_tariff": base_tariff_display,
         "coefficients": coeffs_list,
         "total_multiplier": total_multiplier
     }
