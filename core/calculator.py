@@ -22,9 +22,11 @@ def calculate_freight(
     is_long_platform_over_19m: bool = False,
     origin_country: str = None,
     destination_country: str = None,
+    gng_name: str = None,
     calculation_date: str = None,
     lang: str = "AZ",
-    raw_prompt: str = ""
+    raw_prompt: str = "",
+    **kwargs
 ) -> dict:
     
     # 1. Защитная валидация обязательных данных
