@@ -9,6 +9,7 @@ from core.table_parser import get_base_rate_from_table
 from core.table_selector import select_tariff_table
 from core.coefficients import get_applicable_coefficients
 from core.currency import get_chf_usd_rate
+from stations_mapping import format_station_display
 
 
 def calculate_freight(
@@ -113,9 +114,19 @@ def calculate_freight(
     else:
         formula_text = f"({base_tariff_chf:.2f} CHF * {coeffs_formula_str}) / {chf_rate:.2f} * {calc_weight:.1f}t = ${total_usd_wagon:.2f} USD / вагон"
 
-    # Формирование словарей part1, part2, part3 строго под ключи app.py
+    # 1. Локализация названий и кодов станций
+    st_from_name = dist_info.get("from_station_name", from_station)
+    st_from_code = dist_info.get("from_station_code", "")
+    st_to_name = dist_info.get("to_station_name", to_station)
+    st_to_code = dist_info.get("to_station_code", "")
+
+    from_formatted = format_station_display(st_from_name, st_from_code, lang=lang)
+    to_formatted = format_station_display(st_to_name, st_to_code, lang=lang)
+    route_display = f"{from_formatted} — {to_formatted}"
+
+    # 2. Формирование словаря part1
     part1 = {
-        "route": dist_info.get("route_formatted", f"{from_station} — {to_station}"),
+        "route": route_display,  # <--- Заменили только эту строчку!
         "shipment_type": shipment_type.upper(),
         "distance": f"{distance} km",
         "weight_info": f"{fact_weight} t" if not is_empty_wagon else "0 t (Boş)",
