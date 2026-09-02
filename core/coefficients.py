@@ -192,39 +192,30 @@ def get_applicable_coefficients(
 
     # ------------------------------------------------------------------------------
     # 6. КОЭФФИЦИЕНТ 1.50 (ИМПОРТ / ЭКСПОРТ)
-    # Применяется ко ВСЕМ таблицам и перевозкам, КРОМЕ строго определенных исключений:
     # ------------------------------------------------------------------------------
-    if is_import or is_export:
-        # Исключение 1: Таблица 3 (cədvəl 3)
-        is_table_3_exempt = (table_str == "3")
+    if shipment_type.lower() in ["import", "export", "idxal", "ixrac", "импорт", "экспорт"]:
+        # 1. Таблица 3
+        is_table_3_exempt = (str(table_number) == "3")
 
-        # Исключение 2: Универсальные вагоны с древесиной (4403, 4404, 4407-4413)
-        is_universal_wagon = any(w in wagon_lower for w in ["universal", "универсаль", "крытый", "полувагон", "платформа", "sps", "спс"])
+        # 2. Древесина в универсальных вагонах (4403, 4404, 4407-4413)
+        is_universal = any(w in wagon_lower for w in ["universal", "универсаль", "крытый", "полувагон", "платформа"])
         is_wood = clean_gng.startswith(("4403", "4404")) or any(clean_gng.startswith(f"44{i:02d}") for i in range(7, 14))
-        is_wood_exempt = is_universal_wagon and is_wood
+        is_wood_exempt = is_universal and is_wood
 
-        # Исключение 3: Универсальные вагоны с черными металлами (72, 7301-7307)
+        # 3. Черные металлы в универсальных вагонах (72, 7301-7307)
         is_black_metal = clean_gng.startswith("72") or any(clean_gng.startswith(f"730{i}") for i in range(1, 8))
-        is_metal_exempt = is_universal_wagon and is_black_metal
+        is_metal_exempt = is_universal and is_black_metal
 
-        # Исключение 4: Метанол в цистернах или бункерных полувагонах
+        # 4. Метанол в цистернах/бункерах
         is_methanol = ("290511" in clean_gng or "метанол" in wagon_lower or "methanol" in wagon_lower)
         is_tank_or_bunker = any(w in wagon_lower for w in ["tank", "cistern", "цистерн", "bunker", "бункер"])
         is_methanol_exempt = is_methanol and is_tank_or_bunker
 
-        # Исключение 5: Нефть и нефтепродукты по Таблице 6 (Ствол 2)
-        is_oil_table6_exempt = (table_str == "6")
+        # 5. Нефть по Таблице 6
+        is_oil_table6_exempt = (str(table_number) == "6")
 
-        # Собираем статус исключений
-        is_exempt_from_1_50 = (
-            is_table_3_exempt or 
-            is_wood_exempt or 
-            is_metal_exempt or 
-            is_methanol_exempt or 
-            is_oil_table6_exempt
-        )
-
-        if not is_exempt_from_1_50:
+        # Итоговая проверка
+        if not (is_table_3_exempt or is_wood_exempt or is_metal_exempt or is_methanol_exempt or is_oil_table6_exempt):
             add_coeff("import_export_150", 1.50)
 
     # 7. Коэффициент 1.04 для леса и черных металлов при Импорте
