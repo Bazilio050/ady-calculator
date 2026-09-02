@@ -115,13 +115,17 @@ def calculate_freight(
     else:
         formula_text = f"({base_tariff_chf:.2f} CHF * {coeffs_formula_str}) / {chf_rate:.2f} * {calc_weight:.1f}t = ${total_usd_wagon:.2f} USD / вагон"
 
-    # 1. Локализация названий и кодов станций
+    # Проверяем, что dist_info вернулся и не равен None
+    if not dist_info or not isinstance(dist_info, dict):
+        raise ValueError(f"Маршрут между станциями '{from_station}' и '{to_station}' не найден в базе расстояний.")
+
+    # Безопасное извлечение станций и кодов
     st_from_name = dist_info.get("from_station_name") or dist_info.get("from_station") or from_station
     st_from_code = dist_info.get("from_station_code") or dist_info.get("from_code") or dist_info.get("code_from") or ""
-
+    
     st_to_name = dist_info.get("to_station_name") or dist_info.get("to_station") or to_station
     st_to_code = dist_info.get("to_station_code") or dist_info.get("to_code") or dist_info.get("code_to") or ""
-    
+
     from_formatted = format_station_display(st_from_name, st_from_code, lang=lang)
     to_formatted = format_station_display(st_to_name, st_to_code, lang=lang)
     route_display = f"{from_formatted} — {to_formatted}"
