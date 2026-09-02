@@ -182,6 +182,15 @@ def calculate_freight(
     cargo_and_wagon_str = f"{cargo_label}, {wagon_type_display}"
     period_str = calculation_date if calculation_date else "2026"
 
+    # Локализация подписи таблицы и колонки для Базового тарифа
+    if current_lang == "RU":
+        tbl_str = f"Таблица {table_num}, Колонка {column_num}"
+    elif current_lang == "EN":
+        tbl_str = f"Table {table_num}, Column {column_num}"
+    else:
+        tbl_str = f"Cədvəl {table_num}, Sütun {column_num}"
+    base_tariff_display = f"{base_tariff_chf:.2f} CHF ({tbl_str})"
+
     # Форматирование отображения станций маршрута с ЕСР кодами
     st_from_name = dist_info.get("from_station_name") or dist_info.get("from_station") or from_station
     st_from_code = dist_info.get("from_station_code") or dist_info.get("from_code") or dist_info.get("code_from") or ""
