@@ -137,6 +137,15 @@ def parse_ref_section_schema(schema_str: str) -> dict:
     
     return {"coeff": 1.0, "cargo_wagons": 4}
 
+def get_ref_section_coefficient(ref_cars_count: int) -> tuple[float, int]:
+    count = int(ref_cars_count or 4)
+    if count in [1, 2, 3]:
+        coeff_map = {1: 1.7, 2: 1.4, 3: 1.1}
+        return coeff_map[count], count
+    elif count >= 5:
+        return 0.85, count
+    return 1.0, count
+
 
 def get_applicable_coefficients(
     shipment_type: str,
@@ -147,8 +156,8 @@ def get_applicable_coefficients(
     to_station: str = "",
     is_loaded: bool = True,
     is_private_wagon: bool = True,
-    ref_schema: str = "",
-    is_tariff_agreement_member: bool = False,
+    ref_cars_count: int = None,
+    apply_fresh_produce_discount: bool = False,
     is_long_platform_over_19m: bool = False,
     lang: str = "AZ"
 ) -> dict:
@@ -183,10 +192,10 @@ def get_applicable_coefficients(
         })
 
     # 1. Схема состава рефсекции
-    if "ref" in wagon_type.lower() or "реф" in wagon_type.lower():
-        ref_info = parse_ref_section_schema(ref_schema)
-        if ref_info["coeff"] != 1.0:
-            add_coeff("ref_section", ref_info["coeff"], count=ref_info['cargo_wagons'])
+    if "ref" in wagon_type.lower() or "реф" in wagon_type.lower() or "seksiy" in wagon_type.lower():
+        coeff, count = get_ref_section_coefficient(ref_cars_count)
+        if coeff != 1.0:
+            add_coeff("ref_section", coeff, count=count)
 
     # 2. Скидка 0.60 на фрукты/овощи
     is_fresh_produce = clean_gng.startswith(("04100", "04200", "04300", "04400", "05100", "05200", "05300", "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710", "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810", "12129100"))
