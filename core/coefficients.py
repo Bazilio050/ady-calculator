@@ -56,9 +56,9 @@ COEFF_LABELS = {
         "AZ": "Meşə və ya metal yükləri üçün əmsal (İdxal)",
         "RU": "Специальный коэффициент для леса/металла (Импорт)",
         "EN": "Special coefficient for timber/metal (Import)",
-        "note_az": "Cədvəl 3: İdxal daşımaları zamanı meşə materiallarına və ya qara metallara 1.04 əmsalı tətbiq olunmuşdur.",
-        "note_ru": "Таблица 3: При импортных перевозках лесоматериалов или черных металлов применен коэффициент 1.04.",
-        "note_en": "Table 3: Coefficient 1.04 applied for import shipments of timber or ferrous metals."
+        "note_az": "İdxal daşımaları zamanı meşə materiallarına və ya qara metallara 1.04 əmsalı tətbiq olunmuşdur.",
+        "note_ru": "При импортных перевозках лесоматериалов или черных металлов применен коэффициент 1.04.",
+        "note_en": "Coefficient 1.04 applied for import shipments of timber or ferrous metals."
     },
     "non_ferrous_metal": {
         "AZ": "Əlvan metallar üçün artırıcı əmsal",
@@ -119,24 +119,6 @@ def is_special_non_ferrous_metal(gng_code: str) -> bool:
     return False
 
 
-def parse_ref_section_schema(schema_str: str) -> dict:
-    if not schema_str:
-        return {"coeff": 1.0, "cargo_wagons": 4}
-    
-    nums = [int(n) for n in re.findall(r'\d+', str(schema_str))]
-    if len(nums) < 2:
-        return {"coeff": 1.0, "cargo_wagons": 4}
-
-    cargo_wagons = max(nums) if min(nums) == 1 else nums[0]
-
-    if cargo_wagons in [1, 2, 3]:
-        coeff_map = {1: 1.7, 2: 1.4, 3: 1.1}
-        return {"coeff": coeff_map[cargo_wagons], "cargo_wagons": cargo_wagons}
-    elif cargo_wagons >= 5:
-        return {"coeff": 0.85, "cargo_wagons": cargo_wagons}
-    
-    return {"coeff": 1.0, "cargo_wagons": 4}
-
 def get_ref_section_coefficient(ref_cars_count: int) -> tuple[float, int]:
     count = int(ref_cars_count or 4)
     if count in [1, 2, 3]:
@@ -159,11 +141,13 @@ def get_applicable_coefficients(
     ref_cars_count: int = None,
     apply_fresh_produce_discount: bool = False,
     is_long_platform_over_19m: bool = False,
+    is_tariff_agreement_member: bool = False,
     lang: str = "AZ"
 ) -> dict:
     mode = str(shipment_type or "").strip().lower()
     clean_gng = re.sub(r'\D', '', str(gng_code or ""))
     table_str = str(table_number or "").strip()
+    wagon_lower = str(wagon_type or "").lower()
     l_code = lang.upper() if lang in ["AZ", "RU", "EN"] else "AZ"
     
     is_export = any(k in mode for k in ["ixrac", "export", "экспорт"])
@@ -171,14 +155,6 @@ def get_applicable_coefficients(
     is_transit = any(k in mode for k in ["tranzit", "transit", "транзит"])
 
     coeffs = []
-    
-    is_table_3 = (table_str == "3")
-    is_table_5 = (table_str == "5")
-    is_table_7 = (table_str == "7")
-    is_wood = clean_gng.startswith(("4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"))
-    is_black_metal = clean_gng.startswith("72") or any(clean_gng.startswith(str(code)) for code in range(7301, 7308))
-    is_methanol = ("метанол" in wagon_type.lower() or "methanol" in wagon_type.lower())
-    is_oil_tab6_col2 = (table_str == "6")
 
     def add_coeff(key: str, val: float, **kwargs):
         cfg = COEFF_LABELS[key]
@@ -192,14 +168,14 @@ def get_applicable_coefficients(
         })
 
     # 1. Схема состава рефсекции
-    if "ref" in wagon_type.lower() or "реф" in wagon_type.lower() or "seksiy" in wagon_type.lower():
+    if "ref" in wagon_lower or "реф" in wagon_lower or "seksiy" in wagon_lower:
         coeff, count = get_ref_section_coefficient(ref_cars_count)
         if coeff != 1.0:
             add_coeff("ref_section", coeff, count=count)
 
     # 2. Скидка 0.60 на фрукты/овощи
     is_fresh_produce = clean_gng.startswith(("04100", "04200", "04300", "04400", "05100", "05200", "05300", "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710", "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810", "12129100"))
-    if is_fresh_produce and is_tariff_agreement_member:
+    if (is_fresh_produce or apply_fresh_produce_discount) and is_tariff_agreement_member:
         add_coeff("fresh_produce", 0.60)
 
     # 3. Дополнительный коэффициент 1.015 для всех груженых вагонов
@@ -214,10 +190,42 @@ def get_applicable_coefficients(
     if is_long_platform_over_19m:
         add_coeff("long_platform", 1.20)
 
-    # 6. Коэффициент 1.50 (Импорт / Экспорт)
-    excluded_from_1_50 = is_table_3 or is_table_5 or is_table_7 or is_wood or is_black_metal or is_methanol or is_oil_tab6_col2
-    if (is_import or is_export) and not excluded_from_1_50:
-        add_coeff("import_export_150", 1.50)
+    # ------------------------------------------------------------------------------
+    # 6. КОЭФФИЦИЕНТ 1.50 (ИМПОРТ / ЭКСПОРТ)
+    # Применяется ко ВСЕМ таблицам и перевозкам, КРОМЕ строго определенных исключений:
+    # ------------------------------------------------------------------------------
+    if is_import or is_export:
+        # Исключение 1: Таблица 3 (cədvəl 3)
+        is_table_3_exempt = (table_str == "3")
+
+        # Исключение 2: Универсальные вагоны с древесиной (4403, 4404, 4407-4413)
+        is_universal_wagon = any(w in wagon_lower for w in ["universal", "универсаль", "крытый", "полувагон", "платформа", "sps", "спс"])
+        is_wood = clean_gng.startswith(("4403", "4404")) or any(clean_gng.startswith(f"44{i:02d}") for i in range(7, 14))
+        is_wood_exempt = is_universal_wagon and is_wood
+
+        # Исключение 3: Универсальные вагоны с черными металлами (72, 7301-7307)
+        is_black_metal = clean_gng.startswith("72") or any(clean_gng.startswith(f"730{i}") for i in range(1, 8))
+        is_metal_exempt = is_universal_wagon and is_black_metal
+
+        # Исключение 4: Метанол в цистернах или бункерных полувагонах
+        is_methanol = ("290511" in clean_gng or "метанол" in wagon_lower or "methanol" in wagon_lower)
+        is_tank_or_bunker = any(w in wagon_lower for w in ["tank", "cistern", "цистерн", "bunker", "бункер"])
+        is_methanol_exempt = is_methanol and is_tank_or_bunker
+
+        # Исключение 5: Нефть и нефтепродукты по Таблице 6 (Ствол 2)
+        is_oil_table6_exempt = (table_str == "6")
+
+        # Собираем статус исключений
+        is_exempt_from_1_50 = (
+            is_table_3_exempt or 
+            is_wood_exempt or 
+            is_metal_exempt or 
+            is_methanol_exempt or 
+            is_oil_table6_exempt
+        )
+
+        if not is_exempt_from_1_50:
+            add_coeff("import_export_150", 1.50)
 
     # 7. Коэффициент 1.04 для леса и черных металлов при Импорте
     if is_import and (is_wood or is_black_metal):
@@ -236,12 +244,12 @@ def get_applicable_coefficients(
     if is_transit and (is_alat and is_bk):
         add_coeff("transit_alat_bk", 1.20)
 
-    # 10. Коэффициент 1.20 для нефти и нефтепродуктов
-    if (is_import or is_transit) and is_oil_tab6_col2:
+    # 10. Коэффициент 1.20 для нефти и нефтепродуктов (Таблица 6)
+    if (is_import or is_transit) and table_str == "6":
         add_coeff("oil_products", 1.20)
 
     # 11. Коэффициент 1.20 для рефрижераторов при Транзите
-    is_ref = any(k in wagon_type.lower() for k in ["arv", "рефрижератор", "ref"])
+    is_ref = any(k in wagon_lower for k in ["arv", "рефрижератор", "ref"])
     if is_transit and is_ref:
         add_coeff("ref_transit", 1.20)
 
