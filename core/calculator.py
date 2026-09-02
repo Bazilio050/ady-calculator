@@ -99,7 +99,6 @@ def calculate_freight(
         total_usd_wagon = usd_per_ton * calc_weight
 
     # 8. Сборка детализированного ответа для UI
-    # Формируем строку с кодом/названием груза и типом вагона
     cargo_str = f"ГНГ {gng_code}" + (f" ({gng_name})" if gng_name else "")
     cargo_and_wagon_info = f"{cargo_str}, {wagon_type}"
 
@@ -110,7 +109,7 @@ def calculate_freight(
         "weight_info": f"{fact_weight} t" if not is_empty_wagon else "0 t (Boş)",
         "wagon_type": wagon_type,
         "ref_cars_count": ref_cars_count,
-        "cargo_and_wagon": cargo_and_wagon_info  # Добавлен отсутствующий ключ для app.py
+        "cargo_and_wagon": cargo_and_wagon_info  # Ключ для отображения в app.py
     }
 
     part2 = {
