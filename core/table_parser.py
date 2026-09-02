@@ -5,44 +5,56 @@ import os
 
 WEIGHT_COLUMNS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
 
-def get_base_rate_from_table(table_number: str, distance_km: int, weight_category: int, data_dir: str = "data") -> float:
+def get_base_rate_from_table(
+    table_number: str, 
+    distance_km: int, 
+    weight_category: int = 60,
+    column_number: int = 1,
+    data_dir: str = "data"
+) -> float:
     """
-    Ищет базовую ставку (в CHF за 1 тонну) в файле Table_X_Tariffs.txt 
-    по расчетному расстоянию и весовой категории.
+    Ищет базовую ставку (в CHF) в файлах Table_X_Tariffs.txt.
+    Поддерживает как весовые колонки (Таблицы 3, 4), так и мульти-колонки (Таблицы 5, 6, 7).
     """
     file_name = f"Table_{table_number}_Tariffs.txt"
-    file_path = os.path.join(data_dir, file_name)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(base_dir, data_dir, file_name)
 
     if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Файл тарифной сетки {file_name} не найден в папке {data_dir}")
+        raise FileNotFoundError(f"Файл тарифной сетки {file_name} не найден по пути {file_path}")
 
-    # Приведение весовой категории к ближайшей имеющейся в колонках
-    col_weight = 60
-    for w in WEIGHT_COLUMNS:
-        if weight_category <= w:
-            col_weight = w
-            break
-            
-    col_index = WEIGHT_COLUMNS.index(col_weight)
+    # Логика выбора колонки:
+    # Для Таблицы 5, 6, 7 — явно переданный column_number (начиная с 2)
+    # Для Таблиц 3, 4 — расчет по весовой категории
+    if str(table_number) in ["5", "6", "7"]:
+        target_col_idx = column_number - 1  # Приводим к 0-based индексу данных
+    else:
+        col_weight = 60
+        for w in WEIGHT_COLUMNS:
+            if weight_category <= w:
+                col_weight = w
+                break
+        target_col_idx = WEIGHT_COLUMNS.index(col_weight) + 1
 
     with open(file_path, "r", encoding="utf-8") as f:
         for line in f:
             line_str = line.strip()
-            if not line_str or line_str.startswith("=") or "Məsafə" in line_str or "CƏDVƏL" in line_str:
+            if not line_str or line_str.startswith("=") or "Məsafə" in line_str or "CƏDVƏL" in line_str or "Колонки:" in line_str:
                 continue
 
             parts = [p.strip() for p in line_str.split("|")]
-            if len(parts) >= 12:
-                # Парсинг интервала расстояния (например, 101-110)
+            if len(parts) >= 2:
                 dist_range = parts[0].split("-")
                 if len(dist_range) == 2:
-                    min_d = int(dist_range[0])
-                    max_d = int(dist_range[1])
+                    try:
+                        min_d = int(dist_range[0])
+                        max_d = int(dist_range[1])
 
-                    if min_d <= distance_km <= max_d:
-                        # Возвращаем ставку в CHF за 1 тонну
-                        rate_str = parts[col_index + 1].replace(",", ".")
-                        return float(rate_str)
+                        if min_d <= distance_km <= max_d:
+                            if target_col_idx < len(parts):
+                                rate_str = parts[target_col_idx].replace(",", ".")
+                                return float(rate_str)
+                    except ValueError:
+                        continue
 
-    # Если расстояние превышает максимальное в таблице (например, 1000 км)
     raise ValueError(f"Расстояние {distance_km} км не найдено в таблице {table_number}")
