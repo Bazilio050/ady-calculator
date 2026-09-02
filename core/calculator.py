@@ -12,6 +12,7 @@ from core.currency import get_chf_usd_rate
 from stations_mapping import format_station_display
 
 
+
 def calculate_freight(
     from_station: str,
     to_station: str,
