@@ -238,16 +238,28 @@ def calculate_freight(
         "total_multiplier": total_multiplier
     }
 
+    # Собираем динамо-сноски из примененных коэффициентов (RU / AZ / EN)
+    if current_lang == "RU":
+        base_note = "Тариф рассчитан согласно Тарифной политике ADY 2026."
+    elif current_lang == "EN":
+        base_note = "Tariff is calculated according to ADY 2026 Tariff Policy."
+    else:
+        base_note = "Tarif ADY 2026 Tarif Siyasətinə uyğun hesablanmışdır."
+
+    dynamic_notes = [base_note]
+    
+    # Добавляем специфичные сноски по каждому коэффициенту
+    for coeff in coeffs_list:
+        if coeff.get("note"):
+            dynamic_notes.append(coeff["note"])
+
     part3 = {
         "formula": formula_text,
         "net_ady_rate": f"${usd_per_ton:.2f} USD/{weight_unit}" if not is_per_wagon_flat_rate else f"${total_usd_wagon:.2f} USD",
         "usd_per_ton": round(usd_per_ton, 2),
         "total_usd_wagon": round(total_usd_wagon, 2),
         "is_flat_rate": is_per_wagon_flat_rate,
-        "notes": [
-            "Тариф рассчитан согласно Тарифной политике ADY 2026.",
-            "Применены официальные повышающие и понижающие коэффициенты ADY."
-        ]
+        "notes": dynamic_notes
     }
 
     return {
