@@ -218,28 +218,7 @@ def calculate_freight(
         formula_text = f"{base_tariff_chf:.2f} CHF/{chf_rate:.2f} * {coeffs_formula_str} = ${usd_per_ton:.2f} USD/{weight_unit}"
 
     # --------------------------------------------------------------------------
-    # БЛОК 9: Сборка и возврат итоговых словарей (part1, part2, part3) для app.py
-    # --------------------------------------------------------------------------
-    part1 = {
-        "route": route_display,
-        "shipment_type": shipment_type_display,
-        "distance": f"{distance} {dist_unit}",
-        "weight_info": weight_info_str,
-        "cargo_and_wagon": cargo_and_wagon_str,
-        "period": period_str,
-        "wagon_type": wagon_type_display,
-        "ref_cars_count": ref_cars_count
-    }
-
-    part2 = {
-        "exchange_rate": f"1 USD = {chf_rate} CHF",
-        "base_tariff": base_tariff_display,
-        "coefficients": coeffs_list,
-        "total_multiplier": total_multiplier
-    }
-
-   # --------------------------------------------------------------------------
-    # БЛОК 9: Сборка динамических сносок и словарей
+    # БЛОК 9: Сборка динамических сносок и словарей (БЕЗ ДУБЛИРОВАНИЯ И ДВОЕТОЧИЙ)
     # --------------------------------------------------------------------------
     if current_lang == "RU":
         base_note = "Тариф рассчитан согласно Тарифной политике ADY 2026."
@@ -260,7 +239,7 @@ def calculate_freight(
         fx_note
     ]
 
-    # Добавляем только текст сноски без дублирования названия и двоеточия
+    # Добавляем ТОЛЬКО чистый текст сноски
     for coeff in coeffs_list:
         if coeff.get("note"):
             dynamic_notes.append(coeff["note"])
@@ -272,6 +251,15 @@ def calculate_freight(
         "total_usd_wagon": round(total_usd_wagon, 2),
         "is_flat_rate": is_per_wagon_flat_rate,
         "notes": dynamic_notes
+    }
+
+    return {
+        "total_usd": round(total_usd_wagon, 2),
+        "rate_per_ton": round(usd_per_ton, 2),
+        "part1": part1,
+        "part2": part2,
+        "part3": part3,
+        "raw_prompt": raw_prompt
     }
 
     # 2. Формируем список примечаний: сначала общие правила, затем расшифровка коэффициентов
