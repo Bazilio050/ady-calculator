@@ -1,17 +1,20 @@
 # ==============================================================================
 # МОДУЛЬ РАСЧЕТА ТАРИФОВ ADY 2026 (CORE CALCULATOR ENGINE)
 # ==============================================================================
-import re
+import os
+import sys
+
 from core.distance_finder import get_route_info
 from core.table_parser import get_base_rate_from_table
 from core.table_selector import select_tariff_table
 from core.coefficients import get_applicable_coefficients
 from core.currency import get_chf_usd_rate
 
+
 def calculate_freight(
     from_station: str,
     to_station: str,
-    gng_code: str,
+    gng_code: str = "",
     fact_weight: float = 0.0,
     wagon_type: str = "universal",
     shipment_type: str = "import",
@@ -55,14 +58,14 @@ def calculate_freight(
     table_num = str(table_info["table"])
     column_num = int(table_info["column"])
 
-    # 5. Получение базовой ставки (в CHF)
+    # 5. Получение базовой ставки из файла
     base_tariff_chf = get_base_rate_from_table(
         table_number=table_num,
         distance_km=distance,
         weight_category=int(fact_weight),
         column_number=column_num
     )
-    
+
     # 6. Расчет применимых коэффициентов
     coeff_data = get_applicable_coefficients(
         shipment_type=shipment_type,
@@ -98,31 +101,47 @@ def calculate_freight(
         usd_per_ton = final_tariff_chf / chf_rate
         total_usd_wagon = usd_per_ton * calc_weight
 
-    # 8. Сборка детализированного ответа для UI
-    cargo_str = f"ГНГ {gng_code}" + (f" ({gng_name})" if gng_name else "")
-    cargo_and_wagon_info = f"{cargo_str}, {wagon_type}"
+    # 8. Сборка наименований и текстов для интерфейса app.py
+    cargo_label = f"ГНГ {gng_code}" + (f" ({gng_name})" if gng_name else "")
+    cargo_and_wagon_str = f"{cargo_label}, {wagon_type}"
+    period_str = calculation_date if calculation_date else "2026"
+    
+    # Формирование строки формулы для блока p3["formula"]
+    coeffs_formula_str = " * ".join([f"{c['value']}" for c in coeffs_list]) if coeffs_list else "1.00"
+    if is_per_wagon_flat_rate:
+        formula_text = f"({base_tariff_chf:.2f} CHF * {coeffs_formula_str}) / {chf_rate:.2f} = ${total_usd_wagon:.2f} USD / вагон"
+    else:
+        formula_text = f"({base_tariff_chf:.2f} CHF * {coeffs_formula_str}) / {chf_rate:.2f} * {calc_weight:.1f}t = ${total_usd_wagon:.2f} USD / вагон"
 
+    # Формирование словарей part1, part2, part3 строго под ключи app.py
     part1 = {
-        "route": f"{from_station} — {to_station}",
-        "shipment_type": shipment_type,
+        "route": dist_info.get("route_formatted", f"{from_station} — {to_station}"),
+        "shipment_type": shipment_type.upper(),
         "distance": f"{distance} km",
         "weight_info": f"{fact_weight} t" if not is_empty_wagon else "0 t (Boş)",
+        "cargo_and_wagon": cargo_and_wagon_str,
+        "period": period_str,
         "wagon_type": wagon_type,
-        "ref_cars_count": ref_cars_count,
-        "cargo_and_wagon": cargo_and_wagon_info  # Ключ для отображения в app.py
+        "ref_cars_count": ref_cars_count
     }
 
     part2 = {
-        "chf_usd_rate": chf_rate,
+        "exchange_rate": f"1 USD = {chf_rate} CHF",
         "base_tariff": f"{base_tariff_chf:.2f} CHF (Cədvəl {table_num}, Sütun {column_num})",
         "coefficients": coeffs_list,
         "total_multiplier": total_multiplier
     }
 
     part3 = {
+        "formula": formula_text,
+        "net_ady_rate": f"${total_usd_wagon:.2f} USD / вагон (${usd_per_ton:.2f} USD/t)",
         "usd_per_ton": round(usd_per_ton, 2),
         "total_usd_wagon": round(total_usd_wagon, 2),
-        "is_flat_rate": is_per_wagon_flat_rate
+        "is_flat_rate": is_per_wagon_flat_rate,
+        "notes": [
+            "Тариф рассчитан согласно Тарифной политике ADY 2026.",
+            "Применены официальные повышающие и понижающие коэффициенты ADY."
+        ]
     }
 
     return {
