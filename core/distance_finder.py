@@ -156,14 +156,28 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     from_row_key = resolve_target_row_key(raw_from, stations_data, is_origin=True, is_transit=is_transit_mode, shipment_type=shipment_type)
     to_row_key = resolve_target_row_key(raw_to, stations_data, is_origin=False, is_transit=is_transit_mode, shipment_type=shipment_type)
 
+    # === РАСШИРЕННЫЙ ПОИСК РАССТОЯНИЯ (Защита от route_not_found) ===
     dist = None
+
+    # 1. Прямой поиск (from_col -> to_row)
     if from_col and to_row_key in stations_data:
         dist = stations_data[to_row_key]["distances"].get(from_col)
 
+    # 2. Обратный поиск (to_col -> from_row)
     if dist is None and to_col and from_row_key in stations_data:
         dist = stations_data[from_row_key]["distances"].get(to_col)
 
-    
+    # 3. Транзитный поиск стык-в-стык (from_row -> to_col)
+    if dist is None and from_row_key in stations_data and to_col:
+        dist = stations_data[from_row_key]["distances"].get(to_col)
+
+    # 4. Резервный поиск для портов Алята
+    if dist is None and from_col:
+        for alt_key in ["Ələt eksport Kurik", "Ələt eksport Aktau", "Ələt eksport-Türk."]:
+            if alt_key in stations_data and stations_data[alt_key]["distances"].get(from_col):
+                dist = stations_data[alt_key]["distances"].get(from_col)
+                break
+
     if dist is None:
         raise ValueError(f"route_not_found: Не удалось определить расстояние между '{raw_from}' и '{raw_to}'.")
 
@@ -200,37 +214,26 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
             (shipment_type == "export" and not is_origin)
         )
 
-        # 1. Порты и морские терминалы Алята
         if any(k in norm for k in ["aktau", "актау"]):
             base_key = "Ələt eksport Aktau"
-            hide_code = False  # Код выводится: (549204)
         elif any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
             base_key = "Ələt eksport-Türk."
-            hide_code = False  # Код выводится: (548803)
         elif any(k in norm for k in ["kurik", "курык"]):
             base_key = "Ələt eksport Kurik"
-            hide_code = False  # Код выводится: (553002)
         elif any(k in norm or k in norm_fallback for k in ["alat", "elet", "алят"]):
             if is_border_joint or "eksp" in norm or "эксп" in norm or "eksport" in norm:
                 base_key = "Ələt eksport"
-                hide_code = True   # Код СКРЫВАЕТСЯ для «Алят-эксп.»
+                hide_code = True   # Код скрывается по Правилу №1 для "Алят-эксп."
             else:
                 base_key = "Ələt"
-                hide_code = False  # Код выводится: (548502)
-                
-        # 2. Пограничные пункты
         elif any(k in norm or k in norm_fallback for k in ["kesik", "кясик", "касик"]):
             base_key = "Böyük Kəsik (eksport)" if is_border_joint else "Böyük Kəsik"
-            hide_code = False
         elif any(k in norm or k in norm_fallback for k in ["astara", "астара"]):
             base_key = "Astara (eksport)" if is_border_joint else "Astara"
-            hide_code = False
         elif any(k in norm or k in norm_fallback for k in ["yalama", "ялама"]):
             base_key = "Yalama (eksport)" if is_border_joint else "Yalama"
-            hide_code = False
         elif any(k in norm or k in norm_fallback for k in ["culfa", "джульфа"]):
             base_key = "Culfa (eksport)" if is_border_joint else "Culfa"
-            hide_code = False
 
         localized_name = get_localized_station_name(base_key, lang=current_lang)
 
@@ -238,30 +241,18 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
             return f"{localized_name} ({code})"
         return localized_name
 
-    fmt_from = build_label(
-        raw_from,
-        from_row_key or raw_from,
-        code_from,
-        shipment_type,
-        is_origin=True,
-        current_lang=current_lang,
-    )
-    fmt_to = build_label(
-        raw_to, 
-        to_row_key or raw_to, 
-        code_to, 
-        shipment_type, 
-        is_origin=False,
-        current_lang=current_lang,
-    )
+    fmt_from = build_label(raw_from, from_row_key or raw_from, code_from, shipment_type, is_origin=True, current_lang=current_lang)
+    fmt_to = build_label(raw_to, to_row_key or raw_to, code_to, shipment_type, is_origin=False, current_lang=current_lang)
 
     return {
         "distance_km": dist,
         "from_formatted": fmt_from,
         "to_formatted": fmt_to,
         "route_formatted": f"{fmt_from} – {fmt_to}",
-        "raw_from_name": raw_from,
-        "raw_to_name": to_row_key,
+        "from_station_name": raw_from,
+        "to_station_name": raw_to,
+        "from_station_code": code_from,
+        "to_station_code": code_to,
         "from_code": code_from,
         "to_code": code_to,
     }
