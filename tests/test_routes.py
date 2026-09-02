@@ -10,7 +10,6 @@ from core.calculator import calculate_freight
 # КОМПЛЕКСНАЯ МАТРИЦА ТЕСТОВ ADY TARIFF CALCULATOR 2026
 # ==============================================================================
 
-# БЛОК A: Позитивные сценарии (Маршруты, виды перевозок, весовые нормы)
 POSITIVE_TEST_CASES = [
     {
         "name": "A1. Транзит: Погранпереход -> Погранпереход (Ялама -> Ələt-eksp.)",
@@ -91,10 +90,25 @@ POSITIVE_TEST_CASES = [
         "expected_type": "import",
         "expected_table": "3",
         "expected_min_ton": 45
+    },
+    {
+        "name": "A6. Cədvəl 5: Рефсекция 5+1 (Ялама -> Хырдалан, Импорт, 45т)",
+        "input": "Ялама Хырдалан 0207 рефсекция 5+1 45т импорт",
+        "mock_nlu": {
+            "from_station": "Yalama",
+            "to_station": "Xırdalan",
+            "gng_code": "0207",
+            "fact_weight": 45.0,
+            "wagon_type": "ref_section",
+            "ref_cars_count": 5,
+            "is_private_wagon": True
+        },
+        "expected_to": "Xırdalan",
+        "expected_type": "import",
+        "expected_table": "5"
     }
 ]
 
-# БЛОК B: Негативные сценарии (Отрицательные тесты и валидация ошибок)
 NEGATIVE_TEST_CASES = [
     {
         "name": "B1. Ошибка: Отсутствует код ГНГ для груженого вагона",
@@ -141,7 +155,6 @@ def run_tests():
     passed = 0
     total = len(POSITIVE_TEST_CASES) + len(NEGATIVE_TEST_CASES)
 
-    # 1. Прогон позитивных тестов
     print("\n--- ЧАСТЬ 1: Позитивные сценарии расчетов ---")
     for idx, test in enumerate(POSITIVE_TEST_CASES, 1):
         name = test["name"]
@@ -164,16 +177,16 @@ def run_tests():
                 shipment_type=norm_res.get("shipment_type", "import"),
                 is_empty_wagon=mock_nlu.get("is_empty_wagon", False),
                 is_private_wagon=mock_nlu.get("is_private_wagon", True),
+                ref_cars_count=mock_nlu.get("ref_cars_count"),
+                apply_fresh_produce_discount=mock_nlu.get("apply_fresh_produce_discount", False),
                 raw_prompt=raw_in
             )
 
             total_usd = calc_result.get("total_usd", 0.0)
             part1 = calc_result.get("part1", {})
             part2 = calc_result.get("part2", {})
-            part3 = calc_result.get("part3", {})
 
             actual_route = part1.get("route", "")
-            actual_dist_str = part1.get("distance", "")
             
             to_ok = exp_to in actual_route or exp_to in str(norm_res.get("to_station", ""))
             type_ok = (norm_res.get("shipment_type") == exp_type)
@@ -186,12 +199,11 @@ def run_tests():
                 passed += 1
             else:
                 print(f"  [FAILED] Тест A{idx}: {name}")
-                print(f"    Получено: Route='{actual_route}', Type='{norm_res.get('shipment_type')}', USD={total_usd}")
+                print(f"    Получено: Route='{actual_route}', Type='{norm_res.get('shipment_type')}', USD={total_usd}, Tariff='{part2.get('base_tariff')}'")
 
         except Exception as e:
             print(f"  [FAILED] Тест A{idx}: {name} | Исключение: {e}")
 
-    # 2. Прогон негативных тестов
     print("\n--- ЧАСТЬ 2: Отрицательные тесты и перехват исключений ---")
     for idx, test in enumerate(NEGATIVE_TEST_CASES, 1):
         name = test["name"]
