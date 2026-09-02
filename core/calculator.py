@@ -1,200 +1,131 @@
-import os
+# ==============================================================================
+# МОДУЛЬ РАСЧЕТА ТАРИФОВ ADY 2026 (CORE CALCULATOR ENGINE)
+# ==============================================================================
 import re
-from datetime import datetime
-
-from core.weight import calculate_chargeable_weight
-from core.route import calculate_tariff_distance
+from core.distance_finder import get_rail_distance
+from core.table_parser import get_base_tariff
 from core.table_selector import select_tariff_table
-from core.table_parser import get_base_rate_from_table
 from core.coefficients import get_applicable_coefficients
-from core.currency import get_chf_usd_rate
-from core.distance_finder import get_route_info
-
-def safe_float(val, default=0.0):
-    if val is None:
-        return default
-    try:
-        return float(val)
-    except (ValueError, TypeError):
-        return default
+from core.currency import convert_chf_to_usd, get_chf_usd_rate
 
 def calculate_freight(
-    from_station,
-    to_station,
-    gng_code=None,
-    fact_weight=0.0,
-    wagon_type="universal",
-    shipment_type="import",
-    is_empty_wagon=False,
-    is_private_wagon=True,
-    is_round_trip=False,
-    wagon_axles=4,
-    manual_distance_km=None,
-    calculation_date=None,
-    lang="AZ",
-    **kwargs
-):
-    # Валидация станции назначения
-    if not to_station:
-        raise ValueError("to_station")
-        
-    # ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ ВИДА ПЕРЕВОЗКИ ИЗ ТЕКСТА ЗАПРОСА
-    raw_prompt = kwargs.get("raw_prompt", "") or kwargs.get("user_prompt", "")
-    if raw_prompt:
-        prompt_low = str(raw_prompt).lower()
-        if any(w in prompt_low for w in ["импорт", "import", "idhal", "idxal"]):
-            shipment_type = "import"
-        elif any(w in prompt_low for w in ["экспорт", "export", "ixrac"]):
-            shipment_type = "export"
-        elif any(w in prompt_low for w in ["транзит", "transit", "tranzit"]):
-            shipment_type = "transit"
-
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    data_dir = os.path.join(base_dir, "data")
-
-    calculation_date = calculation_date or datetime.now().strftime("%Y-%m-%d")
-    fact_weight_val = safe_float(fact_weight, 0.0)
-    manual_dist_val = safe_float(manual_distance_km, 0.0)
+    from_station: str,
+    to_station: str,
+    gng_code: str,
+    fact_weight: float = 0.0,
+    wagon_type: str = "universal",
+    shipment_type: str = "import",
+    is_empty_wagon: bool = False,
+    is_private_wagon: bool = True,
+    ref_cars_count: int = None,
+    apply_fresh_produce_discount: bool = False,
+    is_long_platform_over_19m: bool = False,
+    calculation_date: str = None,
+    lang: str = "AZ",
+    raw_prompt: str = ""
+) -> dict:
     
-    wagon_axles_val = int(safe_float(wagon_axles, 4))
-    if wagon_axles_val <= 0:
-        wagon_axles_val = 4
+    # 1. Защитная валидация обязательных данных
+    if not is_empty_wagon and not str(gng_code or "").strip():
+        raise ValueError("gng_code_required")
 
-    is_empty_wagon = bool(is_empty_wagon)
+    # 2. Расчет расстояния
+    dist_info = get_rail_distance(from_station, to_station)
+    distance = dist_info.get("distance", 0)
+    if distance <= 0:
+        raise ValueError("route_not_found")
 
-    # ШАГ 2: Курс валют с выбросом ValueError при отсутствии периода
-    fx_rate = get_chf_usd_rate(calculation_date)
+    # 3. Валидация валютного курса
+    chf_rate = get_chf_usd_rate(calculation_date)
+    if not chf_rate:
+        raise ValueError("fx_rate_not_found")
 
-    # ШАГ 1: Расстояние с жесткой проверкой (без затычки 300 км)
-    if manual_dist_val > 0:
-        raw_distance = manual_dist_val
-        route_formatted = f"{from_station} – {to_station}"
-    else:
-        dummy_nlu = {
-            "from_station": from_station,
-            "to_station": to_station,
-            "shipment_type": shipment_type
-        }
-        route_data = get_route_info(dummy_nlu, lang=lang, shipment_type=shipment_type)
-        raw_distance = route_data.get("distance_km")
-
-        if not raw_distance or raw_distance <= 0:
-            raise ValueError(f"route_not_found: Расстояние для маршрута {from_station} – {to_station} не найдено в справочнике.")
-
-        route_formatted = route_data.get("route_formatted") or f"{from_station} – {to_station}"
-
-    route_info = calculate_tariff_distance(raw_distance, shipment_type)
-    calc_distance = route_info["calculated_distance_km"]
-
-    # ШАГ 3: Валидация кода ГНГ (без заглушки 00000000)
-    if is_empty_wagon:
-        clean_gng = "99220000"
-    else:
-        clean_gng = re.sub(r'\D', '', str(gng_code or ""))
-        if not clean_gng:
-            raise ValueError("gng_code_required: Для расчета груженого вагона необходимо указать код ГНГ.")
-
-    # 2. Расчет веса
-    weight_info = calculate_chargeable_weight(fact_weight_val, clean_gng, wagon_type)
-    chargeable_tons = weight_info["chargeable_tons"]
-    min_norm = weight_info.get("min_weight_norm", 0)
-    weight_category = weight_info["weight_category"]
-
-    if min_norm > 0 and fact_weight_val < min_norm:
-        weight_str = f"{int(fact_weight_val)} t / min. {int(chargeable_tons)} t"
-    else:
-        weight_str = f"{int(chargeable_tons)} t"
-
-    # 3. Выбор таблицы и базовой ставки
+    # 4. Выбор тарифной таблицы и колонки
     table_info = select_tariff_table(
         wagon_category=wagon_type,
         shipment_type=shipment_type,
         is_empty_inventory=False,
-        gng_code=clean_gng
+        gng_code=gng_code,
+        fact_weight=fact_weight
     )
-    table_num = table_info["table"]
+    table_num = str(table_info["table"])
+    column_num = int(table_info["column"])
 
-    base_rate_chf = get_base_rate_from_table(table_num, calc_distance, weight_category, data_dir)
+    # 5. Получение базовой ставки (в CHF)
+    base_tariff_chf = get_base_tariff(
+        table_number=table_num,
+        distance_km=distance,
+        column_number=column_num,
+        weight_tons=fact_weight
+    )
 
-    # 4. Коэффициенты с учетом выбранного языка lang
-    coeff_info = get_applicable_coefficients(
+    # 6. Расчет применимых коэффициентов
+    coeff_data = get_applicable_coefficients(
         shipment_type=shipment_type,
-        gng_code=clean_gng,
+        gng_code=gng_code,
         table_number=table_num,
         wagon_type=wagon_type,
         from_station=from_station,
         to_station=to_station,
         is_loaded=not is_empty_wagon,
         is_private_wagon=is_private_wagon,
+        ref_cars_count=ref_cars_count,
+        apply_fresh_produce_discount=apply_fresh_produce_discount,
+        is_long_platform_over_19m=is_long_platform_over_19m,
         lang=lang
     )
-    total_multiplier = coeff_info["total_multiplier"]
 
-    base_rate_usd = base_rate_chf / fx_rate
-    rate_usd_per_ton = base_rate_usd * total_multiplier
-    total_usd = rate_usd_per_ton * chargeable_tons
+    total_multiplier = coeff_data["total_multiplier"]
+    coeffs_list = coeff_data["coefficients_list"]
 
-    lang_key = lang.upper() if lang in ["AZ", "RU", "EN"] else "AZ"
+    # 7. Математика расчета с учетом особенностей Cədvəl 5
+    # В Cədvəl 5 колонки 2 и 4 задают ставку ЗА ВАГОН, остальные — ЗА ТОННУ
+    is_per_wagon_flat_rate = (table_num == "5" and column_num in [2, 4])
 
-    shipment_names = {
-        "AZ": {"import": "İdxal daşınması", "export": "İxrac daşınması", "transit": "Tranzit daşınması"},
-        "RU": {"import": "Импортная перевозка", "export": "Экспортная перевозка", "transit": "Транзитная перевозка"},
-        "EN": {"import": "Import shipment", "export": "Export shipment", "transit": "Transit shipment"}
-    }
-    shipment_title = shipment_names[lang_key].get(str(shipment_type).lower(), shipment_names[lang_key]["import"])
-
-    period_names = {
-        "AZ": "2026-cı fraxt ili",
-        "RU": "2026 фрахтовый год",
-        "EN": "2026 freight year"
-    }
-    period_title = period_names.get(lang_key, "2026-cı fraxt ili")
-
-    table_word = {
-        "AZ": "Cədvəl",
-        "RU": "Таблица",
-        "EN": "Table"
-    }.get(lang_key, "Cədvəl")
-
-    coeffs_list = coeff_info["coefficients_list"]
-    coeff_str_elements = [str(c["value"]) for c in coeffs_list]
-    coeff_formula_part = " * ".join(coeff_str_elements) if coeff_str_elements else "1.0"
-    formula_text = f"{base_rate_chf:.2f} / {fx_rate:.2f} * {coeff_formula_part} = {rate_usd_per_ton:.2f} USD/t"
-
-    wagon_ownership = "SPS" if is_private_wagon else "MPS"
-    gng_name = kwargs.get("gng_name", "")
-
-    if gng_name:
-        cargo_label = f"GNG {clean_gng} ({gng_name})"
+    if is_per_wagon_flat_rate:
+        # Базовая ставка уже дана за вагон целиком
+        final_tariff_chf = base_tariff_chf * total_multiplier
+        final_tariff_usd = convert_chf_to_usd(final_tariff_chf, calculation_date)
+        
+        # Пересчет в эквивалент за тонну для унификации UI
+        calc_weight = max(fact_weight, 1.0)
+        usd_per_ton = final_tariff_usd / calc_weight
+        total_usd_wagon = final_tariff_usd
     else:
-        cargo_label = f"GNG {clean_gng}"
+        # Стандартный расчет за 1 тонну
+        calc_weight = fact_weight
+        final_tariff_chf = base_tariff_chf * total_multiplier
+        usd_per_ton = convert_chf_to_usd(final_tariff_chf, calculation_date)
+        total_usd_wagon = usd_per_ton * calc_weight
 
-    if is_empty_wagon:
-        empty_text = {"AZ": "Boş vaqon", "RU": "Порожний вагон", "EN": "Empty wagon"}.get(lang_key, "Boş vaqon")
-        cargo_status = f"{cargo_label} — {empty_text}, {wagon_type.capitalize()} ({wagon_ownership})"
-    else:
-        cargo_status = f"{cargo_label}, {wagon_type.capitalize()} ({wagon_ownership})"
+    # 8. Сборка детализированного ответа для UI
+    part1 = {
+        "route": f"{from_station} — {to_station}",
+        "shipment_type": shipment_type,
+        "distance": f"{distance} km",
+        "weight_info": f"{fact_weight} t" if not is_empty_wagon else "0 t (Boş)",
+        "wagon_type": wagon_type,
+        "ref_cars_count": ref_cars_count
+    }
+
+    part2 = {
+        "chf_usd_rate": chf_rate,
+        "base_tariff": f"{base_tariff_chf:.2f} CHF (Cədvəl {table_num}, Sütun {column_num})",
+        "coefficients": coeffs_list,
+        "total_multiplier": total_multiplier
+    }
+
+    part3 = {
+        "usd_per_ton": round(usd_per_ton, 2),
+        "total_usd_wagon": round(total_usd_wagon, 2),
+        "is_flat_rate": is_per_wagon_flat_rate
+    }
 
     return {
-        "part1": {
-            "route": route_formatted,
-            "shipment_type": shipment_title,
-            "distance": f"{calc_distance} km",
-            "cargo_and_wagon": cargo_status,
-            "weight_info": weight_str,
-            "period": period_title
-        },
-        "part2": {
-            "exchange_rate": f"{fx_rate:.2f} CHF/USD",
-            "base_tariff": f"{base_rate_chf:.2f} CHF/t ({table_word} {table_num} ({calc_distance} km, {int(chargeable_tons)} t))",
-            "coefficients": coeffs_list
-        },
-        "part3": {
-            "formula": formula_text,
-            "net_ady_rate": f"{rate_usd_per_ton:.2f} USD/t",
-            "express_rate": None,
-            "guard_rate": None,
-            "notes": [c.get("note", "") for c in coeffs_list if c.get("note")]
-        },
-        "total_usd": round(total_usd, 2)
+        "total_usd": round(total_usd_wagon, 2),
+        "rate_per_ton": round(usd_per_ton, 2),
+        "part1": part1,
+        "part2": part2,
+        "part3": part3,
+        "raw_prompt": raw_prompt
     }
