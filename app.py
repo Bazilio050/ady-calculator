@@ -143,7 +143,7 @@ UI_TEXT = {
         "subtitle": "Azərbaycan üzrə dəmir yolu tariflərinin hesablanması — {} fraxt ili",
         "year_select": "Fraxt ili:", "lang_select": "Dil / Language:", 
         "input_header": "Daşıma parametrlərini yazın:",
-        "input_placeholder": "Nümunə:\nMarşrut: Yalama - Beyuk kasik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
+        "input_placeholder": "Nümunə:\nMarşrut: Yalama - Böyük Kəsik\nYük: Qara metallar (GNG 72), 35 ton\nVəziyyət: SPS örtülü vaqon",
         "or_text": "VƏ YA SƏSLƏNDİRİN", "audio_label": "🎙️ Düyməyə basıb danışın (Maks 30 san):",
         "calc_btn": "🚀 Tarifi hesabla", "warning_empty": "Xahiş olunur, hesablama şərtlərini daxil edin.",
         "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...", 
@@ -155,14 +155,18 @@ UI_TEXT = {
         "lbl_weight": "Faktiki / Hesablama çəkisi", "lbl_period": "Dövr", "lbl_exchange": "CHF/USD", 
         "lbl_base_rate": "Baza tarifi", "lbl_net_rate": "Yekun ADY tarifi", 
         "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur.",
-        "json_expander": "🔍 Gemini NLU JSON (Tanınmanın yoxlanılması üçün)"
+        "json_expander": "🔍 Gemini NLU JSON (Tanınmanın yoxlanılması üçün)",
+        "notes": [
+            "Tarif ADY 2026 Tarif Siyasətinə uyğun hesablanmışdır.",
+            "ADY-nin rəsmi artırıcı və azaldıcı əmsalları tətbiq edilmişdir."
+        ]
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
         "subtitle": "Расчет ж/д тарифов по Азербайджану на {} фрахтовый год",
         "year_select": "Фрахтовый год:", "lang_select": "Язык / Language:", 
         "input_header": "Введите данные текстом:",
-        "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Касик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
+        "input_placeholder": "Пример:\nМаршрут: Ялама - Беюк Кясик\nГруз: Черные металлы (ГНГ 72), 35 тонн\nСостояние: СПС крытый вагон",
         "or_text": "ИЛИ НАДИКТУЙТЕ ГОЛОСОМ", "audio_label": "🎙️ Нажмите на кнопку для записи (Макс 30 сек):",
         "calc_btn": "🚀 Рассчитать тариф", "warning_empty": "Пожалуйста, введите условия расчета.",
         "spinner_text": "Считаем тариф согласно Тарифной политике {}...", 
@@ -172,16 +176,20 @@ UI_TEXT = {
         "col_param": "Параметр", "col_val": "Значение / Объем", "col_rate_type": "Тип тарифа", "col_amount": "Сумма",
         "lbl_route": "Маршрут", "lbl_type": "Вид перевозки", "lbl_dist": "Расстояние", "lbl_cargo": "Груз / Состояние",
         "lbl_weight": "Фактический / Расчетный вес", "lbl_period": "Период", "lbl_exchange": "CHF/USD", 
-        "lbl_base_rate": "Базовый тариф", "lbl_net_rate": "Итоговый тариф", 
+        "lbl_base_rate": "Базовый тариф", "lbl_net_rate": "Итоговый тариф ADY", 
         "footer_owner": "Данный проект принадлежит компании **AGT Cargo**.",
-        "json_expander": "🔍 Gemini NLU JSON (Для проверки распознавания)"
+        "json_expander": "🔍 Gemini NLU JSON (Для проверки распознавания)",
+        "notes": [
+            "Тариф рассчитан согласно Тарифной политике ADY 2026.",
+            "Применены официальные повышающие и понижающие коэффициенты ADY."
+        ]
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
         "subtitle": "Railway freight tariff calculator for Azerbaijan — {} freight year",
         "year_select": "Freight Year:", "lang_select": "Language:", 
         "input_header": "Enter details as text:",
-        "input_placeholder": "Example:\nRoute: Yalama - Beyuk kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
+        "input_placeholder": "Example:\nRoute: Yalama - Beyuk Kasik\nCargo: Ferrous metals (NHM 72), 35 tons\nCondition: SPS covered wagon",
         "or_text": "OR DICTATE BY VOICE", "audio_label": "🎙️ Click button to record (Max 30 sec):",
         "calc_btn": "🚀 Calculate Freight Rate", "warning_empty": "Please enter shipment requirements.",
         "spinner_text": "Calculating rates according to Tariff Policy {}...", 
@@ -191,9 +199,13 @@ UI_TEXT = {
         "col_param": "Parameter", "col_val": "Value / Volume", "col_rate_type": "Rate Type", "col_amount": "Amount",
         "lbl_route": "Route", "lbl_type": "Shipment Type", "lbl_dist": "Distance", "lbl_cargo": "Cargo / Condition",
         "lbl_weight": "Actual / Billable Weight", "lbl_period": "Period", "lbl_exchange": "CHF/USD", 
-        "lbl_base_rate": "Base Tariff", "lbl_net_rate": "Final Tariff", 
+        "lbl_base_rate": "Base Tariff", "lbl_net_rate": "Final ADY Tariff", 
         "footer_owner": "This project belongs to **AGT Cargo**.",
-        "json_expander": "🔍 Gemini NLU JSON (For recognition check)"
+        "json_expander": "🔍 Gemini NLU JSON (For recognition check)",
+        "notes": [
+            "Tariff is calculated according to ADY 2026 Tariff Policy.",
+            "Official ADY increasing and decreasing coefficients are applied."
+        ]
     }
 }
 
@@ -327,10 +339,11 @@ if st.session_state.calc_result:
         "\n".join(table_rows)
     )
 
-    # Сноски и примечания
-    if p3.get("notes"):
+    # Сноски и примечания (из словаря UI_TEXT на выбранном языке)
+    notes_list = t.get("notes", p3.get("notes", []))
+    if notes_list:
         st.markdown(f"**{t['notes_title']}**")
-        for idx, note in enumerate(p3["notes"], start=1):
+        for idx, note in enumerate(notes_list, start=1):
             if note:
                 st.markdown(f"{idx}. *{note}*")
 
