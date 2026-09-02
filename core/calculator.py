@@ -55,9 +55,10 @@ def calculate_freight(
     base_tariff_chf = get_base_rate_from_table(
         table_number=table_num,
         distance_km=distance,
-        weight_category=int(fact_weight)
+        weight_category=int(fact_weight),
+        column_number=column_num
     )
-
+    
     # 6. Расчет применимых коэффициентов
     coeff_data = get_applicable_coefficients(
         shipment_type=shipment_type,
