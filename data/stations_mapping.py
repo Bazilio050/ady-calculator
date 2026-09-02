@@ -165,30 +165,44 @@ STATIONS_MAPPING = {
     }
 }
 
+# 1. Добавьте/обновите в STATIONS_MAPPING ключи с точными именами базы
+STATIONS_MAPPING.update({
+    "Ələt-eksp.Kurik": {"AZ": "Ələt-eksp.Kurik", "RU": "Алят-эксп.Курык", "EN": "Alat-exp.Kuryk"},
+    "Ələt-eksp.Aktau": {"AZ": "Ələt-eksp.Aktau", "RU": "Алят-эксп.Актау", "EN": "Alat-exp.Aktau"},
+    "Ələt-eksp.Türk.": {"AZ": "Ələt-eksp.Türk.", "RU": "Алят-эксп.Турк.", "EN": "Alat-exp.Turk."},
+    "Ələt-eksp.":      {"AZ": "Ələt-eksp.",      "RU": "Алят-эксп.",      "EN": "Alat-exp."},
+})
+
 def get_localized_station_name(station_name: str, lang: str = "AZ") -> str:
     if not station_name:
         return ""
 
     clean_name = station_name.strip()
-    if clean_name in ["Ələt eksport", "Ələt-eksp."]:
-        return STATIONS_MAPPING["Ələt eksport"].get(lang, "Ələt-eksp.")
 
+    # Прямое совпадение
     if clean_name in STATIONS_MAPPING:
         return STATIONS_MAPPING[clean_name].get(lang, clean_name)
 
+    # Мягкое совпадение по регулярному регистру
+    for map_key, translations in STATIONS_MAPPING.items():
+        if clean_name.lower().replace("-", " ").replace(".", "") == map_key.lower().replace("-", " ").replace(".", ""):
+            return translations.get(lang, clean_name)
+
     return clean_name
 
+
 def format_station_display(station_name: str, station_code: str = "", lang: str = "AZ") -> str:
-    """
-    Безопасное форматирование названия станции и кода для UI.
-    Не влияет на внутренний поиск калькулятора.
-    """
     if not station_name:
         return ""
-    
+
     localized_name = get_localized_station_name(station_name, lang=lang)
-    
+
+    # ПРАВИЛО №1: Если это обобщенный "Алят эксп" / "Ələt-eksp." — код ЕСР скрываем полностью
+    if localized_name in ["Ələt-eksp.", "Алят-эксп.", "Alat-exp."]:
+        return localized_name
+
+    # Для остальных станций добавляем код ЕСР в скобках
     if station_code and str(station_code).strip():
         return f"{localized_name} ({str(station_code).strip()})"
-    
+
     return localized_name
