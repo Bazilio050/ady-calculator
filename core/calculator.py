@@ -12,7 +12,6 @@ from core.currency import get_chf_usd_rate
 from data.stations_mapping import format_station_display
 
 
-
 def calculate_freight(
     from_station: str,
     to_station: str,
@@ -38,8 +37,18 @@ def calculate_freight(
     if not is_empty_wagon and not str(gng_code or "").strip():
         raise ValueError("gng_code_required")
 
+    # Нормализация имен станций через синонимы перед вызовом поиска расстояния
+    STATION_ALIASES = {
+        "ТРК": "Ələt-eksp.Türk.",
+    }
+    from_station_clean = STATION_ALIASES.get(from_station, from_station)
+    to_station_clean = STATION_ALIASES.get(to_station, to_station)
+
     # 2. Расчет расстояния
-    dist_info = get_route_info(from_station, to_station, shipment_type=shipment_type)
+    dist_info = get_route_info(from_station_clean, to_station_clean, shipment_type=shipment_type)
+    if not dist_info or not isinstance(dist_info, dict):
+        raise ValueError("route_not_found")
+
     distance = dist_info.get("distance_km", 0)
     if distance <= 0:
         raise ValueError("route_not_found")
@@ -64,7 +73,7 @@ def calculate_freight(
     base_tariff_chf = get_base_rate_from_table(
         table_number=table_num,
         distance_km=distance,
-        weight_category=int(fact_weight),
+        weight_category=int(fact_weight) if fact_weight else 0,
         column_number=column_num
     )
 
@@ -74,8 +83,8 @@ def calculate_freight(
         gng_code=gng_code,
         table_number=table_num,
         wagon_type=wagon_type,
-        from_station=from_station,
-        to_station=to_station,
+        from_station=from_station_clean,
+        to_station=to_station_clean,
         is_loaded=not is_empty_wagon,
         is_private_wagon=is_private_wagon,
         ref_cars_count=ref_cars_count,
@@ -115,20 +124,7 @@ def calculate_freight(
     else:
         formula_text = f"({base_tariff_chf:.2f} CHF * {coeffs_formula_str}) / {chf_rate:.2f} * {calc_weight:.1f}t = ${total_usd_wagon:.2f} USD / вагон"
 
-    # Безопасный вызов поиска расстояния
-dist_info = find_distance(from_station_clean, to_station_clean)
-
-if not dist_info or dist_info.get("distance") is None:
-    raise ValueError(f"Маршрут не найден: {from_station} — {to_station}. Проверьте правильность названий станций.")
-    # Нормализация имен станций перед поиском расстояния
-    STATION_ALIASES = {
-        "Ələt-eksp.Türk.": "Ələt-eksp.Türk.",
-        "Ələt-eksp.Kurik": "Ələt-eksp.Kurik",
-        "Ələt-eksp.Aktau": "Ələt-eksp.Aktau",
-        "ТРК": "Ələt-eksp.Türk.",
-    }
-    
-    # Безопасное извлечение станций и кодов
+    # Безопасное извлечение станций и кодов из dist_info
     st_from_name = dist_info.get("from_station_name") or dist_info.get("from_station") or from_station
     st_from_code = dist_info.get("from_station_code") or dist_info.get("from_code") or dist_info.get("code_from") or ""
     
@@ -139,9 +135,9 @@ if not dist_info or dist_info.get("distance") is None:
     to_formatted = format_station_display(st_to_name, st_to_code, lang=lang)
     route_display = f"{from_formatted} — {to_formatted}"
 
-    # 2. Формирование словаря part1
+    # Формирование словаря part1
     part1 = {
-        "route": route_display,  # <--- Заменили только эту строчку!
+        "route": route_display,
         "shipment_type": shipment_type.upper(),
         "distance": f"{distance} km",
         "weight_info": f"{fact_weight} t" if not is_empty_wagon else "0 t (Boş)",
