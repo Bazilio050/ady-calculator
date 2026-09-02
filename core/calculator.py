@@ -238,20 +238,34 @@ def calculate_freight(
         "total_multiplier": total_multiplier
     }
 
-    # Собираем динамо-сноски из примененных коэффициентов (RU / AZ / EN)
+    # --------------------------------------------------------------------------
+    # БЛОК 9: Сборка динамических сносок и словарей
+    # --------------------------------------------------------------------------
+    # 1. Базовое примечание в зависимости от языка
     if current_lang == "RU":
         base_note = "Тариф рассчитан согласно Тарифной политике ADY 2026."
+        base_rate_note = f"Базовый тариф: {base_tariff_chf:.2f} CHF ({tbl_str})."
+        fx_note = f"Курс пересчета: 1 USD = {chf_rate:.2f} CHF."
     elif current_lang == "EN":
         base_note = "Tariff is calculated according to ADY 2026 Tariff Policy."
+        base_rate_note = f"Base rate: {base_tariff_chf:.2f} CHF ({tbl_str})."
+        fx_note = f"Exchange rate: 1 USD = {chf_rate:.2f} CHF."
     else:
         base_note = "Tarif ADY 2026 Tarif Siyasətinə uyğun hesablanmışdır."
+        base_rate_note = f"Baza tarifi: {base_tariff_chf:.2f} CHF ({tbl_str})."
+        fx_note = f"Valyuta məzənnəsi: 1 USD = {chf_rate:.2f} CHF."
 
-    dynamic_notes = [base_note]
-    
-    # Добавляем специфичные сноски по каждому коэффициенту
+    # 2. Формируем список примечаний: сначала общие правила, затем расшифровка коэффициентов
+    dynamic_notes = [
+        base_note,
+        base_rate_note,
+        fx_note
+    ]
+
+    # 3. Добавляем подробные текстовые сноски по каждому примененному коэффициенту
     for coeff in coeffs_list:
         if coeff.get("note"):
-            dynamic_notes.append(coeff["note"])
+            dynamic_notes.append(f"{coeff['name']} ({coeff['value']}): {coeff['note']}")
 
     part3 = {
         "formula": formula_text,
