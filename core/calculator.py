@@ -6,7 +6,7 @@ from core.distance_finder import get_route_info
 from core.table_parser import get_base_rate_from_table
 from core.table_selector import select_tariff_table
 from core.coefficients import get_applicable_coefficients
-from core.currency import convert_chf_to_usd, get_chf_usd_rate
+from core.currency import get_chf_usd_rate
 
 def calculate_freight(
     from_station: str,
@@ -77,24 +77,20 @@ def calculate_freight(
     total_multiplier = coeff_data["total_multiplier"]
     coeffs_list = coeff_data["coefficients_list"]
 
-    # 7. Математика расчета с учетом особенностей Cədvəl 5
-    # В Cədvəl 5 колонки 2 и 4 задают ставку ЗА ВАГОН, остальные — ЗА ТОННУ
+    # 7. Математика расчета с учетом особенностей Cədvəl 5 и конвертации CHF -> USD
     is_per_wagon_flat_rate = (table_num == "5" and column_num in [2, 4])
 
     if is_per_wagon_flat_rate:
-        # Базовая ставка уже дана за вагон целиком
         final_tariff_chf = base_tariff_chf * total_multiplier
-        final_tariff_usd = convert_chf_to_usd(final_tariff_chf, calculation_date)
+        final_tariff_usd = final_tariff_chf / chf_rate
         
-        # Пересчет в эквивалент за тонну для унификации UI
         calc_weight = max(fact_weight, 1.0)
         usd_per_ton = final_tariff_usd / calc_weight
         total_usd_wagon = final_tariff_usd
     else:
-        # Стандартный расчет за 1 тонну
         calc_weight = fact_weight
         final_tariff_chf = base_tariff_chf * total_multiplier
-        usd_per_ton = convert_chf_to_usd(final_tariff_chf, calculation_date)
+        usd_per_ton = final_tariff_chf / chf_rate
         total_usd_wagon = usd_per_ton * calc_weight
 
     # 8. Сборка детализированного ответа для UI
