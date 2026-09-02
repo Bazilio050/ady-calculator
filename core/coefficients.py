@@ -70,11 +70,11 @@ COEFF_LABELS = {
     },
     "transit_alat_bk": {
         "AZ": "Tranzit əmsalı (Ələt - Böyük Kəsik)",
-        "RU": "Транзитный коэффициент (Ələt - Böyük Kəsik)",
-        "EN": "Transit coefficient (Ələt - Böyük Kəsik)",
+        "RU": "Транзитный коэффициент (Алят - Беюк Кясик)",
+        "EN": "Transit coefficient (Alat - Boyuk Kasik)",
         "note_az": "Ələt - Böyük Kəsik istiqamətində tranzit daşımalara 1.20 əmsalı tətbiq olunmuşdur.",
-        "note_ru": "Применен транзитный коэффициент 1.20 для перевозок по маршруту Ələt - Böyük Kəsik.",
-        "note_en": "Transit coefficient of 1.20 applied for shipments on the Ələt - Böyük Kəsik route."
+        "note_ru": "Применен транзитный коэффициент 1.20 для перевозок по маршруту Алят - Беюк Кясик.",
+        "note_en": "Transit coefficient of 1.20 applied for shipments on the Alat - Boyuk Kasik route."
     },
     "oil_products": {
         "AZ": "Neft və neft məhsulları üçün əmsal",
