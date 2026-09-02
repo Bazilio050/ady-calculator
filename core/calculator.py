@@ -2,7 +2,7 @@
 # МОДУЛЬ РАСЧЕТА ТАРИФОВ ADY 2026 (CORE CALCULATOR ENGINE)
 # ==============================================================================
 import re
-from core.distance_finder import get_rail_distance
+from core.distance_finder import get_route_info
 from core.table_parser import get_base_tariff
 from core.table_selector import select_tariff_table
 from core.coefficients import get_applicable_coefficients
@@ -30,8 +30,8 @@ def calculate_freight(
         raise ValueError("gng_code_required")
 
     # 2. Расчет расстояния
-    dist_info = get_rail_distance(from_station, to_station)
-    distance = dist_info.get("distance", 0)
+    dist_info = get_route_info(from_station, to_station, shipment_type=shipment_type)
+    distance = dist_info.get("distance_km", 0)
     if distance <= 0:
         raise ValueError("route_not_found")
 
