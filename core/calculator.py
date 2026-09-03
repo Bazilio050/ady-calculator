@@ -154,7 +154,7 @@ def calculate_freight(
     # --------------------------------------------------------------------------
     # БЛОК 7: Математический расчет (Расчет ставки за 1 тонну в USD)
     # --------------------------------------------------------------------------
-    is_per_wagon_flat_rate = (table_num == "5" and column_num in [2, 4])
+    is_per_wagon_flat_rate = (table_num == "5" and column_num in [2, 4, 6])
 
     if is_per_wagon_flat_rate:
         final_tariff_chf = base_tariff_chf * total_multiplier
