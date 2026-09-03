@@ -159,12 +159,14 @@ def calculate_freight(
     cargo_and_wagon_str = f"{cargo_label}, {wagon_type_display}"
     period_str = calculation_date if calculation_date else "2026"
 
+    # Формирование названия таблицы и категории подвижного состава
     if current_lang == "RU":
-        tbl_str = f"Таблица {table_num}, Колонка {column_num}"
+        tbl_str = f"Таблица {table_num}, {wagon_type_display}"
     elif current_lang == "EN":
-        tbl_str = f"Table {table_num}, Column {column_num}"
+        tbl_str = f"Table {table_num}, {wagon_type_display}"
     else:
-        tbl_str = f"Cədvəl {table_num}, Sütun {column_num}"
+        tbl_str = f"Cədvəl {table_num}, {wagon_type_display}"
+        
     base_tariff_display = f"{base_tariff_chf:.2f} CHF ({tbl_str})"
 
     # Берем готовую отформатированную строку маршрута прямо из dist_info (distance_finder.py)
