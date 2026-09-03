@@ -41,11 +41,7 @@ def get_min_loading_norm(gng_code: str) -> int:
     if any(clean_gng.startswith(p) for p in ["14042", "5201", "5202", "5203", "7204"]):
         return 50
 
-    return 0
-
-    # --------------------------------------------------------------------------
-    # ЦВЕТНЫЕ МЕТАЛЛЫ И ИЗДЕЛИЯ (Специальные списки со стр. 12)
-    # --------------------------------------------------------------------------
+    # 7. Цветные металлы и изделия (Специальные списки со стр. 12)
     norm_50_codes = ["32121", "71101910", "7407", "7408", "7409", "7410", "7413", "7505", "7506", "7804", "78060080", "81019600", "81029600", "81032", "81039010"]
     if any(clean_gng.startswith(c) for c in norm_50_codes):
         return 50
@@ -73,12 +69,12 @@ def calculate_chargeable_weight(
     """
     Рассчитывает расчетный тоннаж и категорию веса строго по Cədvəl 1 (стр. 9).
     """
-    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
     w_type = str(wagon_type or "").strip().lower()
     fact_w = float(fact_weight or 0.0)
 
     # 1. Почтово-пассажирские вагоны -> фиксировано 66 тонн
-    if clean_gng == "99910000" or "passenger" in w_type or "пассажир" in w_type:
+    clean_gng_raw = re.sub(r'\D', '', str(gng_code or ""))
+    if clean_gng_raw == "99910000" or "passenger" in w_type or "пассажир" in w_type:
         return {"chargeable_tons": 66, "min_weight_norm": 66, "weight_category": 25}
 
     # 2. Транспортеры -> минимум 5 тонн на ось вагона
@@ -93,7 +89,7 @@ def calculate_chargeable_weight(
         return {"chargeable_tons": chargeable_tons, "min_weight_norm": 0, "weight_category": 10}
 
     # 4. Проверка минимальной нормы загрузки со стр. 11-12
-    min_norm = get_min_loading_norm(clean_gng)
+    min_norm = get_min_loading_norm(gng_code)
     
     if min_norm > 0:
         chargeable_tons = math.ceil(max(fact_w, min_norm))
