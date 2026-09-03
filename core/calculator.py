@@ -78,7 +78,7 @@ def calculate_freight(
         gng_code=gng_code,
         wagon_type=wagon_type,
         shipment_type=shipment_type,
-        is_empty_wagon=is_empty_wagon,
+        is_empty_inventory=is_empty_wagon, # <-- Исправлено
         fact_weight=fact_weight,
         wagon_axles=wagon_axles
     )
