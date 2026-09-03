@@ -1,18 +1,27 @@
+# ==============================================================================
+# ОСНОВНОЙ ВЕБ-ИНТЕРФЕЙС КАЛЬКУЛЯТОРА ADY (STREAMLIT APP)
+# ==============================================================================
 import sys
 import os
 
-# Добавляем корень проекта в пути импорта Python
+# ------------------------------------------------------------------------------
+# БЛОК 1: Настройка путей импорта Python и системных зависимостей
+# ------------------------------------------------------------------------------
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 import streamlit as st
 
-# Импорты из папки core
+# Импорты внутренних модулей из папки core
 from core.gemini_parser import parse_user_request
 from core.calculator import calculate_freight
 from core.route_helpers import normalize_nlu_stations
+from core.currency import get_formatted_currency_display
 
+# ------------------------------------------------------------------------------
+# БЛОК 2: Конфигурация страницы и глобальные CSS-стили
+# ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="ADY — Tariff Calculator", 
     page_icon="🚆", 
@@ -20,7 +29,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Инициализация состояния
+# Инициализация состояния сессии
 if "calc_result" not in st.session_state:
     st.session_state.calc_result = None
 if "nlu_res" not in st.session_state:
@@ -137,6 +146,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# ------------------------------------------------------------------------------
+# БЛОК 3: Многоязычные тексты пользовательского интерфейса (UI_TEXT)
+# ------------------------------------------------------------------------------
 UI_TEXT = {
     "AZ": {
         "title": "ADY Tarif Kalkulyatoru", 
@@ -197,6 +209,9 @@ UI_TEXT = {
     }
 }
 
+# ------------------------------------------------------------------------------
+# БЛОК 4: Верхняя панель управления и логотип компании
+# ------------------------------------------------------------------------------
 logo_path = "data/Logo.png" if os.path.exists("data/Logo.png") else ("Logo.png" if os.path.exists("Logo.png") else None)
 
 left_col, _ = st.columns([3, 2])
@@ -218,7 +233,10 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# 1. ТЕКСТОВЫЙ ВВОД
+# ------------------------------------------------------------------------------
+# БЛОК 5: Поля текстового и голосового ввода параметров
+# ------------------------------------------------------------------------------
+# 1. Текстовый ввод
 st.markdown(f"**{t['input_header']}**")
 user_input = st.text_area(
     "", 
@@ -228,13 +246,15 @@ user_input = st.text_area(
     label_visibility="collapsed"
 )
 
-# 2. РАЗДЕЛИТЕЛЬ "ИЛИ"
+# 2. Разделитель "ИЛИ"
 st.markdown(f'<div class="or-divider">{t["or_text"]}</div>', unsafe_allow_html=True)
 
-# 3. ГОЛОСОВОЙ ВВОД
+# 3. Голосовой ввод
 audio_file = st.audio_input(t["audio_label"])
 
-# КНОПКА РАСЧЕТА
+# ------------------------------------------------------------------------------
+# БЛОК 6: Обработка кнопки расчета и вызов бизнес-логики
+# ------------------------------------------------------------------------------
 if st.button(t["calc_btn"], type="primary", use_container_width=False):
     current_input = st.session_state.get("main_input_area", user_input)
     if not current_input.strip():
@@ -280,7 +300,9 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             st.error(f"Ошибка при расчете: {str(e)}")
             st.session_state.calc_result = None
 
-# ВЫВОД РЕЗУЛЬТАТОВ РАСЧЕТА
+# ------------------------------------------------------------------------------
+# БЛОК 7: Отрисовка результатов расчета и таблиц
+# ------------------------------------------------------------------------------
 if st.session_state.calc_result:
     data = st.session_state.calc_result
     st.success(t["success"].format(selected_year))
@@ -290,7 +312,7 @@ if st.session_state.calc_result:
 
     p1, p2, p3 = data["part1"], data["part2"], data["part3"]
     
-    # 📍 1. Marşrut və daşıma şərtləri
+    # 📍 1. Маршрут и условия перевозки
     st.markdown(f"#### 📍 {t['sec1_title']}")
     st.markdown(
         f"| {t['col_param']} | {t['col_val']} |\n"
@@ -303,17 +325,21 @@ if st.session_state.calc_result:
         f"| **{t['lbl_period']}** | {p1['period']} |"
     )
 
-    # ⚙️ 2. Əmsallar və valyuta məzənnəsi
+    # ⚙️ 2. Коэффициенты и курс валют (Форматирование CHF/USD через currency.py)
     st.markdown(f"#### ⚙️ {t['sec2_title']}")
+    
+    curr_info = get_formatted_currency_display()
+    exchange_display = curr_info["display_chf_usd"]
+
     t2_rows = [
-        f"| **{t['lbl_exchange']}** | {p2['exchange_rate']} |", 
+        f"| **{t['lbl_exchange']}** | {exchange_display} |", 
         f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
     ]
     for coeff in p2.get("coefficients", []):
         t2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
     st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(t2_rows))
 
-    # 📐 3. Tarifin hesablanması
+    # 📐 3. Расчет тарифа
     st.markdown(f"#### 📐 {t['sec3_title']}")
     st.code(p3["formula"], language="text")
     
@@ -335,6 +361,9 @@ if st.session_state.calc_result:
             if note:
                 st.markdown(f"{idx}. *{note}*")
 
+# ------------------------------------------------------------------------------
+# БЛОК 8: Футер компании AGT Cargo
+# ------------------------------------------------------------------------------
 st.markdown(f"""
     <div class="agt-footer">
         <p>{t['footer_owner']}</p>
