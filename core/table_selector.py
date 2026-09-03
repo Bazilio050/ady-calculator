@@ -91,13 +91,16 @@ def select_tariff_table(
             col = 2 if fact_weight < 25.0 else 3
             return {"table": "5", "column": col}
 
+    # --------------------------------------------------------------------------
+    # БЛОК ДЛЯ УНИВЕРСАЛЬНОГО ПОДВИЖНОГО СОСТАВА (Крытые, полувагоны, платформы, хопперы)
+    # --------------------------------------------------------------------------
     mode = str(shipment_type or "").strip().lower()
     is_transit = any(k in mode for k in ["tranzit", "transit", "транзит"])
 
     if is_transit:
-        return {"table": "4", "column": 1}
+        return {"table": "3", "column": 1}  # Транзит -> Таблица 3
     else:
-        return {"table": "3", "column": 1}
+        return {"table": "4", "column": 1}  # Импорт / Экспорт / Местное -> Таблица 4
 
 
 # ------------------------------------------------------------------------------
