@@ -7,18 +7,18 @@ import re
 # ------------------------------------------------------------------------------
 # БЛОК 1: Определение минимальной нормы загрузки по Таблице (стр. 11-12)
 # ------------------------------------------------------------------------------
-def get_min_loading_norm(gng_code: str) -> int:
+def get_min_loading_norm(gng_code) -> int:
     """
     Возвращает минимальную норму загрузки согласно Тарифной политике ADY (стр. 11-12).
     """
-    raw_str = str(gng_code or "").strip()
-    clean_gng = re.sub(r'\D', '', raw_str)
+    # Гарантируем преобразование в строку независимо от того, пришел int или str
+    clean_gng = re.sub(r'\D', '', str(gng_code if gng_code is not None else ""))
     
     if not clean_gng:
         return 0
 
     # 1. Зерновая группа (ГНГ 1001, 1002, 1005 и т.д.) — СТРОГО 60 тонн
-    if clean_gng.startswith("10") or clean_gng == "1001":
+    if clean_gng.startswith("10"):
         return 60
 
     # 2. Лесоматериалы (4403, 4404, 4407) — 45 тонн
@@ -41,54 +41,35 @@ def get_min_loading_norm(gng_code: str) -> int:
     if any(clean_gng.startswith(p) for p in ["14042", "5201", "5202", "5203", "7204"]):
         return 50
 
-    # 7. Цветные металлы и изделия (Специальные списки со стр. 12)
-    norm_50_codes = ["32121", "71101910", "7407", "7408", "7409", "7410", "7413", "7505", "7506", "7804", "78060080", "81019600", "81029600", "81032", "81039010"]
-    if any(clean_gng.startswith(c) for c in norm_50_codes):
-        return 50
-
-    norm_40_codes = ["7404", "7503", "7602", "7802", "7902", "7903", "8002", "81019700", "81029700", "81033000", "81053", "81073", "81083", "81093", "81102", "85481", "85493", "85499"]
-    if any(clean_gng.startswith(c) for c in norm_40_codes):
-        return 40
-
-    norm_30_codes = ["71159", "7411", "7412", "7415", "7419", "7507", "7508", "7608", "7613", "76152", "7616", "7806", "7907", "8007", "81059", "81060090", "81079", "81089", "81099", "81109", "8302", "83061", "83079", "8309", "8311", "8481", "8482", "8484"]
-    if any(clean_gng.startswith(c) for c in norm_30_codes):
-        return 30
-
     return 0
 
 
-# ------------------------------------------------------------------------------
-# БЛОК 2: Расчет расчетного веса и категории по Cədvəl 1 (стр. 9)
-# ------------------------------------------------------------------------------
 def calculate_chargeable_weight(
     fact_weight: float, 
-    gng_code: str = "", 
+    gng_code = "", 
     wagon_type: str = "", 
     transporter_axles: int = 0
 ) -> dict:
-    """
-    Рассчитывает расчетный тоннаж и категорию веса строго по Cədvəl 1 (стр. 9).
-    """
     w_type = str(wagon_type or "").strip().lower()
     fact_w = float(fact_weight or 0.0)
 
-    # 1. Почтово-пассажирские вагоны -> фиксировано 66 тонн
-    clean_gng_raw = re.sub(r'\D', '', str(gng_code or ""))
-    if clean_gng_raw == "99910000" or "passenger" in w_type or "пассажир" in w_type:
+    # 1. Почтово-пассажирские вагоны -> 66 тонн
+    clean_gng = re.sub(r'\D', '', str(gng_code if gng_code is not None else ""))
+    if clean_gng == "99910000" or "passenger" in w_type or "пассажир" in w_type:
         return {"chargeable_tons": 66, "min_weight_norm": 66, "weight_category": 25}
 
-    # 2. Транспортеры -> минимум 5 тонн на ось вагона
+    # 2. Транспортеры
     if transporter_axles in [4, 6, 8]:
         min_norm = transporter_axles * 5
         chargeable = math.ceil(max(fact_w, min_norm))
         return {"chargeable_tons": chargeable, "min_weight_norm": min_norm, "weight_category": 60}
 
-    # 3. Автомобилевозы / Автовозы -> расчет по фактическому весу без применения нормативной планки
+    # 3. Автовозы
     if w_type in ["autocar", "two_tier_car_platform"]:
         chargeable_tons = math.ceil(fact_w) if fact_w > 0 else 0
         return {"chargeable_tons": chargeable_tons, "min_weight_norm": 0, "weight_category": 10}
 
-    # 4. Проверка минимальной нормы загрузки со стр. 11-12
+    # 4. Проверка минимальной нормы (передаем исходное gng_code)
     min_norm = get_min_loading_norm(gng_code)
     
     if min_norm > 0:
@@ -96,7 +77,7 @@ def calculate_chargeable_weight(
     else:
         chargeable_tons = math.ceil(fact_w)
 
-    # 5. Определение весовой категории (Cədvəl 1, стр. 9)
+    # 5. Определение весовой категории
     if chargeable_tons <= 12:
         weight_category = 10
     elif chargeable_tons <= 16:
