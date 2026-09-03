@@ -279,20 +279,20 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             nlu_res = normalize_nlu_stations(nlu_res, raw_text=current_input)
             st.session_state.nlu_res = nlu_res
 
-           # 3. Фильтрация параметров перед передачей в calculator.py
-valid_keys = {
-    "from_station", "to_station", "from_station_code", "to_station_code",
-    "gng_code", "gng_name", "fact_weight", "wagon_type", "shipment_type",
-    "is_empty_wagon", "is_private_wagon", "is_round_trip", "wagon_axles",
-    "distance_km"
-}
-calc_params = {k: v for k, v in nlu_res.items() if k in valid_keys and v is not None}
+            # 3. Фильтрация параметров перед передачей в calculator.py
+            valid_keys = {
+                "from_station", "to_station", "from_station_code", "to_station_code",
+                "gng_code", "gng_name", "fact_weight", "wagon_type", "shipment_type",
+                "is_empty_wagon", "is_private_wagon", "is_round_trip", "wagon_axles",
+                "distance_km"
+            }
+            calc_params = {k: v for k, v in nlu_res.items() if k in valid_keys and v is not None}
 
-calc_res = calculate_freight(
-    **calc_params, 
-    lang=selected_lang, 
-    raw_prompt=current_input
-)
+            calc_res = calculate_freight(
+                **calc_params, 
+                lang=selected_lang, 
+                raw_prompt=current_input
+            )
 
             st.session_state.calc_result = calc_res
             loader_placeholder.empty()
