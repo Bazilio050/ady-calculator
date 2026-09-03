@@ -159,13 +159,13 @@ def calculate_freight(
     cargo_and_wagon_str = f"{cargo_label}, {wagon_type_display}"
     period_str = calculation_date if calculation_date else "2026"
 
-    # Формирование названия таблицы и категории подвижного состава
+    # Формирование названия таблицы ADY
     if current_lang == "RU":
-        tbl_str = f"Таблица {table_num}, {wagon_type_display}"
+        tbl_str = f"Таблица {table_num}"
     elif current_lang == "EN":
-        tbl_str = f"Table {table_num}, {wagon_type_display}"
+        tbl_str = f"Table {table_num}"
     else:
-        tbl_str = f"Cədvəl {table_num}, {wagon_type_display}"
+        tbl_str = f"Cədvəl {table_num}"
         
     base_tariff_display = f"{base_tariff_chf:.2f} CHF ({tbl_str})"
 
