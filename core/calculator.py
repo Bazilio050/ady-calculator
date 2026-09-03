@@ -45,7 +45,7 @@ WAGON_TYPES_LANG = {
     "dumpcar": {"AZ": "Dumpkar (Özüdökən)", "RU": "Думпкар (Самосвал)", "EN": "Dumpcar"},
     "special": {"AZ": "Xüsusi vaqon", "RU": "Специализированный вагон", "EN": "Special wagon"},
     "ref_section": {"AZ": "Refrijerator seksiyası", "RU": "Рефрижераторная секция", "EN": "Refrigerated section"},
-    "autocar": {"AZ": "Avtomobildaşıyan (örtülü)", "RU": "Крытый автомобилевоз", "EN": "Covered car transporter"},
+    "autocar": {"AZ": "avtomobildaşıyan platforma", "RU": "платформа-автомобилевоз", "EN": "car-carrying platform"},
     "two_tier_car_platform": {"AZ": "İkimərtəbəli avtomobildaşıyan platforma", "RU": "Двухъярусная платформа-автомобилевоз", "EN": "Two-tier car-carrying platform"},
 }
 
