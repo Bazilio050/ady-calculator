@@ -12,9 +12,15 @@ def get_min_loading_norm(gng_code: str) -> int:
     Возвращает минимальную норму загрузки согласно Тарифной политике ADY (стр. 11-12).
     Если код ГНГ отсутствует в специальных списках, возвращает 0.
     """
-    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
+    raw_str = str(gng_code or "").strip()
+    clean_gng = re.sub(r'\D', '', raw_str)
+    
     if not clean_gng:
         return 0
+
+    # Если код передали как 1001 (4 цифры) или 01001 (5 цифр)
+    if clean_gng.startswith("10") or clean_gng.startswith("010") or clean_gng == "1001":
+        return 60
 
     # 45 тонн — Лесоматериалы (YHN 4403, 4404, 4407)
     if any(clean_gng.startswith(prefix) for prefix in ["4403", "4404", "4407"]):
@@ -22,7 +28,7 @@ def get_min_loading_norm(gng_code: str) -> int:
 
     # 60 тонн — Уголь, Руда, Чугун, Удобрения, Сахар, Мука, Зерно, Черные металлы
     if any(clean_gng.startswith(prefix) for prefix in [
-        "2701", "2702", "7201", "1701", "1101", "1102", "1103", "10", "1107"
+        "2701", "2702", "7201", "1701", "1101", "1102", "1103", "1107"
     ]):
         return 60
     if clean_gng.startswith("72") and not clean_gng.startswith("7204"):
@@ -74,7 +80,7 @@ def calculate_chargeable_weight(
     """
     Рассчитывает расчетный тоннаж и категорию веса строго по Cədvəl 1 (стр. 9).
     """
-    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
+    clean_gng = re.sub(r'\D', '', str(gng_code or "")).strip()
     w_type = str(wagon_type or "").strip().lower()
     fact_w = float(fact_weight or 0.0)
 
@@ -94,7 +100,7 @@ def calculate_chargeable_weight(
         return {"chargeable_tons": chargeable_tons, "min_weight_norm": 0, "weight_category": 10}
 
     # 4. Проверка минимальной нормы загрузки со стр. 11-12
-    min_norm = get_min_loading_norm(clean_gng)
+    min_norm = get_min_loading_norm(gng_code)
     
     if min_norm > 0:
         chargeable_tons = math.ceil(max(fact_w, min_norm))
