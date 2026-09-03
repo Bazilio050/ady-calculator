@@ -120,3 +120,32 @@ def select_tariff_table(
         return {"table": "4", "column": 1}
     else:
         return {"table": "3", "column": 1}
+
+    # ------------------------------------------------------------------------------
+    # Адаптер для совместимости с core/calculator.py
+    # ------------------------------------------------------------------------------
+    def select_tariff_table_and_column(
+        gng_code: str = "",
+        wagon_type: str = "universal",
+        shipment_type: str = "transit",
+        is_empty_wagon: bool = False,
+        fact_weight: float = 0.0,
+        wagon_axles: int = 4
+    ) -> dict:
+        """
+        Адаптер вызова выбора тарифной таблицы для calculator.py.
+        """
+        res = select_tariff_table(
+            wagon_category=wagon_type,
+            shipment_type=shipment_type,
+            is_empty_inventory=is_empty_wagon,
+            gng_code=gng_code,
+            fact_weight=fact_weight
+        )
+    
+        return {
+            "table_number": str(res.get("table", "5")),
+            "column": res.get("column", 1)
+        }
+
+
