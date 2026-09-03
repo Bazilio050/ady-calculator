@@ -166,7 +166,7 @@ def calculate_freight(
     total_multiplier = coeff_data["total_multiplier"]
     coeffs_list = coeff_data["coefficients_list"]
 
-    # --------------------------------------------------------------------------
+   # --------------------------------------------------------------------------
     # БЛОК 8: Математический расчет (Расчет ставки за 1 тонну в USD)
     # --------------------------------------------------------------------------
     is_per_wagon_flat_rate = (table_num == "5" and column_num in [2, 4, 6])
@@ -174,13 +174,13 @@ def calculate_freight(
     if is_per_wagon_flat_rate:
         final_tariff_chf = base_tariff_chf * total_multiplier
         final_tariff_usd = final_tariff_chf / chf_rate
-        calc_weight = max(chargeable_weight, 1.0)
+        calc_weight = max(chargeable_tons, 1.0)
         usd_per_ton = final_tariff_usd / calc_weight
         total_usd_wagon = final_tariff_usd
     else:
         final_tariff_chf = base_tariff_chf * total_multiplier
         usd_per_ton = final_tariff_chf / chf_rate
-        calc_weight = chargeable_weight
+        calc_weight = chargeable_tons
         total_usd_wagon = usd_per_ton * calc_weight
 
     # --------------------------------------------------------------------------
