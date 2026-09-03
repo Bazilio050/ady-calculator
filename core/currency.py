@@ -70,13 +70,34 @@ def get_chf_to_usd_rate(target_date_str: str = None) -> float:
 # ------------------------------------------------------------------------------
 def get_formatted_currency_display(target_date_str: str = None) -> dict:
     """
-    Возвращает официальный коэффициент пересчета ADY для вывода в интерфейсе.
+    Возвращает скомпонованную строку курса USD/CHF с указанием периода действия.
     """
-    divider_rate = get_usd_chf_rate(target_date_str)
+    if not target_date_str:
+        target_date = datetime.now().date()
+    else:
+        try:
+            target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            target_date = datetime.now().date()
+
+    divider_rate = 0.79
+    period_str = ""
+
+    # Ищем соответствие периода в таблице FX_RATES
+    for item in FX_RATES:
+        s_date = datetime.strptime(item["start"], "%Y-%m-%d").date()
+        e_date = datetime.strptime(item["end"], "%Y-%m-%d").date()
+        if s_date <= target_date <= e_date:
+            divider_rate = item["rate"]
+            # Форматируем период вида "01.07.2026 - 30.09.2026"
+            period_str = f"{s_date.strftime('%d.%m.%Y')} - {e_date.strftime('%d.%m.%Y')}"
+            break
+
+    if not period_str:
+        period_str = "2026"
 
     return {
         "divider_rate": divider_rate,
-        "ticker_chf_usd": "Курс USD/CHF (ADY)",
-        "display_chf_usd": f"0.79 (1 USD = {divider_rate} CHF)",
-        "display_usd_chf": f"{divider_rate}"
+        "ticker_chf_usd": "USD/CHF",
+        "display_chf_usd": f"1 USD = {divider_rate} CHF ({period_str})"
     }
