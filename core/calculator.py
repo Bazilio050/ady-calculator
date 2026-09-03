@@ -11,42 +11,7 @@ from core.coefficients import get_applicable_coefficients
 from core.currency import get_chf_usd_rate
 from core.weight import get_weight_display_info
 from data.stations_mapping import format_station_display
-
-
-# ==============================================================================
-# СПРАВОЧНИКИ ЛОКАЛИЗАЦИИ И ПЕРЕВОДОВ (UI TRANSLATION DICTIONARIES)
-# ==============================================================================
-
-SHIPMENT_TYPES_LANG = {
-    "TRANSIT": {"AZ": "Tranzit", "RU": "Транзит", "EN": "Transit"},
-    "IMPORT": {"AZ": "İdxal", "RU": "Импорт", "EN": "Import"},
-    "EXPORT": {"AZ": "İxrac", "RU": "Экспорт", "EN": "Export"},
-    "LOCAL": {"AZ": "Daxili", "RU": "Местное", "EN": "Local"}
-}
-
-WAGON_TYPES_LANG = {
-    "universal": {"AZ": "Universal vaqon", "RU": "Универсальный вагон", "EN": "Universal wagon"},
-    "covered": {"AZ": "Örtülü vaqon", "RU": "Крытый вагон", "EN": "Covered wagon"},
-    "open": {"AZ": "Yarımvaqon", "RU": "Полувагон", "EN": "Gondola wagon"},
-    "platform": {"AZ": "Platforma", "RU": "Платформа", "EN": "Flatcar"},
-    "fitting_platform": {"AZ": "Fiting platforması", "RU": "Фитинговая платформа", "EN": "Fitting flatcar"},
-    "cistern": {"AZ": "Çən vaqonu", "RU": "Цистерна", "EN": "Tank wagon"},
-    "refr": {"AZ": "Refrijerator", "RU": "Рефрижератор", "EN": "Refrigerated wagon"},
-    "thermos": {"AZ": "Termos vaqon", "RU": "Вагон-термос", "EN": "Thermos wagon"},
-    "hopper": {"AZ": "Xopper vaqonu", "RU": "Хоппер", "EN": "Hopper wagon"},
-    "grain": {"AZ": "Taxıldaşıyan (Xopper)", "RU": "Зерновоз (Хоппер)", "EN": "Grain hopper"},
-    "cement": {"AZ": "Sementdaşıyan", "RU": "Цементовоз", "EN": "Cement hopper"},
-    "fertilizer": {"AZ": "Gübrədaşıyan", "RU": "Удобровоз / Минераловоз", "EN": "Fertilizer hopper"},
-    "pellet": {"AZ": "Aqlomerat/Həbdaşıyan", "RU": "Окатышевоз", "EN": "Pellet hopper"},
-    "car_transporter": {"AZ": "Avtomobildaşıyan", "RU": "Автомобилевоз", "EN": "Car transporter"},
-    "cattle": {"AZ": "Mal-qara vaqonu", "RU": "Скотовоз", "EN": "Cattle wagon"},
-    "transporter": {"AZ": "Nəqledici (Transporter)", "RU": "Транспортер", "EN": "Heavy transporter"},
-    "dumpcar": {"AZ": "Dumpkar (Özüdökən)", "RU": "Думпкар (Самосвал)", "EN": "Dumpcar"},
-    "special": {"AZ": "Xüsusi vaqon", "RU": "Специализированный вагон", "EN": "Special wagon"},
-    "ref_section": {"AZ": "Refrijerator seksiyası", "RU": "Рефрижераторная секция", "EN": "Refrigerated section"},
-    "autocar": {"AZ": "avtomobildaşıyan platforma", "RU": "платформа-автомобилевоз", "EN": "car-carrying platform"},
-    "two_tier_car_platform": {"AZ": "İkimərtəbəli avtomobildaşıyan platforma", "RU": "Двухъярусная платформа-автомобилевоз", "EN": "Two-tier car-carrying platform"},
-}
+from data.translations import get_shipment_type_name, get_wagon_type_name
 
 
 # ==============================================================================
@@ -112,7 +77,8 @@ def calculate_freight(
     weight_data = get_weight_display_info(
         fact_weight=fact_weight,
         gng_code=gng_code,
-        wagon_type=wagon_type
+        wagon_type=wagon_type,
+        lang=current_lang
     )
     
     chargeable_tons = weight_data["chargeable_tons"]     
@@ -183,9 +149,8 @@ def calculate_freight(
     # --------------------------------------------------------------------------
     # БЛОК 9: Локализация и отображение
     # --------------------------------------------------------------------------
-    ship_type_key = shipment_type.upper()
-    shipment_type_display = SHIPMENT_TYPES_LANG.get(ship_type_key, {}).get(current_lang, ship_type_key)
-    wagon_type_display = WAGON_TYPES_LANG.get(wagon_type.lower(), {}).get(current_lang, wagon_type)
+    shipment_type_display = get_shipment_type_name(shipment_type, lang=current_lang)
+    wagon_type_display = get_wagon_type_name(wagon_type, lang=current_lang)
 
     dist_unit = "км" if current_lang == "RU" else "km"
     weight_unit = "т" if current_lang == "RU" else "t"
