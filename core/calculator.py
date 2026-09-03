@@ -109,7 +109,7 @@ def calculate_freight(
         raise ValueError("fx_rate_not_found")
 
     # --------------------------------------------------------------------------
-    # БЛОК 4: Расчет веса, весовой категории и нормы загрузки через core/weight.py
+    # БЛОК 4: Сначала определяем нормативный вес и весовую категорию (core/weight.py)
     # --------------------------------------------------------------------------
     transporter_axles = kwargs.get("transporter_axles", 0) or kwargs.get("wagon_axles", 0)
     weight_data = get_weight_display_info(
@@ -119,25 +119,25 @@ def calculate_freight(
         transporter_axles=transporter_axles
     )
     
-    chargeable_weight = weight_data["chargeable_tons"]
-    weight_cat = weight_data["weight_category"]
-    weight_info_display = weight_data["weight_info_str"]
+    chargeable_tons = weight_data["chargeable_tons"]     # Получит 60
+    weight_cat = weight_data["weight_category"]         # Категория 60
+    weight_info_display = weight_data["weight_info_str"] # "45.0 т (расчетный: 60.0 т)"
 
     # --------------------------------------------------------------------------
-    # БЛОК 5: Определение тарифной таблицы и номера колонки ADY Policy 2026
+    # БЛОК 5: Затем подбираем таблицу ADY 2026, передавая РАСЧЕТНЫЙ вес (chargeable_tons)
     # --------------------------------------------------------------------------
     table_info = select_tariff_table(
         wagon_category=wagon_type,
         shipment_type=shipment_type,
         is_empty_inventory=False,
         gng_code=gng_code,
-        fact_weight=chargeable_weight
+        fact_weight=chargeable_tons
     )
     table_num = str(table_info["table"])
     column_num = int(table_info["column"])
 
     # --------------------------------------------------------------------------
-    # БЛОК 6: Поиск базовой ставки тарифной сетки по расстоянию и весовой категории
+    # БЛОК 6: Ищем базовую ставку по нормативной категории (weight_cat)
     # --------------------------------------------------------------------------
     base_tariff_chf = get_base_rate_from_table(
         table_number=table_num,
@@ -145,7 +145,6 @@ def calculate_freight(
         weight_category=weight_cat,
         column_number=column_num
     )
-
     # --------------------------------------------------------------------------
     # БЛОК 7: Расчет применимых коэффициентов ADY (повышающие / понижающие)
     # --------------------------------------------------------------------------
