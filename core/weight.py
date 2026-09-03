@@ -44,11 +44,13 @@ def get_min_loading_norm(gng_code) -> int:
     return 0
 
 
+# ------------------------------------------------------------------------------
+# БЛОК 2: Расчет расчетного веса и категории по Cədvəl 1 (без транспортеров)
+# ------------------------------------------------------------------------------
 def calculate_chargeable_weight(
     fact_weight: float, 
     gng_code = "", 
-    wagon_type: str = "", 
-    transporter_axles: int = 0
+    wagon_type: str = ""
 ) -> dict:
     w_type = str(wagon_type or "").strip().lower()
     fact_w = float(fact_weight or 0.0)
@@ -58,18 +60,12 @@ def calculate_chargeable_weight(
     if clean_gng == "99910000" or "passenger" in w_type or "пассажир" in w_type:
         return {"chargeable_tons": 66, "min_weight_norm": 66, "weight_category": 25}
 
-    # 2. Транспортеры
-    if transporter_axles in [4, 6, 8]:
-        min_norm = transporter_axles * 5
-        chargeable = math.ceil(max(fact_w, min_norm))
-        return {"chargeable_tons": chargeable, "min_weight_norm": min_norm, "weight_category": 60}
-
-    # 3. Автовозы
+    # 2. Автовозы
     if w_type in ["autocar", "two_tier_car_platform"]:
         chargeable_tons = math.ceil(fact_w) if fact_w > 0 else 0
         return {"chargeable_tons": chargeable_tons, "min_weight_norm": 0, "weight_category": 10}
 
-    # 4. Проверка минимальной нормы (передаем исходное gng_code)
+    # 3. Проверка минимальной нормы по ГНГ (стр. 11-12)
     min_norm = get_min_loading_norm(gng_code)
     
     if min_norm > 0:
@@ -77,7 +73,7 @@ def calculate_chargeable_weight(
     else:
         chargeable_tons = math.ceil(fact_w)
 
-    # 5. Определение весовой категории
+    # 4. Определение весовой категории (Cədvəl 1, стр. 9)
     if chargeable_tons <= 12:
         weight_category = 10
     elif chargeable_tons <= 16:
@@ -114,19 +110,19 @@ def calculate_chargeable_weight(
 def get_weight_display_info(
     fact_weight: float, 
     gng_code: str = "", 
-    wagon_type: str = "", 
-    transporter_axles: int = 0
+    wagon_type: str = ""
 ) -> dict:
     """
-    Возвращает структуру данных веса и отформатированную строку для таблицы параметров в UI.
+    Возвращает структуру данных веса и отформатированную строку для UI.
     """
-    calc = calculate_chargeable_weight(fact_weight, gng_code, wagon_type, transporter_axles)
+    calc = calculate_chargeable_weight(fact_weight, gng_code, wagon_type)
     
     fact_w = float(fact_weight or 0.0)
     chargeable = calc["chargeable_tons"]
+    min_norm = calc["min_weight_norm"]
     
-    # Формирование информативной строки при доначислении до минимальной нормы
-    if chargeable > fact_w and fact_w > 0:
+    # Формирование строки доначисления до минимальной нормы
+    if min_norm > 0 and fact_w < min_norm:
         weight_info_str = f"{fact_w:.1f} т (расчетный: {chargeable:.1f} т)"
     else:
         weight_info_str = f"{fact_w:.1f} т" if fact_w > 0 else f"{chargeable:.1f} т"
@@ -134,7 +130,7 @@ def get_weight_display_info(
     return {
         "fact_weight": fact_w,
         "chargeable_tons": chargeable,
-        "min_weight_norm": calc["min_weight_norm"],
+        "min_weight_norm": min_norm,
         "weight_category": calc["weight_category"],
         "weight_info_str": weight_info_str
     }
