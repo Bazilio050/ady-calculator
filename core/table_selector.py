@@ -56,24 +56,15 @@ def select_tariff_table(
     """
     Определяет номер тарифной таблицы (3, 4, 5, 6, 7) и номер колонки ADY 2026.
     """
-    # --------------------------------------------------------------------------
-    # БЛОК 2.1: Проверка порожнего парка инвентарных вагонов
-    # --------------------------------------------------------------------------
     if is_empty_inventory:
         return {"table": "FREE_INVENTORY", "column": 1}
 
     clean_gng = re.sub(r'\D', '', str(gng_code or ""))
     w_type = str(wagon_category or "").strip().lower()
 
-    # --------------------------------------------------------------------------
-    # БЛОК 2.2: Почтовые отправления и пассажирские вагоны (п. 3.1.2.5)
-    # --------------------------------------------------------------------------
     if clean_gng == "99910000" or "passenger" in w_type or "пассажир" in w_type:
         return {"table": "7", "column": 6}
 
-    # --------------------------------------------------------------------------
-    # БЛОК 2.3: Среднетоннажные контейнеры (Таблица 7, Колонки 7-10)
-    # --------------------------------------------------------------------------
     if is_medium_container:
         if not is_container_empty:
             col = 7 if container_tonnage == 3 else 8
@@ -81,38 +72,25 @@ def select_tariff_table(
             col = 9 if container_tonnage == 3 else 10
         return {"table": "7", "column": col}
 
-    # --------------------------------------------------------------------------
-    # БЛОК 2.4: Наливные грузы в цистернах (Таблица 6)
-    # --------------------------------------------------------------------------
     if any(k in w_type for k in ["цистерна", "tank", "çənd", "bunker", "бункер"]):
         col_num = get_table_6_column(gng_code)
         return {"table": "6", "column": col_num}
 
-    # --------------------------------------------------------------------------
-    # БЛОК 2.5: Специализированный подвижной состав и автовозы (Таблица 5)
-    # --------------------------------------------------------------------------
-    # Двухъярусная платформа-автомобилевоз -> Таблица 5, Колонка 6
     if "two_tier_car_platform" in w_type or "двухъярусная" in w_type or "ikimərtəbəli" in w_type:
         return {"table": "5", "column": 6}
 
-    # Крытый специализированный автомобилевоз -> Таблица 5, Колонка 2 (или 4 для порожнего)
     if any(k in w_type for k in ["autocar", "car_transporter", "автовоз", "автомобилевоз"]):
         col = 4 if fact_weight <= 0 else 2
         return {"table": "5", "column": col}
 
-    # Изотермические вагоны, рефсекции, ARV и термосы
     if any(k in w_type for k in ["ref_section", "ref", "arv", "арв", "реф", "thermos", "термос"]):
         if "thermos" in w_type or "термос" in w_type:
             col = 4 if fact_weight < 25.0 else 5
             return {"table": "5", "column": col}
         else:
-            # ARV и Рефрижераторные секции
             col = 2 if fact_weight < 25.0 else 3
             return {"table": "5", "column": col}
 
-    # --------------------------------------------------------------------------
-    # БЛОК 2.6: Универсальные вагоны (Таблицы 3 и 4)
-    # --------------------------------------------------------------------------
     mode = str(shipment_type or "").strip().lower()
     is_transit = any(k in mode for k in ["tranzit", "transit", "транзит"])
 
@@ -121,31 +99,32 @@ def select_tariff_table(
     else:
         return {"table": "3", "column": 1}
 
-    # ------------------------------------------------------------------------------
-    # Адаптер для совместимости с core/calculator.py
-    # ------------------------------------------------------------------------------
-    def select_tariff_table_and_column(
-        gng_code: str = "",
-        wagon_type: str = "universal",
-        shipment_type: str = "transit",
-        is_empty_wagon: bool = False,
-        fact_weight: float = 0.0,
-        wagon_axles: int = 4
-    ) -> dict:
-        """
-        Адаптер вызова выбора тарифной таблицы для calculator.py.
-        """
-        res = select_tariff_table(
-            wagon_category=wagon_type,
-            shipment_type=shipment_type,
-            is_empty_inventory=is_empty_wagon,
-            gng_code=gng_code,
-            fact_weight=fact_weight
-        )
-    
-        return {
-            "table_number": str(res.get("table", "5")),
-            "column": res.get("column", 1)
-        }
 
+# ------------------------------------------------------------------------------
+# БЛОК 3: Адаптер (вынесен на верхний уровень файла)
+# ------------------------------------------------------------------------------
+def select_tariff_table_and_column(
+    gng_code: str = "",
+    wagon_type: str = "universal",
+    shipment_type: str = "transit",
+    is_empty_wagon: bool = False,
+    is_empty_inventory: bool = False,
+    fact_weight: float = 0.0,
+    wagon_axles: int = 4
+) -> dict:
+    """
+    Адаптер вызова выбора тарифной таблицы для calculator.py.
+    """
+    empty_flag = is_empty_inventory or is_empty_wagon
+    res = select_tariff_table(
+        wagon_category=wagon_type,
+        shipment_type=shipment_type,
+        is_empty_inventory=empty_flag,
+        gng_code=gng_code,
+        fact_weight=fact_weight
+    )
 
+    return {
+        "table_number": str(res.get("table", "5")),
+        "column": res.get("column", 1)
+    }
