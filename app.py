@@ -255,6 +255,7 @@ audio_file = st.audio_input(t["audio_label"])
 # ------------------------------------------------------------------------------
 # БЛОК 6: Обработка кнопки расчета и вызов бизнес-логики
 # ------------------------------------------------------------------------------
+# CHANGED BY AI ARCHITECT [Гарантированная передача selected_lang в NLU и Calculator]
 if st.button(t["calc_btn"], type="primary", use_container_width=False):
     current_input = st.session_state.get("main_input_area", user_input)
     if not current_input.strip():
@@ -272,24 +273,20 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
         """, unsafe_allow_html=True)
 
         try:
-            # 1. Распознавание через gemini_parser
+            # 1. Распознавание через gemini_parser с указанием языка интерфейса
             nlu_res = parse_user_request(current_input, lang=selected_lang)
 
             # 2. Нормализация станций
             nlu_res = normalize_nlu_stations(nlu_res, raw_text=current_input)
             st.session_state.nlu_res = nlu_res
 
-            # 3. Фильтрация разрешенных параметров для calculator.py
-            valid_keys = {
-                "from_station", "to_station", "from_station_code", "to_station_code",
-                "gng_code", "gng_name", "fact_weight", "wagon_type", "shipment_type",
-                "is_empty_wagon", "is_private_wagon", "is_round_trip", "wagon_axles",
-                "transporter_axles", "ref_cars_count", "distance_km"
+            # 3. Очистка параметров от служебных ключей
+            calc_params = {
+                k: v for k, v in nlu_res.items() 
+                if v is not None and k not in ["lang", "raw_prompt"]
             }
-            # Пропускаем абсолютно все спарсенные ключи, чтобы ничего не терялось по дороге:
-            calc_params = {k: v for k, v in nlu_res.items() if v is not None and k not in ["lang", "raw_prompt"]}
 
-            # 4. Вызов расчета
+            # 4. Вызов расчета с явной передачей выбранного языка selected_lang
             calc_res = calculate_freight(
                 **calc_params, 
                 lang=selected_lang, 
