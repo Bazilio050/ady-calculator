@@ -231,7 +231,7 @@ def calculate_freight(
     if is_empty_wagon:
         weight_info_str = "0 т (Порожний)" if current_lang == "RU" else ("0 t (Boş)" if current_lang == "AZ" else "0 t (Empty)")
     else:
-        weight_info_str = weight_info_display
+        weight_info_str = weight_info_display  # <-- ИСПОЛЬЗУЕМ СТРОКУ ИЗ weight.py
 
     # Формирование строки математической формулы расчета
     coeffs_formula_str = " * ".join([f"{c['value']}" for c in coeffs_list]) if coeffs_list else "1.00"
