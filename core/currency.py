@@ -47,9 +47,10 @@ def get_usd_chf_rate(target_date_str: str = None) -> float:
         if s_date <= target_date <= e_date:
             return item["rate"]
 
-    # Резервный коэффициент по умолчанию для 2026 года
     return 0.79
 
+# Псевдоним (алиас) для обратной совместимости со старым кодом в calculator.py
+get_chf_usd_rate = get_usd_chf_rate
 
 # ------------------------------------------------------------------------------
 # БЛОК 3: Функция получения прямых и обратных курсов конвертации
@@ -57,13 +58,12 @@ def get_usd_chf_rate(target_date_str: str = None) -> float:
 def get_chf_to_usd_rate(target_date_str: str = None) -> float:
     """
     Возвращает прямой курс стоимости 1 CHF в USD (1 CHF = X USD).
-    Пример: при ставке ADY 0.79 вернет 1 / 0.79 = 1.265823...
+    Пример: при ставке ADY 0.79 вернет 1 / 0.79 = 1.2658
     """
     base_rate = get_usd_chf_rate(target_date_str)
     if base_rate <= 0:
         return 1.2658
     return round(1.0 / base_rate, 4)
-
 
 # ------------------------------------------------------------------------------
 # БЛОК 4: Функция форматирования строки курса для интерфейса (UI)
