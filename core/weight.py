@@ -10,7 +10,6 @@ import re
 def get_min_loading_norm(gng_code: str) -> int:
     """
     Возвращает минимальную норму загрузки согласно Тарифной политике ADY (стр. 11-12).
-    Норма привязана к коду ГНГ и действует для любых типов вагонов.
     """
     raw_str = str(gng_code or "").strip()
     clean_gng = re.sub(r'\D', '', raw_str)
@@ -18,31 +17,27 @@ def get_min_loading_norm(gng_code: str) -> int:
     if not clean_gng:
         return 0
 
-    # --------------------------------------------------------------------------
-    # ПРИОРИТЕТНЫЕ 2-ЗНАЧНЫЕ И 4-ЗНАЧНЫЕ ГРУППЫ ГНГ (ADY Policy стр. 11-12)
-    # --------------------------------------------------------------------------
-
-    # Зерновые культуры (ГНГ 1001, 1002, группа 10) — ВСЕГДА 60 тонн для любого вагона
-    if clean_gng.startswith("10") or clean_gng.startswith("010") or clean_gng == "1001":
+    # 1. Зерновая группа (ГНГ 1001, 1002, 1005 и т.д.) — СТРОГО 60 тонн
+    if clean_gng.startswith("10") or clean_gng == "1001":
         return 60
 
-    # Лесоматериалы (4403, 4404, 4407) — 45 тонн
+    # 2. Лесоматериалы (4403, 4404, 4407) — 45 тонн
     if any(clean_gng.startswith(p) for p in ["4403", "4404", "4407"]):
         return 45
 
-    # Черные металлы (Группа 72, кроме лома 7204) — 60 тонн
-    if (clean_gng.startswith("72") or clean_gng.startswith("072")) and not clean_gng.startswith("7204"):
+    # 3. Черные металлы (Группа 72, кроме лома 7204) — 60 тонн
+    if clean_gng.startswith("72") and not clean_gng.startswith("7204"):
         return 60
 
-    # Удобрения (Группа 31, кроме 3101) — 60 тонн
-    if (clean_gng.startswith("31") or clean_gng.startswith("031")) and not clean_gng.startswith("3101"):
+    # 4. Минеральные удобрения (Группа 31, кроме 3101) — 60 тонн
+    if clean_gng.startswith("31") and not clean_gng.startswith("3101"):
         return 60
 
-    # Уголь, Руда, Чугун, Сахар, Мука — 60 тонн
+    # 5. Уголь, Руда, Сахар, Мука — 60 тонн
     if any(clean_gng.startswith(p) for p in ["2701", "2702", "7201", "1701", "1101", "1102", "1103", "1107"]):
         return 60
 
-    # Хлопок, Лом черных металлов — 50 тонн
+    # 6. Хлопок, Лом черных металлов — 50 тонн
     if any(clean_gng.startswith(p) for p in ["14042", "5201", "5202", "5203", "7204"]):
         return 50
 
