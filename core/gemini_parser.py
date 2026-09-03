@@ -18,7 +18,7 @@ def get_api_key() -> str:
     
     try:
         import streamlit as st
-        if "GEMINI_API_KEY" in st.secrets:
+        if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
             return st.secrets["GEMINI_API_KEY"]
     except Exception:
         pass
@@ -64,6 +64,7 @@ SYSTEM_PROMPT = """
    - Если СПС/МПС ЯВНО НЕ УКАЗАНО в тексте -> ПО УМОЛЧАНИЮ "is_private_wagon": false (считать как МПС).
 
 6. Вид перевозки (shipment_type):
+   - Если погранпереходы находятся на границе (например, с Яламы на БК или наоборот) и перевозка сквозная -> по умолчанию "shipment_type": "transit".
    - Если в тексте есть слово "импорт", "import", "idhal", "idxal" -> возвращай "shipment_type": "import".
    - Если в тексте есть слово "экспорт", "export", "ixrac" -> возвращай "shipment_type": "export".
    - Если в тексте есть слово "транзит", "transit", "tranzit" -> возвращай "shipment_type": "transit".
@@ -76,13 +77,6 @@ SYSTEM_PROMPT = """
    - "arv" — автономные рефрижераторные вагоны (АРВ / ARV / автономный реф).
    - "thermos" — вагон-термос / вагон-ледник / ИВ / ВТ.
    - "ref_section" — рефрижераторная секция (РС / рефсекция).
-
-Примеры для автомобилевозов:
-Запрос: "Ялама БК 8703 35т АВТОМОБИЛЕВОЗ СПС"
--> "wagon_type": "autocar"
-
-Запрос: "Ялама БК 8703 35т АВТОМОБИЛЕВОЗ ДВУХЯРУСНЫЙ СПС"
--> "wagon_type": "two_tier_car_platform"
 
 Формат ответа (СТРОГО JSON):
 {
@@ -125,13 +119,9 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     max_retries = 3
     current_lang = (lang or "AZ").upper()
     
-    # --------------------------------------------------------------------------
-    # БЛОК 4.1: Цикл обращения к API с механизмом Retry
-    # --------------------------------------------------------------------------
     for attempt in range(max_retries):
         try:
             client = genai.Client(api_key=api_key)
-            
             contents_text = f"Текущий язык интерфейса: {current_lang}\nЗапрос пользователя: {user_prompt}"
 
             response = client.models.generate_content(
@@ -157,9 +147,6 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
 
     parsed_data["lang"] = current_lang
 
-    # --------------------------------------------------------------------------
-    # БЛОК 4.2: Автоподстановка параметров для порожних вагонов
-    # --------------------------------------------------------------------------
     if parsed_data.get("is_empty_wagon"):
         parsed_data["gng_code"] = "99220000"
         parsed_data["gng_name"] = EMPTY_WAGON_NAMES.get(current_lang, "Boş vaqon")
@@ -169,5 +156,3 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
             parsed_data["fact_weight"] = 0.0
 
     return parsed_data
-
-  
