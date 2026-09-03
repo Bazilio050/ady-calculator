@@ -5,9 +5,10 @@ import os
 
 WEIGHT_COLUMNS = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
 
+
 def get_base_rate_from_table(
-    table_number: str, 
-    distance_km: int, 
+    table_number: str,
+    distance_km: int,
     weight_category: int = 60,
     column_number: int = 1,
     data_dir: str = "data"
@@ -23,22 +24,19 @@ def get_base_rate_from_table(
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Файл тарифной сетки {file_name} не найден по пути {file_path}")
 
-    # Индекс 0 в parts — это всегда диапазон расстояний ("min-max").
-# Соответственно, первая колонка со ставкой всегда находится по индексу 1.
-
-if str(table_number) in ["5", "6", "7"]:
-    # Если column_number передается как 1-based номер тарифной колонки (1, 2, 3...):
-    target_col_idx = column_number  # parts[1] станет 1-й тарифной колонкой
-else:
-    # Защита диапазона веса [10; 60]
-    safe_weight = max(10, min(60, weight_category))
-    col_weight = 60
-    for w in WEIGHT_COLUMNS:
-        if safe_weight <= w:
-            col_weight = w
-            break
-    # 10 тонн -> index 0 -> parts[1]
-    target_col_idx = WEIGHT_COLUMNS.index(col_weight) + 1
+    # Логика выбора колонки:
+    # Для Таблиц 5, 6, 7 — явно переданный column_number
+    # Для Таблиц 3, 4 — расчет по весовой категории
+    if str(table_number) in ["5", "6", "7"]:
+        target_col_idx = column_number
+    else:
+        safe_weight = max(10, min(60, weight_category))
+        col_weight = 60
+        for w in WEIGHT_COLUMNS:
+            if safe_weight <= w:
+                col_weight = w
+                break
+        target_col_idx = WEIGHT_COLUMNS.index(col_weight) + 1
 
     with open(file_path, "r", encoding="utf-8") as f:
         for line in f:
