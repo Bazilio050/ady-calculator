@@ -167,25 +167,28 @@ def calculate_freight(
         tbl_str = f"Cədvəl {table_num}, Sütun {column_num}"
     base_tariff_display = f"{base_tariff_chf:.2f} CHF ({tbl_str})"
 
-    st_from_name = dist_info.get("from_station_name") or dist_info.get("from_station") or from_station
-    st_from_code = (
-        dist_info.get("from_station_code") or 
-        dist_info.get("from_code") or 
-        dist_info.get("code_from") or 
-        kwargs.get("from_station_code", "")
-    )
-    
-    st_to_name = dist_info.get("to_station_name") or dist_info.get("to_station") or to_station
-    st_to_code = (
-        dist_info.get("to_station_code") or 
-        dist_info.get("to_code") or 
-        dist_info.get("code_to") or 
-        kwargs.get("to_station_code", "")
-    )
+    # Берем готовую отформатированную строку маршрута прямо из dist_info (distance_finder.py)
+    route_display = dist_info.get("route_formatted")
+    if not route_display:
+        st_from_name = dist_info.get("from_station_name") or dist_info.get("from_station") or from_station
+        st_from_code = (
+            dist_info.get("from_station_code") or 
+            dist_info.get("from_code") or 
+            dist_info.get("code_from") or 
+            kwargs.get("from_station_code", "")
+        )
+        
+        st_to_name = dist_info.get("to_station_name") or dist_info.get("to_station") or to_station
+        st_to_code = (
+            dist_info.get("to_station_code") or 
+            dist_info.get("to_code") or 
+            dist_info.get("code_to") or 
+            kwargs.get("to_station_code", "")
+        )
 
-    from_formatted = format_station_display(st_from_name, st_from_code, lang=current_lang)
-    to_formatted = format_station_display(st_to_name, st_to_code, lang=current_lang)
-    route_display = f"{from_formatted} — {to_formatted}"
+        from_formatted = format_station_display(st_from_name, st_from_code, lang=current_lang)
+        to_formatted = format_station_display(st_to_name, st_to_code, lang=current_lang)
+        route_display = f"{from_formatted} — {to_formatted}"
 
     if is_empty_wagon:
         weight_info_str = "0 т (Порожний)" if current_lang == "RU" else ("0 t (Boş)" if current_lang == "AZ" else "0 t (Empty)")
