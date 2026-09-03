@@ -77,17 +77,16 @@ def calculate_freight(
     current_lang = (lang or "AZ").upper()
 
     # --------------------------------------------------------------------------
-    # БЛОК 4: Расчет весовых параметров и нормы загрузки (core/weight.py)
+    # БЛОК 1: Защитная валидация обязательных данных и синонимов станций
     # --------------------------------------------------------------------------
-    weight_data = get_weight_display_info(
-        fact_weight=fact_weight,
-        gng_code=gng_code,
-        wagon_type=wagon_type
-    )
-    
-    chargeable_tons = weight_data["chargeable_tons"]     
-    weight_cat = weight_data["weight_category"]         
-    weight_info_display = weight_data["weight_info_str"]
+    if not is_empty_wagon and not str(gng_code or "").strip():
+        raise ValueError("gng_code_required")
+
+    STATION_ALIASES = {
+        "ТРК": "Ələt-eksp.Türk.",
+    }
+    from_station_clean = STATION_ALIASES.get(from_station, from_station)
+    to_station_clean = STATION_ALIASES.get(to_station, to_station)
 
     # --------------------------------------------------------------------------
     # БЛОК 2: Расчет ж/д расстояния через модуль distance_finder
@@ -110,13 +109,10 @@ def calculate_freight(
     # --------------------------------------------------------------------------
     # БЛОК 4: Расчет весовых параметров и нормы загрузки (core/weight.py)
     # --------------------------------------------------------------------------
-    axles_val = kwargs.get("wagon_axles", 4) or kwargs.get("transporter_axles", 0)
-    
     weight_data = get_weight_display_info(
         fact_weight=fact_weight,
         gng_code=gng_code,
-        wagon_type=wagon_type,
-        transporter_axles=axles_val  # Исправлено: берем axles_val
+        wagon_type=wagon_type
     )
     
     chargeable_tons = weight_data["chargeable_tons"]     
@@ -226,7 +222,6 @@ def calculate_freight(
     to_formatted = format_station_display(st_to_name, st_to_code, lang=current_lang)
     route_display = f"{from_formatted} — {to_formatted}"
 
-    # ИСПОЛЬЗУЕМ СТРОКУ ИЗ weight.py (с нормой 60т)
     if is_empty_wagon:
         weight_info_str = "0 т (Порожний)" if current_lang == "RU" else ("0 t (Boş)" if current_lang == "AZ" else "0 t (Empty)")
     else:
