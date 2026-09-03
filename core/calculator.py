@@ -77,16 +77,17 @@ def calculate_freight(
     current_lang = (lang or "AZ").upper()
 
     # --------------------------------------------------------------------------
-    # БЛОК 1: Защитная валидация обязательных данных и синонимов станций
+    # БЛОК 4: Расчет весовых параметров и нормы загрузки (core/weight.py)
     # --------------------------------------------------------------------------
-    if not is_empty_wagon and not str(gng_code or "").strip():
-        raise ValueError("gng_code_required")
-
-    STATION_ALIASES = {
-        "ТРК": "Ələt-eksp.Türk.",
-    }
-    from_station_clean = STATION_ALIASES.get(from_station, from_station)
-    to_station_clean = STATION_ALIASES.get(to_station, to_station)
+    weight_data = get_weight_display_info(
+        fact_weight=fact_weight,
+        gng_code=gng_code,
+        wagon_type=wagon_type
+    )
+    
+    chargeable_tons = weight_data["chargeable_tons"]     
+    weight_cat = weight_data["weight_category"]         
+    weight_info_display = weight_data["weight_info_str"]
 
     # --------------------------------------------------------------------------
     # БЛОК 2: Расчет ж/д расстояния через модуль distance_finder
