@@ -66,26 +66,21 @@ SYSTEM_PROMPT = """
    - Если в тексте есть слово "экспорт", "export", "ixrac" -> возвращай "shipment_type": "export".
    - Если в тексте есть слово "транзит", "transit", "tranzit" -> возвращай "shipment_type": "transit".
 
-7. Тип вагона (wagon_type) и структуры рефсекций:
+7. Тип вагона (wagon_type) - СТРОГИЕ ПРАВИЛА РАЗГРАНИЧЕНИЯ:
+   - "autocar" — СТАВЬ ВСЕГДА, если написано "автомобилевоз", "автовоз", "avtomobildaşıyan", ЕСЛИ НЕТ слов "двухъярусный", "2-ярусный", "ikimərtəbəli".
+   - "two_tier_car_platform" — СТАВЬ ТОЛЬКО И ИСКЛЮЧИТЕЛЬНО при наличии слов "двухъярусный", "2-ярусный", "двухэтажный", "ikimərtəbəli".
    - "universal" — крытые, полувагоны, платформы.
    - "tank" — цистерны.
    - "arv" — автономные рефрижераторные вагоны (АРВ / ARV / автономный реф).
    - "thermos" — вагон-термос / вагон-ледник / ИВ / ВТ.
-   - "two_tier_car_platform" — двухъярусный автовоз, двухъярусная платформа, ikimərtəbəli platforma.
-   - "autocar" — автомобилевоз (обычный крытый), автовоз.
    - "ref_section" — рефрижераторная секция (РС / рефсекция).
-     * Извлекай число ГРУЗОВЫХ вагонов в ref_cars_count.
-     * Схемы формата '1+4', '4+1', '4 грузовых и 1 дизель' -> ref_cars_count = 4.
-     * Схемы формата '1+5', '5+1', '5 вагонов' -> ref_cars_count = 5.
-     * Схемы формата '1+6', '6+1' -> ref_cars_count = 6.
-     * Если написано просто "рефсекция" без указания состава -> ref_cars_count = 4.
 
-Примеры распознавания автомобилевозов:
-Запрос: "Ялама БК 8703 35т АВТОМОБИЛИВОЗ ДВУХярусный СПС"
--> "wagon_type": "two_tier_car_platform"
-
+Примеры для автомобилевозов:
 Запрос: "Ялама БК 8703 35т АВТОМОБИЛЕВОЗ СПС"
 -> "wagon_type": "autocar"
+
+Запрос: "Ялама БК 8703 35т АВТОМОБИЛЕВОЗ ДВУХЯРУСНЫЙ СПС"
+-> "wagon_type": "two_tier_car_platform"
 
 Формат ответа (СТРОГО JSON):
 {
@@ -135,7 +130,6 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
         try:
             client = genai.Client(api_key=api_key)
             
-            # Передаем выбранный язык интерфейса прямо в контекст запроса
             contents_text = f"Текущий язык интерфейса: {current_lang}\nЗапрос пользователя: {user_prompt}"
 
             response = client.models.generate_content(
@@ -148,7 +142,7 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
                 )
             )
             parsed_data = json.loads(response.text)
-            break  # Успешный ответ — выходим из цикла retry
+            break
         except Exception as e:
             err_msg = str(e)
             if ("503" in err_msg or "UNAVAILABLE" in err_msg or "overloaded" in err_msg) and attempt < max_retries - 1:
@@ -159,7 +153,6 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
     if not isinstance(parsed_data, dict):
         parsed_data = {}
 
-    # Сохраняем язык
     parsed_data["lang"] = current_lang
 
     # --------------------------------------------------------------------------
