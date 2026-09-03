@@ -115,7 +115,7 @@ def calculate_freight(
         fact_weight=fact_weight,
         gng_code=gng_code,
         wagon_type=wagon_type,
-        transporter_axles=axles_val  # <- Передаем созданную выше axles_val!
+        transporter_axles=axles_val  # Исправлено: берем axles_val
     )
     
     chargeable_tons = weight_data["chargeable_tons"]     
