@@ -236,6 +236,7 @@ st.markdown(f"""
 # ------------------------------------------------------------------------------
 # БЛОК 5: Поля текстового и голосового ввода параметров
 # ------------------------------------------------------------------------------
+# 1. Текстовый ввод
 st.markdown(f"**{t['input_header']}**")
 user_input = st.text_area(
     "", 
@@ -245,9 +246,11 @@ user_input = st.text_area(
     label_visibility="collapsed"
 )
 
+# 2. Разделитель "ИЛИ"
 st.markdown(f'<div class="or-divider">{t["or_text"]}</div>', unsafe_allow_html=True)
 
-audio_file = st.audio_input(t["audio_label"], key="voice_recorder_input")
+# 3. Голосовой ввод
+audio_file = st.audio_input(t["audio_label"])
 
 # ------------------------------------------------------------------------------
 # БЛОК 6: Обработка кнопки расчета и вызов бизнес-логики
@@ -276,16 +279,15 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             nlu_res = normalize_nlu_stations(nlu_res, raw_text=current_input)
             st.session_state.nlu_res = nlu_res
 
-            # 3. Фильтрация разрешенных параметров для calculator.py
+            # 3. Фильтрация параметров перед передачей в calculator.py
             valid_keys = {
                 "from_station", "to_station", "from_station_code", "to_station_code",
                 "gng_code", "gng_name", "fact_weight", "wagon_type", "shipment_type",
                 "is_empty_wagon", "is_private_wagon", "is_round_trip", "wagon_axles",
-                "distance_km"
+                "distance_km", "lang", "raw_prompt"
             }
             calc_params = {k: v for k, v in nlu_res.items() if k in valid_keys and v is not None}
 
-            # Вызов расчете с точной передачей параметров
             calc_res = calculate_freight(
                 **calc_params, 
                 lang=selected_lang, 
@@ -315,7 +317,7 @@ if st.session_state.calc_result:
 
     p1, p2, p3 = data["part1"], data["part2"], data["part3"]
     
-    # 📍 1. Маршрут и условия перевозки (с отступами между названиями и значениями)
+    # 📍 1. Маршрут и условия перевозки
     st.markdown(f"#### 📍 {t['sec1_title']}")
     st.markdown(
         f"| {t['col_param']} | {t['col_val']} |\n"
@@ -328,7 +330,7 @@ if st.session_state.calc_result:
         f"| **{t['lbl_period']}** | {p1['period']} |"
     )
 
-    # ⚙️ 2. Коэффициенты и курс валют
+    # ⚙️ 2. Коэффициенты и курс валют (Форматирование CHF/USD через currency.py)
     st.markdown(f"#### ⚙️ {t['sec2_title']}")
     
     curr_info = get_formatted_currency_display()
@@ -356,7 +358,7 @@ if st.session_state.calc_result:
         "\n".join(table_rows)
     )
 
-    # Динамические примечания
+    # Динамические сноски и примечания напрямую из calculator.py
     notes_list = p3.get("notes", [])
     if notes_list:
         st.markdown(f"**{t['notes_title']}**")
