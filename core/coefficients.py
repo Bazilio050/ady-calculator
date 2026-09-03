@@ -105,7 +105,6 @@ COEFF_LABELS = {
     }
 }
 
-
 # ------------------------------------------------------------------------------
 # БЛОК 2: Вспомогательная функция определения цветных металлов
 # ------------------------------------------------------------------------------
@@ -134,7 +133,6 @@ def is_special_non_ferrous_metal(gng_code: str) -> bool:
 
     return False
 
-
 # ------------------------------------------------------------------------------
 # БЛОК 3: Вспомогательная функция определения коэффициента рефсекции
 # ------------------------------------------------------------------------------
@@ -148,19 +146,18 @@ def get_ref_section_coefficient(ref_cars_count: int) -> tuple[float, int]:
         return 0.85, count
     return 1.0, count
 
-
 # ------------------------------------------------------------------------------
 # БЛОК 4: Основная функция расчета всех применимых коэффициентов
 # ------------------------------------------------------------------------------
 def get_applicable_coefficients(
     shipment_type: str,
     gng_code: str,
-    table_number: str,
+    table_number: str = "5",
     wagon_type: str = "",
     from_station: str = "",
     to_station: str = "",
     is_loaded: bool = True,
-    is_private_wagon: bool = True,
+    is_private_wagon: bool = False,
     ref_cars_count: int = None,
     apply_fresh_produce_discount: bool = False,
     is_long_platform_over_19m: bool = False,
@@ -188,12 +185,10 @@ def get_applicable_coefficients(
         coeffs.append({
             "name": name_template.format(**kwargs),
             "value": val,
-            "note": note_text
+            "note": note_text,
+            "applied": True
         })
 
-    # --------------------------------------------------------------------------
-    # БЛОК 4.1: Проверка специальных коэффициентов родов вагонов
-    # --------------------------------------------------------------------------
     # (A) Схема состава рефсекции
     if "ref" in wagon_lower or "реф" in wagon_lower or "seksiy" in wagon_lower:
         coeff, count = get_ref_section_coefficient(ref_cars_count)
@@ -204,38 +199,30 @@ def get_applicable_coefficients(
     if "two_tier_car_platform" in wagon_lower or "двухъярусная" in wagon_lower or "ikimərtəbəli" in wagon_lower:
         add_coeff("two_tier_car_platform_discount", 0.80)
 
-    # --------------------------------------------------------------------------
-    # БЛОК 4.2: Проверка скидки на плодоовощную продукцию (0.60)
-    # --------------------------------------------------------------------------
+    # (C) Скидка на плодоовощную продукцию (0.60)
     is_fresh_produce = clean_gng.startswith(("04100", "04200", "04300", "04400", "05100", "05200", "05300", "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710", "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810", "12129100"))
     if (is_fresh_produce or apply_fresh_produce_discount) and is_tariff_agreement_member:
         add_coeff("fresh_produce", 0.60)
 
-    # --------------------------------------------------------------------------
-    # БЛОК 4.3: Индексация груженых вагонов (1.015) и приватный парк (0.85)
-    # --------------------------------------------------------------------------
+    # (D) Индексация груженых вагонов (1.015) и приватный парк (0.85)
     if is_loaded:
         add_coeff("loaded_wagon", 1.015)
 
     if is_private_wagon:
         add_coeff("private_wagon", 0.85)
 
-    # --------------------------------------------------------------------------
-    # БЛОК 4.4: Длиннобазные платформы более 19 метров (1.20)
-    # --------------------------------------------------------------------------
+    # (E) Длиннобазные платформы более 19 метров (1.20)
     if is_long_platform_over_19m:
         add_coeff("long_platform", 1.20)
 
-    # --------------------------------------------------------------------------
-    # БЛОК 4.5: Импорт / Экспорт общий коэффициент (1.50)
-    # --------------------------------------------------------------------------
+    # (F) Импорт / Экспорт общий коэффициент (1.50)
+    is_wood = clean_gng.startswith(("4403", "4404")) or any(clean_gng.startswith(f"44{i:02d}") for i in range(7, 14))
+    is_black_metal = clean_gng.startswith("72") or any(clean_gng.startswith(f"730{i}") for i in range(1, 8))
+
     if shipment_type.lower() in ["import", "export", "idxal", "ixrac", "импорт", "экспорт"]:
         is_table_3_exempt = (str(table_number) == "3")
         is_universal = any(w in wagon_lower for w in ["universal", "универсаль", "крытый", "полувагон", "платформа"])
-        is_wood = clean_gng.startswith(("4403", "4404")) or any(clean_gng.startswith(f"44{i:02d}") for i in range(7, 14))
         is_wood_exempt = is_universal and is_wood
-
-        is_black_metal = clean_gng.startswith("72") or any(clean_gng.startswith(f"730{i}") for i in range(1, 8))
         is_metal_exempt = is_universal and is_black_metal
 
         is_methanol = ("290511" in clean_gng or "метанол" in wagon_lower or "methanol" in wagon_lower)
@@ -247,32 +234,25 @@ def get_applicable_coefficients(
         if not (is_table_3_exempt or is_wood_exempt or is_metal_exempt or is_methanol_exempt or is_oil_table6_exempt):
             add_coeff("import_export_150", 1.50)
 
-    # --------------------------------------------------------------------------
-    # БЛОК 4.6: Специальные номенклатурные коэффициенты (Лес, Металлы)
-    # --------------------------------------------------------------------------
+    # (G) Специальные номенклатурные коэффициенты (Лес, Металлы)
     if is_import and (is_wood or is_black_metal):
         add_coeff("wood_metal_import", 1.04)
 
     if is_special_non_ferrous_metal(clean_gng):
         add_coeff("non_ferrous_metal", 1.20)
 
-    # --------------------------------------------------------------------------
-    # БЛОК 4.7: Применение правила "BIR DƏFƏ" для коэффициента 1.20
-    # --------------------------------------------------------------------------
+    # (H) Правило "BIR DƏFƏ" для коэффициента 1.20
     has_120_applied = False
 
-    # (A) Транзит нефти и нефтепродуктов (Таблица 6)
     if (is_import or is_transit) and table_str == "6":
         add_coeff("oil_products", 1.20)
         has_120_applied = True
 
-    # (B) Транзит рефрижераторов (Таблица 5)
     is_ref = any(k in wagon_lower for k in ["arv", "рефрижератор", "ref", "seksiy"])
     if is_transit and is_ref and not has_120_applied:
         add_coeff("ref_transit", 1.20)
         has_120_applied = True
 
-    # (C) Маршрутный транзитный коэффициент Ələt — Böyük Kəsik (1.20)
     st_from = str(from_station or "").strip().lower()
     st_to = str(to_station or "").strip().lower()
     is_alat = any(k in st_from or k in st_to for k in ["alat", "ələt", "алят"])
@@ -282,16 +262,14 @@ def get_applicable_coefficients(
         add_coeff("transit_alat_bk", 1.20)
         has_120_applied = True
 
-    # --------------------------------------------------------------------------
-    # БЛОК 4.8: Сортировка порядка вывода и расчет итогового множителя
-    # --------------------------------------------------------------------------
+    # Сортировка порядка вывода
     def get_coeff_priority(c):
         val = c.get("value")
         if val == 0.85:
-            return 99  # Скидка СПС всегда в самом конце
+            return 99
         elif val == 1.015:
-            return 98  # Индексация всегда перед СПС
-        return 1       # Все остальные основные коэффициенты идут первыми
+            return 98
+        return 1
 
     coeffs.sort(key=get_coeff_priority)
 
@@ -303,3 +281,23 @@ def get_applicable_coefficients(
         "coefficients_list": coeffs,
         "total_multiplier": round(total_multiplier, 6)
     }
+
+# ------------------------------------------------------------------------------
+# БЛОК 5: Адаптер для совместимости с calculator.py
+# ------------------------------------------------------------------------------
+def get_all_coefficients(
+    gng_code: str = "",
+    wagon_type: str = "universal",
+    shipment_type: str = "transit",
+    is_private_wagon: bool = False,
+    is_round_trip: bool = False,
+    wagon_axles: int = 4
+) -> list[dict]:
+    """Адаптер вызова коэффициентов для calculator.py."""
+    res = get_applicable_coefficients(
+        shipment_type=shipment_type,
+        gng_code=gng_code,
+        wagon_type=wagon_type,
+        is_private_wagon=is_private_wagon
+    )
+    return res["coefficients_list"]
