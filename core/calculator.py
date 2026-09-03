@@ -113,14 +113,14 @@ def calculate_freight(
     
     weight_data = get_weight_display_info(
         fact_weight=fact_weight,
-        gng_code=gng_code,  # <- Передаем аргумент gng_code!
+        gng_code=gng_code,
         wagon_type=wagon_type,
-        transporter_axles=transporter_axles
+        transporter_axles=axles_val  # <- Передаем созданную выше axles_val!
     )
     
-    chargeable_tons = weight_data["chargeable_tons"]     # Равно 60
-    weight_cat = weight_data["weight_category"]         # Категория 60
-    weight_info_display = weight_data["weight_info_str"] # "45.0 т (расчетный: 60.0 т)"
+    chargeable_tons = weight_data["chargeable_tons"]     
+    weight_cat = weight_data["weight_category"]         
+    weight_info_display = weight_data["weight_info_str"]
 
     # --------------------------------------------------------------------------
     # БЛОК 5: Определение тарифной таблицы ADY Policy 2026
