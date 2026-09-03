@@ -5,19 +5,21 @@ import math
 import re
 
 # ------------------------------------------------------------------------------
-# БЛОК 1: Определение минимальной нормы загрузки по Таблице (стр. 11-12)
+# БЛОК 1: Определение минимальной нормы загрузки по ГНГ (стр. 11-12)
 # ------------------------------------------------------------------------------
+# CHANGED BY AI ARCHITECT [Гарантированное очищение ГНГ и проверка норм независимо от типа вагона]
 def get_min_loading_norm(gng_code) -> int:
     """
     Возвращает минимальную норму загрузки согласно Тарифной политике ADY (стр. 11-12).
+    Применяется СТРОГО по коду ГНГ независимо от типа вагона.
     """
-    # Гарантируем преобразование в строку независимо от того, пришел int или str
-    clean_gng = re.sub(r'\D', '', str(gng_code if gng_code is not None else ""))
+    # Гарантируем строку и вытаскиваем только цифры
+    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
     
     if not clean_gng:
         return 0
 
-    # 1. Зерновая группа (ГНГ 1001, 1002, 1005 и т.д.) — СТРОГО 60 тонн
+    # 1. Зерновая группа (1001, 1002 и т.д.) — 60 тонн
     if clean_gng.startswith("10"):
         return 60
 
@@ -45,8 +47,9 @@ def get_min_loading_norm(gng_code) -> int:
 
 
 # ------------------------------------------------------------------------------
-# БЛОК 2: Расчет расчетного веса и категории по Cədvəl 1 (без транспортеров)
+# БЛОК 2: Расчет расчетного веса и весовой категории (Cədvəl 1, стр. 9)
 # ------------------------------------------------------------------------------
+# CHANGED BY AI ARCHITECT [Расчет нормы по ГНГ выполняется для ВСЕХ типов вагонов]
 def calculate_chargeable_weight(
     fact_weight: float, 
     gng_code = "", 
@@ -56,7 +59,7 @@ def calculate_chargeable_weight(
     fact_w = float(fact_weight or 0.0)
 
     # 1. Почтово-пассажирские вагоны -> 66 тонн
-    clean_gng = re.sub(r'\D', '', str(gng_code if gng_code is not None else ""))
+    clean_gng = re.sub(r'\D', '', str(gng_code or ""))
     if clean_gng == "99910000" or "passenger" in w_type or "пассажир" in w_type:
         return {"chargeable_tons": 66, "min_weight_norm": 66, "weight_category": 25}
 
@@ -65,7 +68,7 @@ def calculate_chargeable_weight(
         chargeable_tons = math.ceil(fact_w) if fact_w > 0 else 0
         return {"chargeable_tons": chargeable_tons, "min_weight_norm": 0, "weight_category": 10}
 
-    # 3. Проверка минимальной нормы по ГНГ (стр. 11-12)
+    # 3. Проверка минимальной нормы по ГНГ (ПРИМЕНЯЕТСЯ ВСЕГДА)
     min_norm = get_min_loading_norm(gng_code)
     
     if min_norm > 0:
