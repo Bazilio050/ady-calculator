@@ -70,15 +70,13 @@ def get_chf_to_usd_rate(target_date_str: str = None) -> float:
 # ------------------------------------------------------------------------------
 def get_formatted_currency_display(target_date_str: str = None) -> dict:
     """
-    Возвращает готовые строки и значения для вывода в интерфейсе пользователя.
+    Возвращает официальный коэффициент пересчета ADY для вывода в интерфейсе.
     """
     divider_rate = get_usd_chf_rate(target_date_str)
-    chf_in_usd = get_chf_to_usd_rate(target_date_str)
 
     return {
         "divider_rate": divider_rate,
-        "chf_in_usd": chf_in_usd,
-        "ticker_chf_usd": "CHF/USD",
-        "display_chf_usd": f"1 CHF = {chf_in_usd:.4f} USD",
-        "display_usd_chf": f"1 USD = {divider_rate} CHF"
+        "ticker_chf_usd": "Курс USD/CHF (ADY)",
+        "display_chf_usd": f"0.79 (1 USD = {divider_rate} CHF)",
+        "display_usd_chf": f"{divider_rate}"
     }
