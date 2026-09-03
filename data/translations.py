@@ -56,10 +56,17 @@ def get_wagon_type_name(wagon_type: str, lang: str = "AZ") -> str:
     return WAGON_TYPES_LANG.get(key, {}).get(current_lang, key)
 
 def format_weight_string(fact_w: float, chargeable: float, min_norm: float, lang: str = "AZ") -> str:
+    """
+    Форматирует строку веса без дробей (.0) для чистой отображаемости в UI.
+    """
     current_lang = str(lang or "AZ").upper()
     tr = WEIGHT_TRANSLATIONS.get(current_lang, WEIGHT_TRANSLATIONS["AZ"])
     
+    # Округляем до целых тонн
+    fact_int = int(round(fact_w))
+    chargeable_int = int(round(chargeable))
+    
     if min_norm > 0 and fact_w < min_norm:
-        return f"{fact_w:.1f} {tr['unit']} ({tr['calc_label']}: {chargeable:.1f} {tr['unit']})"
+        return f"{fact_int} {tr['unit']} ({tr['calc_label']}: {chargeable_int} {tr['unit']})"
     else:
-        return f"{fact_w:.1f} {tr['unit']}" if fact_w > 0 else f"{chargeable:.1f} {tr['unit']}"
+        return f"{fact_int} {tr['unit']}" if fact_int > 0 else f"{chargeable_int} {tr['unit']}"
