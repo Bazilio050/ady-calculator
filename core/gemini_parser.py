@@ -59,7 +59,9 @@ SYSTEM_PROMPT = """
 
 5. Флаги:
    - is_round_trip: true, если есть фразы "с возвратом", "с учетом порожнего возврата", "кругорейс".
-   - is_private_wagon: true по умолчанию (СПС), если не указано МПС/инвентарный.
+   - Если в тексте ЕСТЬ слова "СПС", "собственный", "привлеченный", "частный", "xüsusi" -> "is_private_wagon": true.
+   - Если в тексте ЕСТЬ слова "МПС", "инвентарный", "государственный", "парк жд", "MPS" -> "is_private_wagon": false.
+   - Если СПС/МПС ЯВНО НЕ УКАЗАНО в тексте -> ПО УМОЛЧАНИЮ "is_private_wagon": false (считать как МПС).
 
 6. Вид перевозки (shipment_type):
    - Если в тексте есть слово "импорт", "import", "idhal", "idxal" -> возвращай "shipment_type": "import".
@@ -167,3 +169,5 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
             parsed_data["fact_weight"] = 0.0
 
     return parsed_data
+
+  
