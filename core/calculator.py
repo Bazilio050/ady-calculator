@@ -17,7 +17,6 @@ from data.stations_mapping import format_station_display
 # СПРАВОЧНИКИ ЛОКАЛИЗАЦИИ И ПЕРЕВОДОВ (UI TRANSLATION DICTIONARIES)
 # ==============================================================================
 
-# Переводы видов перевозок
 SHIPMENT_TYPES_LANG = {
     "TRANSIT": {"AZ": "Tranzit", "RU": "Транзит", "EN": "Transit"},
     "IMPORT": {"AZ": "İdxal", "RU": "Импорт", "EN": "Import"},
@@ -25,7 +24,6 @@ SHIPMENT_TYPES_LANG = {
     "LOCAL": {"AZ": "Daxili", "RU": "Местное", "EN": "Local"}
 }
 
-# Расширенный справочник родов вагонов для ADY Policy 2026
 WAGON_TYPES_LANG = {
     "universal": {"AZ": "Universal vaqon", "RU": "Универсальный вагон", "EN": "Universal wagon"},
     "covered": {"AZ": "Örtülü vaqon", "RU": "Крытый вагон", "EN": "Covered wagon"},
@@ -109,22 +107,23 @@ def calculate_freight(
         raise ValueError("fx_rate_not_found")
 
     # --------------------------------------------------------------------------
-    # БЛОК 4: Сначала определяем нормативный вес и весовую категорию (core/weight.py)
+    # БЛОК 4: Расчет весовых параметров и нормы загрузки (core/weight.py)
     # --------------------------------------------------------------------------
-    transporter_axles = kwargs.get("transporter_axles", 0) or kwargs.get("wagon_axles", 0)
+    axles_val = kwargs.get("wagon_axles", 4) or kwargs.get("transporter_axles", 0)
+    
     weight_data = get_weight_display_info(
         fact_weight=fact_weight,
         gng_code=gng_code,
         wagon_type=wagon_type,
-        transporter_axles=transporter_axles
+        transporter_axles=axles_val
     )
     
-    chargeable_tons = weight_data["chargeable_tons"]     # Получит 60
+    chargeable_tons = weight_data["chargeable_tons"]     # Равно 60
     weight_cat = weight_data["weight_category"]         # Категория 60
     weight_info_display = weight_data["weight_info_str"] # "45.0 т (расчетный: 60.0 т)"
 
     # --------------------------------------------------------------------------
-    # БЛОК 5: Затем подбираем таблицу ADY 2026, передавая РАСЧЕТНЫЙ вес (chargeable_tons)
+    # БЛОК 5: Определение тарифной таблицы ADY Policy 2026
     # --------------------------------------------------------------------------
     table_info = select_tariff_table(
         wagon_category=wagon_type,
@@ -137,7 +136,7 @@ def calculate_freight(
     column_num = int(table_info["column"])
 
     # --------------------------------------------------------------------------
-    # БЛОК 6: Ищем базовую ставку по нормативной категории (weight_cat)
+    # БЛОК 6: Поиск базовой ставки по нормативной весовой категории
     # --------------------------------------------------------------------------
     base_tariff_chf = get_base_rate_from_table(
         table_number=table_num,
@@ -145,8 +144,9 @@ def calculate_freight(
         weight_category=weight_cat,
         column_number=column_num
     )
+
     # --------------------------------------------------------------------------
-    # БЛОК 7: Расчет применимых коэффициентов ADY (повышающие / понижающие)
+    # БЛОК 7: Расчет коэффициентов ADY
     # --------------------------------------------------------------------------
     coeff_data = get_applicable_coefficients(
         shipment_type=shipment_type,
@@ -166,8 +166,8 @@ def calculate_freight(
     total_multiplier = coeff_data["total_multiplier"]
     coeffs_list = coeff_data["coefficients_list"]
 
-   # --------------------------------------------------------------------------
-    # БЛОК 8: Математический расчет (Расчет ставки за 1 тонну в USD)
+    # --------------------------------------------------------------------------
+    # БЛОК 8: Математический расчет
     # --------------------------------------------------------------------------
     is_per_wagon_flat_rate = (table_num == "5" and column_num in [2, 4, 6])
 
@@ -184,7 +184,7 @@ def calculate_freight(
         total_usd_wagon = usd_per_ton * calc_weight
 
     # --------------------------------------------------------------------------
-    # БЛОК 9: Локализация текстов, названий станций и единиц измерения
+    # БЛОК 9: Локализация и отображение
     # --------------------------------------------------------------------------
     ship_type_key = shipment_type.upper()
     shipment_type_display = SHIPMENT_TYPES_LANG.get(ship_type_key, {}).get(current_lang, ship_type_key)
@@ -197,7 +197,6 @@ def calculate_freight(
     cargo_and_wagon_str = f"{cargo_label}, {wagon_type_display}"
     period_str = calculation_date if calculation_date else "2026"
 
-    # Локализация подписи таблицы и колонки для Базового тарифа
     if current_lang == "RU":
         tbl_str = f"Таблица {table_num}, Колонка {column_num}"
     elif current_lang == "EN":
@@ -206,7 +205,6 @@ def calculate_freight(
         tbl_str = f"Cədvəl {table_num}, Sütun {column_num}"
     base_tariff_display = f"{base_tariff_chf:.2f} CHF ({tbl_str})"
 
-    # Форматирование отображения станций маршрута с ЕСР кодами (из dist_info или из NLU kwargs)
     st_from_name = dist_info.get("from_station_name") or dist_info.get("from_station") or from_station
     st_from_code = (
         dist_info.get("from_station_code") or 
@@ -227,13 +225,12 @@ def calculate_freight(
     to_formatted = format_station_display(st_to_name, st_to_code, lang=current_lang)
     route_display = f"{from_formatted} — {to_formatted}"
 
-    # Подготовка строки веса (с учетом порожнего пробега и расчётной нормы)
+    # ИСПОЛЬЗУЕМ СТРОКУ ИЗ weight.py (с нормой 60т)
     if is_empty_wagon:
         weight_info_str = "0 т (Порожний)" if current_lang == "RU" else ("0 t (Boş)" if current_lang == "AZ" else "0 t (Empty)")
     else:
-        weight_info_str = weight_info_display  # <-- ИСПОЛЬЗУЕМ СТРОКУ ИЗ weight.py
+        weight_info_str = weight_info_display
 
-    # Формирование строки математической формулы расчета
     coeffs_formula_str = " * ".join([f"{c['value']}" for c in coeffs_list]) if coeffs_list else "1.00"
     
     if is_per_wagon_flat_rate:
@@ -242,7 +239,7 @@ def calculate_freight(
         formula_text = f"{base_tariff_chf:.2f} CHF/{chf_rate:.2f} * {coeffs_formula_str} = ${usd_per_ton:.2f} USD/{weight_unit}"
 
     # --------------------------------------------------------------------------
-    # БЛОК 10: Сборка и возврат итоговых словарей (part1, part2, part3)
+    # БЛОК 10: Сборка итогового ответа
     # --------------------------------------------------------------------------
     part1 = {
         "route": route_display,
@@ -281,7 +278,6 @@ def calculate_freight(
         fx_note
     ]
 
-    # Динамическое примечание о нормативной загрузке
     min_norm = weight_data.get("min_weight_norm", 0)
     if min_norm > 0 and fact_weight < min_norm:
         if current_lang == "RU":
@@ -291,7 +287,6 @@ def calculate_freight(
         else:
             dynamic_notes.append(f"Minimum yükləmə norması tətbiq olundu: {min_norm} ton.")
 
-    # Добавляем примечания по коэффициентам
     for coeff in coeffs_list:
         if coeff.get("note"):
             dynamic_notes.append(coeff["note"])
