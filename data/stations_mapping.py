@@ -237,3 +237,27 @@ def format_station_display(station_name: str, station_code: str = "", lang: str 
         return f"{localized_name} ({code})"
 
     return localized_name
+
+def get_canonical_station_name(station_input: str) -> str:
+    """Возвращает главный ключ станции на AZ (например, 'Bakı yük') для любого ввода на AZ/RU/EN или кода ЕСР."""
+    if not station_input:
+        return ""
+    
+    query = str(station_input).strip().lower()
+    
+    # 1. Поиск по коду ЕСР
+    for main_key, data in STATIONS_MAPPING.items():
+        if data.get("code") == query:
+            return main_key
+
+    # 2. Поиск по синонимам на любых языках (AZ, RU, EN)
+    for main_key, data in STATIONS_MAPPING.items():
+        for lang_code in ["AZ", "RU", "EN"]:
+            names = data.get(lang_code, [])
+            if isinstance(names, str):
+                names = [names]
+            for name in names:
+                if name.lower() == query or name.lower().replace("-", " ").replace(".", "") == query.replace("-", " ").replace(".", ""):
+                    return main_key
+
+    return station_input.strip()
