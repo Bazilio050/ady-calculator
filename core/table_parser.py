@@ -44,8 +44,13 @@ def get_base_rate_from_table(
             if not line_str or line_str.startswith("=") or "Məsafə" in line_str or "CƏDVƏL" in line_str or "Колонки:" in line_str:
                 continue
 
-            # Очищаем от пустых элементов по краям (если строка начнется с '|', split не создаст пустой элемент 0)
-            parts = [p.strip() for p in line_str.split("|") if p.strip()]
+            # Разбиваем по разделителю '|' и убираем лишние пробелы по краям
+            parts = [p.strip() for p in line_str.split("|")]
+            
+            # Если строка начиналась с '|', удаляем первый пустой элемент
+            if parts and parts[0] == "":
+                parts.pop(0)
+
             if len(parts) >= 2:
                 dist_range = parts[0].split("-")
                 if len(dist_range) == 2:
@@ -54,6 +59,7 @@ def get_base_rate_from_table(
                         max_d = int(dist_range[1])
 
                         if min_d <= distance_km <= max_d:
+                            # target_col_idx = 3 вернет ровно 3-й столбец (Колонка 3)
                             if target_col_idx < len(parts):
                                 rate_str = parts[target_col_idx].replace(",", ".")
                                 return float(rate_str)
