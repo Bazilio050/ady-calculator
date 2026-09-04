@@ -22,14 +22,14 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
     kurik_keywords = ["kurik", "курык"]
     border_keywords = ["yalama", "ялама", "boyuk kesik", "boyuk", "беюк", "кясик", "bk", "бк", "astara", "астара", "culfa", "джульфа", "elet", "алят"]
 
-    # 1. Обработка Алята и Туркменбаши (ТРК) без принудительного переворота
+    # 1. Обработка Алята и Туркменбаши (ТРК) с сохранением порядка NLU
     if any(k in raw_norm for k in trk_keywords):
         from_norm = normalize_simple(str(res.get("from_station", "")))
         to_norm = normalize_simple(str(res.get("to_station", "")))
         
-        if any(k in from_norm for k in trk_keywords) or not res.get("from_station"):
+        if any(k in from_norm for k in trk_keywords) or (not res.get("from_station") and not res.get("to_station")):
             res["from_station"] = "Ələt-eksp.Türk."
-        elif any(k in to_norm for k in trk_keywords) or not res.get("to_station"):
+        elif any(k in to_norm for k in trk_keywords):
             res["to_station"] = "Ələt-eksp.Türk."
 
     if any(k in raw_norm for k in aktau_keywords):
