@@ -11,17 +11,22 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
         nlu_res = {}
 
     res = nlu_res.copy()
-
-    # Очищаем сырой текст и нормализуем
     raw_norm = normalize_simple(raw_text)
     
-    # Синонимы для порта Туркменбаши (ТРК)
     trk_keywords = ["trk", "трк", "туркм", "turkm", "туркменбаши", "туркменбашы", "turkmenbasy", "паром трк"]
     aktau_keywords = ["aktau", "актау"]
     kurik_keywords = ["kurik", "курык"]
     border_keywords = ["yalama", "ялама", "boyuk kesik", "boyuk", "беюк", "кясик", "bk", "бк", "astara", "астара", "culfa", "джульфа", "elet", "алят"]
 
-    # 1. ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ ТРК / ТУРКМЕНБАШИ
+    # 1. Точечный перехват БК (Böyük Kəsik)
+    if any(k in raw_norm.split() for k in ["бк", "bk"]):
+        words = raw_norm.split()
+        if words and any(k in words[0] for k in ["бк", "bk"]):
+            res["from_station"] = "Böyük Kəsik"
+        else:
+            res["to_station"] = "Böyük Kəsik"
+
+    # 2. Точечный перехват ТРК / Туркменбаши
     if any(k in raw_norm for k in trk_keywords):
         words = raw_norm.split()
         if words and any(k in words[0] for k in trk_keywords):
@@ -29,31 +34,15 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
         else:
             res["to_station"] = "Ələt-eksp.Türk."
 
-    # 2. ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ АКТАУ
-    elif any(k in raw_norm for k in aktau_keywords):
-        words = raw_norm.split()
-        if words and any(k in words[0] for k in aktau_keywords):
-            res["from_station"] = "Ələt-eksp.Aktau"
-        else:
-            res["to_station"] = "Ələt-eksp.Aktau"
-
-    # 3. ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ КУРЫК
-    elif any(k in raw_norm for k in kurik_keywords):
-        words = raw_norm.split()
-        if words and any(k in words[0] for k in kurik_keywords):
-            res["from_station"] = "Ələt-eksp.Kurik"
-        else:
-            res["to_station"] = "Ələt-eksp.Kurik"
-
-    # 3.1. ПРИНУДИТЕЛЬНАЯ ЗАМЕНА АББРЕВИАТУРЫ БК -> Böyük Kəsik
-    if str(res.get("from_station", "")).strip().upper() == "БК":
+    # 3. Принудительная замена прямых значений БК
+    if str(res.get("from_station", "")).strip().upper() in ["БК", "BK"]:
         res["from_station"] = "Böyük Kəsik"
-    if str(res.get("to_station", "")).strip().upper() == "БК":
+    if str(res.get("to_station", "")).strip().upper() in ["БК", "BK"]:
         res["to_station"] = "Böyük Kəsik"
 
-    # 4. Если станция отправления все еще пустая, берем первое слово запроса
+    # 4. Если станция отправления все еще пустая, берем первое слово
     if not res.get("from_station"):
-        words = [w for w in raw_text.split() if w.lower() not in ["4407", "крытый", "35т", "спс", "вагон"]]
+        words = [w for w in raw_text.split() if w.lower() not in ["4407", "крытый", "35т", "спс", "вагон", "платформа", "плтаформа"]]
         if words:
             res["from_station"] = words[0].title()
 
