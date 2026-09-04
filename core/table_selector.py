@@ -72,24 +72,34 @@ def select_tariff_table(
             col = 9 if container_tonnage == 3 else 10
         return {"table": "7", "column": col}
 
+    # --------------------------------------------------------------------------
+    # ТАБЛИЦА 6: Наливные грузы в цистернах и бункерах
+    # --------------------------------------------------------------------------
     if any(k in w_type for k in ["цистерна", "tank", "çənd", "bunker", "бункер"]):
         col_num = get_table_6_column(gng_code)
         return {"table": "6", "column": col_num}
 
-    if "two_tier_car_platform" in w_type or "двухъярусная" in w_type or "ikimərtəbəli" in w_type:
-        return {"table": "5", "column": 6}
-
-    if any(k in w_type for k in ["autocar", "car_transporter", "автовоз", "автомобилевоз"]):
-        col = 4 if fact_weight <= 0 else 2
+    # --------------------------------------------------------------------------
+    # ТАБЛИЦА 5: ИЗОТЕРМИЧЕСКИЕ ВАГОНЫ, АВТОВОЗЫ И İNV/ANV
+    # --------------------------------------------------------------------------
+    # 1. Спец. вагоны İNV / ANV (Колонки 7 и 8)
+    if any(k in w_type for k in ["inv", "anv", "инв", "анв"]):
+        col = 8 if is_empty_inventory else 7
         return {"table": "5", "column": col}
 
-    if any(k in w_type for k in ["ref_section", "ref", "arv", "арв", "реф", "thermos", "термос"]):
-        if "thermos" in w_type or "термос" in w_type:
-            col = 4 if fact_weight < 25.0 else 5
-            return {"table": "5", "column": col}
-        else:
-            col = 2 if fact_weight < 25.0 else 3
-            return {"table": "5", "column": col}
+    # 2. Автовозы и двухъярусные платформы для авто (Колонка 6)
+    if any(k in w_type for k in ["autocar", "car_transporter", "автовоз", "автомобилевоз", "ikimərtəbəli", "двухъярусная", "two_tier"]):
+        return {"table": "5", "column": 6}
+
+    # 3. Вагоны-термосы и вагоны-ледники (Колонки 4 и 5)
+    if any(k in w_type for k in ["thermos", "термос", "lednik", "ледник"]):
+        col = 4 if float(fact_weight or 0) < 25.0 else 5
+        return {"table": "5", "column": col}
+
+    # 4. Рефрижераторные вагоны и ARV (Колонки 2 и 3)
+    if any(k in w_type for k in ["ref_section", "ref", "arv", "арв", "реф", "refrifirator", "рефрижератор"]):
+        col = 2 if float(fact_weight or 0) < 25.0 else 3
+        return {"table": "5", "column": col}
 
     # --------------------------------------------------------------------------
     # БЛОК ДЛЯ УНИВЕРСАЛЬНОГО ПОДВИЖНОГО СОСТАВА (Крытые, полувагоны, платформы, хопперы)
