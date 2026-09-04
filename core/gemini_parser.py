@@ -137,7 +137,7 @@ def parse_user_request(user_prompt: str, lang: str = "AZ") -> dict:
             contents_text = f"Текущий язык интерфейса: {current_lang}\nЗапрос пользователя: {user_prompt}"
 
             response = client.models.generate_content(
-                model="gemini-3.6-flash",
+                model="gemini-3.5-flash-lite",
                 contents=contents_text,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_PROMPT,
