@@ -140,6 +140,7 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bo
 def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", shipment_type: str = None) -> dict:
     headers, stations_data = parse_distances_file()
 
+    
     raw_from = from_station.get("from_station", "") if isinstance(from_station, dict) else from_station
     raw_to = from_station.get("to_station", "") if isinstance(from_station, dict) else to_station
 
