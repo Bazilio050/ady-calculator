@@ -24,11 +24,10 @@ def get_base_rate_from_table(
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Файл тарифной сетки {file_name} не найден по пути {file_path}")
 
-    # Логика выбора колонки:
-    # Для Таблиц 5, 6, 7 — явно переданный column_number
-    # Для Таблиц 3, 4 — расчет по весовой категории
+    # Логика выбора индекса элемента:
+    # Для Таблиц 5, 6, 7 номер колонки начинается с 2 (Колонка 2 = Индекс 1, Колонка 3 = Индекс 2 и т.д.)
     if str(table_number) in ["5", "6", "7"]:
-        target_col_idx = column_number
+        target_col_idx = column_number - 1
     else:
         safe_weight = max(10, min(60, weight_category))
         col_weight = 60
