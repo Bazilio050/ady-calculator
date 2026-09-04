@@ -75,12 +75,12 @@ def get_border_column_header(station_text: str, headers: list) -> str:
     return None
 
 # ------------------------------------------------------------------------------
-# БЛОК: Определение ключа станции в таблице Distances.txt (БЕЗ ФОЛЛБЭКА АБШЕРОН)
+# БЛОК 1: Определение ключа станции в базе Distances.txt
 # ------------------------------------------------------------------------------
 def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bool = True, is_transit: bool = False, shipment_type: str = None) -> str:
     norm = normalize_name(station_text)
 
-    # 1. Каноническая проверка на Баку-Товарная (Bakı yük)
+    # 1. Приоритетный поиск Bakı yük (Баку тов)
     if any(k in norm for k in ["baku yuk", "baki yuk", "баку тов", "баку товарная", "баку грузовой"]):
         for st_key in stations_data.keys():
             if normalize_name(st_key) in ["baki yuk", "baku yuk"]:
@@ -138,14 +138,15 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bo
 
     return None
 
+# ------------------------------------------------------------------------------
+# БЛОК 2: Получение информации о маршруте и расстоянии
+# ------------------------------------------------------------------------------
 def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", shipment_type: str = None) -> dict:
     headers, stations_data = parse_distances_file()
 
-    
     raw_from = from_station.get("from_station", "") if isinstance(from_station, dict) else from_station
     raw_to = to_station.get("to_station", "") if isinstance(to_station, dict) else to_station
 
-    # === Заменяем нормализацию на каноническую ===
     raw_from = get_canonical_station_name(raw_from)
     raw_to = get_canonical_station_name(raw_to)
 
@@ -162,7 +163,6 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     from_row_key = resolve_target_row_key(raw_from, stations_data, is_origin=True, is_transit=is_transit_mode, shipment_type=shipment_type)
     to_row_key = resolve_target_row_key(raw_to, stations_data, is_origin=False, is_transit=is_transit_mode, shipment_type=shipment_type)
 
-    # === РАСШИРЕННЫЙ ПОИСК РАССТОЯНИЯ (Защита от route_not_found) ===
     dist = None
 
     # 1. Прямой поиск (from_col -> to_row)
@@ -173,11 +173,14 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     if dist is None and to_col and from_row_key in stations_data:
         dist = stations_data[from_row_key]["distances"].get(to_col)
 
-    # 3. Транзитный поиск стык-в-стык (from_row -> to_col)
-    if dist is None and from_row_key in stations_data and to_col:
-        dist = stations_data[from_row_key]["distances"].get(to_col)
+    # 3. Поиск по строкам междуfrom_row_key и to_row_key
+    if dist is None and from_row_key in stations_data and to_row_key in stations_data:
+        # Попытка найти прямую колонку с именем назначения
+        dist = stations_data[from_row_key]["distances"].get(to_row_key)
+        if dist is None:
+            dist = stations_data[to_row_key]["distances"].get(from_row_key)
 
-    # 4. Резервный поиск для портов Алята
+    # 4. Резервный поиск для портов Алята (ТОЛЬКО если dist всё ещё None)
     if dist is None and from_col:
         for alt_key in ["Ələt eksport Kurik", "Ələt eksport Aktau", "Ələt eksport-Türk."]:
             if alt_key in stations_data and stations_data[alt_key]["distances"].get(from_col):
@@ -220,7 +223,9 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
             (shipment_type == "export" and not is_origin)
         )
 
-        if any(k in norm for k in ["aktau", "актау"]):
+        if any(k in norm for k in ["baku yuk", "baki yuk", "баку тов"]):
+            base_key = "Bakı yük"
+        elif any(k in norm for k in ["aktau", "актау"]):
             base_key = "Ələt eksport Aktau"
         elif any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
             base_key = "Ələt eksport-Türk."
@@ -229,7 +234,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         elif any(k in norm or k in norm_fallback for k in ["alat", "elet", "алят"]):
             if is_border_joint or "eksp" in norm or "эксп" in norm or "eksport" in norm:
                 base_key = "Ələt eksport"
-                hide_code = True   # Код скрывается по Правилу №1 для "Алят-эксп."
+                hide_code = True
             else:
                 base_key = "Ələt"
         elif any(k in norm or k in norm_fallback for k in ["kesik", "кясик", "касик"]):
@@ -248,7 +253,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         return localized_name
 
     fmt_from = build_label(raw_from, from_row_key or raw_from, code_from, shipment_type, is_origin=True, current_lang=current_lang)
-    fmt_to = build_label(raw_to, to_row_key or raw_to, code_to, shipment_type, is_origin=False, current_lang=current_lang)
+    fmt_to = build_label(raw_to, to_row_key or raw_to, code_to, shipment_type, is_origin=False, current_lang=False, current_lang=current_lang)
 
     return {
         "distance_km": dist,
