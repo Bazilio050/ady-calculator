@@ -78,6 +78,16 @@ SYSTEM_PROMPT = """
    - "thermos" — вагон-термос / вагон-ледник / ИВ / ВТ.
    - "ref_section" — рефрижераторная секция (РС / рефсекция).
 
+8. Рефрижераторные секции, скидки и отметки (СЕКЦИИ И СПЕЦИАЛЬНЫЕ ФЛАГИ):
+   - ref_cars_count: Извлекай количество грузовых вагонов в рефсекции.
+     * Если написаны схемы типа "5+1", "1+5", "5 вагонов", "секция 5" -> ставь ref_cars_count: 5.
+     * Если "3+1", "1+3" -> ставь ref_cars_count: 3.
+     * Если "2+1", "1+2" -> ставь ref_cars_count: 2.
+     * Если "1+1" -> ставь ref_cars_count: 1.
+     * Если указана рефсекция без количества -> по умолчанию ставь ref_cars_count: 4 (или null).
+   - apply_fresh_produce_discount: true, ТОЛЬКО если в тексте явным образом есть слова "фрукты", "овощи", "плодоовощные", "meyvə", "tərəvəz" или коды ГНГ 04100-04400, 05100-05300. В остальных случаях: false.
+   - special_mark: Возвращай строку "IZVK", "IZVT", "VTVK" или null, если эти отметки явно присутствуют в тексте.
+
 Формат ответа (СТРОГО JSON):
 {
   "from_station": "строка или null",
@@ -89,6 +99,8 @@ SYSTEM_PROMPT = """
   "fact_weight": число_или_null,
   "wagon_type": "universal/tank/arv/thermos/autocar/two_tier_car_platform/ref_section/passenger",
   "ref_cars_count": число_или_null,
+  "apply_fresh_produce_discount": true/false,
+  "special_mark": "IZVK/IZVT/VTVK/null",
   "shipment_type": "import/export/transit",
   "is_empty_wagon": true/false,
   "is_private_wagon": true/false,
