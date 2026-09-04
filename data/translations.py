@@ -18,6 +18,7 @@ WAGON_TYPES_LANG = {
     "platform": {"AZ": "Platforma", "RU": "Платформа", "EN": "Flatcar"},
     "fitting_platform": {"AZ": "Fiting platforması", "RU": "Фитинговая платформа", "EN": "Fitting flatcar"},
     "cistern": {"AZ": "Çən vaqonu", "RU": "Цистерна", "EN": "Tank wagon"},
+    "tank": {"AZ": "Çən vaqonu", "RU": "Цистерна", "EN": "Tank wagon"},
     "refr": {"AZ": "Refrijerator", "RU": "Рефрижератор", "EN": "Refrigerated wagon"},
     "thermos": {"AZ": "Termos vaqon", "RU": "Вагон-термос", "EN": "Thermos wagon"},
     "hopper": {"AZ": "Xopper vaqonu", "RU": "Хоппер", "EN": "Hopper wagon"},
