@@ -7,7 +7,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from data.stations_mapping import get_localized_station_name
+from data.stations_mapping import get_canonical_station_name, get_localized_station_name
 
 def normalize_name(text: str) -> str:
     if not text:
