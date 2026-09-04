@@ -75,12 +75,12 @@ def get_border_column_header(station_text: str, headers: list) -> str:
     return None
 
 # ------------------------------------------------------------------------------
-# БЛОК: Точное определение ключа станции в таблице Distances.txt
+# БЛОК: Определение ключа станции в таблице Distances.txt (БЕЗ ФОЛЛБЭКА АБШЕРОН)
 # ------------------------------------------------------------------------------
 def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bool = True, is_transit: bool = False, shipment_type: str = None) -> str:
     norm = normalize_name(station_text)
 
-    # 1. Точная каноническая проверка на Баку-Товарная (Bakı yük)
+    # 1. Каноническая проверка на Баку-Товарная (Bakı yük)
     if any(k in norm for k in ["baku yuk", "baki yuk", "баку тов", "баку товарная", "баку грузовой"]):
         for st_key in stations_data.keys():
             if normalize_name(st_key) in ["baki yuk", "baku yuk"]:
@@ -126,11 +126,12 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bo
     if "culfa" in norm or "джульфа" in norm:
         return "Culfa (eksport)" if use_border_joint else "Culfa"
 
-    # 6. Поиск по точному совпадению в базе Distances.txt
+    # 6. Прямой поиск по названию в базе Distances.txt
     for st_key in stations_data.keys():
         if normalize_name(st_key) == norm:
             return st_key
 
+    # 7. Подстрочный поиск по базе Distances.txt
     for st_key in stations_data.keys():
         if norm in normalize_name(st_key):
             return st_key
