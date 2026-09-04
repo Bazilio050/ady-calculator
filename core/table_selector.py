@@ -96,7 +96,7 @@ def select_tariff_table(
         col = 4 if float(fact_weight or 0) < 25.0 else 5
         return {"table": "5", "column": col}
 
-    # 4. Рефрижераторные вагоны и ARV (Колонки 2 и 3)
+    # 2. Рефрижераторные вагоны и ARV (Колонки 2 и 3)
     if any(k in w_type for k in ["ref_section", "ref", "arv", "арв", "реф", "refrifirator", "рефрижератор"]):
         col = 2 if float(fact_weight or 0) < 25.0 else 3
         return {"table": "5", "column": col}
