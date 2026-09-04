@@ -143,6 +143,10 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
     raw_from = from_station.get("from_station", "") if isinstance(from_station, dict) else from_station
     raw_to = from_station.get("to_station", "") if isinstance(from_station, dict) else to_station
 
+    # Нормализация станций через единый справочник STATIONS_MAPPING
+    raw_from = get_localized_station_name(raw_from, lang="AZ")
+    raw_to = get_localized_station_name(raw_to, lang="AZ")
+
     current_lang = (lang or "AZ").upper()
     
     if not shipment_type:
