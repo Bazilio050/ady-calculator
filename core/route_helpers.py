@@ -1,5 +1,6 @@
 # core/route_helpers.py
 import re
+from data.stations_mapping import get_canonical_station_name
 
 def normalize_simple(text: str) -> str:
     if not text:
@@ -13,20 +14,13 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
     res = nlu_res.copy()
     raw_norm = normalize_simple(raw_text)
     
+    # Ключевые слова для Алята и порт-паромов
     trk_keywords = ["trk", "трк", "туркм", "turkm", "туркменбаши", "туркменбашы", "turkmenbasy", "паром трк"]
     aktau_keywords = ["aktau", "актау"]
     kurik_keywords = ["kurik", "курык"]
     border_keywords = ["yalama", "ялама", "boyuk kesik", "boyuk", "беюк", "кясик", "bk", "бк", "astara", "астара", "culfa", "джульфа", "elet", "алят"]
 
-    # 1. Точечный перехват БК (Böyük Kəsik)
-    if any(k in raw_norm.split() for k in ["бк", "bk"]):
-        words = raw_norm.split()
-        if words and any(k in words[0] for k in ["бк", "bk"]):
-            res["from_station"] = "Böyük Kəsik"
-        else:
-            res["to_station"] = "Böyük Kəsik"
-
-    # 2. Точечный перехват ТРК / Туркменбаши
+    # 1. Обработка Алята и Туркменбаши (ТРК)
     if any(k in raw_norm for k in trk_keywords):
         words = raw_norm.split()
         if words and any(k in words[0] for k in trk_keywords):
@@ -34,19 +28,33 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
         else:
             res["to_station"] = "Ələt-eksp.Türk."
 
-    # 3. Принудительная замена прямых значений БК
+    # 2. Обработка Алята для Актау / Курык
+    if any(k in raw_norm for k in aktau_keywords):
+        if not res.get("from_station") or any(k in normalize_simple(str(res.get("from_station"))) for k in aktau_keywords):
+            res["from_station"] = "Ələt eksport Aktau"
+        else:
+            res["to_station"] = "Ələt eksport Aktau"
+
+    if any(k in raw_norm for k in kurik_keywords):
+        if not res.get("from_station") or any(k in normalize_simple(str(res.get("from_station"))) for k in kurik_keywords):
+            res["from_station"] = "Ələt eksport Kurik"
+        else:
+            res["to_station"] = "Ələt eksport Kurik"
+
+    # 3. Перехват аббревиатуры БК (Böyük Kəsik)
     if str(res.get("from_station", "")).strip().upper() in ["БК", "BK"]:
         res["from_station"] = "Böyük Kəsik"
     if str(res.get("to_station", "")).strip().upper() in ["БК", "BK"]:
         res["to_station"] = "Böyük Kəsik"
 
-    # 4. Если станция отправления все еще пустая, берем первое слово
-    if not res.get("from_station"):
-        words = [w for w in raw_text.split() if w.lower() not in ["4407", "крытый", "35т", "спс", "вагон", "платформа", "плтаформа"]]
-        if words:
-            res["from_station"] = words[0].title()
+    # 4. Каноническая нормализация станций через STATIONS_MAPPING
+    # Приводит любые варианты (например, "Баку тов") к строгому ключу ("Bakı yük")
+    if res.get("from_station"):
+        res["from_station"] = get_canonical_station_name(res["from_station"])
+    if res.get("to_station"):
+        res["to_station"] = get_canonical_station_name(res["to_station"])
 
-    # 5. Определение вида перевозки
+    # 5. Определение вида перевозки (Транзит / Импорт / Экспорт / Местная)
     norm_from = normalize_simple(str(res.get("from_station", "")))
     norm_to = normalize_simple(str(res.get("to_station", "")))
 
