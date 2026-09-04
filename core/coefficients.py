@@ -200,8 +200,11 @@ def get_applicable_coefficients(
         add_coeff("two_tier_car_platform_discount", 0.80)
 
     # (C) Скидка на плодоовощную продукцию (0.60)
-    is_fresh_produce = clean_gng.startswith(("04100", "04200", "04300", "04400", "05100", "05200", "05300", "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710", "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810", "12129100"))
-    if (is_fresh_produce or apply_fresh_produce_discount) and is_tariff_agreement_member:
+    # Применяется strictly по прямому требованию/флагу из запроса пользователя (apply_fresh_produce_discount)
+    # или при одновременном наличии подходящего кода ГНГ и флага страны Тарифного Соглашения
+    is_fresh_produce_code = clean_gng.startswith(("04100", "04200", "04300", "04400", "05100", "05200", "05300", "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710", "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810", "12129100"))
+    
+    if apply_fresh_produce_discount or (is_fresh_produce_code and is_tariff_agreement_member):
         add_coeff("fresh_produce", 0.60)
 
     # (D) Индексация груженых вагонов (1.015) и приватный парк (0.85)
