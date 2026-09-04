@@ -19,16 +19,14 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
     trk_keywords = ["trk", "трк", "туркм", "turkm", "туркменбаши", "туркменбашы", "turkmenbasy", "паром трк"]
     aktau_keywords = ["aktau", "актау"]
     kurik_keywords = ["kurik", "курык"]
-    border_keywords = ["yalama", "ялама", "boyuk kesik", "boyuk", "беюк", "кясик", "astara", "астара", "culfa", "джульфа", "elet", "алят"]
+    border_keywords = ["yalama", "ялама", "boyuk kesik", "boyuk", "беюк", "кясик", "bk", "бк", "astara", "астара", "culfa", "джульфа", "elet", "алят"]
 
     # 1. ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ ТРК / ТУРКМЕНБАШИ
     if any(k in raw_norm for k in trk_keywords):
         words = raw_norm.split()
-        # Если ТРК стоит первым словом (Импорт)
         if words and any(k in words[0] for k in trk_keywords):
             res["from_station"] = "Ələt-eksp.Türk."
         else:
-            # Во всех остальных случаях ТРК — это станция назначения (Экспорт / Транзит)
             res["to_station"] = "Ələt-eksp.Türk."
 
     # 2. ПРИНУДИТЕЛЬНЫЙ ПЕРЕХВАТ АКТАУ
@@ -46,6 +44,12 @@ def normalize_nlu_stations(nlu_res: dict, raw_text: str = "") -> dict:
             res["from_station"] = "Ələt-eksp.Kurik"
         else:
             res["to_station"] = "Ələt-eksp.Kurik"
+
+    # 3.1. ПРИНУДИТЕЛЬНАЯ ЗАМЕНА АББРЕВИАТУРЫ БК -> Böyük Kəsik
+    if str(res.get("from_station", "")).strip().upper() == "БК":
+        res["from_station"] = "Böyük Kəsik"
+    if str(res.get("to_station", "")).strip().upper() == "БК":
+        res["to_station"] = "Böyük Kəsik"
 
     # 4. Если станция отправления все еще пустая, берем первое слово запроса
     if not res.get("from_station"):
