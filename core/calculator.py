@@ -123,6 +123,7 @@ def calculate_freight(
         ref_cars_count=ref_cars_count,
         apply_fresh_produce_discount=apply_fresh_produce_discount,
         is_long_platform_over_19m=is_long_platform_over_19m,
+        is_tariff_agreement_member=kwargs.get("is_tariff_agreement_member", False),
         lang=current_lang
     )
 
@@ -132,7 +133,7 @@ def calculate_freight(
     # --------------------------------------------------------------------------
     # БЛОК 8: Математический расчет
     # --------------------------------------------------------------------------
-    is_per_wagon_flat_rate = (table_num == "5" and column_num in [2, 4, 6])
+    is_per_wagon_flat_rate = (table_num == "5" and column_num in [2, 4, 7, 8])
 
     if is_per_wagon_flat_rate:
         final_tariff_chf = base_tariff_chf * total_multiplier
