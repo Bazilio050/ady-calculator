@@ -253,7 +253,7 @@ def get_route_info(from_station: str, to_station: str = None, lang: str = "AZ", 
         return localized_name
 
     fmt_from = build_label(raw_from, from_row_key or raw_from, code_from, shipment_type, is_origin=True, current_lang=current_lang)
-    fmt_to = build_label(raw_to, to_row_key or raw_to, code_to, shipment_type, is_origin=False, current_lang=False, current_lang=current_lang)
+    fmt_to = build_label(raw_to, to_row_key or raw_to, code_to, shipment_type, is_origin=False, current_lang=current_lang)
 
     return {
         "distance_km": dist,
