@@ -74,13 +74,18 @@ def get_border_column_header(station_text: str, headers: list) -> str:
         return "Ələt eksp / Bakı liman"
     return None
 
+# ------------------------------------------------------------------------------
+# БЛОК: Точное определение ключа станции в таблице Distances.txt
+# ------------------------------------------------------------------------------
 def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bool = True, is_transit: bool = False, shipment_type: str = None) -> str:
     norm = normalize_name(station_text)
 
-    # Определяем, нужен ли экспортный стык:
-    # 1. При транзите — всегда стык
-    # 2. При импорте — стык только для 1-й станции (вход)
-    # 3. При экспорте — стык только для 2-й станции (выход)
+    # 1. Точная каноническая проверка на Баку-Товарная (Bakı yük)
+    if any(k in norm for k in ["baku yuk", "baki yuk", "баку тов", "баку товарная", "баку грузовой"]):
+        for st_key in stations_data.keys():
+            if normalize_name(st_key) in ["baki yuk", "baku yuk"]:
+                return st_key
+
     use_border_joint = (
         (shipment_type == "transit") or
         (shipment_type == "import" and is_origin) or
@@ -88,28 +93,27 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bo
         (is_transit and shipment_type is None)
     )
 
-    # 1. Порт-паром на Туркменбаши / ТРК
+    # 2. Порт-паром на Туркменбаши / ТРК
     if any(k in norm for k in ["trk", "трк", "turkmenbasy", "туркменбаши", "туркменбашы", "turkm", "туркм"]):
         return "Ələt eksport-Türk."
 
-    # 2. Порты Актау и Курык
+    # 3. Порты Актау и Курык
     if "kurik" in norm or "курык" in norm:
         return "Ələt eksport Kurik"
     if "aktau" in norm or "актау" in norm:
         return "Ələt eksport Aktau"
 
-    # 3. Алят
+    # 4. Алят
     if any(k in norm for k in ["alat", "elet", "алят"]):
         if any(k in norm for k in ["aktau", "актау"]):
             return "Ələt eksport Aktau"
         if any(k in norm for k in ["trk", "трк", "turk", "туркмен"]):
             return "Ələt eksport-Türk."
         if use_border_joint or any(k in norm for k in ["eksp", "эксп", "eksport", "экспорт", "kurik", "курык"]):
-            # По умолчанию для обобщенного Алят-эксп берутся расстояния Курыка
             return "Ələt eksport Kurik"
         return "Ələt"
 
-    # 4. Пограничные стыковые пункты
+    # 5. Пограничные стыковые пункты
     if any(k in norm for k in ["kesik", "кясик", "касик"]):
         return "Böyük Kəsik (eksport)" if use_border_joint else "Böyük Kəsik"
     
@@ -122,11 +126,7 @@ def resolve_target_row_key(station_text: str, stations_data: dict, is_origin: bo
     if "culfa" in norm or "джульфа" in norm:
         return "Culfa (eksport)" if use_border_joint else "Culfa"
 
-    # 5. Внутренние станции
-    if any(k in norm for k in ["absheron", "abseron", "абшерон", "апшерон"]):
-        return "Abşeron"
-
-    # Поиск по базе
+    # 6. Поиск по точному совпадению в базе Distances.txt
     for st_key in stations_data.keys():
         if normalize_name(st_key) == norm:
             return st_key
