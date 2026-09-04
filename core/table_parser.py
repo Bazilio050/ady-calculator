@@ -44,7 +44,8 @@ def get_base_rate_from_table(
             if not line_str or line_str.startswith("=") or "Məsafə" in line_str or "CƏDVƏL" in line_str or "Колонки:" in line_str:
                 continue
 
-            parts = [p.strip() for p in line_str.split("|")]
+            # Очищаем от пустых элементов по краям (если строка начнется с '|', split не создаст пустой элемент 0)
+            parts = [p.strip() for p in line_str.split("|") if p.strip()]
             if len(parts) >= 2:
                 dist_range = parts[0].split("-")
                 if len(dist_range) == 2:
