@@ -190,7 +190,10 @@ def get_applicable_coefficients(
         })
 
     # (A) Схема состава рефсекции
-    if "ref" in wagon_lower or "реф" in wagon_lower or "seksiy" in wagon_lower:
+    is_ref_type = any(k in wagon_lower for k in ["ref", "arv", "реф", "seksiy"])
+    has_ref_count = ref_cars_count is not None and ref_cars_count > 0
+
+    if is_ref_type or has_ref_count:
         coeff, count = get_ref_section_coefficient(ref_cars_count)
         if coeff != 1.0:
             add_coeff("ref_section", coeff, count=count)
