@@ -255,7 +255,7 @@ audio_file = st.audio_input(t["audio_label"])
 # ------------------------------------------------------------------------------
 # БЛОК 6: Обработка кнопки расчета и вызов бизнес-логики
 # ------------------------------------------------------------------------------
-# CHANGED BY AI ARCHITECT [Гарантированная передача selected_lang в NLU и Calculator]
+# CHANGED BY AI ARCHITECT [Гарантированная передача from_station и to_station в calculate_freight]
 if st.button(t["calc_btn"], type="primary", use_container_width=False):
     current_input = st.session_state.get("main_input_area", user_input)
     if not current_input.strip():
@@ -280,14 +280,24 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             nlu_res = normalize_nlu_stations(nlu_res, raw_text=current_input)
             st.session_state.nlu_res = nlu_res
 
-            # 3. Очистка параметров от служебных ключей
+            # 3. Гарантированное извлечение станций (страховка от разных названий ключей)
+            from_st = nlu_res.get("from_station") or nlu_res.get("from_station_name") or ""
+            to_st = nlu_res.get("to_station") or nlu_res.get("to_station_name") or ""
+
+            # 4. Очистка параметров от служебных ключей и станций
             calc_params = {
                 k: v for k, v in nlu_res.items() 
-                if v is not None and k not in ["lang", "raw_prompt"]
+                if v is not None and k not in [
+                    "lang", "raw_prompt", 
+                    "from_station", "to_station", 
+                    "from_station_name", "to_station_name"
+                ]
             }
 
-            # 4. Вызов расчета с явной передачей выбранного языка selected_lang
+            # 5. Вызов расчета с явной передачей обязательных аргументов from_station и to_station
             calc_res = calculate_freight(
+                from_station=from_st,
+                to_station=to_st,
                 **calc_params, 
                 lang=selected_lang, 
                 raw_prompt=current_input
