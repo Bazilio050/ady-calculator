@@ -42,7 +42,7 @@ class RailwayRouter:
     def resolve_station_by_query(self, raw_input: str) -> StationInfo:
         text = raw_input.strip().lower()
 
-        # 1. Маппинг Алята и ТРК на ключи из stations_mapping.py
+        # Маппинг Алята/ТРК на ключи справочника
         target_key = raw_input.strip()
         if "турк" in text or "трк" in text or "türk" in text:
             target_key = "Ələt eksport-Türk."
@@ -53,14 +53,15 @@ class RailwayRouter:
         elif "алят" in text and ("экс" in text or "eksp" in text or "export" in text):
             target_key = "Ələt eksport-Kurik"
 
-        # 2. Получение данных строго из справочника
         canonical_name = get_canonical_station_name(target_key) or get_canonical_station_name(raw_input)
         code = get_station_code(target_key) or get_station_code(raw_input)
+        
+        # Запрашиваем признак погранперехода ИЗ СПРАВОЧНИКА
+        is_border = get_station_border_status(target_key) or get_station_border_status(raw_input)
 
         if not canonical_name or not code:
             raise ValueError(f"Станция '{raw_input}' не найдена в справочнике data/stations_mapping.py")
 
-        is_border = self._check_if_border(canonical_name)
         return StationInfo(code=code, canonical_name=canonical_name, is_border=is_border)
 
     def determine_shipment_type(self, from_st: StationInfo, to_st: StationInfo) -> ShipmentType:
