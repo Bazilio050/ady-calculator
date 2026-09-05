@@ -4,3 +4,5 @@ openpyxl
 requests
 google-genai
 rapidfuzz
+pydantic
+pytest
