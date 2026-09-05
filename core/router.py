@@ -1,6 +1,10 @@
 from dataclasses import dataclass
 from enum import Enum
-from data.stations_mapping import get_canonical_station_name, get_station_code
+from data.stations_mapping import (
+    get_canonical_station_name,
+    get_station_code,
+    get_station_border_status,
+)
 
 
 class ShipmentType(Enum):
