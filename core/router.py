@@ -40,7 +40,7 @@ class RailwayRouter:
     def resolve_station_by_query(self, raw_input: str) -> StationInfo:
         text = raw_input.strip().lower()
 
-        # Нормализация синонимов Алята под ключи из stations_mapping.py
+        # Нормализация пользовательских синонимов
         target_key = raw_input.strip()
         if "турк" in text or "трк" in text or "türk" in text:
             target_key = "Ələt eksport-Türk."
@@ -51,7 +51,7 @@ class RailwayRouter:
         elif "алят" in text and ("экс" in text or "eksp" in text or "export" in text):
             target_key = "Ələt eksport-Kurik"
 
-        # Запрос всех свойств строго через функции stations_mapping.py
+        # Запрос данных из stations_mapping.py
         canonical_name = get_canonical_station_name(target_key) or get_canonical_station_name(raw_input)
         code = get_station_code(target_key) or get_station_code(raw_input)
         is_border = get_station_border_status(target_key) or get_station_border_status(raw_input)
@@ -60,16 +60,6 @@ class RailwayRouter:
             raise ValueError(f"Станция '{raw_input}' не найдена в справочнике data/stations_mapping.py")
 
         return StationInfo(code=code, canonical_name=canonical_name, is_border=is_border)
-
-    def determine_shipment_type(self, from_st: StationInfo, to_st: StationInfo) -> ShipmentType:
-        if from_st.is_border and to_st.is_border:
-            return ShipmentType.TRANSIT
-        elif from_st.is_border and not to_st.is_border:
-            return ShipmentType.IMPORT
-        elif not from_st.is_border and to_st.is_border:
-            return ShipmentType.EXPORT
-        else:
-            return ShipmentType.LOCAL
 
     def _get_distance_from_file(self, from_code: str, to_code: str) -> float:
         """Точный поиск расстояния по матрице Distances.txt."""
