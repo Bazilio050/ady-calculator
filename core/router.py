@@ -127,6 +127,37 @@ class RailwayRouter:
 
         raise ValueError(f"Не удалось определить расстояние между кодами ЕСР {from_code} и {to_code}")
 
+    # ------------------------------------------------------------------------------
+# БЛОК: Автоподстановка экспортных/импортных узлов и расчет маршрута
+# ------------------------------------------------------------------------------
+    def resolve_route_stations(self, raw_from: str, raw_to: str, is_explicit_export: bool = False) -> tuple[StationInfo, StationInfo]:
+        from_st = self.resolve_station(raw_from)
+        to_st = self.resolve_station(raw_to)
+
+        # 1. "Ялама Беюк Кясик экспорт" -> Yalama (локальная) -> Böyük Kəsik (eksport) [EXPORT]
+        if is_explicit_export and from_st.code in ["547508", "545006"] and to_st.code in ["558701", "558631"]:
+            from_st = self.resolve_station("Yalama")
+            to_st = self.resolve_station("Böyük Kəsik (eksport)")
+            return from_st, to_st
+
+        # 2. "Ялама Беюк Кясик" по умолчанию -> Транзит [TRANSIT]
+        if from_st.code in ["547508", "545006"] and to_st.code in ["558701", "558631"]:
+            from_st = self.resolve_station("Yalama (eksport)")
+            to_st = self.resolve_station("Böyük Kəsik (eksport)")
+            return from_st, to_st
+
+        # 3. "Апшерон Ялама" -> Abşeron -> Yalama (eksport) [EXPORT]
+        if not from_st.is_border and to_st.code in ["547508", "545006"]:
+            to_st = self.resolve_station("Yalama (eksport)")
+            return from_st, to_st
+
+        # 4. "Ялама Сумгаит" -> Yalama (eksport) -> Sumqayıt [IMPORT]
+        if from_st.code in ["547508", "545006"] and not to_st.is_border:
+            from_st = self.resolve_station("Yalama (eksport)")
+            return from_st, to_st
+
+        return from_st, to_st
+
     def calculate_route(self, raw_from: str, raw_to: str, is_explicit_export: bool = False) -> RouteResult:
         from_st, to_st = self.resolve_route_stations(raw_from, raw_to, is_explicit_export=is_explicit_export)
 
@@ -146,3 +177,4 @@ class RailwayRouter:
             distance_km=distance_km,
             shipment_type=shipment_type,
         )
+# ------------------------------------------------------------------------------
