@@ -263,3 +263,27 @@ def get_canonical_station_name(station_input: str) -> str:
                     return main_key
 
     return station_input.strip()
+
+
+# ------------------------------------------------------------------------------
+# Дополнение: Получение пограничного статуса станции
+# ------------------------------------------------------------------------------
+def get_station_border_status(station_input: str) -> bool:
+    """Возвращает True, если станция является пограничным переходом или терминалом."""
+    if not station_input:
+        return False
+    
+    canonical_name = get_canonical_station_name(station_input)
+    
+    # Канонические имена пограничных узлов ADY
+    border_canonical_names = {
+        "Yalama", "Yalama (eksport)",
+        "Böyük Kəsik", "Böyük Kəsik (eksport)",
+        "Astara", "Astara (eks.aşır)",
+        "Culfa", "Culfa (eksport)",
+        "Şərur", "Şərur (eksport)",
+        "Ələt eksport-Aktau", "Ələt eksport-Kurik", "Ələt eksport-Türk.",
+        "Bakı ticarət liman", "Bakı ticarət limanı (eks)", "Bakı ticarət limanı (aşır)"
+    }
+    
+    return canonical_name in border_canonical_names
