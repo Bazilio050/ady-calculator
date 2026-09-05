@@ -1,3 +1,4 @@
+import csv
 from dataclasses import dataclass
 from enum import Enum
 from data.stations_mapping import (
@@ -34,8 +35,21 @@ class RouteResult:
 
 
 class RailwayRouter:
-    def __init__(self, distances_file_path: str = "data/Distances.txt"):
+    def __init__(self, distances_file_path: str = "data/distances.csv"):
         self.distances_file_path = distances_file_path
+        self.distances_map = {}
+        self._load_distances()
+
+    def _load_distances(self):
+        """Загрузка матрицы расстояний из CSV в память один раз при старте."""
+        try:
+            with open(self.distances_file_path, mode="r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    key = (row["from_code"].strip(), row["to_code"].strip())
+                    self.distances_map[key] = float(row["distance_km"])
+        except Exception:
+            pass
 
     def resolve_station_by_query(self, raw_input: str) -> StationInfo:
         text = raw_input.strip().lower()
@@ -61,54 +75,19 @@ class RailwayRouter:
 
         return StationInfo(code=code, canonical_name=canonical_name, is_border=is_border)
 
+    def determine_shipment_type(self, from_st: StationInfo, to_st: StationInfo) -> ShipmentType:
+        if from_st.is_border and to_st.is_border:
+            return ShipmentType.TRANSIT
+        elif from_st.is_border and not to_st.is_border:
+            return ShipmentType.IMPORT
+        elif not from_st.is_border and to_st.is_border:
+            return ShipmentType.EXPORT
+        else:
+            return ShipmentType.LOCAL
+
     def _get_distance_from_file(self, from_code: str, to_code: str) -> float:
-        """Точный поиск расстояния по матрице Distances.txt."""
-        try:
-            with open(self.distances_file_path, "r", encoding="utf-8") as f:
-                lines = [line.strip() for line in f if line.strip() and not line.startswith("#")]
-
-            if not lines:
-                return 0.0
-
-            # Поиск строки заглавия с именами/кодами колонок
-            header_idx = -1
-            for i, line in enumerate(lines):
-                if "Stansiyanın kodu" in line or "Yalama" in line:
-                    header_idx = i
-                    break
-
-            if header_idx == -1:
-                header_idx = 0
-
-            header_parts = [p.strip() for p in lines[header_idx].split("|") if p.strip()]
-
-            # Определение индекса целевой колонки по коду назначения
-            target_col_idx = -1
-            for idx, col_text in enumerate(header_parts):
-                if to_code in col_text:
-                    target_col_idx = idx
-                    break
-
-            # Если код не совпал напрямую, проверяем терминалы Алята
-            if target_col_idx == -1 and to_code in ["549204", "553002", "548803", "547302", "547406", "547209"]:
-                for idx, col_text in enumerate(header_parts):
-                    if "Ələt" in col_text or "liman" in col_text:
-                        target_col_idx = idx
-                        break
-
-            # Считывание километража из строки отправления
-            for line in lines[header_idx + 1:]:
-                parts = [p.strip() for p in line.split("|") if p.strip()]
-                if len(parts) >= 2 and parts[1] == from_code:
-                    if target_col_idx != -1 and target_col_idx < len(parts):
-                        val_str = parts[target_col_idx].replace(",", ".")
-                        if val_str.replace(".", "", 1).isdigit():
-                            return float(val_str)
-
-        except Exception:
-            pass
-
-        return 0.0
+        """Мгновенный поиск расстояния O(1) по паре ЕСР-кодов."""
+        return self.distances_map.get((from_code, to_code), 0.0)
 
     def calculate_route(self, raw_from: str, raw_to: str) -> RouteResult:
         from_st = self.resolve_station_by_query(raw_from)
