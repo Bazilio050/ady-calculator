@@ -1,41 +1,40 @@
-# ------------------------------------------------------------------------------
-# БЛОК 1: Автономный запуск проверки 7 маршрутов ADY
-# ------------------------------------------------------------------------------
 from core.router import RailwayRouter, ShipmentType
 
 
 def run_all_route_tests():
     router = RailwayRouter(distances_file_path="data/Distances.txt")
 
-    # 1. Ялама -> Беюк Кясик (Транзит)
-    r1 = router.calculate_route("Ялама экспорт", "Беюк-Кясик-эксп.")
-    assert r1.shipment_type == ShipmentType.TRANSIT, f"Ожидался TRANSIT, получено {r1.shipment_type}"
+    test_cases = [
+        # 1. Запросы с портом Алят
+        ("Алят экс", "Сальяны", ShipmentType.IMPORT, "553002", "554007"),
+        ("Астара", "ТРК", ShipmentType.TRANSIT, "554109", "548803"),
+        ("Absheron", "Alat Aqtau", ShipmentType.EXPORT, "552103", "549204"),
+        ("Алят", "Сумгаит", ShipmentType.LOCAL, "548502", "550000"),
 
-    # 2. Беюк Кясик -> Алят (Импорт)
-    r2 = router.calculate_route("Беюк-Кясик-эксп.", "Алят")
-    assert r2.shipment_type == ShipmentType.IMPORT, f"Ожидался IMPORT, получено {r2.shipment_type}"
+        # 2. Чистые транзитные запросы без суффиксов (RU, AZ, EN)
+        ("Ялама", "Беюк Кясик", ShipmentType.TRANSIT, "545006", "558631"),
+        ("Yalama", "Böyük Kəsik", ShipmentType.TRANSIT, "545006", "558631"),
+        ("Yalama", "Boyuk Kesik", ShipmentType.TRANSIT, "545006", "558631"),
 
-    # 3. Астара -> Апшерон (Импорт)
-    r3 = router.calculate_route("Астара (эксп.перевалка)", "Апшерон")
-    assert r3.shipment_type == ShipmentType.IMPORT, f"Ожидался IMPORT, получено {r3.shipment_type}"
+        # 3. Импортные / Экспортные маршруты на разных языках
+        ("Ялама", "Апшерон", ShipmentType.IMPORT, "545006", "552103"),
+        ("Беюк Кясик", "Алят", ShipmentType.IMPORT, "558631", "548502"),
+        ("Апшерон", "Ялама", ShipmentType.EXPORT, "552103", "545006"),
+        ("Şirvan", "Boyuk Kesik", ShipmentType.EXPORT, "553505", "558631")
+    ]
 
-    # 4. Ялама -> Баладжары (Импорт)
-    r4 = router.calculate_route("Ялама экспорт", "Баладжары")
-    assert r4.shipment_type == ShipmentType.IMPORT, f"Ожидался IMPORT, получено {r4.shipment_type}"
+    print("\n--- РЕЗУЛЬТАТЫ ПРОВЕРКИ МАРШРУТОВ ADY ---")
+    for raw_from, raw_to, expected_type, exp_from_code, exp_to_code in test_cases:
+        res = router.calculate_route(raw_from, raw_to)
+        out_str = res.formatted_output()
+        print(f"Запрос: [{raw_from} -> {raw_to}] ===> {out_str}")
 
-    # 5. Сумгаит -> Алят (Локальная)
-    r5 = router.calculate_route("Сумгаит", "Алят")
-    assert r5.shipment_type == ShipmentType.LOCAL, f"Ожидался LOCAL, получено {r5.shipment_type}"
+        assert res.shipment_type == expected_type, f"Ошибка типа для {raw_from}->{raw_to}: ожидалось {expected_type}, получено {res.shipment_type}"
+        assert res.from_station.code == exp_from_code, f"Неверный код отправления для {raw_from}: {res.from_station.code} != {exp_from_code}"
+        assert res.to_station.code == exp_to_code, f"Неверный код назначения для {raw_to}: {res.to_station.code} != {exp_to_code}"
 
-    # 6. Ширван -> Ялама (Экспорт)
-    r6 = router.calculate_route("Ширван", "Ялама экспорт")
-    assert r6.shipment_type == ShipmentType.EXPORT, f"Ожидался EXPORT, получено {r6.shipment_type}"
-
-    # 7. Апшерон -> Беюк Кясик (Экспорт)
-    r7 = router.calculate_route("Апшерон", "Беюк-Кясик-эксп.")
-    assert r7.shipment_type == ShipmentType.EXPORT, f"Ожидался EXPORT, получено {r7.shipment_type}"
-
-    print("SUCCESS: Все 7 маршрутов успешно прошли проверку!")
+    print("------------------------------------------")
+    print("SUCCESS: Все мультиязычные тесты пройдены успешно!\n")
 
 
 if __name__ == "__main__":
