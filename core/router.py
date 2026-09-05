@@ -34,24 +34,26 @@ class RailwayRouter:
         self.distances_file_path = distances_file_path
 
     def _check_if_border(self, canonical_name: str) -> bool:
+        """Определяет, является ли станция погранотвалом/перевалкой."""
         name_lower = canonical_name.lower()
-        border_markers = ["(eksport)", "eksport", "eks.aşır", "eksp.", "перевалка", "yalama", "böyük kəsik", "astara"]
+        border_markers = ["(eksport)", "eksport", "eks.aşır", "eksp.", "перевалка", "liman"]
         return any(m in name_lower for m in border_markers)
 
     def resolve_station_by_query(self, raw_input: str) -> StationInfo:
         text = raw_input.strip().lower()
 
-        # Маппинг Алята и ТРК на канонические ключи справочника
+        # 1. Маппинг Алята и ТРК на ключи из stations_mapping.py
         target_key = raw_input.strip()
         if "турк" in text or "трк" in text or "türk" in text:
             target_key = "Ələt eksport-Türk."
         elif "актау" in text or "aqtau" in text:
-            target_key = "Ələt eksport Aktau"
+            target_key = "Ələt eksport-Aktau"
         elif "курык" in text or "курик" in text or "qurıq" in text or "kurik" in text:
-            target_key = "Ələt eksport Kurik"
+            target_key = "Ələt eksport-Kurik"
         elif "алят" in text and ("экс" in text or "eksp" in text or "export" in text):
-            target_key = "Ələt eksport Kurik"
+            target_key = "Ələt eksport-Kurik"
 
+        # 2. Получение данных строго из справочника
         canonical_name = get_canonical_station_name(target_key) or get_canonical_station_name(raw_input)
         code = get_station_code(target_key) or get_station_code(raw_input)
 
@@ -72,6 +74,11 @@ class RailwayRouter:
             return ShipmentType.LOCAL
 
     def _get_distance_from_file(self, from_code: str, to_code: str) -> float:
+        """
+        Точный поиск километража из таблицы Distances.txt.
+        Ищет индекс колонки станции назначения в шапке таблицы, 
+        затем берет значение из строки станции отправления.
+        """
         try:
             with open(self.distances_file_path, "r", encoding="utf-8") as f:
                 lines = [line.strip() for line in f if line.strip() and not line.startswith("#")]
@@ -79,26 +86,44 @@ class RailwayRouter:
             if not lines:
                 return 0.0
 
-            header_parts = [p.strip() for p in lines[0].split("|") if p.strip()]
-            
+            # Находим заголовок матрицы (строка с разделителями '|')
+            header_line = None
+            data_lines = []
+            for line in lines:
+                if "Stansiyanın kodu" in line or "545006" in line or "Yalama" in line:
+                    if not header_line and "|" in line:
+                        header_line = line
+                        continue
+                if "|" in line:
+                    data_lines.append(line)
+
+            if not header_line:
+                header_line = lines[0]
+
+            header_parts = [p.strip() for p in header_line.split("|") if p.strip()]
+
+            # Находим индекс колонки по коду назначения или ключевым словам
             target_col_idx = -1
-            for idx, col_name in enumerate(header_parts):
-                if to_code in col_name:
+            for idx, col_text in enumerate(header_parts):
+                if to_code in col_text:
                     target_col_idx = idx
                     break
 
-            for line in lines[1:]:
+            # Если точный код не найден в шапке, ищем по универсальной колонке Алята/Порта
+            if target_col_idx == -1 and to_code in ["549204", "553002", "548803", "547302", "547406", "547209"]:
+                for idx, col_text in enumerate(header_parts):
+                    if "Ələt" in col_text or "liman" in col_text:
+                        target_col_idx = idx
+                        break
+
+            # Находим строку с кодом отправления from_code
+            for line in data_lines:
                 parts = [p.strip() for p in line.split("|") if p.strip()]
                 if len(parts) >= 2 and parts[1] == from_code:
                     if target_col_idx != -1 and target_col_idx < len(parts):
-                        val = parts[target_col_idx]
-                        if val.replace(".", "", 1).isdigit():
-                            return float(val)
-                    
-                    for p in parts[2:]:
-                        clean_p = p.replace(".", "", 1)
-                        if clean_p.isdigit() and float(p) > 0:
-                            return float(p)
+                        val_str = parts[target_col_idx].replace(",", ".")
+                        if val_str.isdigit() or val_str.replace(".", "", 1).isdigit():
+                            return float(val_str)
 
         except Exception:
             pass
