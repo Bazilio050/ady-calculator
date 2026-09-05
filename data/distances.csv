@@ -1,0 +1,904 @@
+from_code,from_name,to_code,to_name,distance_km
+548004,Abşeron,547508,Yalama (eksport),204.0
+548004,Abşeron,554503,Astara (eksport),300.0
+548004,Abşeron,558701,Böyük Kəsik (eksport),476.0
+548004,Abşeron,550108,Culfa (eksport),466.0
+548004,Abşeron,553002,Ələt eksport-Kurik,67.0
+548004,Abşeron,548803,Ələt eksport-Türk.,67.0
+548004,Abşeron,549204,Ələt eksport-Aktau,67.0
+555506,Ağdam,547508,Yalama (eksport),548.0
+555506,Ağdam,554503,Astara (eksport),454.0
+555506,Ağdam,558701,Böyük Kəsik (eksport),286.0
+555506,Ağdam,550108,Culfa (eksport),620.0
+555506,Ağdam,553002,Ələt eksport-Kurik,297.0
+555506,Ağdam,548803,Ələt eksport-Türk.,297.0
+555506,Ağdam,549204,Ələt eksport-Aktau,297.0
+557200,Ağstafa,547508,Yalama (eksport),633.0
+557200,Ağstafa,554503,Astara (eksport),539.0
+557200,Ağstafa,558701,Böyük Kəsik (eksport),47.0
+557200,Ağstafa,550108,Culfa (eksport),705.0
+557200,Ağstafa,553002,Ələt eksport-Kurik,382.0
+557200,Ağstafa,548803,Ələt eksport-Türk.,382.0
+557200,Ağstafa,549204,Ələt eksport-Aktau,382.0
+556602,Alabaşlı,547508,Yalama (eksport),551.0
+556602,Alabaşlı,554503,Astara (eksport),457.0
+556602,Alabaşlı,558701,Böyük Kəsik (eksport),129.0
+556602,Alabaşlı,550108,Culfa (eksport),623.0
+556602,Alabaşlı,553002,Ələt eksport-Kurik,300.0
+556602,Alabaşlı,548803,Ələt eksport-Türk.,300.0
+556602,Alabaşlı,549204,Ələt eksport-Aktau,300.0
+554109,Astara,547508,Yalama (eksport),504.0
+554109,Astara,554503,Astara (eksport),0.0
+554109,Astara,558701,Böyük Kəsik (eksport),586.0
+554109,Astara,550108,Culfa (eksport),532.0
+554109,Astara,553002,Ələt eksport-Kurik,253.0
+554109,Astara,548803,Ələt eksport-Türk.,253.0
+554109,Astara,549204,Ələt eksport-Aktau,253.0
+554503,Astara (eks.aşır),547508,Yalama (eksport),504.0
+554503,Astara (eks.aşır),554503,Astara (eksport),0.0
+554503,Astara (eks.aşır),558701,Böyük Kəsik (eksport),586.0
+554503,Astara (eks.aşır),550108,Culfa (eksport),532.0
+554503,Astara (eks.aşır),553002,Ələt eksport-Kurik,253.0
+554503,Astara (eks.aşır),548803,Ələt eksport-Türk.,253.0
+554503,Astara (eks.aşır),549204,Ələt eksport-Aktau,253.0
+548907,Atbulaq,547508,Yalama (eksport),274.0
+548907,Atbulaq,554503,Astara (eksport),240.0
+548907,Atbulaq,558701,Böyük Kəsik (eksport),406.0
+548907,Atbulaq,550108,Culfa (eksport),406.0
+548907,Atbulaq,553002,Ələt eksport-Kurik,23.0
+548907,Atbulaq,548803,Ələt eksport-Türk.,23.0
+548907,Atbulaq,549204,Ələt eksport-Aktau,23.0
+547105,Bakı yük,547508,Yalama (eksport),207.0
+547105,Bakı yük,554503,Astara (eksport),327.0
+547105,Bakı yük,558701,Böyük Kəsik (eksport),503.0
+547105,Bakı yük,550108,Culfa (eksport),493.0
+547105,Bakı yük,553002,Ələt eksport-Kurik,94.0
+547105,Bakı yük,548803,Ələt eksport-Türk.,94.0
+547105,Bakı yük,549204,Ələt eksport-Aktau,94.0
+547603,Bakı yük terminal,547508,Yalama (eksport),212.0
+547603,Bakı yük terminal,554503,Astara (eksport),332.0
+547603,Bakı yük terminal,558701,Böyük Kəsik (eksport),508.0
+547603,Bakı yük terminal,550108,Culfa (eksport),498.0
+547603,Bakı yük terminal,553002,Ələt eksport-Kurik,99.0
+547603,Bakı yük terminal,548803,Ələt eksport-Türk.,99.0
+547603,Bakı yük terminal,549204,Ələt eksport-Aktau,99.0
+559704,Balakən,547508,Yalama (eksport),634.0
+559704,Balakən,554503,Astara (eksport),540.0
+559704,Balakən,558701,Böyük Kəsik (eksport),372.0
+559704,Balakən,550108,Culfa (eksport),706.0
+559704,Balakən,553002,Ələt eksport-Kurik,383.0
+559704,Balakən,548803,Ələt eksport-Türk.,383.0
+559704,Balakən,549204,Ələt eksport-Aktau,383.0
+551308,Bartaz,547508,Yalama (eksport),556.0
+551308,Bartaz,554503,Astara (eksport),418.0
+551308,Bartaz,558701,Böyük Kəsik (eksport),638.0
+551308,Bartaz,550108,Culfa (eksport),114.0
+551308,Bartaz,553002,Ələt eksport-Kurik,305.0
+551308,Bartaz,548803,Ələt eksport-Türk.,305.0
+551308,Bartaz,549204,Ələt eksport-Aktau,305.0
+557501,Barxudarlı,547508,Yalama (eksport),663.0
+557501,Barxudarlı,554503,Astara (eksport),569.0
+557501,Barxudarlı,558701,Böyük Kəsik (eksport),77.0
+557501,Barxudarlı,550108,Culfa (eksport),735.0
+557501,Barxudarlı,553002,Ələt eksport-Kurik,412.0
+557501,Barxudarlı,548803,Ələt eksport-Türk.,412.0
+557501,Barxudarlı,549204,Ələt eksport-Aktau,412.0
+550700,Başbaşı,547508,Yalama (eksport),727.0
+550700,Başbaşı,554503,Astara (eksport),589.0
+550700,Başbaşı,558701,Böyük Kəsik (eksport),809.0
+550700,Başbaşı,550108,Culfa (eksport),57.0
+550700,Başbaşı,553002,Ələt eksport-Kurik,476.0
+550700,Başbaşı,548803,Ələt eksport-Türk.,476.0
+550700,Başbaşı,549204,Ələt eksport-Aktau,476.0
+555309,Bərdə,547508,Yalama (eksport),503.0
+555309,Bərdə,554503,Astara (eksport),409.0
+555309,Bərdə,558701,Böyük Kəsik (eksport),241.0
+555309,Bərdə,550108,Culfa (eksport),575.0
+555309,Bərdə,553002,Ələt eksport-Kurik,252.0
+555309,Bərdə,548803,Ələt eksport-Türk.,252.0
+555309,Bərdə,549204,Ələt eksport-Aktau,252.0
+554804,Bərguşad,547508,Yalama (eksport),414.0
+554804,Bərguşad,554503,Astara (eksport),320.0
+554804,Bərguşad,558701,Böyük Kəsik (eksport),266.0
+554804,Bərguşad,550108,Culfa (eksport),486.0
+554804,Bərguşad,553002,Ələt eksport-Kurik,163.0
+554804,Bərguşad,548803,Ələt eksport-Türk.,163.0
+554804,Bərguşad,549204,Ələt eksport-Aktau,163.0
+546808,Biləcəri,547508,Yalama (eksport),192.0
+546808,Biləcəri,554503,Astara (eksport),312.0
+546808,Biləcəri,558701,Böyük Kəsik (eksport),488.0
+546808,Biləcəri,550108,Culfa (eksport),478.0
+546808,Biləcəri,553002,Ələt eksport-Kurik,79.0
+546808,Biləcəri,548803,Ələt eksport-Türk.,79.0
+546808,Biləcəri,549204,Ələt eksport-Aktau,79.0
+547707,Binə,547508,Yalama (eksport),227.0
+547707,Binə,554503,Astara (eksport),347.0
+547707,Binə,558701,Böyük Kəsik (eksport),523.0
+547707,Binə,550108,Culfa (eksport),513.0
+547707,Binə,553002,Ələt eksport-Kurik,114.0
+547707,Binə,548803,Ələt eksport-Türk.,114.0
+547707,Binə,549204,Ələt eksport-Aktau,114.0
+558631,Böyük Kəsik,547508,Yalama (eksport),676.0
+558631,Böyük Kəsik,554503,Astara (eksport),582.0
+558631,Böyük Kəsik,558701,Böyük Kəsik (eksport),4.0
+558631,Böyük Kəsik,550108,Culfa (eksport),748.0
+558631,Böyük Kəsik,553002,Ələt eksport-Kurik,425.0
+558631,Böyük Kəsik,548803,Ələt eksport-Türk.,425.0
+558631,Böyük Kəsik,549204,Ələt eksport-Aktau,425.0
+558701,Böyük Kəsik (eksport),547508,Yalama (eksport),680.0
+558701,Böyük Kəsik (eksport),554503,Astara (eksport),586.0
+558701,Böyük Kəsik (eksport),558701,Böyük Kəsik (eksport),0.0
+558701,Böyük Kəsik (eksport),550108,Culfa (eksport),752.0
+558701,Böyük Kəsik (eksport),553002,Ələt eksport-Kurik,429.0
+558701,Böyük Kəsik (eksport),548803,Ələt eksport-Türk.,429.0
+558701,Böyük Kəsik (eksport),549204,Ələt eksport-Aktau,429.0
+545400,Çarxı,547508,Yalama (eksport),52.0
+545400,Çarxı,554503,Astara (eksport),452.0
+545400,Çarxı,558701,Böyük Kəsik (eksport),628.0
+545400,Çarxı,550108,Culfa (eksport),618.0
+545400,Çarxı,553002,Ələt eksport-Kurik,219.0
+545400,Çarxı,548803,Ələt eksport-Türk.,219.0
+545400,Çarxı,549204,Ələt eksport-Aktau,219.0
+553303,Cəlilabad,547508,Yalama (eksport),414.0
+553303,Cəlilabad,554503,Astara (eksport),90.0
+553303,Cəlilabad,558701,Böyük Kəsik (eksport),496.0
+553303,Cəlilabad,550108,Culfa (eksport),442.0
+553303,Cəlilabad,553002,Ələt eksport-Kurik,163.0
+553303,Cəlilabad,548803,Ələt eksport-Türk.,163.0
+553303,Cəlilabad,549204,Ələt eksport-Aktau,163.0
+550004,Culfa,547508,Yalama (eksport),670.0
+550004,Culfa,554503,Astara (eksport),532.0
+550004,Culfa,558701,Böyük Kəsik (eksport),752.0
+550004,Culfa,550108,Culfa (eksport),0.0
+550004,Culfa,553002,Ələt eksport-Kurik,419.0
+550004,Culfa,548803,Ələt eksport-Türk.,419.0
+550004,Culfa,549204,Ələt eksport-Aktau,419.0
+550108,Culfa (eksport),547508,Yalama (eksport),670.0
+550108,Culfa (eksport),554503,Astara (eksport),532.0
+550108,Culfa (eksport),558701,Böyük Kəsik (eksport),752.0
+550108,Culfa (eksport),550108,Culfa (eksport),0.0
+550108,Culfa (eksport),553002,Ələt eksport-Kurik,419.0
+550108,Culfa (eksport),548803,Ələt eksport-Türk.,419.0
+550108,Culfa (eksport),549204,Ələt eksport-Aktau,419.0
+551906,Daşburun,547508,Yalama (eksport),426.0
+551906,Daşburun,554503,Astara (eksport),288.0
+551906,Daşburun,558701,Böyük Kəsik (eksport),508.0
+551906,Daşburun,550108,Culfa (eksport),244.0
+551906,Daşburun,553002,Ələt eksport-Kurik,175.0
+551906,Daşburun,548803,Ələt eksport-Türk.,175.0
+551906,Daşburun,549204,Ələt eksport-Aktau,175.0
+556803,Dəllər,547508,Yalama (eksport),572.0
+556803,Dəllər,554503,Astara (eksport),478.0
+556803,Dəllər,558701,Böyük Kəsik (eksport),108.0
+556803,Dəllər,550108,Culfa (eksport),644.0
+556803,Dəllər,553002,Ələt eksport-Kurik,321.0
+556803,Dəllər,548803,Ələt eksport-Türk.,321.0
+556803,Dəllər,549204,Ələt eksport-Aktau,321.0
+556000,Dəlməmmədli,547508,Yalama (eksport),521.0
+556000,Dəlməmmədli,554503,Astara (eksport),427.0
+556000,Dəlməmmədli,558701,Böyük Kəsik (eksport),159.0
+556000,Dəlməmmədli,550108,Culfa (eksport),593.0
+556000,Dəlməmmədli,553002,Ələt eksport-Kurik,270.0
+556000,Dəlməmmədli,548803,Ələt eksport-Türk.,270.0
+556000,Dəlməmmədli,549204,Ələt eksport-Aktau,270.0
+547904,Dübəndi,547508,Yalama (eksport),242.0
+547904,Dübəndi,554503,Astara (eksport),362.0
+547904,Dübəndi,558701,Böyük Kəsik (eksport),538.0
+547904,Dübəndi,550108,Culfa (eksport),528.0
+547904,Dübəndi,553002,Ələt eksport-Kurik,129.0
+547904,Dübəndi,548803,Ələt eksport-Türk.,129.0
+547904,Dübəndi,549204,Ələt eksport-Aktau,129.0
+548502,Ələt,547508,Yalama (eksport),261.0
+548502,Ələt,554503,Astara (eksport),243.0
+548502,Ələt,558701,Böyük Kəsik (eksport),419.0
+548502,Ələt,550108,Culfa (eksport),409.0
+548502,Ələt,553002,Ələt eksport-Kurik,10.0
+548502,Ələt,548803,Ələt eksport-Türk.,10.0
+548502,Ələt,549204,Ələt eksport-Aktau,10.0
+549204,Ələt eksport-Aktau,547508,Yalama (eksport),271.0
+549204,Ələt eksport-Aktau,554503,Astara (eksport),253.0
+549204,Ələt eksport-Aktau,558701,Böyük Kəsik (eksport),429.0
+549204,Ələt eksport-Aktau,550108,Culfa (eksport),419.0
+549204,Ələt eksport-Aktau,553002,Ələt eksport-Kurik,0.0
+549204,Ələt eksport-Aktau,548803,Ələt eksport-Türk.,0.0
+549204,Ələt eksport-Aktau,549204,Ələt eksport-Aktau,0.0
+553002,Ələt eksport-Kurik,547508,Yalama (eksport),271.0
+553002,Ələt eksport-Kurik,554503,Astara (eksport),253.0
+553002,Ələt eksport-Kurik,558701,Böyük Kəsik (eksport),429.0
+553002,Ələt eksport-Kurik,550108,Culfa (eksport),419.0
+553002,Ələt eksport-Kurik,553002,Ələt eksport-Kurik,0.0
+553002,Ələt eksport-Kurik,548803,Ələt eksport-Türk.,0.0
+553002,Ələt eksport-Kurik,549204,Ələt eksport-Aktau,0.0
+548803,Ələt eksport-Türk.,547508,Yalama (eksport),271.0
+548803,Ələt eksport-Türk.,554503,Astara (eksport),253.0
+548803,Ələt eksport-Türk.,558701,Böyük Kəsik (eksport),429.0
+548803,Ələt eksport-Türk.,550108,Culfa (eksport),419.0
+548803,Ələt eksport-Türk.,553002,Ələt eksport-Kurik,0.0
+548803,Ələt eksport-Türk.,548803,Ələt eksport-Türk.,0.0
+548803,Ələt eksport-Türk.,549204,Ələt eksport-Aktau,0.0
+547302,Bakı ticarət liman,547508,Yalama (eksport),271.0
+547302,Bakı ticarət liman,554503,Astara (eksport),253.0
+547302,Bakı ticarət liman,558701,Böyük Kəsik (eksport),429.0
+547302,Bakı ticarət liman,550108,Culfa (eksport),419.0
+547302,Bakı ticarət liman,553002,Ələt eksport-Kurik,0.0
+547302,Bakı ticarət liman,548803,Ələt eksport-Türk.,0.0
+547302,Bakı ticarət liman,549204,Ələt eksport-Aktau,0.0
+547406,Bakı ticarət limanı (eks),547508,Yalama (eksport),271.0
+547406,Bakı ticarət limanı (eks),554503,Astara (eksport),253.0
+547406,Bakı ticarət limanı (eks),558701,Böyük Kəsik (eksport),429.0
+547406,Bakı ticarət limanı (eks),550108,Culfa (eksport),419.0
+547406,Bakı ticarət limanı (eks),553002,Ələt eksport-Kurik,0.0
+547406,Bakı ticarət limanı (eks),548803,Ələt eksport-Türk.,0.0
+547406,Bakı ticarət limanı (eks),549204,Ələt eksport-Aktau,0.0
+547209,Bakı ticarət limanı (aşır),547508,Yalama (eksport),271.0
+547209,Bakı ticarət limanı (aşır),554503,Astara (eksport),253.0
+547209,Bakı ticarət limanı (aşır),558701,Böyük Kəsik (eksport),429.0
+547209,Bakı ticarət limanı (aşır),550108,Culfa (eksport),419.0
+547209,Bakı ticarət limanı (aşır),553002,Ələt eksport-Kurik,0.0
+547209,Bakı ticarət limanı (aşır),548803,Ələt eksport-Türk.,0.0
+547209,Bakı ticarət limanı (aşır),549204,Ələt eksport-Aktau,0.0
+548703,Ələt yeni,547508,Yalama (eksport),266.0
+548703,Ələt yeni,554503,Astara (eksport),238.0
+548703,Ələt yeni,558701,Böyük Kəsik (eksport),424.0
+548703,Ələt yeni,550108,Culfa (eksport),404.0
+548703,Ələt yeni,553002,Ələt eksport-Kurik,15.0
+548703,Ələt yeni,548803,Ələt eksport-Türk.,15.0
+548703,Ələt yeni,549204,Ələt eksport-Aktau,15.0
+557304,Əsgəran,547508,Yalama (eksport),563.0
+557304,Əsgəran,554503,Astara (eksport),469.0
+557304,Əsgəran,558701,Böyük Kəsik (eksport),301.0
+557304,Əsgəran,550108,Culfa (eksport),635.0
+557304,Əsgəran,553002,Ələt eksport-Kurik,312.0
+557304,Əsgəran,548803,Ələt eksport-Türk.,312.0
+557304,Əsgəran,549204,Ələt eksport-Aktau,312.0
+556208,Gəncə,547508,Yalama (eksport),539.0
+556208,Gəncə,554503,Astara (eksport),445.0
+556208,Gəncə,558701,Böyük Kəsik (eksport),141.0
+556208,Gəncə,550108,Culfa (eksport),611.0
+556208,Gəncə,553002,Ələt eksport-Kurik,288.0
+556208,Gəncə,548803,Ələt eksport-Türk.,288.0
+556208,Gəncə,549204,Ələt eksport-Aktau,288.0
+546009,Giləzi,547508,Yalama (eksport),125.0
+546009,Giləzi,554503,Astara (eksport),379.0
+546009,Giləzi,558701,Böyük Kəsik (eksport),555.0
+546009,Giləzi,550108,Culfa (eksport),545.0
+546009,Giləzi,553002,Ələt eksport-Kurik,146.0
+546009,Giləzi,548803,Ələt eksport-Türk.,146.0
+546009,Giləzi,549204,Ələt eksport-Aktau,146.0
+555900,Goran,547508,Yalama (eksport),496.0
+555900,Goran,554503,Astara (eksport),402.0
+555900,Goran,558701,Böyük Kəsik (eksport),184.0
+555900,Goran,550108,Culfa (eksport),568.0
+555900,Goran,553002,Ələt eksport-Kurik,245.0
+555900,Goran,548803,Ələt eksport-Türk.,245.0
+555900,Goran,549204,Ələt eksport-Aktau,245.0
+554402,Göylərçöl,547508,Yalama (eksport),366.0
+554402,Göylərçöl,554503,Astara (eksport),272.0
+554402,Göylərçöl,558701,Böyük Kəsik (eksport),362.0
+554402,Göylərçöl,550108,Culfa (eksport),438.0
+554402,Göylərçöl,553002,Ələt eksport-Kurik,115.0
+554402,Göylərçöl,548803,Ələt eksport-Türk.,115.0
+554402,Göylərçöl,549204,Ələt eksport-Aktau,115.0
+553801,Gövşaban,547508,Yalama (eksport),469.0
+553801,Gövşaban,554503,Astara (eksport),35.0
+553801,Gövşaban,558701,Böyük Kəsik (eksport),551.0
+553801,Gövşaban,550108,Culfa (eksport),497.0
+553801,Gövşaban,553002,Ələt eksport-Kurik,218.0
+553801,Gövşaban,548803,Ələt eksport-Türk.,218.0
+553801,Gövşaban,549204,Ələt eksport-Aktau,218.0
+546600,Güzdək,547508,Yalama (eksport),177.0
+546600,Güzdək,554503,Astara (eksport),327.0
+546600,Güzdək,558701,Böyük Kəsik (eksport),503.0
+546600,Güzdək,550108,Culfa (eksport),493.0
+546600,Güzdək,553002,Ələt eksport-Kurik,94.0
+546600,Güzdək,548803,Ələt eksport-Türk.,94.0
+546600,Güzdək,549204,Ələt eksport-Aktau,94.0
+554202,Hacıqabul,547508,Yalama (eksport),304.0
+554202,Hacıqabul,554503,Astara (eksport),210.0
+554202,Hacıqabul,558701,Böyük Kəsik (eksport),376.0
+554202,Hacıqabul,550108,Culfa (eksport),376.0
+554202,Hacıqabul,553002,Ələt eksport-Kurik,53.0
+554202,Hacıqabul,548803,Ələt eksport-Türk.,53.0
+554202,Hacıqabul,549204,Ələt eksport-Aktau,53.0
+551505,Həkəri,547508,Yalama (eksport),530.0
+551505,Həkəri,554503,Astara (eksport),392.0
+551505,Həkəri,558701,Böyük Kəsik (eksport),612.0
+551505,Həkəri,550108,Culfa (eksport),140.0
+551505,Həkəri,553002,Ələt eksport-Kurik,279.0
+551505,Həkəri,548803,Ələt eksport-Türk.,279.0
+551505,Həkəri,549204,Ələt eksport-Aktau,279.0
+551806,Horadiz,547508,Yalama (eksport),464.0
+551806,Horadiz,554503,Astara (eksport),326.0
+551806,Horadiz,558701,Böyük Kəsik (eksport),546.0
+551806,Horadiz,550108,Culfa (eksport),206.0
+551806,Horadiz,553002,Ələt eksport-Kurik,213.0
+551806,Horadiz,548803,Ələt eksport-Türk.,213.0
+551806,Horadiz,549204,Ələt eksport-Aktau,213.0
+547800,Hövsan,547508,Yalama (eksport),232.0
+547800,Hövsan,554503,Astara (eksport),352.0
+547800,Hövsan,558701,Böyük Kəsik (eksport),528.0
+547800,Hövsan,550108,Culfa (eksport),527.0
+547800,Hövsan,553002,Ələt eksport-Kurik,119.0
+547800,Hövsan,548803,Ələt eksport-Türk.,119.0
+547800,Hövsan,549204,Ələt eksport-Aktau,119.0
+552207,İmişli,547508,Yalama (eksport),386.0
+552207,İmişli,554503,Astara (eksport),248.0
+552207,İmişli,558701,Böyük Kəsik (eksport),468.0
+552207,İmişli,550108,Culfa (eksport),284.0
+552207,İmişli,553002,Ələt eksport-Kurik,135.0
+552207,İmişli,548803,Ələt eksport-Türk.,135.0
+552207,İmişli,549204,Ələt eksport-Aktau,135.0
+551007,Karçevan,547508,Yalama (eksport),608.0
+551007,Karçevan,554503,Astara (eksport),470.0
+551007,Karçevan,558701,Böyük Kəsik (eksport),690.0
+551007,Karçevan,550108,Culfa (eksport),62.0
+551007,Karçevan,553002,Ələt eksport-Kurik,357.0
+551007,Karçevan,548803,Ələt eksport-Türk.,357.0
+551007,Karçevan,549204,Ələt eksport-Aktau,357.0
+547001,Keşlə,547508,Yalama (eksport),200.0
+547001,Keşlə,554503,Astara (eksport),320.0
+547001,Keşlə,558701,Böyük Kəsik (eksport),496.0
+547001,Keşlə,550108,Culfa (eksport),486.0
+547001,Keşlə,553002,Ələt eksport-Kurik,87.0
+547001,Keşlə,548803,Ələt eksport-Türk.,87.0
+547001,Keşlə,549204,Ələt eksport-Aktau,87.0
+555205,Köçərli,547508,Yalama (eksport),515.0
+555205,Köçərli,554503,Astara (eksport),421.0
+555205,Köçərli,558701,Böyük Kəsik (eksport),253.0
+555205,Köçərli,550108,Culfa (eksport),587.0
+555205,Köçərli,553002,Ələt eksport-Kurik,264.0
+555205,Köçərli,548803,Ələt eksport-Türk.,264.0
+555205,Köçərli,549204,Ələt eksport-Aktau,264.0
+554607,Kürdəmir,547508,Yalama (eksport),380.0
+554607,Kürdəmir,554503,Astara (eksport),286.0
+554607,Kürdəmir,558701,Böyük Kəsik (eksport),300.0
+554607,Kürdəmir,550108,Culfa (eksport),452.0
+554607,Kürdəmir,553002,Ələt eksport-Kurik,129.0
+554607,Kürdəmir,548803,Ələt eksport-Türk.,129.0
+554607,Kürdəmir,549204,Ələt eksport-Aktau,129.0
+557605,Kürəkçay,547508,Yalama (eksport),508.0
+557605,Kürəkçay,554503,Astara (eksport),414.0
+557605,Kürəkçay,558701,Böyük Kəsik (eksport),172.0
+557605,Kürəkçay,550108,Culfa (eksport),580.0
+557605,Kürəkçay,553002,Ələt eksport-Kurik,257.0
+557605,Kürəkçay,548803,Ələt eksport-Türk.,257.0
+557605,Kürəkçay,549204,Ələt eksport-Aktau,257.0
+549505,Ləcət,547508,Yalama (eksport),13.0
+549505,Ləcət,554503,Astara (eksport),491.0
+549505,Ləcət,558701,Böyük Kəsik (eksport),667.0
+549505,Ləcət,550108,Culfa (eksport),657.0
+549505,Ləcət,553002,Ələt eksport-Kurik,258.0
+549505,Ləcət,548803,Ələt eksport-Türk.,258.0
+549505,Ləcət,549204,Ələt eksport-Aktau,258.0
+555008,Ləki,547508,Yalama (eksport),446.0
+555008,Ləki,554503,Astara (eksport),352.0
+555008,Ləki,558701,Böyük Kəsik (eksport),234.0
+555008,Ləki,550108,Culfa (eksport),518.0
+555008,Ləki,553002,Ələt eksport-Kurik,195.0
+555008,Ləki,548803,Ələt eksport-Türk.,195.0
+555008,Ləki,549204,Ələt eksport-Aktau,195.0
+553905,Lənkəran,547508,Yalama (eksport),474.0
+553905,Lənkəran,554503,Astara (eksport),30.0
+553905,Lənkəran,558701,Böyük Kəsik (eksport),556.0
+553905,Lənkəran,550108,Culfa (eksport),502.0
+553905,Lənkəran,553002,Ələt eksport-Kurik,223.0
+553905,Lənkəran,548803,Ələt eksport-Türk.,223.0
+553905,Lənkəran,549204,Ələt eksport-Aktau,223.0
+553604,Liman,547508,Yalama (eksport),462.0
+553604,Liman,554503,Astara (eksport),42.0
+553604,Liman,558701,Böyük Kəsik (eksport),544.0
+553604,Liman,550108,Culfa (eksport),490.0
+553604,Liman,553002,Ələt eksport-Kurik,211.0
+553604,Liman,548803,Ələt eksport-Türk.,211.0
+553604,Liman,549204,Ələt eksport-Aktau,211.0
+551702,Mahmudlu,547508,Yalama (eksport),486.0
+551702,Mahmudlu,554503,Astara (eksport),348.0
+551702,Mahmudlu,558701,Böyük Kəsik (eksport),568.0
+551702,Mahmudlu,550108,Culfa (eksport),184.0
+551702,Mahmudlu,553002,Ələt eksport-Kurik,235.0
+551702,Mahmudlu,548803,Ələt eksport-Türk.,235.0
+551702,Mahmudlu,549204,Ələt eksport-Aktau,235.0
+553407,Masallı,547508,Yalama (eksport),428.0
+553407,Masallı,554503,Astara (eksport),76.0
+553407,Masallı,558701,Böyük Kəsik (eksport),510.0
+553407,Masallı,550108,Culfa (eksport),456.0
+553407,Masallı,553002,Ələt eksport-Kurik,177.0
+553407,Masallı,548803,Ələt eksport-Türk.,177.0
+553407,Masallı,549204,Ələt eksport-Aktau,177.0
+549609,Maştağa,547508,Yalama (eksport),226.0
+549609,Maştağa,554503,Astara (eksport),346.0
+549609,Maştağa,558701,Böyük Kəsik (eksport),522.0
+549609,Maştağa,550108,Culfa (eksport),512.0
+549609,Maştağa,553002,Ələt eksport-Kurik,113.0
+549609,Maştağa,548803,Ələt eksport-Türk.,113.0
+549609,Maştağa,549204,Ələt eksport-Aktau,113.0
+551100,Mehri,547508,Yalama (eksport),599.0
+551100,Mehri,554503,Astara (eksport),461.0
+551100,Mehri,558701,Böyük Kəsik (eksport),681.0
+551100,Mehri,550108,Culfa (eksport),71.0
+551100,Mehri,553002,Ələt eksport-Kurik,348.0
+551100,Mehri,548803,Ələt eksport-Türk.,348.0
+551100,Mehri,549204,Ələt eksport-Aktau,348.0
+551204,Mincivan,547508,Yalama (eksport),544.0
+551204,Mincivan,554503,Astara (eksport),406.0
+551204,Mincivan,558701,Böyük Kəsik (eksport),626.0
+551204,Mincivan,550108,Culfa (eksport),126.0
+551204,Mincivan,553002,Ələt eksport-Kurik,293.0
+551204,Mincivan,548803,Ələt eksport-Türk.,293.0
+551204,Mincivan,549204,Ələt eksport-Aktau,293.0
+555703,Mingəçevir,547508,Yalama (eksport),483.0
+555703,Mingəçevir,554503,Astara (eksport),389.0
+555703,Mingəçevir,558701,Böyük Kəsik (eksport),197.0
+555703,Mingəçevir,550108,Culfa (eksport),555.0
+555703,Mingəçevir,553002,Ələt eksport-Kurik,232.0
+555703,Mingəçevir,548803,Ələt eksport-Türk.,232.0
+555703,Mingəçevir,549204,Ələt eksport-Aktau,232.0
+555807,Mingəçevir şəhər,547508,Yalama (eksport),501.0
+555807,Mingəçevir şəhər,554503,Astara (eksport),407.0
+555807,Mingəçevir şəhər,558701,Böyük Kəsik (eksport),215.0
+555807,Mingəçevir şəhər,550108,Culfa (eksport),573.0
+555807,Mingəçevir şəhər,553002,Ələt eksport-Kurik,250.0
+555807,Mingəçevir şəhər,548803,Ələt eksport-Türk.,250.0
+555807,Mingəçevir şəhər,549204,Ələt eksport-Aktau,250.0
+554306,Muğan,547508,Yalama (eksport),316.0
+554306,Muğan,554503,Astara (eksport),222.0
+554306,Muğan,558701,Böyük Kəsik (eksport),364.0
+554306,Muğan,550108,Culfa (eksport),388.0
+554306,Muğan,553002,Ələt eksport-Kurik,65.0
+554306,Muğan,548803,Ələt eksport-Türk.,65.0
+554306,Muğan,549204,Ələt eksport-Aktau,65.0
+552601,Mürsəlli,547508,Yalama (eksport),335.0
+552601,Mürsəlli,554503,Astara (eksport),197.0
+552601,Mürsəlli,558701,Böyük Kəsik (eksport),417.0
+552601,Mürsəlli,550108,Culfa (eksport),335.0
+552601,Mürsəlli,553002,Ələt eksport-Kurik,84.0
+552601,Mürsəlli,548803,Ələt eksport-Türk.,84.0
+552601,Mürsəlli,549204,Ələt eksport-Aktau,84.0
+554700,Müsüslü,547508,Yalama (eksport),400.0
+554700,Müsüslü,554503,Astara (eksport),306.0
+554700,Müsüslü,558701,Böyük Kəsik (eksport),280.0
+554700,Müsüslü,550108,Culfa (eksport),472.0
+554700,Müsüslü,553002,Ələt eksport-Kurik,149.0
+554700,Müsüslü,548803,Ələt eksport-Türk.,149.0
+554700,Müsüslü,549204,Ələt eksport-Aktau,149.0
+550803,Naxçıvan,547508,Yalama (eksport),715.0
+550803,Naxçıvan,554503,Astara (eksport),577.0
+550803,Naxçıvan,558701,Böyük Kəsik (eksport),797.0
+550803,Naxçıvan,550108,Culfa (eksport),45.0
+550803,Naxçıvan,553002,Ələt eksport-Kurik,464.0
+550803,Naxçıvan,548803,Ələt eksport-Türk.,464.0
+550803,Naxçıvan,549204,Ələt eksport-Aktau,464.0
+553207,Neftçala,547508,Yalama (eksport),403.0
+553207,Neftçala,554503,Astara (eksport),171.0
+553207,Neftçala,558701,Böyük Kəsik (eksport),485.0
+553207,Neftçala,550108,Culfa (eksport),431.0
+553207,Neftçala,553002,Ələt eksport-Kurik,152.0
+553207,Neftçala,548803,Ələt eksport-Türk.,152.0
+553207,Neftçala,549204,Ələt eksport-Aktau,152.0
+549007,Nəvahi,547508,Yalama (eksport),286.0
+549007,Nəvahi,554503,Astara (eksport),228.0
+549007,Nəvahi,558701,Böyük Kəsik (eksport),394.0
+549007,Nəvahi,550108,Culfa (eksport),394.0
+549007,Nəvahi,553002,Ələt eksport-Kurik,35.0
+549007,Nəvahi,548803,Ələt eksport-Türk.,35.0
+549007,Nəvahi,549204,Ələt eksport-Aktau,35.0
+550907,Ordubad,547508,Yalama (eksport),631.0
+550907,Ordubad,554503,Astara (eksport),493.0
+550907,Ordubad,558701,Böyük Kəsik (eksport),713.0
+550907,Ordubad,550108,Culfa (eksport),39.0
+550907,Ordubad,553002,Ələt eksport-Kurik,380.0
+550907,Ordubad,548803,Ələt eksport-Türk.,380.0
+550907,Ordubad,549204,Ələt eksport-Aktau,380.0
+549100,Pirsaat,547508,Yalama (eksport),294.0
+549100,Pirsaat,554503,Astara (eksport),220.0
+549100,Pirsaat,558701,Böyük Kəsik (eksport),386.0
+549100,Pirsaat,550108,Culfa (eksport),386.0
+549100,Pirsaat,553002,Ələt eksport-Kurik,43.0
+549100,Pirsaat,548803,Ələt eksport-Türk.,43.0
+549100,Pirsaat,549204,Ələt eksport-Aktau,43.0
+546507,Pirşağı,547508,Yalama (eksport),238.0
+546507,Pirşağı,554503,Astara (eksport),358.0
+546507,Pirşağı,558701,Böyük Kəsik (eksport),534.0
+546507,Pirşağı,550108,Culfa (eksport),524.0
+546507,Pirşağı,553002,Ələt eksport-Kurik,125.0
+546507,Pirşağı,548803,Ələt eksport-Türk.,125.0
+546507,Pirşağı,549204,Ələt eksport-Aktau,125.0
+558400,Poylu,547508,Yalama (eksport),647.0
+558400,Poylu,554503,Astara (eksport),553.0
+558400,Poylu,558701,Böyük Kəsik (eksport),33.0
+558400,Poylu,550108,Culfa (eksport),719.0
+558400,Poylu,553002,Ələt eksport-Kurik,396.0
+558400,Poylu,548803,Ələt eksport-Türk.,396.0
+558400,Poylu,549204,Ələt eksport-Aktau,396.0
+548108,Puta,547508,Yalama (eksport),211.0
+548108,Puta,554503,Astara (eksport),293.0
+548108,Puta,558701,Böyük Kəsik (eksport),469.0
+548108,Puta,550108,Culfa (eksport),459.0
+548108,Puta,553002,Ələt eksport-Kurik,60.0
+548108,Puta,548803,Ələt eksport-Türk.,60.0
+548108,Puta,549204,Ələt eksport-Aktau,60.0
+551401,Qafan,547508,Yalama (eksport),583.0
+551401,Qafan,554503,Astara (eksport),445.0
+551401,Qafan,558701,Böyük Kəsik (eksport),665.0
+551401,Qafan,550108,Culfa (eksport),165.0
+551401,Qafan,553002,Ələt eksport-Kurik,332.0
+551401,Qafan,548803,Ələt eksport-Türk.,332.0
+551401,Qafan,549204,Ələt eksport-Aktau,332.0
+554005,Qamışlıq,547508,Yalama (eksport),489.0
+554005,Qamışlıq,554503,Astara (eksport),15.0
+554005,Qamışlıq,558701,Böyük Kəsik (eksport),571.0
+554005,Qamışlıq,550108,Culfa (eksport),517.0
+554005,Qamışlıq,553002,Ələt eksport-Kurik,238.0
+554005,Qamışlıq,548803,Ələt eksport-Türk.,238.0
+554005,Qamışlıq,549204,Ələt eksport-Aktau,238.0
+548201,Qaradağ,547508,Yalama (eksport),223.0
+548201,Qaradağ,554503,Astara (eksport),281.0
+548201,Qaradağ,558701,Böyük Kəsik (eksport),457.0
+548201,Qaradağ,550108,Culfa (eksport),447.0
+548201,Qaradağ,553002,Ələt eksport-Kurik,48.0
+548201,Qaradağ,548803,Ələt eksport-Türk.,48.0
+548201,Qaradağ,549204,Ələt eksport-Aktau,48.0
+549702,Qaradağ terminal,547508,Yalama (eksport),230.0
+549702,Qaradağ terminal,554503,Astara (eksport),288.0
+549702,Qaradağ terminal,558701,Böyük Kəsik (eksport),464.0
+549702,Qaradağ terminal,550108,Culfa (eksport),454.0
+549702,Qaradağ terminal,553002,Ələt eksport-Kurik,55.0
+549702,Qaradağ terminal,548803,Ələt eksport-Türk.,55.0
+549702,Qaradağ terminal,549204,Ələt eksport-Aktau,55.0
+553500,Qasımlı,547508,Yalama (eksport),444.0
+553500,Qasımlı,554503,Astara (eksport),60.0
+553500,Qasımlı,558701,Böyük Kəsik (eksport),526.0
+553500,Qasımlı,550108,Culfa (eksport),472.0
+553500,Qasımlı,553002,Ələt eksport-Kurik,193.0
+553500,Qasımlı,548803,Ələt eksport-Türk.,193.0
+553500,Qasımlı,549204,Ələt eksport-Aktau,193.0
+559507,Qax,547508,Yalama (eksport),577.0
+559507,Qax,554503,Astara (eksport),483.0
+559507,Qax,558701,Böyük Kəsik (eksport),315.0
+559507,Qax,550108,Culfa (eksport),649.0
+559507,Qax,553002,Ələt eksport-Kurik,326.0
+559507,Qax,548803,Ələt eksport-Türk.,326.0
+559507,Qax,549204,Ələt eksport-Aktau,326.0
+557408,Qazax,547508,Yalama (eksport),645.0
+557408,Qazax,554503,Astara (eksport),551.0
+557408,Qazax,558701,Böyük Kəsik (eksport),59.0
+557408,Qazax,550108,Culfa (eksport),717.0
+557408,Qazax,553002,Ələt eksport-Kurik,394.0
+557408,Qazax,548803,Ələt eksport-Türk.,394.0
+557408,Qazax,549204,Ələt eksport-Aktau,394.0
+556509,Qırıxlı,547508,Yalama (eksport),560.0
+556509,Qırıxlı,554503,Astara (eksport),466.0
+556509,Qırıxlı,558701,Böyük Kəsik (eksport),138.0
+556509,Qırıxlı,550108,Culfa (eksport),632.0
+556509,Qırıxlı,553002,Ələt eksport-Kurik,309.0
+556509,Qırıxlı,548803,Ələt eksport-Türk.,309.0
+556509,Qırıxlı,549204,Ələt eksport-Aktau,309.0
+545805,Qızılburun,547508,Yalama (eksport),94.0
+545805,Qızılburun,554503,Astara (eksport),410.0
+545805,Qızılburun,558701,Böyük Kəsik (eksport),586.0
+545805,Qızılburun,550108,Culfa (eksport),576.0
+545805,Qızılburun,553002,Ələt eksport-Kurik,177.0
+545805,Qızılburun,548803,Ələt eksport-Türk.,177.0
+545805,Qızılburun,549204,Ələt eksport-Aktau,177.0
+556405,Qızılca,547508,Yalama (eksport),570.0
+556405,Qızılca,554503,Astara (eksport),476.0
+556405,Qızılca,558701,Böyük Kəsik (eksport),148.0
+556405,Qızılca,550108,Culfa (eksport),642.0
+556405,Qızılca,553002,Ələt eksport-Kurik,319.0
+556405,Qızılca,548803,Ələt eksport-Türk.,319.0
+556405,Qızılca,549204,Ələt eksport-Aktau,319.0
+548409,Qobustan,547508,Yalama (eksport),247.0
+548409,Qobustan,554503,Astara (eksport),257.0
+548409,Qobustan,558701,Böyük Kəsik (eksport),433.0
+548409,Qobustan,550108,Culfa (eksport),423.0
+548409,Qobustan,553002,Ələt eksport-Kurik,24.0
+548409,Qobustan,548803,Ələt eksport-Türk.,24.0
+548409,Qobustan,549204,Ələt eksport-Aktau,24.0
+557003,Qovlar,547508,Yalama (eksport),599.0
+557003,Qovlar,554503,Astara (eksport),505.0
+557003,Qovlar,558701,Böyük Kəsik (eksport),81.0
+557003,Qovlar,550108,Culfa (eksport),671.0
+557003,Qovlar,553002,Ələt eksport-Kurik,348.0
+557003,Qovlar,548803,Ələt eksport-Türk.,348.0
+557003,Qovlar,549204,Ələt eksport-Aktau,348.0
+556301,Quşçu körpü,547508,Yalama (eksport),586.0
+556301,Quşçu körpü,554503,Astara (eksport),492.0
+556301,Quşçu körpü,558701,Böyük Kəsik (eksport),164.0
+556301,Quşçu körpü,550108,Culfa (eksport),658.0
+556301,Quşçu körpü,553002,Ələt eksport-Kurik,335.0
+556301,Quşçu körpü,548803,Ələt eksport-Türk.,335.0
+556301,Quşçu körpü,549204,Ələt eksport-Aktau,335.0
+552300,Saatlı,547508,Yalama (eksport),357.0
+552300,Saatlı,554503,Astara (eksport),219.0
+552300,Saatlı,558701,Böyük Kəsik (eksport),439.0
+552300,Saatlı,550108,Culfa (eksport),313.0
+552300,Saatlı,553002,Ələt eksport-Kurik,106.0
+552300,Saatlı,548803,Ələt eksport-Türk.,106.0
+552300,Saatlı,549204,Ələt eksport-Aktau,106.0
+552508,Sabir,547508,Yalama (eksport),352.0
+552508,Sabir,554503,Astara (eksport),214.0
+552508,Sabir,558701,Böyük Kəsik (eksport),434.0
+552508,Sabir,550108,Culfa (eksport),330.0
+552508,Sabir,553002,Ələt eksport-Kurik,101.0
+552508,Sabir,548803,Ələt eksport-Türk.,101.0
+552508,Sabir,549204,Ələt eksport-Aktau,101.0
+545608,Şabran,547508,Yalama (eksport),75.0
+545608,Şabran,554503,Astara (eksport),429.0
+545608,Şabran,558701,Böyük Kəsik (eksport),605.0
+545608,Şabran,550108,Culfa (eksport),595.0
+545608,Şabran,553002,Ələt eksport-Kurik,196.0
+545608,Şabran,548803,Ələt eksport-Türk.,196.0
+545608,Şabran,549204,Ələt eksport-Aktau,196.0
+558504,Salahlı,547508,Yalama (eksport),657.0
+558504,Salahlı,554503,Astara (eksport),563.0
+558504,Salahlı,558701,Böyük Kəsik (eksport),23.0
+558504,Salahlı,550108,Culfa (eksport),729.0
+558504,Salahlı,553002,Ələt eksport-Kurik,406.0
+558504,Salahlı,548803,Ələt eksport-Türk.,406.0
+558504,Salahlı,549204,Ələt eksport-Aktau,406.0
+553106,Salyan,547508,Yalama (eksport),368.0
+553106,Salyan,554503,Astara (eksport),136.0
+553106,Salyan,558701,Böyük Kəsik (eksport),450.0
+553106,Salyan,550108,Culfa (eksport),396.0
+553106,Salyan,553002,Ələt eksport-Kurik,117.0
+553106,Salyan,548803,Ələt eksport-Türk.,117.0
+553106,Salyan,549204,Ələt eksport-Aktau,117.0
+552404,Saracalar,547508,Yalama (eksport),346.0
+552404,Saracalar,554503,Astara (eksport),208.0
+552404,Saracalar,558701,Böyük Kəsik (eksport),428.0
+552404,Saracalar,550108,Culfa (eksport),324.0
+552404,Saracalar,553002,Ələt eksport-Kurik,95.0
+552404,Saracalar,548803,Ələt eksport-Türk.,95.0
+552404,Saracalar,549204,Ələt eksport-Aktau,95.0
+550606,Şahtaxtı,547508,Yalama (eksport),755.0
+550606,Şahtaxtı,554503,Astara (eksport),617.0
+550606,Şahtaxtı,558701,Böyük Kəsik (eksport),837.0
+550606,Şahtaxtı,550108,Culfa (eksport),85.0
+550606,Şahtaxtı,553002,Ələt eksport-Kurik,504.0
+550606,Şahtaxtı,548803,Ələt eksport-Türk.,504.0
+550606,Şahtaxtı,549204,Ələt eksport-Aktau,504.0
+559403,Şəki,547508,Yalama (eksport),539.0
+559403,Şəki,554503,Astara (eksport),445.0
+559403,Şəki,558701,Böyük Kəsik (eksport),277.0
+559403,Şəki,550108,Culfa (eksport),611.0
+559403,Şəki,553002,Ələt eksport-Kurik,288.0
+559403,Şəki,548803,Ələt eksport-Türk.,288.0
+559403,Şəki,549204,Ələt eksport-Aktau,288.0
+556706,Şəmkir,547508,Yalama (eksport),562.0
+556706,Şəmkir,554503,Astara (eksport),468.0
+556706,Şəmkir,558701,Böyük Kəsik (eksport),118.0
+556706,Şəmkir,550108,Culfa (eksport),634.0
+556706,Şəmkir,553002,Ələt eksport-Kurik,311.0
+556706,Şəmkir,548803,Ələt eksport-Türk.,311.0
+556706,Şəmkir,549204,Ələt eksport-Aktau,311.0
+548305,Sanqaçal,547508,Yalama (eksport),238.0
+548305,Sanqaçal,554503,Astara (eksport),266.0
+548305,Sanqaçal,558701,Böyük Kəsik (eksport),442.0
+548305,Sanqaçal,550108,Culfa (eksport),432.0
+548305,Sanqaçal,553002,Ələt eksport-Kurik,33.0
+548305,Sanqaçal,548803,Ələt eksport-Türk.,33.0
+548305,Sanqaçal,549204,Ələt eksport-Aktau,33.0
+548606,Sanqaçal ter.(aşırma),547508,Yalama (eksport),240.0
+548606,Sanqaçal ter.(aşırma),554503,Astara (eksport),268.0
+548606,Sanqaçal ter.(aşırma),558701,Böyük Kəsik (eksport),444.0
+548606,Sanqaçal ter.(aşırma),550108,Culfa (eksport),434.0
+548606,Sanqaçal ter.(aşırma),553002,Ələt eksport-Kurik,35.0
+548606,Sanqaçal ter.(aşırma),548803,Ələt eksport-Türk.,35.0
+548606,Sanqaçal ter.(aşırma),549204,Ələt eksport-Aktau,35.0
+550502,Şərur,547508,Yalama (eksport),781.0
+550502,Şərur,554503,Astara (eksport),643.0
+550502,Şərur,558701,Böyük Kəsik (eksport),863.0
+550502,Şərur,550108,Culfa (eksport),111.0
+550502,Şərur,553002,Ələt eksport-Kurik,530.0
+550502,Şərur,548803,Ələt eksport-Türk.,530.0
+550502,Şərur,549204,Ələt eksport-Aktau,530.0
+550409,Şərur (eksport),547508,Yalama (eksport),807.0
+550409,Şərur (eksport),554503,Astara (eksport),669.0
+550409,Şərur (eksport),558701,Böyük Kəsik (eksport),889.0
+550409,Şərur (eksport),550108,Culfa (eksport),137.0
+550409,Şərur (eksport),553002,Ələt eksport-Kurik,556.0
+550409,Şərur (eksport),548803,Ələt eksport-Türk.,556.0
+550409,Şərur (eksport),549204,Ələt eksport-Aktau,556.0
+552705,Şirvan,547508,Yalama (eksport),309.0
+552705,Şirvan,554503,Astara (eksport),195.0
+552705,Şirvan,558701,Böyük Kəsik (eksport),391.0
+552705,Şirvan,550108,Culfa (eksport),361.0
+552705,Şirvan,553002,Ələt eksport-Kurik,58.0
+552705,Şirvan,548803,Ələt eksport-Türk.,58.0
+552705,Şirvan,549204,Ələt eksport-Aktau,58.0
+546102,Sitalçay,547508,Yalama (eksport),135.0
+546102,Sitalçay,554503,Astara (eksport),369.0
+546102,Sitalçay,558701,Böyük Kəsik (eksport),545.0
+546102,Sitalçay,550108,Culfa (eksport),535.0
+546102,Sitalçay,553002,Ələt eksport-Kurik,136.0
+546102,Sitalçay,548803,Ələt eksport-Türk.,136.0
+546102,Sitalçay,549204,Ələt eksport-Aktau,136.0
+545909,Siyəzən,547508,Yalama (eksport),105.0
+545909,Siyəzən,554503,Astara (eksport),399.0
+545909,Siyəzən,558701,Böyük Kəsik (eksport),575.0
+545909,Siyəzən,550108,Culfa (eksport),565.0
+545909,Siyəzən,553002,Ələt eksport-Kurik,166.0
+545909,Siyəzən,548803,Ələt eksport-Türk.,166.0
+545909,Siyəzən,549204,Ələt eksport-Aktau,166.0
+552902,Soltanlı,547508,Yalama (eksport),497.0
+552902,Soltanlı,554503,Astara (eksport),359.0
+552902,Soltanlı,558701,Böyük Kəsik (eksport),579.0
+552902,Soltanlı,550108,Culfa (eksport),173.0
+552902,Soltanlı,553002,Ələt eksport-Kurik,246.0
+552902,Soltanlı,548803,Ələt eksport-Türk.,246.0
+552902,Soltanlı,549204,Ələt eksport-Aktau,246.0
+558608,Soyuq-Bulaq,547508,Yalama (eksport),666.0
+558608,Soyuq-Bulaq,554503,Astara (eksport),572.0
+558608,Soyuq-Bulaq,558701,Böyük Kəsik (eksport),14.0
+558608,Soyuq-Bulaq,550108,Culfa (eksport),738.0
+558608,Soyuq-Bulaq,553002,Ələt eksport-Kurik,415.0
+558608,Soyuq-Bulaq,548803,Ələt eksport-Türk.,415.0
+558608,Soyuq-Bulaq,549204,Ələt eksport-Aktau,415.0
+546403,Sumqayıt,547508,Yalama (eksport),167.0
+546403,Sumqayıt,554503,Astara (eksport),337.0
+546403,Sumqayıt,558701,Böyük Kəsik (eksport),513.0
+546403,Sumqayıt,550108,Culfa (eksport),503.0
+546403,Sumqayıt,553002,Ələt eksport-Kurik,104.0
+546403,Sumqayıt,548803,Ələt eksport-Türk.,104.0
+546403,Sumqayıt,549204,Ələt eksport-Aktau,104.0
+549401,Suraxanı,547508,Yalama (eksport),218.0
+549401,Suraxanı,554503,Astara (eksport),338.0
+549401,Suraxanı,558701,Böyük Kəsik (eksport),514.0
+549401,Suraxanı,550108,Culfa (eksport),504.0
+549401,Suraxanı,553002,Ələt eksport-Kurik,105.0
+549401,Suraxanı,548803,Ələt eksport-Türk.,105.0
+549401,Suraxanı,549204,Ələt eksport-Aktau,105.0
+555402,Təzəkənd,547508,Yalama (eksport),522.0
+555402,Təzəkənd,554503,Astara (eksport),428.0
+555402,Təzəkənd,558701,Böyük Kəsik (eksport),260.0
+555402,Təzəkənd,550108,Culfa (eksport),594.0
+555402,Təzəkənd,553002,Ələt eksport-Kurik,271.0
+555402,Təzəkənd,548803,Ələt eksport-Türk.,271.0
+555402,Təzəkənd,549204,Ələt eksport-Aktau,271.0
+557107,Tovuz,547508,Yalama (eksport),612.0
+557107,Tovuz,554503,Astara (eksport),518.0
+557107,Tovuz,558701,Böyük Kəsik (eksport),68.0
+557107,Tovuz,550108,Culfa (eksport),684.0
+557107,Tovuz,553002,Ələt eksport-Kurik,361.0
+557107,Tovuz,548803,Ələt eksport-Türk.,361.0
+557107,Tovuz,549204,Ələt eksport-Aktau,361.0
+554908,Ucar,547508,Yalama (eksport),426.0
+554908,Ucar,554503,Astara (eksport),332.0
+554908,Ucar,558701,Böyük Kəsik (eksport),254.0
+554908,Ucar,550108,Culfa (eksport),498.0
+554908,Ucar,553002,Ələt eksport-Kurik,175.0
+554908,Ucar,548803,Ələt eksport-Türk.,175.0
+554908,Ucar,549204,Ələt eksport-Aktau,175.0
+552103,Vətəqə,547508,Yalama (eksport),400.0
+552103,Vətəqə,554503,Astara (eksport),262.0
+552103,Vətəqə,558701,Böyük Kəsik (eksport),482.0
+552103,Vətəqə,550108,Culfa (eksport),270.0
+552103,Vətəqə,553002,Ələt eksport-Kurik,149.0
+552103,Vətəqə,548803,Ələt eksport-Türk.,149.0
+552103,Vətəqə,549204,Ələt eksport-Aktau,149.0
+545307,Xaçmaz,547508,Yalama (eksport),42.0
+545307,Xaçmaz,554503,Astara (eksport),462.0
+545307,Xaçmaz,558701,Böyük Kəsik (eksport),638.0
+545307,Xaçmaz,550108,Culfa (eksport),628.0
+545307,Xaçmaz,553002,Ələt eksport-Kurik,229.0
+545307,Xaçmaz,548803,Ələt eksport-Türk.,229.0
+545307,Xaçmaz,549204,Ələt eksport-Aktau,229.0
+559300,Xanabad,547508,Yalama (eksport),498.0
+559300,Xanabad,554503,Astara (eksport),404.0
+559300,Xanabad,558701,Böyük Kəsik (eksport),236.0
+559300,Xanabad,550108,Culfa (eksport),570.0
+559300,Xanabad,553002,Ələt eksport-Kurik,247.0
+559300,Xanabad,548803,Ələt eksport-Türk.,247.0
+559300,Xanabad,549204,Ələt eksport-Aktau,247.0
+555608,Xankəndi,547508,Yalama (eksport),576.0
+555608,Xankəndi,554503,Astara (eksport),482.0
+555608,Xankəndi,558701,Böyük Kəsik (eksport),314.0
+555608,Xankəndi,550108,Culfa (eksport),648.0
+555608,Xankəndi,553002,Ələt eksport-Kurik,325.0
+555608,Xankəndi,548803,Ələt eksport-Türk.,325.0
+555608,Xankəndi,549204,Ələt eksport-Aktau,325.0
+552001,Xələc,547508,Yalama (eksport),412.0
+552001,Xələc,554503,Astara (eksport),274.0
+552001,Xələc,558701,Böyük Kəsik (eksport),494.0
+552001,Xələc,550108,Culfa (eksport),258.0
+552001,Xələc,553002,Ələt eksport-Kurik,161.0
+552001,Xələc,548803,Ələt eksport-Türk.,161.0
+552001,Xələc,549204,Ələt eksport-Aktau,161.0
+551609,Xələfli,547508,Yalama (eksport),508.0
+551609,Xələfli,554503,Astara (eksport),370.0
+551609,Xələfli,558701,Böyük Kəsik (eksport),590.0
+551609,Xələfli,550108,Culfa (eksport),162.0
+551609,Xələfli,553002,Ələt eksport-Kurik,257.0
+551609,Xələfli,548803,Ələt eksport-Türk.,257.0
+551609,Xələfli,549204,Ələt eksport-Aktau,257.0
+546704,Xırdalan,547508,Yalama (eksport),186.0
+546704,Xırdalan,554503,Astara (eksport),318.0
+546704,Xırdalan,558701,Böyük Kəsik (eksport),494.0
+546704,Xırdalan,550108,Culfa (eksport),484.0
+546704,Xırdalan,553002,Ələt eksport-Kurik,85.0
+546704,Xırdalan,548803,Ələt eksport-Türk.,85.0
+546704,Xırdalan,549204,Ələt eksport-Aktau,85.0
+545107,Xudat,547508,Yalama (eksport),21.0
+545107,Xudat,554503,Astara (eksport),483.0
+545107,Xudat,558701,Böyük Kəsik (eksport),659.0
+545107,Xudat,550108,Culfa (eksport),649.0
+545107,Xudat,553002,Ələt eksport-Kurik,250.0
+545107,Xudat,548803,Ələt eksport-Türk.,250.0
+545107,Xudat,549204,Ələt eksport-Aktau,250.0
+545006,Yalama,547508,Yalama (eksport),4.0
+545006,Yalama,554503,Astara (eksport),500.0
+545006,Yalama,558701,Böyük Kəsik (eksport),676.0
+545006,Yalama,550108,Culfa (eksport),666.0
+545006,Yalama,553002,Ələt eksport-Kurik,267.0
+545006,Yalama,548803,Ələt eksport-Türk.,267.0
+545006,Yalama,549204,Ələt eksport-Aktau,267.0
+547508,Yalama (eksport),547508,Yalama (eksport),0.0
+547508,Yalama (eksport),554503,Astara (eksport),504.0
+547508,Yalama (eksport),558701,Böyük Kəsik (eksport),680.0
+547508,Yalama (eksport),550108,Culfa (eksport),670.0
+547508,Yalama (eksport),553002,Ələt eksport-Kurik,271.0
+547508,Yalama (eksport),548803,Ələt eksport-Türk.,271.0
+547508,Yalama (eksport),549204,Ələt eksport-Aktau,271.0
+555101,Yevlax,547508,Yalama (eksport),471.0
+555101,Yevlax,554503,Astara (eksport),377.0
+555101,Yevlax,558701,Böyük Kəsik (eksport),209.0
+555101,Yevlax,550108,Culfa (eksport),543.0
+555101,Yevlax,553002,Ələt eksport-Kurik,220.0
+555101,Yevlax,548803,Ələt eksport-Türk.,220.0
+555101,Yevlax,549204,Ələt eksport-Aktau,220.0
+546302,Z.Tağıyev,547508,Yalama (eksport),156.0
+546302,Z.Tağıyev,554503,Astara (eksport),348.0
+546302,Z.Tağıyev,558701,Böyük Kəsik (eksport),524.0
+546302,Z.Tağıyev,550108,Culfa (eksport),514.0
+546302,Z.Tağıyev,553002,Ələt eksport-Kurik,115.0
+546302,Z.Tağıyev,548803,Ələt eksport-Türk.,115.0
+546302,Z.Tağıyev,549204,Ələt eksport-Aktau,115.0
+546901,Z.Tağıyev çeşidləmə,547508,Yalama (eksport),151.0
+546901,Z.Tağıyev çeşidləmə,554503,Astara (eksport),353.0
+546901,Z.Tağıyev çeşidləmə,558701,Böyük Kəsik (eksport),529.0
+546901,Z.Tağıyev çeşidləmə,550108,Culfa (eksport),519.0
+546901,Z.Tağıyev çeşidləmə,553002,Ələt eksport-Kurik,120.0
+546901,Z.Tağıyev çeşidləmə,548803,Ələt eksport-Türk.,120.0
+546901,Z.Tağıyev çeşidləmə,549204,Ələt eksport-Aktau,120.0
+557802,Zabrat II,547508,Yalama (eksport),219.0
+557802,Zabrat II,554503,Astara (eksport),339.0
+557802,Zabrat II,558701,Böyük Kəsik (eksport),515.0
+557802,Zabrat II,550108,Culfa (eksport),505.0
+557802,Zabrat II,553002,Ələt eksport-Kurik,106.0
+557802,Zabrat II,548803,Ələt eksport-Türk.,106.0
+557802,Zabrat II,549204,Ələt eksport-Aktau,106.0
+559600,Zaqatala,547508,Yalama (eksport),616.0
+559600,Zaqatala,554503,Astara (eksport),522.0
+559600,Zaqatala,558701,Böyük Kəsik (eksport),354.0
+559600,Zaqatala,550108,Culfa (eksport),688.0
+559600,Zaqatala,553002,Ələt eksport-Kurik,365.0
+559600,Zaqatala,548803,Ələt eksport-Türk.,365.0
+559600,Zaqatala,549204,Ələt eksport-Aktau,365.0
+556104,Zazalı,547508,Yalama (eksport),528.0
+556104,Zazalı,554503,Astara (eksport),434.0
+556104,Zazalı,558701,Böyük Kəsik (eksport),152.0
+556104,Zazalı,550108,Culfa (eksport),600.0
+556104,Zazalı,553002,Ələt eksport-Kurik,277.0
+556104,Zazalı,548803,Ələt eksport-Türk.,277.0
+556104,Zazalı,549204,Ələt eksport-Aktau,277.0
+556903,Zəyəm,547508,Yalama (eksport),585.0
+556903,Zəyəm,554503,Astara (eksport),491.0
+556903,Zəyəm,558701,Böyük Kəsik (eksport),95.0
+556903,Zəyəm,550108,Culfa (eksport),657.0
+556903,Zəyəm,553002,Ələt eksport-Kurik,334.0
+556903,Zəyəm,548803,Ələt eksport-Türk.,334.0
+556903,Zəyəm,549204,Ələt eksport-Aktau,334.0
+549308,Zirə,547508,Yalama (eksport),248.0
+549308,Zirə,554503,Astara (eksport),368.0
+549308,Zirə,558701,Böyük Kəsik (eksport),544.0
+549308,Zirə,550108,Culfa (eksport),534.0
+549308,Zirə,553002,Ələt eksport-Kurik,135.0
+549308,Zirə,548803,Ələt eksport-Türk.,135.0
+549308,Zirə,549204,Ələt eksport-Aktau,135.0
+549806,Zorat,547508,Yalama (eksport),115.0
+549806,Zorat,554503,Astara (eksport),389.0
+549806,Zorat,558701,Böyük Kəsik (eksport),565.0
+549806,Zorat,550108,Culfa (eksport),555.0
+549806,Zorat,553002,Ələt eksport-Kurik,156.0
+549806,Zorat,548803,Ələt eksport-Türk.,156.0
+549806,Zorat,549204,Ələt eksport-Aktau,156.0
