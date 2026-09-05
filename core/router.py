@@ -33,19 +33,17 @@ class RailwayRouter:
     def __init__(self, distances_file_path: str = "data/Distances.txt"):
         self.distances_file_path = distances_file_path
 
-    def _check_if_border(self, canonical_name: str) -> bool:
-        """Определяет, является ли станция пограничным переходом по каноническому имени."""
+    def _check_if_border(self, canonical_name: str, code: str) -> bool:
+        """Определяет пограничный узел по каноническому названию из справочника."""
         name_lower = canonical_name.lower()
-        border_keywords = ["(eksport)", "eksport", "eks.aşır", "eksp.", "перевалка"]
-        return any(kw in name_lower for kw in border_keywords)
+        border_markers = ["(eksport)", "eksport", "eks.aşır", "eksp.", "перевалка", "yalama", "böyük kəsik", "astara"]
+        return any(m in name_lower for m in border_markers)
 
     def resolve_station_by_query(self, raw_input: str) -> StationInfo:
-        """Резолвинг пользовательского ввода в объект станции."""
         text = raw_input.strip().lower()
 
-        # 1. Логика распределения паромных терминалов Алята по ключевым словам
+        # Маппинг пользовательских запросов Алята на ключи справочника
         target_key = raw_input.strip()
-
         if "актау" in text or "aqtau" in text:
             target_key = "Ələt eksport Aktau"
         elif "турк" in text or "трк" in text or "türk" in text:
@@ -53,17 +51,16 @@ class RailwayRouter:
         elif "курык" in text or "курик" in text or "qurıq" in text or "kurik" in text:
             target_key = "Ələt eksport Kurik"
         elif "алят" in text and ("экс" in text or "eksp" in text or "export" in text):
-            # Дефолт для "Алят эксп" -> Курык
             target_key = "Ələt eksport Kurik"
 
-        # 2. Получение канонического имени и ЕСР-кода ИЗ СПРАВОЧНИКА
+        # Получаем данные СТРОГО из data/stations_mapping.py
         canonical_name = get_canonical_station_name(target_key) or get_canonical_station_name(raw_input)
         code = get_station_code(target_key) or get_station_code(raw_input)
 
         if not canonical_name or not code:
             raise ValueError(f"Станция '{raw_input}' не найдена в справочнике data/stations_mapping.py")
 
-        is_border = self._check_if_border(canonical_name)
+        is_border = self._check_if_border(canonical_name, code)
         return StationInfo(code=code, canonical_name=canonical_name, is_border=is_border)
 
     def determine_shipment_type(self, from_st: StationInfo, to_st: StationInfo) -> ShipmentType:
