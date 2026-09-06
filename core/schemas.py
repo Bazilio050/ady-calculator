@@ -1,15 +1,20 @@
 # ------------------------------------------------------------------------------
-# БЛОК 1: Pydantic-схемы для парсинга пользовательских запросов
+# БЛОК 1: Pydantic-схемы для парсинга и валидации параметров перевозки
 # ------------------------------------------------------------------------------
 from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 
 
 class ShipmentQuery(BaseModel):
-    """Схема структурированных данных, извлекаемых из текста запроса."""
+    """Схема структурированных данных запроса на перевозку."""
     
     raw_from: str = Field(description="Станция отправления из текста запроса")
     raw_to: str = Field(description="Станция назначения из текста запроса")
+    
+    shipment_type: Optional[str] = Field(
+        default=None,
+        description="Режим перевозки (Импорт, Экспорт, Транзит, Внутренняя)"
+    )
     
     gng_code: Optional[str] = Field(
         default=None, 
