@@ -27,3 +27,4 @@ jobs:
         run: |
           python -m pytest tests/test_routes.py -v -s
           python -m pytest tests/test_parser.py -v -s
+          python -m pytest tests/test_main_rules.py -v -s
