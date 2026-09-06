@@ -43,14 +43,17 @@ class RailwayRouter:
 
     def _load_distances(self):
         """Загрузка матрицы расстояний из CSV в память."""
+        self.distances_map.clear()
         try:
             with open(self.distances_file_path, mode="r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    key = (str(row["from_code"]).strip(), str(row["to_code"]).strip())
-                    self.distances_map[key] = float(row["distance_km"])
-        except Exception:
-            pass
+                    f_code = str(row["from_code"]).strip()
+                    t_code = str(row["to_code"]).strip()
+                    dist = float(row["distance_km"])
+                    self.distances_map[(f_code, t_code)] = dist
+        except Exception as e:
+            print(f"Ошибка загрузки расстояний: {e}")
 
     def resolve_station_by_query(self, raw_input: str) -> StationInfo:
         text = raw_input.strip().lower()
@@ -88,16 +91,16 @@ class RailwayRouter:
 
     def _get_distance_from_file(self, from_st: StationInfo, to_st: StationInfo) -> float:
         """
-        Поиск расстояния по парам кодов из CSV.
-        Проверяет базовые и экспортные коды в обоих направлениях (A->B и B->A).
+        Поиск расстояния по парам ЕСР-кодов из CSV.
+        Проверяет комбинации базовых и экспортных кодов в обоих направлениях (A->B и B->A).
         """
         code_from = str(from_st.code).strip()
         code_to = str(to_st.code).strip()
-        
+
         exp_from = str(get_station_export_code(from_st.canonical_name)).strip()
         exp_to = str(get_station_export_code(to_st.canonical_name)).strip()
 
-        # Собираем уникальные комбинации кодов (исключая пустые значения)
+        # Формируем списки кодов для поиска (экспортный код в приоритете)
         from_codes = [c for c in dict.fromkeys([exp_from, code_from]) if c]
         to_codes = [c for c in dict.fromkeys([exp_to, code_to]) if c]
 
