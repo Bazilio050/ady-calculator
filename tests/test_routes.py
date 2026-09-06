@@ -2,7 +2,7 @@ from core.router import RailwayRouter, ShipmentType
 
 
 def test_visual_routing():
-    router = RailwayRouter(distances_file_path="data/Distances.txt")
+    router = RailwayRouter(distances_file_path="data/distances.csv")
 
     # (Откуда, Куда, Ожидаемый тип)
     test_cases = [
