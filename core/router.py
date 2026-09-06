@@ -22,44 +22,63 @@ class StationInfo:
     code: str
     canonical_name: str
     is_border: bool
-
-
-@dataclass(frozen=True)
-class StationInfo:
-    code: str
-    canonical_name: str
-    is_border: bool
     raw_input: str = ""
 
 
-    def resolve_station_by_query(self, raw_input: str) -> StationInfo:
-        text = raw_input.strip().lower()
+@dataclass(frozen=True)
+class RouteResult:
+    from_station: StationInfo
+    to_station: StationInfo
+    distance_km: float
+    shipment_type: ShipmentType
 
-        # Нормализация пользовательских синонимов
-        target_key = raw_input.strip()
-        if "турк" in text or "трк" in text or "türk" in text:
-            target_key = "Ələt eksport-Türk."
-        elif "актау" in text or "aqtau" in text:
-            target_key = "Ələt eksport-Aktau"
-        elif "курык" in text or "курик" in text or "qurıq" in text or "kurik" in text:
-            target_key = "Ələt eksport-Kurik"
-        elif "алят" in text and ("экс" in text or "eksp" in text or "export" in text):
-            target_key = "Ələt eksport-Kurik"
+    def formatted_output(self, lang: str = "RU") -> str:
+        lang = str(lang).upper()
 
-        # Запрос данных из stations_mapping.py
-        canonical_name = get_canonical_station_name(target_key) or get_canonical_station_name(raw_input)[cite: 1]
-        code = get_station_code(target_key) or get_station_code(raw_input)[cite: 1]
-        is_border = get_station_border_status(target_key) or get_station_border_status(raw_input)[cite: 1]
+        shipment_labels = {
+            "AZ": {
+                ShipmentType.LOCAL: "Daxili",
+                ShipmentType.IMPORT: "İdxal",
+                ShipmentType.EXPORT: "İxrac",
+                ShipmentType.TRANSIT: "Tranzit",
+            },
+            "RU": {
+                ShipmentType.LOCAL: "Внутренний",
+                ShipmentType.IMPORT: "Импорт",
+                ShipmentType.EXPORT: "Экспорт",
+                ShipmentType.TRANSIT: "Транзит",
+            },
+            "EN": {
+                ShipmentType.LOCAL: "Local",
+                ShipmentType.IMPORT: "Import",
+                ShipmentType.EXPORT: "Export",
+                ShipmentType.TRANSIT: "Transit",
+            },
+        }
 
-        if not canonical_name or not code:
-            raise ValueError(f"Станция '{raw_input}' не найдена в справочнике data/stations_mapping.py")
+        labels = shipment_labels.get(lang, shipment_labels["RU"])
+        type_str = labels.get(self.shipment_type, self.shipment_type.name)
 
-        return StationInfo(
-            code=code,
-            canonical_name=canonical_name,
-            is_border=is_border,
-            raw_input=raw_input.strip()
-        )
+        unit_str = "km" if lang in ["AZ", "EN"] else "км"
+        dist_val = int(self.distance_km) if self.distance_km > 0 else 0
+        dist_str = f" - {dist_val} {unit_str}"
+
+        # Форматирование отображения для конкретной станции
+        def format_station(st: StationInfo) -> str:
+            raw = st.raw_input.lower()
+            # Если пользователь явно вводил "алят" с "экс/експ" -> Алят-эксп. (без кода)
+            if "алят" in raw and ("экс" in raw or "eksp" in raw or "export" in raw):
+                alat_names = {"AZ": "Ələt-eksp.", "RU": "Алят-эксп.", "EN": "Alat-exp."}
+                return alat_names.get(lang, "Алят-эксп.")
+
+            # Во всех остальных случаях (Курык, ТРК, Актау и т.д.) -> Название (Код)
+            loc_name = get_localized_station_name(st.canonical_name, lang=lang)
+            return f"{loc_name} ({st.code})"
+
+        from_display = format_station(self.from_station)
+        to_display = format_station(self.to_station)
+
+        return f"{from_display} - {to_display} [{type_str}]{dist_str}"
 
 
 class RailwayRouter:
@@ -108,7 +127,12 @@ class RailwayRouter:
         if not canonical_name or not code:
             raise ValueError(f"Станция '{raw_input}' не найдена в справочнике data/stations_mapping.py")
 
-        return StationInfo(code=code, canonical_name=canonical_name, is_border=is_border)
+        return StationInfo(
+            code=code,
+            canonical_name=canonical_name,
+            is_border=is_border,
+            raw_input=raw_input.strip(),
+        )
 
     def determine_shipment_type(self, from_st: StationInfo, to_st: StationInfo) -> ShipmentType:
         if from_st.is_border and to_st.is_border:
