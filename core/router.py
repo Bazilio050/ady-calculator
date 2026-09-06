@@ -30,6 +30,43 @@ class RouteResult:
     distance_km: float
     shipment_type: ShipmentType
 
+    def formatted_output(self, lang: str = "RU") -> str:
+        lang = lang.upper()
+
+        shipment_labels = {
+            "AZ": {
+                ShipmentType.LOCAL: "Daxili",
+                ShipmentType.IMPORT: "İdxal",
+                ShipmentType.EXPORT: "İxrac",
+                ShipmentType.TRANSIT: "Tranzit",
+            },
+            "RU": {
+                ShipmentType.LOCAL: "Внутренний",
+                ShipmentType.IMPORT: "Импорт",
+                ShipmentType.EXPORT: "Экспорт",
+                ShipmentType.TRANSIT: "Транзит",
+            },
+            "EN": {
+                ShipmentType.LOCAL: "Local",
+                ShipmentType.IMPORT: "Import",
+                ShipmentType.EXPORT: "Export",
+                ShipmentType.TRANSIT: "Transit",
+            },
+        }
+
+        labels = shipment_labels.get(lang, shipment_labels["RU"])
+        type_str = labels.get(self.shipment_type, self.shipment_type.name)
+
+        unit_str = "km" if lang in ["AZ", "EN"] else "км"
+        dist_val = int(self.distance_km) if self.distance_km > 0 else 0
+        dist_str = f" - {dist_val} {unit_str}"
+
+        return (
+            f"{self.from_station.canonical_name} ({self.from_station.code}) - "
+            f"{self.to_station.canonical_name} ({self.to_station.code}) "
+            f"[{type_str}]{dist_str}"
+        )
+
     def formatted_output(self) -> str:
         dist_str = f" - {int(self.distance_km)} km" if self.distance_km > 0 else " - 0 km"
         return f"{self.from_station.canonical_name} ({self.from_station.code}) - {self.to_station.canonical_name} ({self.to_station.code}) [{self.shipment_type.name.upper()}]{dist_str}"
