@@ -1,31 +1,49 @@
 # ------------------------------------------------------------------------------
-# БЛОК 1: Юнит-тест NLU-парсера (проверка извлечения сущностей)
+# БЛОК 1: Автотесты для валидации Pydantic-схемы парсера
 # ------------------------------------------------------------------------------
 import pytest
-from unittest.mock import patch, MagicMock
-from core.parser import parse_user_input, RawParsedEntities
+from pydantic import ValidationError
+from core.schemas import ShipmentQuery
 
 
-def test_parse_user_input_mock():
-    mock_json_response = (
-        '{"raw_from": "ТРК", "raw_to": "Баку тов", "raw_gng": "3404", '
-        '"raw_wagon": "цистерна", "raw_weight": 50.0, "raw_owner": "спс"}'
+def test_shipment_query_valid():
+    """Проверка создания объекта с режимом перевозки и ГНГ от 2 до 8 цифр."""
+    query = ShipmentQuery(
+        raw_from="Ялама",
+        raw_to="Апшерон",
+        shipment_type="Импорт",
+        gng_code="4407",
+        gng_name="Пиломатериалы",
+        weight_tons=35.0,
+        wagon_type="крытый",
+        wagon_ownership="СПС"
     )
+    assert query.shipment_type == "Импорт"
+    assert query.gng_code == "4407"
+    assert query.weight_tons == 35.0
+    assert query.wagon_ownership == "СПС"
 
-    with patch("google.genai.Client") as mock_client_class:
-        mock_client = MagicMock()
-        mock_client_class.return_value = mock_client
 
-        mock_response = MagicMock()
-        mock_response.text = mock_json_response
-        mock_client.models.generate_content.return_value = mock_response
+def test_gng_code_length_validation():
+    """Проверка валидации длины ГНГ (от 2 до 8 цифр)."""
+    # 2 цифры — валидно
+    q2 = ShipmentQuery(raw_from="A", raw_to="B", gng_code="44")
+    assert q2.gng_code == "44"
 
-        with patch.dict("os.environ", {"GEMINI_API_KEY": "test_key"}):
-            result = parse_user_input("ТРК Баку тов 3404 цистерна 50т спс")
+    # 8 цифр — валидно
+    q8 = ShipmentQuery(raw_from="A", raw_to="B", gng_code="12345678")
+    assert q8.gng_code == "12345678"
 
-            assert result.raw_from == "ТРК"
-            assert result.raw_to == "Баку тов"
-            assert result.raw_gng == "3404"
-            assert result.raw_wagon == "цистерна"
-            assert result.raw_weight == 50.0
-            assert result.raw_owner == "спс"
+    # Меньше 2 цифр — ошибка
+    with pytest.raises(ValidationError):
+        ShipmentQuery(raw_from="A", raw_to="B", gng_code="4")
+
+    # Больше 8 цифр — ошибка
+    with pytest.raises(ValidationError):
+        ShipmentQuery(raw_from="A", raw_to="B", gng_code="123456789")
+
+
+def test_gng_code_digits_only():
+    """Проверка на наличие нецифровых символов в ГНГ."""
+    with pytest.raises(ValidationError):
+        ShipmentQuery(raw_from="A", raw_to="B", gng_code="4407A")
