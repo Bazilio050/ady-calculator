@@ -31,7 +31,7 @@ class RouteResult:
     shipment_type: ShipmentType
 
     def formatted_output(self, lang: str = "RU") -> str:
-        lang = lang.upper()
+        lang = str(lang).upper()
 
         shipment_labels = {
             "AZ": {
