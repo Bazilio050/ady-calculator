@@ -62,15 +62,21 @@ class RouteResult:
         dist_val = int(self.distance_km) if self.distance_km > 0 else 0
         dist_str = f" - {dist_val} {unit_str}"
 
-        # Перевод названий станций из существующего справочника
+        # Получаем локализованные названия
         from_name = get_localized_station_name(self.from_station.canonical_name, lang=lang)
         to_name = get_localized_station_name(self.to_station.canonical_name, lang=lang)
 
-        return (
-            f"{from_name} ({self.from_station.code}) - "
-            f"{to_name} ({self.to_station.code}) "
-            f"[{type_str}]{dist_str}"
+        # Форматирование отображения (без ЕСР-кода для экспортного Алята)
+        from_display = (
+            from_name if "Ələt eksport" in self.from_station.canonical_name
+            else f"{from_name} ({self.from_station.code})"
         )
+        to_display = (
+            to_name if "Ələt eksport" in self.to_station.canonical_name
+            else f"{to_name} ({self.to_station.code})"
+        )
+
+        return f"{from_display} - {to_display} [{type_str}]{dist_str}"
 
 
 class RailwayRouter:
