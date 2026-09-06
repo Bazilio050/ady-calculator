@@ -106,23 +106,12 @@ class RailwayRouter:
             raise RuntimeError(f"Ошибка при чтении файла расстояний: {e}")
 
     def resolve_station_by_query(self, raw_input: str) -> StationInfo:
-        text = raw_input.strip().lower()
-
-        # Нормализация пользовательских синонимов
         target_key = raw_input.strip()
-        if "турк" in text or "трк" in text or "türk" in text:
-            target_key = "Ələt eksport-Türk."
-        elif "актау" in text or "aqtau" in text:
-            target_key = "Ələt eksport-Aktau"
-        elif "курык" in text or "курик" in text or "qurıq" in text or "kurik" in text:
-            target_key = "Ələt eksport-Kurik"
-        elif "алят" in text and ("экс" in text or "eksp" in text or "export" in text):
-            target_key = "Ələt eksport-Kurik"
 
-        # Запрос данных из stations_mapping.py
-        canonical_name = get_canonical_station_name(target_key) or get_canonical_station_name(raw_input)
-        code = get_station_code(target_key) or get_station_code(raw_input)
-        is_border = get_station_border_status(target_key) or get_station_border_status(raw_input)
+        # Поиск канонического имени, ЕСР-кода и пограничного статуса напрямую из справочника
+        canonical_name = get_canonical_station_name(target_key)
+        code = get_station_code(target_key)
+        is_border = get_station_border_status(target_key)
 
         if not canonical_name or not code:
             raise ValueError(f"Станция '{raw_input}' не найдена в справочнике data/stations_mapping.py")
