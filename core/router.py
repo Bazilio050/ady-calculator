@@ -52,9 +52,13 @@ class RailwayRouter:
                     t_code = str(row["to_code"]).strip()
                     dist = float(row["distance_km"])
                     self.distances_map[(f_code, t_code)] = dist
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f"Файл расстояний не найден по пути: '{self.distances_file_path}'"
+            )
         except Exception as e:
-            print(f"Ошибка загрузки расстояний: {e}")
-
+            raise RuntimeError(f"Ошибка при чтении файла расстояний: {e}")
+            
     def resolve_station_by_query(self, raw_input: str) -> StationInfo:
         text = raw_input.strip().lower()
 
