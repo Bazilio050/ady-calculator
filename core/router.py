@@ -17,6 +17,13 @@ class ShipmentType(Enum):
 
 
 @dataclass(frozen=True)
+class StationInfo:
+    code: str
+    canonical_name: str
+    is_border: bool
+
+
+@dataclass(frozen=True)
 class RouteResult:
     from_station: StationInfo
     to_station: StationInfo
@@ -60,10 +67,6 @@ class RouteResult:
             f"[{type_str}]{dist_str}"
         )
 
-    def formatted_output(self) -> str:
-        dist_str = f" - {int(self.distance_km)} km" if self.distance_km > 0 else " - 0 km"
-        return f"{self.from_station.canonical_name} ({self.from_station.code}) - {self.to_station.canonical_name} ({self.to_station.code}) [{self.shipment_type.name.upper()}]{dist_str}"
-
 
 class RailwayRouter:
     def __init__(self, distances_file_path: str = "data/distances.csv"):
@@ -88,7 +91,7 @@ class RailwayRouter:
             )
         except Exception as e:
             raise RuntimeError(f"Ошибка при чтении файла расстояний: {e}")
-            
+
     def resolve_station_by_query(self, raw_input: str) -> StationInfo:
         text = raw_input.strip().lower()
 
