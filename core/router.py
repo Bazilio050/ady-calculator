@@ -66,12 +66,12 @@ class RouteResult:
         # Форматирование отображения для конкретной станции
         def format_station(st: StationInfo) -> str:
             raw = st.raw_input.lower()
-            # Если пользователь явно вводил "алят" с "экс/експ" -> Алят-эксп. (без кода)
-            if "алят" in raw and ("экс" in raw or "eksp" in raw or "export" in raw):
+            # Покрываем все варианты написания: экс, екст, експ, eksp, export
+            if "алят" in raw and any(sub in raw for sub in ["экс", "екс", "eksp", "export"]):
                 alat_names = {"AZ": "Ələt-eksp.", "RU": "Алят-эксп.", "EN": "Alat-exp."}
                 return alat_names.get(lang, "Алят-эксп.")
 
-            # Во всех остальных случаях (Курык, ТРК, Актау и т.д.) -> Название (Код)
+            # В остальных случаях -> Название (Код)
             loc_name = get_localized_station_name(st.canonical_name, lang=lang)
             return f"{loc_name} ({st.code})"
 
