@@ -6,6 +6,7 @@ def test_visual_routing():
 
     # (Откуда, Куда, Ожидаемый тип)
     test_cases = [
+        # Первоначальные тесты
         ("Ялама", "Апшерон", ShipmentType.IMPORT),
         ("Ялама", "Беюк Кясик", ShipmentType.TRANSIT),
         ("Беюк Кясик", "Алят", ShipmentType.IMPORT),
@@ -13,6 +14,26 @@ def test_visual_routing():
         ("Астара", "ТРК", ShipmentType.TRANSIT),
         ("Yalama", "Boyuk Kesik", ShipmentType.TRANSIT),
         ("Апшерон", "Ялама", ShipmentType.EXPORT),
+
+        # Новые тесты: Курык (Импорт, Экспорт, Транзит)
+        ("Курык", "Баладжары", ShipmentType.IMPORT),
+        ("Хырдалан", "Курык", ShipmentType.EXPORT),
+        ("Курык", "Беюк Кясик", ShipmentType.TRANSIT),
+
+        # Новый тест: Беюк Кясик (Экспорт)
+        ("Гянджа", "Беюк Кясик", ShipmentType.EXPORT),
+
+        # Новые тесты: Астара (Импорт, Экспорт)
+        ("Астара", "Имишли", ShipmentType.IMPORT),
+        ("Казах", "Астара", ShipmentType.EXPORT),
+
+        # Новые тесты: Алят эксп (Транзит, Экспорт)
+        ("Алят експ", "Ялама", ShipmentType.TRANSIT),
+        ("Гюздек", "Алят експ", ShipmentType.EXPORT),
+
+        # Новые тесты: ТРК (Импорт, Экспорт)
+        ("ТРК", "Баладжары", ShipmentType.IMPORT),
+        ("Хырдалан", "ТРК", ShipmentType.EXPORT),
     ]
 
     print("\n" + "=" * 80)
