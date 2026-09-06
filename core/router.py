@@ -17,13 +17,6 @@ class ShipmentType(Enum):
 
 
 @dataclass(frozen=True)
-class StationInfo:
-    code: str
-    canonical_name: str
-    is_border: bool
-
-
-@dataclass(frozen=True)
 class RouteResult:
     from_station: StationInfo
     to_station: StationInfo
