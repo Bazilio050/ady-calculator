@@ -45,27 +45,6 @@ def test_visual_routing():
 
     print("\n" + "=" * 80 + "\n")
 
-    for idx, (raw_from, raw_to, expected_type) in enumerate(test_cases, 1):
-        try:
-            res = router.calculate_route(raw_from, raw_to)
-            is_correct = (res.shipment_type == expected_type)
-            status = "✅" if is_correct else "❌"
-
-            print(f"\n{idx}. Запрос: {raw_from} -> {raw_to} {status}")
-            print(f"   AZ: {res.formatted_output('AZ')}")
-            print(f"   RU: {res.formatted_output('RU')}")
-            print(f"   EN: {res.formatted_output('EN')}")
-
-        except Exception as e:
-            print(f"\n{idx}. Запрос: {raw_from} -> {raw_to}")
-            print(f"   Ошибка: ({e}) ❌")
-
-        except Exception as e:
-            print(f"\n{idx}. Запрос:         {raw_from} {raw_to}")
-            print(f"   Вывод на экран: Ошибка ({e})  ❌")
-
-    print("\n" + "=" * 80 + "\n")
-
 
 if __name__ == "__main__":
     test_visual_routing()
