@@ -6,6 +6,7 @@ from data.stations_mapping import (
     get_station_code,
     get_station_border_status,
     get_station_export_code,
+    get_localized_station_name,
 )
 
 
