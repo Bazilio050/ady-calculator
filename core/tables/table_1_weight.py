@@ -2,47 +2,44 @@
 # БЛОК 1: Логика Таблицы 1 (Cədvəl 1) — Округление веса
 # ------------------------------------------------------------------------------
 
-def calculate_billable_weight(weight_tons: int) -> int:
+def calculate_billable_weight(weight_tons: int) -> dict:
     """
     Рассчитывает расчетную категорию веса по Таблице 1.
-    
-    Диапазоны (в тоннах):
-      0..12  -> 10
-      13..16 -> 15
-      17..23 -> 20
-      24..26 -> 25
-      27..31 -> 30
-      32..36 -> 35
-      37..40 -> 40
-      41..46 -> 45
-      47..51 -> 50
-      52..55 -> 55
-      56..60 -> 60
-      > 60   -> фактический вес (61 -> 61)
+    Возвращает словарь с расчетным весом и кодом правила для примечаний.
     """
     w = int(weight_tons)
-    
+    calc_w = w
+
     if w <= 12:
-        return 10
+        calc_w = 10
     elif w <= 16:
-        return 15
+        calc_w = 15
     elif w <= 23:
-        return 20
+        calc_w = 20
     elif w <= 26:
-        return 25
+        calc_w = 25
     elif w <= 31:
-        return 30
+        calc_w = 30
     elif w <= 36:
-        return 35
+        calc_w = 35
     elif w <= 40:
-        return 40
+        calc_w = 40
     elif w <= 46:
-        return 45
+        calc_w = 45
     elif w <= 51:
-        return 50
+        calc_w = 50
     elif w <= 55:
-        return 55
+        calc_w = 55
     elif w <= 60:
-        return 60
+        calc_w = 60
     else:
-        return w
+        calc_w = w
+
+    # Если фактический вес округлился, передаем системный ключ правила
+    rule_code = "TABLE_1_ROUNDING" if calc_w != w else None
+
+    return {
+        "calculated_weight": calc_w,
+        "rule_code": rule_code,
+        "params": {"actual": w, "applied": calc_w} if rule_code else {}
+    }
