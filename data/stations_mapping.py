@@ -8,8 +8,22 @@ STATIONS_MAPPING = {
     "Ağdam": {"code": "555506", "AZ": ["Ağdam"], "RU": ["Агдам"], "EN": ["Aghdam"]},
     "Ağstafa": {"code": "557200", "AZ": ["Ağstafa"], "RU": ["Акстафа", "Агстафа"], "EN": ["Agstafa"]},
     "Alabaşlı": {"code": "556602", "AZ": ["Alabaşlı"], "RU": ["Алабашлы"], "EN": ["Alabashli"]},
-    "Astara": {"code": "554109", "AZ": ["Astara"], "RU": ["Астара"], "EN": ["Astara"]},
-    "Astara (eks.aşır)": {"code": "554503", "AZ": ["Astara (eks.aşır)"], "RU": ["Астара (эксп.перевалка)"], "EN": ["Astara (exp.transshipment)"]},
+    "Astara": {
+        "code": "554109",
+        "export_code": "554503",
+        "is_border": True,
+        "AZ": ["Astara"],
+        "RU": ["Астара"],
+        "EN": ["Astara"]
+    },
+    "Astara (eks.aşır)": {
+        "code": "554503",
+        "export_code": "554503",
+        "is_border": True,
+        "AZ": ["Astara (eks.aşır)", "Astara eksport"],
+        "RU": ["Астара (эксп.перевалка)", "Астара экспорт", "Астара-эксп."],
+        "EN": ["Astara (exp.transshipment)", "Astara export"]
+    },
     "Atbulaq": {"code": "548907", "AZ": ["Atbulaq"], "RU": ["Атбулак"], "EN": ["Atbulag"]},
     "Bakı yük": {
         "code": "547105", 
@@ -32,31 +46,80 @@ STATIONS_MAPPING = {
     "Biləcəri": {"code": "546808", "AZ": ["Biləcəri"], "RU": ["Баладжары"], "EN": ["Bilajari"]},
     "Binə": {"code": "547707", "AZ": ["Binə"], "RU": ["Бина"], "EN": ["Bina"]},
     "Böyük Kəsik": {
-        "code": "558631", 
-        "AZ": ["Böyük Kəsik-eksp.", "Böyük Kəsik", "Boyuk Kesik", "BK"], 
-        "RU": ["Беюк-Кясик-эксп.", "Беюк Кясик", "БК"], 
-        "EN": ["Boyuk Kasik-exp.", "Boyuk Kasik", "BK"]
-    },
-    "Böyük Kəsik (eksport)": {
-        "code": "558701", 
-        "AZ": ["Böyük Kəsik-eksp."], 
-        "RU": ["Беюк-Кясик-эксп."], 
-        "EN": ["Boyuk Kasik-exp."]
-    },
+    "code": "558631",
+    "export_code": "558701",
+    "is_border": True,
+    "AZ": ["Böyük Kəsik", "Boyuk Kesik"],
+    "RU": ["Беюк Кясик", "Беюк-Кясик"],
+    "EN": ["Boyuk Kesik"]
+},
+"Böyük Kəsik (eksport)": {
+    "code": "558701",
+    "export_code": "558701",
+    "is_border": True,
+    "AZ": ["Böyük Kəsik eksport", "Boyuk Kesik eksp"],
+    "RU": ["Беюк Кясик экспорт", "Беюк Кясик-эксп."],
+    "EN": ["Boyuk Kesik exp"]
+},
     "Çarxı": {"code": "545400", "AZ": ["Çarxı"], "RU": ["Чархи"], "EN": ["Charkhi"]},
     "Cəlilabad": {"code": "553303", "AZ": ["Cəlilabad"], "RU": ["Джалилабад"], "EN": ["Jalilabad"]},
-    "Culfa": {"code": "550004", "AZ": ["Culfa"], "RU": ["Джульфа"], "EN": ["Julfa"]},
-    "Culfa (eksport)": {"code": "550108", "AZ": ["Culfa-eksp."], "RU": ["Джульфа-эксп."], "EN": ["Julfa-exp."]},
+    "Culfa": {
+    "code": "550004",
+    "export_code": "550108",
+    "is_border": True,
+    "AZ": ["Culfa"],
+    "RU": ["Джульфа"],
+    "EN": ["Julfa"]
+},
+"Culfa (eksport)": {
+    "code": "550108",
+    "export_code": "550108",
+    "is_border": True,
+    "AZ": ["Culfa eksport"],
+    "RU": ["Джульфа экспорт"],
+    "EN": ["Julfa exp"]
+},
 
     # --- Буквы D, Ə, E, G, H, İ ---
     "Daşburun": {"code": "551906", "AZ": ["Daşburun"], "RU": ["Дашбурун"], "EN": ["Dashburun"]},
     "Dəllər": {"code": "556803", "AZ": ["Dəllər"], "RU": ["Далляр"], "EN": ["Dallar"]},
     "Dəlməmmədli": {"code": "556000", "AZ": ["Dəlməmmədli"], "RU": ["Дельмамедли"], "EN": ["Dalmamadli"]},
     "Dübəndi": {"code": "547904", "AZ": ["Dübəndi"], "RU": ["Дюбенди"], "EN": ["Dubendi"]},
-    "Ələt": {"code": "548502", "AZ": ["Ələt"], "RU": ["Алят"], "EN": ["Alat"]},
-    "Ələt eksport-Aktau": {"code": "549204", "AZ": ["Ələt-eksp.Aktau"], "RU": ["Алят-эксп.Актау"], "EN": ["Alat-exp.Aktau"]},
-    "Ələt eksport-Kurik": {"code": "553002", "AZ": ["Ələt-eksp.Kurik"], "RU": ["Алят-эксп.Курык"], "EN": ["Alat-exp.Kuryk"]},
-    "Ələt eksport-Türk.": {"code": "548803", "AZ": ["Ələt-eksp.Türk."], "RU": ["Алят-эксп.Турк."], "EN": ["Alat-exp.Turk."]},
+    "Ələt": {
+    "code": "548502",
+    "export_code": "553002",
+    "is_border": False,
+    "AZ": ["Ələt", "Alat"],
+    "RU": ["Алят"],
+    "EN": ["Alat"]
+},
+
+"Ələt eksport-Kurik": {
+    "code": "553002",
+    "export_code": "553002",
+    "is_border": True,
+    "AZ": ["Ələt eksport-Kurik", "Ələt-Kurik", "Qurıq", "Kurik", "Ələt eksp"],
+    "RU": ["Алят экспорт-Курык", "Алят-Курык", "Курык", "Курик", "Алят экс", "Алят експ", "Алят экспорт"],
+    "EN": ["Alat export-Kuryk", "Kuryk"]
+},
+
+"Ələt eksport-Türk.": {
+    "code": "548803",
+    "export_code": "548803",
+    "is_border": True,
+    "AZ": ["Ələt eksport-Türk.", "Ələt-Türk", "Türkmenbaşı", "TRK"],
+    "RU": ["Алят экспорт-Турк.", "Алят-Турк", "Туркменбаши", "ТРК", "Турк"],
+    "EN": ["Alat export-Turk.", "Turkmenbashi"]
+},
+
+"Ələt eksport-Aktau": {
+    "code": "549204",
+    "export_code": "549204",
+    "is_border": True,
+    "AZ": ["Ələt eksport-Aktau", "Ələt-Aktau", "Aqtau", "Aktau"],
+    "RU": ["Алят экспорт-Актау", "Алят-Актау", "Актау"],
+    "EN": ["Alat export-Aktau", "Aktau"]
+},
     "Bakı ticarət liman": {"code": "547302", "AZ": ["Bakı ticarət limanı"], "RU": ["Бакинский торг. порт"], "EN": ["Baku Trade Port"]},
     "Bakı ticarət limanı (eks)": {"code": "547406", "AZ": ["Bakı ticarət limanı (eks)"], "RU": ["Бакинский торг. порт (эксп)"], "EN": ["Baku Trade Port (exp)"]},
     "Bakı ticarət limanı (aşır)": {"code": "547209", "AZ": ["Bakı ticarət limanı (aşır)"], "RU": ["Бакинский торг. порт (перевалка)"], "EN": ["Baku Trade Port (transshipment)"]},
@@ -155,17 +218,21 @@ STATIONS_MAPPING = {
     "Xırdalan": {"code": "546704", "AZ": ["Xırdalan"], "RU": ["Хырдалан"], "EN": ["Khirdalan"]},
     "Xudat": {"code": "545107", "AZ": ["Xudat"], "RU": ["Худат"], "EN": ["Khudat"]},
     "Yalama": {
-        "code": "545006", 
-        "AZ": ["Yalama-eksp.", "Yalama"], 
-        "RU": ["Ялама-эксп.", "Ялама"], 
-        "EN": ["Yalama-exp.", "Yalama"]
-    },
-    "Yalama (eksport)": {
-        "code": "547508", 
-        "AZ": ["Yalama-eksp.", "Yalama eksport"], 
-        "RU": ["Ялама-эксп.", "Ялама экспорт"], 
-        "EN": ["Yalama-exp."]
-    },
+    "code": "545006",
+    "export_code": "547508",
+    "is_border": True,
+    "AZ": ["Yalama"],
+    "RU": ["Ялама"],
+    "EN": ["Yalama"]
+},
+"Yalama (eksport)": {
+    "code": "547508",
+    "export_code": "547508",
+    "is_border": True,
+    "AZ": ["Yalama eksport", "Yalama-eksp."],
+    "RU": ["Ялама экспорт", "Ялама-эксп."],
+    "EN": ["Yalama-exp."]
+},
     "Yevlax": {"code": "555101", "AZ": ["Yevlax"], "RU": ["Евлах"], "EN": ["Yevlakh"]},
     "Z.Tağıyev": {"code": "546302", "AZ": ["Z.Tağıyev"], "RU": ["З.Тагиев (Насосный)", "З.Тагиев"], "EN": ["Z.Taghiyev"]},
     "Z.Tağıyev çeşidləmə": {"code": "546901", "AZ": ["Z.Tağıyev çeşidləmə"], "RU": ["З.Тагиев (сортировочная)"], "EN": ["Z.Taghiyev Sorting"]},
@@ -287,3 +354,11 @@ def get_station_border_status(station_input: str) -> bool:
     }
     
     return canonical_name in border_canonical_names
+
+ def get_station_export_code(query_or_name: str) -> str:
+    """Возвращает экспортный код станции для поиска расстояния в distances.csv"""
+    canonical = get_canonical_station_name(query_or_name)
+    if canonical and canonical in STATIONS_MAPPING:
+        info = STATIONS_MAPPING[canonical]
+        return info.get("export_code", info.get("code", ""))
+    return ""
