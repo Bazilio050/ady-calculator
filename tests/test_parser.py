@@ -18,6 +18,7 @@ def test_shipment_query_valid():
         wagon_type="крытый",
         wagon_ownership="СПС"
     )
+    print(f"\n[УСПЕХ] Запрос распарсен: {query.raw_from} -> {query.raw_to} | Режим: {query.shipment_type} | ГНГ: {query.gng_code} ({query.gng_name}) | Вес: {query.weight_tons}т | Вагон: {query.wagon_type} ({query.wagon_ownership})")
     assert query.shipment_type == "Импорт"
     assert query.gng_code == "4407"
     assert query.weight_tons == 35.0
@@ -26,19 +27,17 @@ def test_shipment_query_valid():
 
 def test_gng_code_length_validation():
     """Проверка валидации длины ГНГ (от 2 до 8 цифр)."""
-    # 2 цифры — валидно
     q2 = ShipmentQuery(raw_from="A", raw_to="B", gng_code="44")
+    print(f"\n[УСПЕХ] Валидация 2-значного ГНГ: {q2.gng_code}")
     assert q2.gng_code == "44"
 
-    # 8 цифр — валидно
     q8 = ShipmentQuery(raw_from="A", raw_to="B", gng_code="12345678")
+    print(f"[УСПЕХ] Валидация 8-значного ГНГ: {q8.gng_code}")
     assert q8.gng_code == "12345678"
 
-    # Меньше 2 цифр — ошибка
     with pytest.raises(ValidationError):
         ShipmentQuery(raw_from="A", raw_to="B", gng_code="4")
 
-    # Больше 8 цифр — ошибка
     with pytest.raises(ValidationError):
         ShipmentQuery(raw_from="A", raw_to="B", gng_code="123456789")
 
