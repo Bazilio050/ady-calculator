@@ -26,16 +26,20 @@ STATIONS_MAPPING = {
     },
     "Atbulaq": {"code": "548907", "AZ": ["Atbulaq"], "RU": ["Атбулак"], "EN": ["Atbulag"]},
     "Bakı yük": {
-        "code": "547105", 
-        "AZ": ["Bakı yük", "Bakı yuk", "Baku yuk", "Bakı-Yük"], 
-        "RU": ["Баку-Товарная", "Баку тов", "Баку-тов", "Баку грузовой", "Баку товарный"], 
-        "EN": ["Baku Freight", "Baku freight", "Baku tov"]
+        "code": "547105",
+        "export_code": "547105",
+        "is_border": False,
+        "AZ": ["Bakı yük", "Bakı yuk"],
+        "RU": ["Баку грузовой", "Баку тов", "Баку-товарная", "Баку-тов.", "Баку юк"],
+        "EN": ["Baku cargo", "Baku freight"]
     },
     "Bakı yük terminal": {
-        "code": "547603", 
-        "AZ": ["Bakı yük terminalı"], 
-        "RU": ["Баку-Товарная (терминал)", "Баку тов terminal"], 
-        "EN": ["Baku Freight Terminal"]
+        "code": "547603",
+        "export_code": "547603",
+        "is_border": False,
+        "AZ": ["Bakı yük terminal", "Bakı yuk terminal", "Bakı yuk ter"],
+        "RU": ["Баку грузовой терминал", "Баку терминал", "Баку-терминал", "Баку-тер.", "Баку груз терминал"],
+        "EN": ["Baku cargo terminal", "Baku freight terminal"]
     },
     "Balakən": {"code": "559704", "AZ": ["Balakən"], "RU": ["Белоканы"], "EN": ["Balakan"]},
     "Bartaz": {"code": "551308", "AZ": ["Bartaz"], "RU": ["Бартаз"], "EN": ["Bartaz"]},
@@ -121,8 +125,22 @@ STATIONS_MAPPING = {
     "EN": ["Alat export-Aktau", "Aktau"]
 },
     "Bakı ticarət liman": {"code": "547302", "AZ": ["Bakı ticarət limanı"], "RU": ["Бакинский торг. порт"], "EN": ["Baku Trade Port"]},
-    "Bakı ticarət limanı (eks)": {"code": "547406", "AZ": ["Bakı ticarət limanı (eks)"], "RU": ["Бакинский торг. порт (эксп)"], "EN": ["Baku Trade Port (exp)"]},
-    "Bakı ticarət limanı (aşır)": {"code": "547209", "AZ": ["Bakı ticarət limanı (aşır)"], "RU": ["Бакинский торг. порт (перевалка)"], "EN": ["Baku Trade Port (transshipment)"]},
+    "Bakı ticarət limanı (eks)": {
+        "code": "547406",
+        "export_code": "547406",
+        "is_border": False,
+        "AZ": ["Bakı ticarət limanı (eks)", "Bakı liman eks", "Bakı ticarət limanı eks"],
+        "RU": ["Баку торговый порт экс", "Баку торг пристань", "Баку торг эксп", "Баку торг экс", "Баку торговый пристань эксп", "Баку порт экс"],
+        "EN": ["Baku trade port exp", "Baku commercial port exp"]
+    },
+    "Bakı ticarət limanı (aşır)": {
+        "code": "547209",
+        "export_code": "547209",
+        "is_border": False,
+        "AZ": ["Bakı ticarət limanı (aşır)", "Bakı liman aşırma", "Bakı liman asir"],
+        "RU": ["Баку торговый порт перевалка", "Баку торг пристань перевалка", "Баку перевалка", "Баку порт перевалка", "Баку аширма"],
+        "EN": ["Baku trade port transshipment", "Baku port transshipment"]
+    },
     "Ələt yeni": {"code": "548703", "AZ": ["Ələt yeni"], "RU": ["Алят-Новый"], "EN": ["Alat-New"]},
     "Əsgəran": {"code": "557304", "AZ": ["Əsgəran"], "RU": ["Аскеран"], "EN": ["Asgaran"]},
     "Gəncə": {"code": "556208", "AZ": ["Gəncə"], "RU": ["Гянджа"], "EN": ["Ganja"]},
@@ -158,7 +176,14 @@ STATIONS_MAPPING = {
     "Mehri": {"code": "551100", "AZ": ["Mehri"], "RU": ["Мегри"], "EN": ["Mehri"]},
     "Mincivan": {"code": "551204", "AZ": ["Mincivan"], "RU": ["Миндживань"], "EN": ["Minjivan"]},
     "Mingəçevir": {"code": "555703", "AZ": ["Mingəçevir"], "RU": ["Мингечевир"], "EN": ["Mingachevir"]},
-    "Mingəçevir şəhər": {"code": "555807", "AZ": ["Mingəçevir şəhər"], "RU": ["Мингечевир-Город"], "EN": ["Mingachevir City"]},
+    "Mingəçevir şəhər": {
+        "code": "555807",
+        "export_code": "555807",
+        "is_border": False,
+        "AZ": ["Mingəçevir şəhər", "Mingəçevir şəh", "Mingecevir seher"],
+        "RU": ["Мингечевир город", "Мингечевир гор", "Мингечаур город"],
+        "EN": ["Mingachevir city", "Mingechevir city"]
+    },
     "Muğan": {"code": "554306", "AZ": ["Muğan"], "RU": ["Мугань"], "EN": ["Mugan"]},
     "Mürsəlli": {"code": "552601", "AZ": ["Mürsəlli"], "RU": ["Мурселли"], "EN": ["Mursalli"]},
     "Müsüslü": {"code": "554700", "AZ": ["Müsüslü"], "RU": ["Мюсюсли"], "EN": ["Mususli"]},
@@ -174,7 +199,14 @@ STATIONS_MAPPING = {
     "Qafan": {"code": "551401", "AZ": ["Qafan"], "RU": ["Кафан"], "EN": ["Gafan"]},
     "Qamışlıq": {"code": "554005", "AZ": ["Qamışlıq"], "RU": ["Камышлыг"], "EN": ["Gamishlig"]},
     "Qaradağ": {"code": "548201", "AZ": ["Qaradağ"], "RU": ["Карадаг"], "EN": ["Garadagh"]},
-    "Qaradağ terminal": {"code": "549702", "AZ": ["Qaradağ terminalı"], "RU": ["Карадаг (терминал)"], "EN": ["Garadagh Terminal"]},
+    "Qaradağ terminal": {
+        "code": "549702",
+        "export_code": "549702",
+        "is_border": False,
+        "AZ": ["Qaradağ terminal", "Qaradağ ter", "Garadag terminal"],
+        "RU": ["Карадаг терминал", "Карадаг тер"],
+        "EN": ["Garadagh terminal", "Garadag terminal"]
+    },
     "Qasımlı": {"code": "553500", "AZ": ["Qasımlı"], "RU": ["Касымлы"], "EN": ["Gasimli"]},
     "Qax": {"code": "559507", "AZ": ["Qax"], "RU": ["Кахи"], "EN": ["Gakh"]},
     "Qazax": {"code": "557408", "AZ": ["Qazax"], "RU": ["Казах"], "EN": ["Gazakh"]},
@@ -196,7 +228,13 @@ STATIONS_MAPPING = {
     "Şəki": {"code": "559403", "AZ": ["Şəki"], "RU": ["Шеки"], "EN": ["Sheki"]},
     "Şəmkir": {"code": "556706", "AZ": ["Şəmkir"], "RU": ["Шамхор", "Шамкир"], "EN": ["Shamkir"]},
     "Sanqaçal": {"code": "548305", "AZ": ["Sanqaçal"], "RU": ["Сангачалы"], "EN": ["Sangachal"]},
-    "Sanqaçal ter.(aşırma)": {"code": "548606", "AZ": ["Sanqaçal ter.(aşırma)"], "RU": ["Сангачалы (перевалка)"], "EN": ["Sangachal Transshipment"]},
+    "Sanqaçal ter.(aşırma)": {
+        "code": "548606",
+        "export_code": "548606",
+        "is_border": False,
+        "AZ": ["Sanqaçal ter.(aşırma)", "Sanqaçal aşırma", "Sanqacal asirma", "Sanqaçal terminal"],
+        "RU": ["Сангачал терминал перевалка", "Сангачал перевалка", "Сангачал аширма", "Сангачал тер"],
+        "EN": ["Sangachal terminal transshipment", "Sangachal transshipment"]
     "Şərur": {"code": "550502", "AZ": ["Şərur"], "RU": ["Шарур (Ильичевск)", "Шарур"], "EN": ["Sharur"]},
     "Şərur (eksport)": {"code": "550409", "AZ": ["Şərur-eksp."], "RU": ["Шарур-эксп."], "EN": ["Sharur-exp."]},
     "Şirvan": {"code": "552705", "AZ": ["Şirvan"], "RU": ["Ширван"], "EN": ["Shirvan"]},
@@ -234,9 +272,30 @@ STATIONS_MAPPING = {
     "EN": ["Yalama-exp."]
 },
     "Yevlax": {"code": "555101", "AZ": ["Yevlax"], "RU": ["Евлах"], "EN": ["Yevlakh"]},
-    "Z.Tağıyev": {"code": "546302", "AZ": ["Z.Tağıyev"], "RU": ["З.Тагиев (Насосный)", "З.Тагиев"], "EN": ["Z.Taghiyev"]},
-    "Z.Tağıyev çeşidləmə": {"code": "546901", "AZ": ["Z.Tağıyev çeşidləmə"], "RU": ["З.Тагиев (сортировочная)"], "EN": ["Z.Taghiyev Sorting"]},
-    "Zabrat II": {"code": "557802", "AZ": ["Zabrat II"], "RU": ["Забрат II"], "EN": ["Zabrat II"]},
+    "Z.Tağıyev": {
+        "code": "546302",
+        "export_code": "546302",
+        "is_border": False,
+        "AZ": ["Z.Tağıyev", "Zeynalabdin Tağıyev", "Tagiyev"],
+        "RU": ["З.Тагиев", "Тагиев", "Гаджи зейналабдин Тагиев", "Г.З.Тагиев", "Посёлок Тагиева", "Насосный"],
+        "EN": ["Z.Taghiyev", "Taghiyev"]
+    },
+    "Z.Tağıyev çeşidləmə": {
+        "code": "546901",
+        "export_code": "546901",
+        "is_border": False,
+        "AZ": ["Z.Tağıyev çeşidləmə", "Z.Tağıyev çeşid", "Tagiyev cesidleme"],
+        "RU": ["З.Тагиев сортировочная", "З.Тагиев сорт", "Гаджи зейналабдин Тагиев сорт", "Гаджи зейналабдин Тагиев сортировочная", "Тагиев сорт", "Насосный сортировочная"],
+        "EN": ["Z.Taghiyev sorting", "Taghiyev sorting"]
+    },
+    "Zabrat II": {
+        "code": "557802",
+        "export_code": "557802",
+        "is_border": False,
+        "AZ": ["Zabrat II", "Zabrat 2", "Zabrat-2"],
+        "RU": ["Забрат II", "Забрат 2", "Забрат-2", "Забрат два"],
+        "EN": ["Zabrat II", "Zabrat 2"]
+    },
     "Zaqatala": {"code": "559600", "AZ": ["Zaqatala"], "RU": ["Закаталы"], "EN": ["Zagatala"]},
     "Zazalı": {"code": "556104", "AZ": ["Zazalı"], "RU": ["Зазалы"], "EN": ["Zazali"]},
     "Zəyəm": {"code": "556903", "AZ": ["Zəyəm"], "RU": ["Заям"], "EN": ["Zayam"]},
