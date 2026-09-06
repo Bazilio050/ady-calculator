@@ -1,6 +1,6 @@
 # core/main_rules.py
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 
 def check_gng_match(gng_code: str, target: str) -> bool:
@@ -26,7 +26,7 @@ def apply_main_rules(
 ) -> Dict[str, Any]:
     """
     Расчет коэффициентов по Главным (сквозным) правилам Тарифного руководства ADY.
-    Возвращает итоговый перемноженный коэффициент и список сработавших правил.
+    Возвращает итоговый коэффициент и список сработавших правил.
     """
     applied_rules: List[Dict[str, Any]] = []
     final_coeff: float = 1.0
@@ -36,15 +36,21 @@ def apply_main_rules(
 
     # --- ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ: Проверка условий кодов ГНГ по правилам ---
     # Лес и пиломатериалы: 4403, 4404, 4407-4413 (4-значные)
-    is_wood_group = any(check_gng_match(gng, code) for code in ["4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"])
+    is_wood_group = any(
+        check_gng_match(gng, code) 
+        for code in ["4403", "4404", "4407", "4408", "4409", "4410", "4411", "4412", "4413"]
+    )
     
     # Черные металлы: 72 (2-значный) и 7301-7307 (4-значные)
-    is_metal_group = check_gng_match(gng, "72") or any(check_gng_match(gng, code) for code in ["7301", "7302", "7303", "7304", "7305", "7306", "7307"])
+    is_metal_group = check_gng_match(gng, "72") or any(
+        check_gng_match(gng, code) 
+        for code in ["7301", "7302", "7303", "7304", "7305", "7306", "7307"]
+    )
 
     # --------------------------------------------------------------------------
     # ПРАВИЛО 1: Коэффициент 1.50 на Импорт и Экспорт (с учетом исключений)
     # --------------------------------------------------------------------------
-    # --- ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ: Применяется 1.50 на импорт/экспорт, если нет специальных исключений ---
+    # --- ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ: Применяется 1.50 на импорт/экспорт, если нет исключений ---
     if shipment in ["import", "export"]:
         is_exception = (
             is_table_3
@@ -106,7 +112,6 @@ def apply_main_rules(
     # --------------------------------------------------------------------------
     # --- ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ: 1.20 при импорте или транзите нефти/нефтепродуктов в цистернах ---
     if shipment in ["import", "transit"] and is_oil_product and wagon_type in ["tank", "bunker"]:
-        # Проверка однократности: если 1.20 еще не накладывался (например, по Правилу 3)
         if not any(rule["calculated_value"] == 1.20 for rule in applied_rules):
             final_coeff *= 1.20
             applied_rules.append({
@@ -120,7 +125,6 @@ def apply_main_rules(
     # --------------------------------------------------------------------------
     # --- ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ: 1.20 при транзите реф-секций, реф-контейнеров и ИВ-термосов ---
     if shipment == "transit" and wagon_type in ["ref_section", "ref_container", "arv"]:
-        # Проверка однократности применения 1.20
         if not any(rule["calculated_value"] == 1.20 for rule in applied_rules):
             final_coeff *= 1.20
             applied_rules.append({
