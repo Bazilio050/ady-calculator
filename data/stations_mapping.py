@@ -234,7 +234,7 @@ STATIONS_MAPPING = {
         "is_border": False,
         "AZ": ["Sanqaçal ter.(aşırma)", "Sanqaçal aşırma", "Sanqacal asirma", "Sanqaçal terminal"],
         "RU": ["Сангачал терминал перевалка", "Сангачал перевалка", "Сангачал аширма", "Сангачал тер"],
-        "EN": ["Sangachal terminal transshipment", "Sangachal transshipment"]
+        "EN": ["Sangachal terminal transshipment", "Sangachal transshipment"]},
     "Şərur": {"code": "550502", "AZ": ["Şərur"], "RU": ["Шарур (Ильичевск)", "Шарур"], "EN": ["Sharur"]},
     "Şərur (eksport)": {"code": "550409", "AZ": ["Şərur-eksp."], "RU": ["Шарур-эксп."], "EN": ["Sharur-exp."]},
     "Şirvan": {"code": "552705", "AZ": ["Şirvan"], "RU": ["Ширван"], "EN": ["Shirvan"]},
