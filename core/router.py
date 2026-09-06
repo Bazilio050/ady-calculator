@@ -5,6 +5,7 @@ from data.stations_mapping import (
     get_canonical_station_name,
     get_station_code,
     get_station_border_status,
+    get_station_export_code,
 )
 
 
@@ -85,16 +86,39 @@ class RailwayRouter:
         else:
             return ShipmentType.LOCAL
 
-    def _get_distance_from_file(self, from_code: str, to_code: str) -> float:
-        """Мгновенный поиск расстояния O(1) по паре ЕСР-кодов."""
-        return self.distances_map.get((from_code, to_code), 0.0)
+    def _get_distance_from_file(self, from_query: str, to_query: str) -> float:
+        """
+        Поиск расстояния по парам кодов из CSV.
+        Проверяет базовые и экспортные коды в обоих направлениях (A->B и B->A).
+        """
+        code_from = get_station_code(from_query)
+        code_to = get_station_code(to_query)
+        exp_from = get_station_export_code(from_query)
+        exp_to = get_station_export_code(to_query)
+
+        # Собираем комбинации кодов без повторов
+        from_codes = dict.fromkeys([exp_from, code_from])
+        to_codes = dict.fromkeys([exp_to, code_to])
+
+        for f in from_codes:
+            for t in to_codes:
+                if not f or not t:
+                    continue
+                # Прямое направление
+                if (f, t) in self.distances_map:
+                    return self.distances_map[(f, t)]
+                # Обратное направление
+                if (t, f) in self.distances_map:
+                    return self.distances_map[(t, f)]
+
+        return 0.0
 
     def calculate_route(self, raw_from: str, raw_to: str) -> RouteResult:
         from_st = self.resolve_station_by_query(raw_from)
         to_st = self.resolve_station_by_query(raw_to)
 
         shipment_type = self.determine_shipment_type(from_st, to_st)
-        distance_km = self._get_distance_from_file(from_st.code, to_st.code)
+        distance_km = self._get_distance_from_file(raw_from, raw_to)
 
         return RouteResult(
             from_station=from_st,
