@@ -98,9 +98,9 @@ STATIONS_MAPPING = {
     "code": "553002",
     "export_code": "553002",
     "is_border": True,
-    "AZ": ["Ələt eksport-Kurik", "Ələt-Kurik", "Qurıq", "Kurik", "Ələt eksp"],
-    "RU": ["Алят экспорт-Курык", "Алят-Курык", "Курык", "Курик", "Алят экс", "Алят експ", "Алят экспорт"],
-    "EN": ["Alat export-Kuryk", "Kuryk"]
+    "AZ": ["Ələt eksport-Kurik", "Ələt-Kurik", "Qurıq", "Kurik", "Ələt eksp", "Ələt-eksp."],
+    "RU": ["Алят экспорт-Курык", "Алят-Курык", "Курык", "Курик", "Алят экс", "Алят експ", "Алят-эксп.", "Алят экспорт"],
+    "EN": ["Alat export-Kuryk", "Kuryk", "Alat-exp."]
 },
 
 "Ələt eksport-Türk.": {
@@ -108,7 +108,7 @@ STATIONS_MAPPING = {
     "export_code": "548803",
     "is_border": True,
     "AZ": ["Ələt eksport-Türk.", "Ələt-Türk", "Türkmenbaşı", "TRK"],
-    "RU": ["Алят экспорт-Турк.", "Алят-Турк", "Туркменбаши", "ТРК", "Турк"],
+    "RU": ["Алят экспорт-Турк.", "Алят-Турк", "Туркменбаши", "ТРК", "Турк", "Трп", "Трк"],
     "EN": ["Alat export-Turk.", "Turkmenbashi"]
 },
 
