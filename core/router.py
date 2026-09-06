@@ -1,6 +1,7 @@
 import csv
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
+from typing import Optional, Dict, Any
 from data.stations_mapping import (
     get_canonical_station_name,
     get_station_code,
@@ -31,6 +32,9 @@ class RouteResult:
     to_station: StationInfo
     distance_km: float
     shipment_type: ShipmentType
+    calculated_distance_km: float = 0.0
+    rule_code: Optional[str] = None
+    params: Dict[str, Any] = field(default_factory=dict)
 
     def formatted_output(self, lang: str = "RU") -> str:
         lang = str(lang).upper()
@@ -60,18 +64,19 @@ class RouteResult:
         type_str = labels.get(self.shipment_type, self.shipment_type.name)
 
         unit_str = "km" if lang in ["AZ", "EN"] else "км"
-        dist_val = int(self.distance_km) if self.distance_km > 0 else 0
+        
+        # Для отображения берем расчетное расстояние, если оно задано
+        final_dist = self.calculated_distance_km if self.calculated_distance_km > 0 else self.distance_km
+        dist_val = int(final_dist) if final_dist > 0 else 0
         dist_str = f" - {dist_val} {unit_str}"
 
         # Форматирование отображения для конкретной станции
         def format_station(st: StationInfo) -> str:
             raw = st.raw_input.lower()
-            # Покрываем все варианты написания: экс, екст, експ, eksp, export
             if "алят" in raw and any(sub in raw for sub in ["экс", "екс", "eksp", "export"]):
                 alat_names = {"AZ": "Ələt-eksp.", "RU": "Алят-эксп.", "EN": "Alat-exp."}
                 return alat_names.get(lang, "Алят-эксп.")
 
-            # В остальных случаях -> Название (Код)
             loc_name = get_localized_station_name(st.canonical_name, lang=lang)
             return f"{loc_name} ({st.code})"
 
@@ -108,7 +113,6 @@ class RailwayRouter:
     def resolve_station_by_query(self, raw_input: str) -> StationInfo:
         target_key = raw_input.strip()
 
-        # Поиск канонического имени, ЕСР-кода и пограничного статуса напрямую из справочника
         canonical_name = get_canonical_station_name(target_key)
         code = get_station_code(target_key)
         is_border = get_station_border_status(target_key)
@@ -136,7 +140,6 @@ class RailwayRouter:
     def _get_distance_from_file(self, from_st: StationInfo, to_st: StationInfo) -> float:
         """
         Поиск расстояния по парам ЕСР-кодов из CSV.
-        Проверяет комбинации базовых и экспортных кодов в обоих направлениях (A->B и B->A).
         """
         code_from = str(from_st.code).strip()
         code_to = str(to_st.code).strip()
@@ -144,20 +147,44 @@ class RailwayRouter:
         exp_from = str(get_station_export_code(from_st.canonical_name)).strip()
         exp_to = str(get_station_export_code(to_st.canonical_name)).strip()
 
-        # Формируем списки кодов для поиска (экспортный код в приоритете)
         from_codes = [c for c in dict.fromkeys([exp_from, code_from]) if c]
         to_codes = [c for c in dict.fromkeys([exp_to, code_to]) if c]
 
         for f in from_codes:
             for t in to_codes:
-                # Прямое направление
                 if (f, t) in self.distances_map:
                     return self.distances_map[(f, t)]
-                # Обратное направление
                 if (t, f) in self.distances_map:
                     return self.distances_map[(t, f)]
 
         return 0.0
+
+    def apply_min_distance_rule(self, shipment_type: ShipmentType, actual_distance: float) -> dict:
+        """
+        Корректирует расстояние по правилу минимальных тарифных расстояний ADY.
+        (101 км для экспорта, 151 км для импорта)
+        """
+        dist = int(actual_distance)
+
+        if shipment_type == ShipmentType.EXPORT and dist < 101:
+            return {
+                "calculated_distance": 101.0,
+                "rule_code": "MIN_DISTANCE_EXPORT",
+                "params": {"actual": dist, "applied": 101}
+            }
+
+        if shipment_type == ShipmentType.IMPORT and dist < 151:
+            return {
+                "calculated_distance": 151.0,
+                "rule_code": "MIN_DISTANCE_IMPORT",
+                "params": {"actual": dist, "applied": 151}
+            }
+
+        return {
+            "calculated_distance": actual_distance,
+            "rule_code": None,
+            "params": {}
+        }
 
     def calculate_route(self, raw_from: str, raw_to: str) -> RouteResult:
         from_st = self.resolve_station_by_query(raw_from)
@@ -166,9 +193,15 @@ class RailwayRouter:
         shipment_type = self.determine_shipment_type(from_st, to_st)
         distance_km = self._get_distance_from_file(from_st, to_st)
 
+        # Применяем правило минимального расстояния
+        min_dist_info = self.apply_min_distance_rule(shipment_type, distance_km)
+
         return RouteResult(
             from_station=from_st,
             to_station=to_st,
             distance_km=distance_km,
             shipment_type=shipment_type,
+            calculated_distance_km=min_dist_info["calculated_distance"],
+            rule_code=min_dist_info["rule_code"],
+            params=min_dist_info["params"]
         )
