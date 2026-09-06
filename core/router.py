@@ -86,17 +86,17 @@ class RailwayRouter:
         else:
             return ShipmentType.LOCAL
 
-    def _get_distance_from_file(self, from_query: str, to_query: str) -> float:
+    def _get_distance_from_file(self, from_st: StationInfo, to_st: StationInfo) -> float:
         """
         Поиск расстояния по парам кодов из CSV.
         Проверяет базовые и экспортные коды в обоих направлениях (A->B и B->A).
         """
-        code_from = get_station_code(from_query)
-        code_to = get_station_code(to_query)
-        exp_from = get_station_export_code(from_query)
-        exp_to = get_station_export_code(to_query)
+        code_from = from_st.code
+        code_to = to_st.code
+        exp_from = get_station_export_code(from_st.canonical_name)
+        exp_to = get_station_export_code(to_st.canonical_name)
 
-        # Собираем комбинации кодов без повторов
+        # Собираем уникальные комбинации кодов
         from_codes = dict.fromkeys([exp_from, code_from])
         to_codes = dict.fromkeys([exp_to, code_to])
 
@@ -118,7 +118,7 @@ class RailwayRouter:
         to_st = self.resolve_station_by_query(raw_to)
 
         shipment_type = self.determine_shipment_type(from_st, to_st)
-        distance_km = self._get_distance_from_file(raw_from, raw_to)
+        distance_km = self._get_distance_from_file(from_st, to_st)
 
         return RouteResult(
             from_station=from_st,
