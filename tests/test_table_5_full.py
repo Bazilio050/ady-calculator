@@ -144,3 +144,114 @@ def test_inv_anv_empty_calculation():
 
     _print_calculation_result("4. Порожний проход ИНВ/АНВ (Ялама -> Беюк Кясик)", route_res, calc_res, "8606", 0, "inv_anv", False)
     assert calc_res["base_rate_chf_per_ton"] > 0
+
+# ------------------------------------------------------------------------------
+# ТЕСТЫ ДЛЯ РЕФРИЖЕРАТОРНЫХ СЕКЦИЙ (П. 3.1.2.1: 2+1, 3+1, 4+1, 5+1, 6+1)
+# ------------------------------------------------------------------------------
+def test_ref_section_2_1_import():
+    """Тест 5: Рефсекция 2+1 (Курык -> Беюк Кясик) | Коэф. 1.40"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Курык", "Беюк Кясик")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="0404",
+        actual_weight=28,
+        distance_km=route_res.distance_km,
+        wagon_type="refrigerator",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True,
+        ref_section_wagons_count=2
+    )
+
+    _print_calculation_result("5. Рефсекция 2+1 (Курык -> Беюк Кясик)", route_res, calc_res, "0404", 28, "refrigerator (2+1)", True)
+    assert calc_res["base_rate_chf_per_ton"] > 0
+
+
+def test_ref_section_3_1_import():
+    """Тест 6: Рефсекция 3+1 (Ялама -> Алят-эксп.) | Коэф. 1.10"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "Ələt eksport-Kurik")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="0404",
+        actual_weight=28,
+        distance_km=effective_dist,
+        wagon_type="refrigerator",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True,
+        ref_section_wagons_count=3
+    )
+
+    _print_calculation_result("6. Рефсекция 3+1 (Ялама -> Алят-эксп.)", route_res, calc_res, "0404", 28, "refrigerator (3+1)", True)
+    assert calc_res["base_rate_chf_per_ton"] > 0
+
+
+def test_ref_section_4_1_import():
+    """Тест 7: Рефсекция 4+1 (Баку-Товарная -> Астара) | Коэф. 1.00"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Баку-Товарная", "Астара")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="0404",
+        actual_weight=28,
+        distance_km=effective_dist,
+        wagon_type="refrigerator",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True,
+        ref_section_wagons_count=4
+    )
+
+    _print_calculation_result("7. Рефсекция 4+1 (Баку-Товарная -> Астара)", route_res, calc_res, "0404", 28, "refrigerator (4+1)", True)
+    assert calc_res["base_rate_chf_per_ton"] > 0
+
+
+def test_ref_section_5_1_import():
+    """Тест 8: Рефсекция 5+1 (Ялама -> Апшерон) | Коэф. 0.85"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "Апшерон")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="0404",
+        actual_weight=28,
+        distance_km=effective_dist,
+        wagon_type="refrigerator",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True,
+        ref_section_wagons_count=5
+    )
+
+    _print_calculation_result("8. Рефсекция 5+1 (Ялама -> Апшерон)", route_res, calc_res, "0404", 28, "refrigerator (5+1)", True)
+    assert calc_res["base_rate_chf_per_ton"] > 0
+
+
+def test_ref_section_6_1_import():
+    """Тест 9: Рефсекция 6+1 (Апшерон -> Ялама) | Коэф. 0.85"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Апшерон", "Ялама")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="0404",
+        actual_weight=28,
+        distance_km=effective_dist,
+        wagon_type="refrigerator",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True,
+        ref_section_wagons_count=6
+    )
+
+    _print_calculation_result("9. Рефсекция 6+1 (Апшерон -> Ялама)", route_res, calc_res, "0404", 28, "refrigerator (6+1)", True)
+    assert calc_res["base_rate_chf_per_ton"] > 0
