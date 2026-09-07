@@ -31,11 +31,8 @@ class TariffCalculator:
         Выполняет полный расчет тарифа. Применяет коэффициенты последовательно к базовой ставке.
         """
         # 1. Расчет billable_weight (Таблица 1 / Минимальные нормы)
-        weight_res = Table1Calculator.calculate_billable_weight(
-            gng_code,
-            actual_weight
-        )
-        billable_weight = weight_res["billable_weight"]
+        weight_res = Table1Calculator.calculate_billable_weight(actual_weight)
+        billable_weight = weight_res["calculated_weight"]
 
         # 2. Проверка применимости Таблицы 3 (только Import / Export)
         is_table_3_applicable = shipment_type.lower() in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
