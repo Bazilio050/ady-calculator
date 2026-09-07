@@ -17,65 +17,48 @@ class TariffCalculator:
     @classmethod
     def calculate(
         cls,
-        shipment_type: str,           # 'import', 'export', 'transit', 'local'
-        gng_code: str,                # Код ГНГ
-        actual_weight: int,           # Фактический вес в тоннах
-        distance_km: float,           # Тарифное расстояние в км
-        wagon_type: str,              # Тип вагона
-        from_canonical_name: str,     # Станция отправления
-        to_canonical_name: str,       # Станция назначения
-        is_private_wagon: bool = False,# Собственный/приватный вагон (0.85)
-        is_empty: bool = False,       # Порожний пробег
-        is_methanol: bool = False,    # Метанол
-        is_oil_product: bool = False  # Нефть/нефтепродукты
-    ) -> Dict[str, Any]:
+        shipment_type: str,
+        gng_code: str,
+        actual_weight: float,
+        distance_km: float,
+        wagon_type: str,
+        from_canonical_name: str,
+        to_canonical_name: str,
+        is_private_wagon: bool = False
+    ) -> dict:
         """
-        Главный метод расчета итогового тарифа.
+        ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
+        Выполняет полный расчет тарифа. Применяет коэффициенты последовательно к базовой ставке.
         """
-        notifications: List[Dict[str, Any]] = []
+        # 1. Расчет billable_weight (Таблица 1 / Минимальные нормы)
+        weight_res = Table1Calculator.calculate_billable_weight(
+            gng_code=gng_code,
+            actual_weight=actual_weight,
+            wagon_type=wagon_type
+        )
+        billable_weight = weight_res["billable_weight"]
 
-        # 1. Проверка минимальной нормы загрузки
-        min_load_res = TableMinLoadCalculator.get_min_load_weight(gng_code, actual_weight)
-        weight_after_min_norm = min_load_res["calculated_weight"]
-        if min_load_res["rule_code"]:
-            notifications.append({
-                "rule_code": min_load_res["rule_code"],
-                "params": min_load_res["params"]
-            })
+        # 2. Проверка применимости Таблицы 3 (только Import / Export)
+        is_table_3_applicable = shipment_type.lower() in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
 
-        # 2. Определение расчетной категории веса по Таблице 1
-        table1_res = Table1Calculator.calculate_billable_weight(weight_after_min_norm)
-        billable_weight = table1_res["calculated_weight"]
-        if table1_res["rule_code"]:
-            notifications.append({
-                "rule_code": table1_res["rule_code"],
-                "params": table1_res["params"]
-            })
-
-        # 3. Расчет коэффициентов по Главным правилам
-        is_table_3_applicable = shipment_type.lower() in ["import", "export"]
+        # 3. Расчет коэффициентов
         rules_res = apply_main_rules(
             shipment_type=shipment_type,
+            from_station=from_canonical_name,
+            to_station=to_canonical_name,
             gng_code=gng_code,
             wagon_type=wagon_type,
-            from_canonical_name=from_canonical_name,
-            to_canonical_name=to_canonical_name,
-            is_table_3=is_table_3_applicable,
-            is_methanol=is_methanol,
-            is_oil_product=is_oil_product,
-            is_empty=is_empty,
             is_private_wagon=is_private_wagon
         )
-
-        for rule in rules_res["rules"]:
-            notifications.append({
-                "rule_code": rule["rule_code"],
-                "params": rule.get("params", {})
+        
+        notifications = rules_res.get("notifications", [])
+        if weight_res.get("applied_rule"):
+            notifications.insert(0, {
+                "rule_code": "MIN_LOAD_NORM",
+                "params": {"actual": actual_weight, "applied": billable_weight}
             })
 
-        final_coeff = rules_res["calculated_value"]
-
-        # 4. Расчет базовой ставки за 1 тонну (CHF) и итоговой суммы
+        # 4. Поиск базовой ставки и последовательное применение коэффициентов по правилам ЖД
         base_rate_per_ton = 0.0
         if is_table_3_applicable:
             base_rate_per_ton = Table3Calculator.get_base_rate(
@@ -83,15 +66,23 @@ class TariffCalculator:
                 weight_tons=billable_weight
             )
 
-        # Расчет итоговой стоимости за 1 тонну
-        final_rate_per_ton = round(base_rate_per_ton * final_coeff, 4)
+        applied_coeffs = rules_res.get("applied_coefficients", [])
+        running_rate = base_rate_per_ton
+
+        if applied_coeffs:
+            for coeff in applied_coeffs:
+                running_rate *= coeff
+            final_rate_per_ton = round(running_rate, 2)
+        else:
+            final_coeff = rules_res.get("calculated_value", 1.0)
+            final_rate_per_ton = round(base_rate_per_ton * final_coeff, 2)
 
         return {
             "actual_weight": actual_weight,
             "billable_weight": billable_weight,
             "distance_km": distance_km,
             "base_rate_chf_per_ton": base_rate_per_ton,
-            "final_coeff": final_coeff,
+            "final_coeff": rules_res.get("calculated_value", 1.0),
             "final_rate_chf_per_ton": final_rate_per_ton,
             "notifications": notifications
         }
