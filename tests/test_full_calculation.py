@@ -174,3 +174,63 @@ def test_paper_bilajari_boyuk_kesik():
 
     _print_calculation_result("5. Изделия из бумаги МПС (Баладжары -> Беюк Кясик)", route_res, calc_res, "4818", 26, "хоппер", False)
     assert calc_res["actual_weight"] == 26
+
+def test_alat_exp_boyuk_kesik():
+    """Тест 6: Алят (эксп) -> Беюк Кясик | ГНГ 78 | крытый | 35т | СПС | Ноябрь 2026"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Алят-эксп.", "Беюк Кясик")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="78",
+        actual_weight=35,
+        distance_km=route_res.distance_km,
+        wagon_type="крытый",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True,
+        shipment_date="15.11.2026"
+    )
+
+    _print_calculation_result("6. Алят (эксп) -> Беюк Кясик (Ноябрь 2026)", route_res, calc_res, "78", 35, "крытый", True)
+    assert calc_res["exchange_rate"] == 0.81
+
+
+def test_kuryk_khirdalan():
+    """Тест 7: Курык -> Хырдалан | ГНГ 28049 | платформа | 50т | СПС"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Курык", "Хырдалан")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="28049",
+        actual_weight=50,
+        distance_km=route_res.distance_km,
+        wagon_type="платформа",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True
+    )
+
+    _print_calculation_result("7. Курык -> Хырдалан (ГНГ 28049)", route_res, calc_res, "28049", 50, "платформа", True)
+    assert calc_res["actual_weight"] == 50
+
+
+def test_yalama_trk_wheat_hopper():
+    """Тест 8: Ялама -> ТРК | ГНГ 1001 | хоппер | 55т | СПС"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "ТРК")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="1001",
+        actual_weight=55,
+        distance_km=route_res.distance_km,
+        wagon_type="хоппер",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True
+    )
+
+    _print_calculation_result("8. Ялама -> ТРК Пшеница Хоппер", route_res, calc_res, "1001", 55, "хоппер", True)
+    assert calc_res["actual_weight"] == 55
