@@ -213,3 +213,22 @@ def test_yalama_trk_wheat_hopper():
 
     _print_calculation_result("8. Ялама -> ТРК Пшеница Хоппер", route_res, calc_res, "1001", 55, "хоппер", True)
     assert calc_res["actual_weight"] == 55
+
+def test_transit_coal_yalama_boyuk_kesik():
+    """Тест: Транзит угля (Ялама -> Беюк Кясик, 60 т, полувагон)"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "Беюк Кясик")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="27011100",
+        actual_weight=60,
+        distance_km=route_res.distance_km,
+        wagon_type="полувагон",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=False
+    )
+
+    _print_calculation_result("Транзит угля (Ялама -> Беюк Кясик)", route_res, calc_res, "27011100", 60, "полувагон", False)
+    assert calc_res["base_rate_chf_per_ton"] > 0
