@@ -13,23 +13,23 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
     print(f"ГНГ код: {gng_code}")
     print(f"Тип вагона: {wagon_type} [{'СПС (приватный)' if is_private else 'СПС (инвентарный)'}]")
     print(f"Вес (факт): {weight} т -> Расчетный (Табл.1/Норма): {calc_res['billable_weight']} т")
-    print(f"Базовая ставка: {calc_res['base_rate_chf_per_ton']} CHF/т ({calc_res['applied_table']})")
-    print(f"Курс конвертации (CHF -> USD): {calc_res['exchange_rate_chf_to_usd']}")
-    print(f"Базовая ставка в USD: {calc_res['base_rate_usd_per_ton']:.2f} USD/т\n")
+    print(f"Базовая ставка: {round(calc_res['base_rate_chf_per_ton'], 2)} CHF/т ({calc_res.get('applied_table', calc_res.get('table_name'))})")
+    print(f"Курс конвертации (CHF -> USD): {calc_res['exchange_rate']}")
+    print(f"Базовая ставка в USD: {calc_res['base_rate_usd_per_ton']} USD/т\n")
 
-    if calc_res.get("applied_coefficients"):
-        for coeff in calc_res["applied_coefficients"]:
-            print(f"Коэф. {coeff['value']:.2f}: {coeff['description']}")
-        print()
+    # Печать коэффициентов
+    for notif in calc_res.get("notifications", []):
+        code = notif.get("rule_code", "")
+        if "REF_SECTION" in code:
+            print(f"Коэф. секционности: Применен коэффициент для рефсекции ({code})")
 
-    print(f"Итог за 1 т: {calc_res['final_rate_usd_per_ton']:.2f} USD/т\n")
+    print(f"\nИтог за 1 т: {calc_res['final_rate_usd_per_ton']} USD/т\n")
 
-    if calc_res.get("formatted_notifications"):
+    # Печать уведомлений
+    if calc_res.get("notifications"):
         print("Уведомления:")
-        for lang, msgs in calc_res["formatted_notifications"].items():
-            for msg in msgs:
-                print(f"{lang.upper()}: {msg}")
-    print("="*70)
+        for notif in calc_res["notifications"]:
+            print(f"Правило: {notif.get('rule_code')}")
 
 
 # ------------------------------------------------------------------------------
