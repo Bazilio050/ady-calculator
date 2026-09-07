@@ -98,23 +98,21 @@ class TariffCalculator:
 
         if wagon_type.lower() in sps_wagon_types:
             table_name = "Таблица 5"
-            base_rate_chf = Table5Calculator.get_base_rate(
+            table_5_res = Table5Calculator.get_base_rate(
                 distance_km=distance_km,
                 weight_tons=billable_weight,
                 equipment_type=wagon_type,
                 ref_section_wagons_count=ref_section_wagons_count
             )
-        elif is_table_3_applicable:
-            base_rate_chf = Table3Calculator.get_base_rate(
-                distance_km=distance_km,
-                weight_tons=billable_weight
-            )
-        elif is_table_4_applicable:
-            base_rate_chf = Table4Calculator.get_base_rate(
-                distance_km=distance_km,
-                weight_tons=billable_weight
-            )
-
+            base_rate_chf = table_5_res["base_rate_chf"]
+            
+            # Если к рефсекции применился коэффициент состава, записываем уведомление
+            if table_5_res["applied_rule_code"]:
+                notifications.append({
+                    "rule_code": table_5_res["applied_rule_code"],
+                    "params": {}
+                })
+                
         # 5. Получение курса валюты и перевод базовой ставки в USD (база / курс)
         exchange_rate = get_exchange_rate(shipment_date)
         base_rate_usd = (base_rate_chf / exchange_rate) if exchange_rate > 0 else base_rate_chf
