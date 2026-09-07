@@ -71,9 +71,10 @@ class Table5Calculator:
         equipment_type: str = "refrigerator",
         is_empty: bool = False,
         ref_section_wagons_count: Optional[int] = None
-    ) -> Dict[str, Any]:
+    ) -> float:
         """
-        Возвращает базовую ставку в CHF и примененное правило секционности по Таблице 5.
+        ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
+        Возвращает базовую ставку CHF/т по Таблице 5 с учетом коэффициентов секционности.
         """
         tariffs = cls._load_data()
         dist = int(round(distance_km))
@@ -88,50 +89,34 @@ class Table5Calculator:
             raise ValueError(f"Расстояние {dist} км выходит за пределы Таблицы 5.")
 
         eq_lower = equipment_type.lower()
-        applied_rule_code = None
 
         # 1. Рефрижераторы и ARV
         if eq_lower in ("refrigerator", "arv", "ref_section"):
-            if weight_tons < 25.0:
-                base_rate = matched_rates["col_2"]
-            else:
-                base_rate = matched_rates["col_3"]
+            base_rate = matched_rates["col_2"] if weight_tons < 25.0 else matched_rates["col_3"]
 
-            # Применение коэффициента от количества вагонов в рефсекции (п. 3.1.2.1)
-            if ref_section_wagons_count is not None:
-                if ref_section_wagons_count == 1:
-                    base_rate *= 1.70
-                    applied_rule_code = "REF_SECTION_COEFF_1_70"
-                elif ref_section_wagons_count == 2:
-                    base_rate *= 1.40
-                    applied_rule_code = "REF_SECTION_COEFF_1_40"
-                elif ref_section_wagons_count == 3:
-                    base_rate *= 1.10
-                    applied_rule_code = "REF_SECTION_COEFF_1_10"
-                elif ref_section_wagons_count == 4:
-                    applied_rule_code = "REF_SECTION_COEFF_1_00"
-                elif ref_section_wagons_count >= 5:
-                    base_rate *= 0.85
-                    applied_rule_code = "REF_SECTION_COEFF_0_85"
+            # Коэффициенты от количества вагонов в секции (п. 3.1.2.1)
+            if ref_section_wagons_count == 1:
+                base_rate *= 1.70
+            elif ref_section_wagons_count == 2:
+                base_rate *= 1.40
+            elif ref_section_wagons_count == 3:
+                base_rate *= 1.10
+            elif ref_section_wagons_count and ref_section_wagons_count >= 5:
+                base_rate *= 0.85
 
-            return {
-                "base_rate_chf": base_rate,
-                "applied_rule_code": applied_rule_code
-            }
+            return base_rate
 
-        # 2. Вагоны-термосы и ледники
+        # 2. Термосы и ледники
         elif eq_lower in ("thermos", "ice_wagon"):
-            rate = matched_rates["col_4"] if weight_tons < 25.0 else matched_rates["col_5"]
-            return {"base_rate_chf": rate, "applied_rule_code": None}
+            return matched_rates["col_4"] if weight_tons < 25.0 else matched_rates["col_5"]
 
         # 3. Автовозы
         elif eq_lower == "car_carrier":
-            return {"base_rate_chf": matched_rates["col_6"], "applied_rule_code": None}
+            return matched_rates["col_6"]
 
         # 4. ИНВ / АНВ
         elif eq_lower in ("inv", "anv", "inv_anv"):
-            rate = matched_rates["col_8"] if is_empty else matched_rates["col_7"]
-            return {"base_rate_chf": rate, "applied_rule_code": None}
+            return matched_rates["col_8"] if is_empty else matched_rates["col_7"]
 
         else:
             raise ValueError(f"Неизвестный тип подвижного состава для Таблицы 5: {equipment_type}")
