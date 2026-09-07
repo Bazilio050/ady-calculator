@@ -17,20 +17,20 @@ def check_precious_metals_multiplier(gng_code: str) -> bool:
     """
     ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
     Проверяет, входит ли код ГНГ в перечень цветных, драгоценных металлов 
-    и специфических грузов из пункта 3.1.1[cite: 1].
+    и специфических грузов из пункта 3.1.1.
     """
     gng = str(gng_code).strip()
 
-    # Точные совпадения по кодам ГНГ[cite: 1]
+    # Точные совпадения по кодам ГНГ
     exact_codes = {"28045090", "28049", "28054", "32121", "8302", "83079", "8309", "8311", "85481"}
     if any(gng.startswith(code) for code in exact_codes):
         return True
 
-    # Драгоценные металлы: диапазон 7106-7112 и код 7115[cite: 1]
+    # Драгоценные металлы: диапазон 7106-7112 и код 7115
     if any(gng.startswith(f"71{i:02d}") for i in range(6, 13)) or gng.startswith("7115"):
         return True
 
-    # Группы цветных металлов с учетом исключений[cite: 1]
+    # Группы цветных металлов с учетом исключений
     if gng.startswith("74") and not (gng.startswith("7401") or gng.startswith("7418")):
         return True
     if gng.startswith("75") and not gng.startswith("7501"):
@@ -168,12 +168,7 @@ def apply_main_rules(
             "calculated_value": 1.20,
             "rule_code": "MAIN_COEFF_1_20_PRECIOUS_METALS",
             "params": {"gng_code": gng}
-           })
-
-    return {
-        "calculated_value": round(final_coeff, 4),
-        "rules": applied_rules
-    }
+        })
 
     # --------------------------------------------------------------------------
     # ПРАВИЛО 7: Коэффициент 1.015 на груженые международные перевозки (2026)
@@ -186,7 +181,7 @@ def apply_main_rules(
             "params": {"shipment_type": shipment, "is_empty": is_empty}
         })
 
-     # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # ПРАВИЛО 8: Коэффициент 0.85 на собственные (приватные) вагоны
     # --------------------------------------------------------------------------
     if is_private_wagon:
@@ -196,3 +191,8 @@ def apply_main_rules(
             "rule_code": "MAIN_COEFF_0_85_PRIVATE_WAGON",
             "params": {"is_private_wagon": is_private_wagon}
         })
+
+    return {
+        "calculated_value": round(final_coeff, 4),
+        "rules": applied_rules
+    }
