@@ -29,8 +29,14 @@ class TariffCalculator:
         from_canonical_name: str,
         to_canonical_name: str,
         is_private_wagon: bool = False,
-        shipment_date: str = None
-    ) -> dict:
+        shipment_date: Optional[str] = None,
+        ref_section_wagons_count: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
+        Выполняет полный цикл расчета тарифа с учетом спецвагонов, правил и валютной конвертации.
+        """
+        
         act_w = int(actual_weight)
         notifications = []
         ship_type_lower = shipment_type.lower()
