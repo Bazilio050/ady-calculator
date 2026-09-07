@@ -1,6 +1,7 @@
 import pytest
 from core.router import RailwayRouter
 from core.calculator import TariffCalculator
+from data.translations import RULE_MESSAGES
 
 
 def _print_test_header(title: str):
@@ -13,23 +14,35 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
     print(f"ГНГ код: {gng_code}")
     print(f"Тип вагона: {wagon_type} [{'СПС (приватный)' if is_private else 'СПС (инвентарный)'}]")
     print(f"Вес (факт): {weight} т -> Расчетный (Табл.1/Норма): {calc_res['billable_weight']} т")
-    print(f"Базовая ставка: {round(calc_res['base_rate_chf_per_ton'], 2)} CHF/т ({calc_res.get('applied_table', calc_res.get('table_name'))})")
+    
+    base_chf = round(calc_res['base_rate_chf_per_ton'], 2)
+    applied_tbl = calc_res.get('applied_table', calc_res.get('table_name'))
+    print(f"Базовая ставка: {base_chf} CHF/т ({applied_tbl})")
     print(f"Курс конвертации (CHF -> USD): {calc_res['exchange_rate']}")
     print(f"Базовая ставка в USD: {calc_res['base_rate_usd_per_ton']} USD/т\n")
 
-    # Печать коэффициентов
-    for notif in calc_res.get("notifications", []):
-        code = notif.get("rule_code", "")
-        if "REF_SECTION" in code:
-            print(f"Коэф. секционности: Применен коэффициент для рефсекции ({code})")
+    # Вывод коэффициентов из словаря переводов (RU версия)
+    notifications = calc_res.get("notifications", [])
+    for notif in notifications:
+        code = notif.get("rule_code")
+        params = notif.get("params", {})
+        if code in RULE_MESSAGES and code != "TABLE_1_ROUNDING":
+            ru_msg = RULE_MESSAGES[code]["ru"].format(**params) if params else RULE_MESSAGES[code]["ru"]
+            print(f"{ru_msg}")
 
     print(f"\nИтог за 1 т: {calc_res['final_rate_usd_per_ton']} USD/т\n")
 
-    # Печать уведомлений
-    if calc_res.get("notifications"):
+    # Вывод двуязычных уведомлений AZ и EN из центрального словаря
+    if notifications:
         print("Уведомления:")
-        for notif in calc_res["notifications"]:
-            print(f"Правило: {notif.get('rule_code')}")
+        for notif in notifications:
+            code = notif.get("rule_code")
+            params = notif.get("params", {})
+            if code in RULE_MESSAGES:
+                az_msg = RULE_MESSAGES[code]["az"].format(**params) if params else RULE_MESSAGES[code]["az"]
+                en_msg = RULE_MESSAGES[code]["en"].format(**params) if params else RULE_MESSAGES[code]["en"]
+                print(f"AZ: {az_msg}")
+                print(f"EN: {en_msg}")
 
 
 # ------------------------------------------------------------------------------
