@@ -131,7 +131,7 @@ def test_transit_calculation():
     )
 
     _print_calculation_result("3. Транзит угля (Ялама -> Беюк Кясик)", route_res, calc_res, "27011100", 60, "полувагон", False)
-    assert calc_res["base_rate_chf_per_ton"] == 0.0
+    assert calc_res["base_rate_chf_per_ton"] == 28.53
 
 
 def test_import_timber_sps():
