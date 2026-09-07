@@ -2,6 +2,7 @@
 
 import sys
 import os
+from core.parser import parse_user_input, RawParsedEntities
 
 # ------------------------------------------------------------------------------
 # БЛОК 1: Настройка путей импорта Python
@@ -247,16 +248,20 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
         """, unsafe_allow_html=True)
 
         try:
-            # Парсим запрос через parser.py
-            parsed_params = parse_user_request(current_input)
+            # 1. Извлекаем сущности через родной parse_user_input из core/parser.py
+            parsed = parse_user_input(current_input)
 
-            # Вызываем основной расчет
+            # 2. Проверяем наличие обязательных станций
+            if not parsed.raw_from or not parsed.raw_to:
+                raise ValueError("Не удалось определить станции отправления и назначения. Укажите их явно.")
+
+            # 3. Вызываем калькулятор с атрибутами pydantic-модели
             calc_res = calculate_freight(
-                from_station=parsed_params["from_station"],
-                to_station=parsed_params["to_station"],
-                gng_code=parsed_params["gng_code"],
-                weight_tons=parsed_params["weight_tons"],
-                wagon_type=parsed_params["wagon_type"],
+                from_station=parsed.raw_from,
+                to_station=parsed.raw_to,
+                gng_code=parsed.raw_gng or "",
+                weight_tons=parsed.raw_weight or 0.0,
+                wagon_type=parsed.raw_wagon or "other",
                 lang=selected_lang,
                 raw_prompt=current_input
             )
