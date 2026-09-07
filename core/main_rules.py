@@ -53,7 +53,8 @@ def apply_main_rules(
     to_canonical_name: str,       # Каноническое имя станции назначения из stations_mapping.py
     is_table_3: bool = False,     # Флаг: выполняется ли расчет по Таблице 3
     is_methanol: bool = False,    # Флаг: является ли груз метанолом
-    is_oil_product: bool = False  # Флаг: нефть/нефтепродукты (Таблица 6, столбец 2)
+    is_oil_product: bool = False, # Флаг: нефть/нефтепродукты (Таблица 6, столбец 2)
+    is_empty: bool = False        # Флаг: порожний возврат вагона (boş dönüşü)
 ) -> Dict[str, Any]:
     """
     ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -172,3 +173,14 @@ def apply_main_rules(
         "calculated_value": round(final_coeff, 4),
         "rules": applied_rules
     }
+
+    # --------------------------------------------------------------------------
+    # ПРАВИЛО 7: Коэффициент 1.015 на груженые международные перевозки (2026)
+    # --------------------------------------------------------------------------
+    if shipment in ["import", "export", "transit"] and not is_empty:
+        final_coeff *= 1.015
+        applied_rules.append({
+            "calculated_value": 1.015,
+            "rule_code": "MAIN_COEFF_1_015_INTERNATIONAL_LOADED",
+            "params": {"shipment_type": shipment, "is_empty": is_empty}
+        })
