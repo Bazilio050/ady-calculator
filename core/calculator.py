@@ -4,6 +4,7 @@ from typing import Dict, Any, List
 from core.tables.table_1_weight import Table1Calculator
 from core.tables.table_min_load import TableMinLoadCalculator
 from core.tables.table_3 import Table3Calculator
+from core.tables.table_4 import Table4Calculator
 from core.main_rules import apply_main_rules
 from data.currency_rates import get_exchange_rate
 
@@ -12,7 +13,8 @@ class TariffCalculator:
     """
     ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
     Центральный модуль расчета провозной платы ADY.
-    Выполняет конвертацию базовой ставки в USD и последовательно применяет правила.
+    Выполняет выбор базовой таблицы (Таблица 3 или Таблица 4),
+    конвертацию ставки в USD и последовательно применяет правила.
     """
 
     @classmethod
@@ -30,6 +32,7 @@ class TariffCalculator:
     ) -> dict:
         act_w = int(actual_weight)
         notifications = []
+        ship_type_lower = shipment_type.lower()
 
         # 1.1. Минимальная норма загрузки по ГНГ
         min_load_res = TableMinLoadCalculator.get_min_load_weight(
@@ -54,8 +57,9 @@ class TariffCalculator:
                 "params": weight_res.get("params", {})
             })
 
-        # 2. Проверка применимости Таблицы 3
-        is_table_3_applicable = shipment_type.lower() in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
+        # 2. Проверка применимости Таблиц 3 и 4
+        is_table_3_applicable = ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
+        is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"]
 
         # 3. Расчет правил и коэффициентов
         rules_res = apply_main_rules(
@@ -64,7 +68,7 @@ class TariffCalculator:
             wagon_type=wagon_type,
             from_canonical_name=from_canonical_name,
             to_canonical_name=to_canonical_name,
-            is_table_3=is_table_3_applicable,
+            is_table_3=is_table_3_applicable or is_table_4_applicable,
             is_private_wagon=is_private_wagon
         )
         
@@ -76,10 +80,15 @@ class TariffCalculator:
                 "params": rule.get("params", {})
             })
 
-        # 4. Получение базовой ставки в CHF по Таблице 3
+        # 4. Получение базовой ставки в CHF (Таблица 3 или Таблица 4)
         base_rate_chf = 0.0
         if is_table_3_applicable:
             base_rate_chf = Table3Calculator.get_base_rate(
+                distance_km=distance_km,
+                weight_tons=billable_weight
+            )
+        elif is_table_4_applicable:
+            base_rate_chf = Table4Calculator.get_base_rate(
                 distance_km=distance_km,
                 weight_tons=billable_weight
             )
