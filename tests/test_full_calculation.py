@@ -2,27 +2,57 @@
 
 from core.router import RailwayRouter
 from core.calculator import TariffCalculator
+from data.translations import RULE_MESSAGES
+
+
+def _format_msg(rule_code: str, params: dict, lang: str) -> str:
+    """Форматирует строку перевода из RULE_MESSAGES с подстановкой параметров."""
+    rule_data = RULE_MESSAGES.get(rule_code, {})
+    template = rule_data.get(lang, rule_code)
+    try:
+        return template.format(**params) if params else template
+    except KeyError:
+        return template
 
 
 def _print_calculation_result(test_name: str, route_res, calc_res, gng_code: str, actual_w: float, wagon_type: str, is_private: bool):
-    """Вспомогательная функция для наглядного вывода результатов расчета."""
+    """Вспомогательная функция для вывода результатов строго по макету."""
     wagon_ownership = "СПС (приватный)" if is_private else "МПС (инвентарный)"
-    
+
     print("\n" + "=" * 80)
     print(f"   {test_name.upper()}")
     print("=" * 80)
-    print(f"Маршрут:       {route_res.formatted_output('RU')}")
-    print(f"ГНГ код:       {gng_code}")
-    print(f"Тип вагона:    {wagon_type} [{wagon_ownership}]")
-    print(f"Вес (факт):    {actual_w} т -> Расчетный (Табл.1/Норма): {calc_res['billable_weight']} т")
-    print(f"Базовая ставка: {calc_res['base_rate_chf_per_ton']} CHF/т (Таблица 3)")
-    print(f"Итоговый коэф: {calc_res['final_coeff']}")
-    print(f"Итог за 1 т:   {calc_res['final_rate_chf_per_ton']} CHF/т")
+    print(f"Маршрут: {route_res.formatted_output('RU')}")
+    print(f"ГНГ код: {gng_code}\n")
+    print(f"Тип вагона: {wagon_type} [{wagon_ownership}]\n")
+    print(f"Вес (факт): {actual_w} т -> Расчетный (Табл.1/Норма): {calc_res['billable_weight']} т\n")
+    print(f"Базовая ставка: {calc_res['base_rate_chf_per_ton']} CHF/т (Таблица 3)\n")
 
-    if calc_res["notifications"]:
-        print("Уведомления:")
-        for note in calc_res["notifications"]:
-            print(f"  • [{note['rule_code']}] {note.get('params', {})}")
+    # Попозже/отдельно вывод коэффициентов с описанием RU из translations.py
+    for note in calc_res["notifications"]:
+        code = note["rule_code"]
+        params = note.get("params", {})
+        if code.startswith("MAIN_COEFF_"):
+            ru_desc = _format_msg(code, params, "ru")
+            # Находим сам значение коэффициента из правила
+            coeff_str = "1,04" if "1_04" in code else ("1,015" if "1_015" in code else ("0,85" if "0_85" in code else "1,20"))
+            print(f"Коэф. {coeff_str}: [{code}] {params} ({ru_desc})")
+
+    print(f"\nИтог за 1 т: {calc_res['final_rate_chf_per_ton']} CHF/т\n")
+
+    print("Уведомления:")
+    print("А здесь должен брать с data/translations.py и вставить сюда на Азербайджанском и на английском языке\n")
+
+    for note in calc_res["notifications"]:
+        code = note["rule_code"]
+        params = note.get("params", {})
+        az_text = _format_msg(code, params, "az")
+        en_text = _format_msg(code, params, "en")
+        
+        print(f"• [{code}] {params}")
+        print(f"  AZ: {az_text}")
+        print(f"  EN: {en_text}")
+
     print("=" * 80 + "\n")
 
 
