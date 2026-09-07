@@ -92,7 +92,7 @@ class TariffCalculator:
                 "params": rule.get("params", {})
             })
 
-       # 4. Получение базовой ставки в CHF
+        # 4. Получение базовой ставки в CHF
         base_rate_chf = 0.0
         sps_wagon_types = ["refrigerator", "arv", "thermos", "ice_wagon", "car_carrier", "two_tier_platform", "inv", "anv", "inv_anv"]
 
@@ -104,32 +104,17 @@ class TariffCalculator:
                 equipment_type=wagon_type,
                 ref_section_wagons_count=ref_section_wagons_count
             )
+        elif is_table_3_applicable:
+            base_rate_chf = Table3Calculator.get_base_rate(
+                distance_km=distance_km,
+                weight_tons=billable_weight
+            )
+        elif is_table_4_applicable:
+            base_rate_chf = Table4Calculator.get_base_rate(
+                distance_km=distance_km,
+                weight_tons=billable_weight
+            )
 
-            # Формирование уведомления для рефсекций
-            if wagon_type.lower() in ["refrigerator", "arv", "ref_section"] and ref_section_wagons_count:
-                coeff_map = {1: "1_70", 2: "1_40", 3: "1_10", 4: "1_00"}
-                rule_suffix = coeff_map.get(ref_section_wagons_count, "0_85" if ref_section_wagons_count >= 5 else None)
-                if rule_suffix:
-                    notifications.append({
-                        "rule_code": f"REF_SECTION_COEFF_{rule_suffix}",
-                        "params": {}
-                    })
-        else:
-            # Универсальные вагоны: Таблица 3 (Импорт/Экспорт) или Таблица 4 (Транзит)
-            if is_table_3_applicable:
-                table_name = "Таблица 3"
-                base_rate_chf = Table3Calculator.get_base_rate(
-                    distance_km=distance_km,
-                    weight_tons=billable_weight
-                )
-            else:
-                table_name = "Таблица 4"
-                base_rate_chf = Table4Calculator.get_base_rate(
-                    distance_km=distance_km,
-                    weight_tons=billable_weight,
-                    gng_code=gng_code
-                )
-                
         # 5. Получение курса валюты и перевод базовой ставки в USD (база / курс)
         exchange_rate = get_exchange_rate(shipment_date)
         base_rate_usd = (base_rate_chf / exchange_rate) if exchange_rate > 0 else base_rate_chf
@@ -154,9 +139,7 @@ class TariffCalculator:
             "distance_km": distance_km,
             "base_rate_chf_per_ton": base_rate_chf,
             "exchange_rate": exchange_rate,
-            "exchange_rate_chf_to_usd": exchange_rate,
             "base_rate_usd_per_ton": round(base_rate_usd, 2),
-            "table_name": table_name,
             "final_coeff": rules_res.get("calculated_value", 1.0),
             "final_rate_usd_per_ton": final_rate_per_ton_usd,
             "is_private_wagon": is_private_wagon,
