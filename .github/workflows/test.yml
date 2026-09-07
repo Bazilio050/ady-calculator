@@ -23,6 +23,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install pytest pydantic
 
-      - name: Запуск тестов маршрутов и парсера
+      - name: Запуск тестов Таблиц 3 и 4 (Универсальные вагоны)
         run: |
-           python -m pytest tests/test_full_calculation.py -v -s
+          python -m pytest tests/test_full_calculation.py -v -s
+
+      - name: Запуск тестов Таблицы 5 (Специализированный подвижной состав)
+        run: |
+          python -m pytest tests/test_table_5_full.py -v -s
