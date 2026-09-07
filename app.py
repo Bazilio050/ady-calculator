@@ -2,7 +2,9 @@
 
 import sys
 import os
+
 from core.parser import parse_user_input, RawParsedEntities
+from core.calculator import calculate_freight
 
 # ------------------------------------------------------------------------------
 # БЛОК 1: Настройка путей импорта Python
