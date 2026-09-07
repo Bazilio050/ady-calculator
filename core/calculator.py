@@ -83,9 +83,8 @@ class TariffCalculator:
                 weight_tons=billable_weight
             )
 
-        # Расчет итоговой стоимости за 1 тонну и за весь вагон
+        # Расчет итоговой стоимости за 1 тонну
         final_rate_per_ton = round(base_rate_per_ton * final_coeff, 4)
-        total_chf = round(final_rate_per_ton * billable_weight, 2)
 
         return {
             "actual_weight": actual_weight,
@@ -94,6 +93,5 @@ class TariffCalculator:
             "base_rate_chf_per_ton": base_rate_per_ton,
             "final_coeff": final_coeff,
             "final_rate_chf_per_ton": final_rate_per_ton,
-            "total_chf": total_chf,
             "notifications": notifications
         }
