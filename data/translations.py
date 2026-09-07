@@ -57,5 +57,10 @@ RULE_MESSAGES = {
         "az": "Beynəlxalq yüklü daşımalar üzrə baza tariflərinə 1.015 əmsalı tətbiq edilmişdir.",
         "ru": "Применен коэффициент 1.015 на международные груженые перевозки к базовому тарифу.",
         "en": "A coefficient of 1.015 was applied for international loaded shipments to the base rate."
+    },
+    "MAIN_COEFF_0_85_PRIVATE_WAGON": {
+        "az": "Xüsusi (özəl) vaqonların daşınmasına 0.85 əmsalı tətbiq edilmişdir.",
+        "ru": "Применен коэффициент 0.85 на перевозки в собственных (приватных) вагонах.",
+        "en": "A coefficient of 0.85 was applied for shipments in private-owned wagons."
     }
 }
