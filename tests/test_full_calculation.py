@@ -1,4 +1,4 @@
-# tests/test_calculator.py
+# tests/test_full_calculation.py
 
 from core.router import RailwayRouter
 from core.calculator import TariffCalculator
@@ -24,6 +24,8 @@ def test_import_wheat_min_load():
         actual_weight=42,      # Меньше нормы
         distance_km=effective_dist,
         wagon_type="крытый",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
         is_private_wagon=True  # Коэффициент 0.85
     )
 
@@ -52,6 +54,8 @@ def test_export_timber():
         actual_weight=40,
         distance_km=effective_dist,
         wagon_type="платформа",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
         is_private_wagon=False
     )
 
@@ -72,6 +76,8 @@ def test_transit_calculation():
         actual_weight=60,
         distance_km=route_res.distance_km,
         wagon_type="полувагон",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
         is_private_wagon=False
     )
 
