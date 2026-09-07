@@ -37,21 +37,30 @@ class TariffCalculator:
         # 2. Проверка применимости Таблицы 3 (только Import / Export)
         is_table_3_applicable = shipment_type.lower() in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
 
-        # 3. Расчет коэффициентов
+        # 3. Расчет коэффициентов по Главным правилам
         rules_res = apply_main_rules(
             shipment_type=shipment_type,
-            from_station=from_canonical_name,
-            to_station=to_canonical_name,
             gng_code=gng_code,
             wagon_type=wagon_type,
+            from_canonical_name=from_canonical_name,
+            to_canonical_name=to_canonical_name,
+            is_table_3=is_table_3_applicable,
             is_private_wagon=is_private_wagon
         )
         
-        notifications = rules_res.get("notifications", [])
-        if weight_res.get("applied_rule"):
-            notifications.insert(0, {
-                "rule_code": "MIN_LOAD_NORM",
-                "params": {"actual": actual_weight, "applied": billable_weight}
+        applied_rules_list = rules_res.get("rules", [])
+        notifications = []
+
+        if weight_res.get("rule_code"):
+            notifications.append({
+                "rule_code": weight_res["rule_code"],
+                "params": weight_res.get("params", {})
+            })
+
+        for rule in applied_rules_list:
+            notifications.append({
+                "rule_code": rule["rule_code"],
+                "params": rule.get("params", {})
             })
 
         # 4. Поиск базовой ставки и последовательное применение коэффициентов по правилам ЖД
@@ -62,16 +71,14 @@ class TariffCalculator:
                 weight_tons=billable_weight
             )
 
-        applied_coeffs = rules_res.get("applied_coefficients", [])
         running_rate = base_rate_per_ton
 
-        if applied_coeffs:
-            for coeff in applied_coeffs:
-                running_rate *= coeff
+        if applied_rules_list:
+            for rule in applied_rules_list:
+                running_rate *= rule["calculated_value"]
             final_rate_per_ton = round(running_rate, 2)
         else:
-            final_coeff = rules_res.get("calculated_value", 1.0)
-            final_rate_per_ton = round(base_rate_per_ton * final_coeff, 2)
+            final_rate_per_ton = round(base_rate_per_ton, 2)
 
         return {
             "actual_weight": actual_weight,
