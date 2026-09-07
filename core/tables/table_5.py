@@ -64,6 +64,95 @@ class Table5Calculator:
         return cls._rates_cache
 
     @classmethod
+    def calculate(
+        cls,
+        distance_km: float,
+        weight_tons: float = 0.0,
+        equipment_type: str = "refrigerator",
+        is_empty: bool = False,
+        ref_section_wagons_count: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
+        Расчитывает базовую ставку CHF/т по Таблице 5 и возвращает детальную информацию
+        включая сработавшие локальные правила и коэффициенты составности рефсекции.
+        """
+        tariffs = cls._load_data()
+        dist = int(round(distance_km))
+
+        matched_rates = None
+        for (min_dist, max_dist), rates in tariffs.items():
+            if min_dist <= dist <= max_dist:
+                matched_rates = rates
+                break
+
+        if matched_rates is None:
+            raise ValueError(f"Расстояние {dist} км выходит за пределы Таблицы 5.")
+
+        eq_lower = equipment_type.lower()
+        applied_rules = []
+        base_rate = 0.0
+
+        # 1. Рефрижераторы и ARV
+        if eq_lower in ("refrigerator", "arv", "ref_section"):
+            base_rate = matched_rates["col_2"] if weight_tons < 25.0 else matched_rates["col_3"]
+
+            # Коэффициенты от количества вагонов в секции (п. 3.1.2.1 / Таблица 5)
+            coeff_val = 1.0
+            rule_code = None
+
+            if ref_section_wagons_count == 1:
+                coeff_val = 1.70
+                rule_code = "REF_SECTION_COEFF_1_70"
+            elif ref_section_wagons_count == 2:
+                coeff_val = 1.40
+                rule_code = "REF_SECTION_COEFF_1_40"
+            elif ref_section_wagons_count == 3:
+                coeff_val = 1.10
+                rule_code = "REF_SECTION_COEFF_1_10"
+            elif ref_section_wagons_count == 4:
+                coeff_val = 1.00
+                rule_code = "REF_SECTION_COEFF_1_00"
+            elif ref_section_wagons_count and ref_section_wagons_count >= 5:
+                coeff_val = 0.85
+                rule_code = "REF_SECTION_COEFF_0_85"
+
+            if rule_code:
+                applied_rules.append({
+                    "rule_code": rule_code,
+                    "calculated_value": coeff_val,
+                    "params": {"ref_section_wagons_count": ref_section_wagons_count}
+                })
+
+            final_rate = base_rate * coeff_val
+            return {
+                "base_rate": final_rate,
+                "raw_base_rate": base_rate,
+                "applied_rules": applied_rules
+            }
+
+        # 2. Термосы и ледники
+        elif eq_lower in ("thermos", "ice_wagon"):
+            base_rate = matched_rates["col_4"] if weight_tons < 25.0 else matched_rates["col_5"]
+
+        # 3. Автовозы
+        elif eq_lower == "car_carrier":
+            base_rate = matched_rates["col_6"]
+
+        # 4. ИНВ / АНВ
+        elif eq_lower in ("inv", "anv", "inv_anv"):
+            base_rate = matched_rates["col_8"] if is_empty else matched_rates["col_7"]
+
+        else:
+            raise ValueError(f"Неизвестный тип подвижного состава для Таблицы 5: {equipment_type}")
+
+        return {
+            "base_rate": base_rate,
+            "raw_base_rate": base_rate,
+            "applied_rules": applied_rules
+        }
+
+    @classmethod
     def get_base_rate(
         cls,
         distance_km: float,
@@ -72,6 +161,18 @@ class Table5Calculator:
         is_empty: bool = False,
         ref_section_wagons_count: Optional[int] = None
     ) -> float:
+        """
+        ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
+        Старый метод для сохранения совместимости. Возвращает только итоговую ставку float.
+        """
+        res = cls.calculate(
+            distance_km=distance_km,
+            weight_tons=weight_tons,
+            equipment_type=equipment_type,
+            is_empty=is_empty,
+            ref_section_wagons_count=ref_section_wagons_count
+        )
+        return res["base_rate"]
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
         Возвращает базовую ставку CHF/т по Таблице 5 с учетом коэффициентов секционности.
