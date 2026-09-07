@@ -2,8 +2,8 @@
 
 from typing import Dict, Any, Optional
 from core.router import RailwayRouter
-from core.tables.table_3_universal import Table3Calculator
-from core.tables.table_4_universal import Table4Calculator
+from core.tables.table_3 import Table3Calculator
+from core.tables.table_4 import Table4Calculator
 from core.main_rules import apply_main_rules
 from data.translations import RULE_MESSAGES
 
