@@ -143,6 +143,7 @@ class TariffCalculator:
             "exchange_rate_chf_to_usd": exchange_rate,
             "base_rate_usd_per_ton": round(base_rate_usd, 2),
             "table_name": table_name,
+            "applied_table": table_name,
             "final_coeff": rules_res.get("calculated_value", 1.0),
             "final_rate_usd_per_ton": final_rate_per_ton_usd,
             "is_private_wagon": is_private_wagon,
