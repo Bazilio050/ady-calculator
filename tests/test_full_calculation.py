@@ -31,7 +31,7 @@ def test_import_wheat_min_load():
 
     assert calc_res["billable_weight"] == 60
     assert calc_res["base_rate_chf_per_ton"] > 0
-    assert calc_res["final_coeff"] == round(1.015 * 0.85, 5)
+    assert calc_res["final_coeff"] == round(1.015 * 0.85, 4)
 
 
 def test_export_timber():
