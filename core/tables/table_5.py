@@ -71,7 +71,9 @@ class Table5Calculator:
         is_empty: bool = False
     ) -> float:
         """
-        Возвращает базовую ставку в CHF по Таблице 5 в зависимости от типа СПС и массы.
+        Возвращает базовую ставку в CHF по Таблице 5.
+        Если ставка в таблице указана за вагон — возвращает ставку за вагон.
+        Если ставка указана за 1 тонну — возвращает ставку за 1 тонну.
         """
         tariffs = cls._load_data()
         dist = int(round(distance_km))
@@ -90,28 +92,33 @@ class Table5Calculator:
         # 1. Рефрижераторы и ARV
         if eq_lower in ("refrigerator", "arv", "ref_section"):
             if weight_tons < 25.0:
+                # Колонка 2: За 1 вагон
                 return matched_rates["col_2"]
             else:
-                return matched_rates["col_3"] * weight_tons
+                # Колонка 3: За 1 тонну
+                return matched_rates["col_3"]
 
         # 2. Вагоны-термосы и ледники
         elif eq_lower in ("thermos", "ice_wagon"):
             if weight_tons < 25.0:
+                # Колонка 4: За 1 вагон
                 return matched_rates["col_4"]
             else:
-                return matched_rates["col_5"] * weight_tons
+                # Колонка 5: За 1 тонну
+                return matched_rates["col_5"]
 
-        # 3. Автовозы (мин. 10 тонн)
+        # 3. Автовозы (Колонка 6: За 1 тонну)
         elif eq_lower == "car_carrier":
-            billable_weight = max(weight_tons, 10.0)
-            return matched_rates["col_6"] * billable_weight
+            return matched_rates["col_6"]
 
         # 4. ИНВ / АНВ
         elif eq_lower in ("inv", "anv", "inv_anv"):
             if is_empty:
+                # Колонка 8: Порожний — за 1 вагон
                 return matched_rates["col_8"]
             else:
-                return matched_rates["col_7"] * weight_tons
+                # Колонка 7: Груженый — за 1 тонну
+                return matched_rates["col_7"]
 
         else:
             raise ValueError(f"Неизвестный тип подвижного состава для Таблицы 5: {equipment_type}")
