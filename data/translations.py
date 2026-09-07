@@ -62,5 +62,30 @@ RULE_MESSAGES = {
         "az": "Xüsusi (özəl) vaqonların daşınmasına 0.85 əmsalı tətbiq edilmişdir.",
         "ru": "Применен коэффициент 0.85 на перевозки в собственных (приватных) вагонах.",
         "en": "A coefficient of 0.85 was applied for shipments in private-owned wagons."
+    },
+    "REF_SECTION_COEFF_1_70": {
+        "az": "1 yük vaqonu + 1 dizel-generator tərkibli refrijerator seksiyasına 1.70 əmsalı tətbiq edilmişdir.",
+        "ru": "Применен коэффициент 1.70 для рефсекции состава 1 грузовой вагон + 1 дизель-генератор.",
+        "en": "A coefficient of 1.70 was applied for a reefer section with 1 cargo wagon + 1 diesel generator."
+    },
+    "REF_SECTION_COEFF_1_40": {
+        "az": "2 yük vaqonu + 1 dizel-generator tərkibli refrijerator seksiyasına 1.40 əmsalı tətbiq edilmişdir.",
+        "ru": "Применен коэффициент 1.40 для рефсекции состава 2 грузовых вагона + 1 дизель-генератор.",
+        "en": "A coefficient of 1.40 was applied for a reefer section with 2 cargo wagons + 1 diesel generator."
+    },
+    "REF_SECTION_COEFF_1_10": {
+        "az": "3 yük vaqonu + 1 dizel-generator tərkibli refrijerator seksiyasına 1.10 əmsalı tətbiq edilmişdir.",
+        "ru": "Применен коэффициент 1.10 для рефсекции состава 3 грузовых вагона + 1 дизель-генератор.",
+        "en": "A coefficient of 1.10 was applied for a reefer section with 3 cargo wagons + 1 diesel generator."
+    },
+    "REF_SECTION_COEFF_1_00": {
+        "az": "4 yük vaqonu + 1 dizel-generator tərkibli refrijerator seksiyasına 1.00 əmsalı tətbiq edilmişdir.",
+        "ru": "Применен стандартный коэффициент 1.00 для рефсекции состава 4 грузовых вагона + 1 дизель-генератор.",
+        "en": "A standard coefficient of 1.00 was applied for a reefer section with 4 cargo wagons + 1 diesel generator."
+    },
+    "REF_SECTION_COEFF_0_85": {
+        "az": "5 və daha çox yük vaqonu + 1 dizel-generator tərkibli refrijerator seksiyasına 0.85 əmsalı tətbiq edilmişdir.",
+        "ru": "Применен коэффициент 0.85 для рефсекции состава 5 и более грузовых вагонов + 1 дизель-генератор.",
+        "en": "A coefficient of 0.85 was applied for a reefer section with 5 or more cargo wagons + 1 diesel generator."
     }
 }
