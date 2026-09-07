@@ -18,6 +18,10 @@ def _format_msg(rule_code: str, params: dict, lang: str) -> str:
 def _print_calculation_result(test_name: str, route_res, calc_res, gng_code: str, actual_w: float, wagon_type: str, is_private: bool):
     """Вспомогательная функция для чистой печати результатов расчета в USD."""
     wagon_ownership = "СПС (приватный)" if is_private else "МПС (инвентарный)"
+    ship_type = route_res.shipment_type.value.lower()
+    
+    # Динамически определяем имя таблицы
+    table_name = "Таблица 4" if ship_type in ["transit", "транзит", "tranzit"] else "Таблица 3"
 
     print("\n" + "=" * 80)
     print(f"   {test_name.upper()}")
@@ -26,7 +30,7 @@ def _print_calculation_result(test_name: str, route_res, calc_res, gng_code: str
     print(f"ГНГ код: {gng_code}")
     print(f"Тип вагона: {wagon_type} [{wagon_ownership}]")
     print(f"Вес (факт): {actual_w} т -> Расчетный (Табл.1/Норма): {calc_res['billable_weight']} т")
-    print(f"Базовая ставка: {calc_res['base_rate_chf_per_ton']} CHF/т (Таблица 3)")
+    print(f"Базовая ставка: {calc_res['base_rate_chf_per_ton']} CHF/т ({table_name})")
     print(f"Курс конвертации (CHF -> USD): {calc_res['exchange_rate']}")
     print(f"Базовая ставка в USD: {calc_res['base_rate_usd_per_ton']} USD/т\n")
 
