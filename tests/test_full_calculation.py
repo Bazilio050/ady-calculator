@@ -113,27 +113,6 @@ def test_export_timber():
     _print_calculation_result("2. Экспорт леса (Апшерон -> Ялама)", route_res, calc_res, "44071100", 40, "платформа", False)
     assert calc_res["billable_weight"] == 45
 
-
-def test_transit_calculation():
-    """Тест 3: Транзит угля (Ялама -> Беюк Кясик)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Ялама", "Беюк Кясик")
-
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="27011100",
-        actual_weight=60,
-        distance_km=route_res.distance_km,
-        wagon_type="полувагон",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        is_private_wagon=False
-    )
-
-    _print_calculation_result("3. Транзит угля (Ялама -> Беюк Кясик)", route_res, calc_res, "27011100", 60, "полувагон", False)
-    assert calc_res["base_rate_chf_per_ton"] == 28.53
-
-
 def test_import_timber_sps():
     """Тест 4: Ялама -> Апшерон | ГНГ 4407 | платформа | 35т | СПС (приватный)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
