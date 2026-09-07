@@ -30,9 +30,31 @@ class TariffCalculator:
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
         Выполняет полный расчет тарифа. Применяет коэффициенты последовательно к базовой ставке.
         """
-        # 1. Расчет billable_weight (Таблица 1 / Минимальные нормы)
-        weight_res = Table1Calculator.calculate_billable_weight(actual_weight)
+        act_w = int(actual_weight)
+        notifications = []
+
+        # 1.1. Проверка минимальной нормы загрузки по ГНГ (Таблица 2 / Спецнормы)
+        min_load_res = TableMinLoadCalculator.get_min_load_weight(
+            gng_code=gng_code,
+            actual_weight=act_w
+        )
+        weight_after_min_norm = min_load_res["calculated_weight"]
+
+        if min_load_res.get("rule_code"):
+            notifications.append({
+                "rule_code": min_load_res["rule_code"],
+                "params": min_load_res.get("params", {})
+            })
+
+        # 1.2. Расчет billable_weight по Таблице 1
+        weight_res = Table1Calculator.calculate_billable_weight(weight_after_min_norm)
         billable_weight = weight_res["calculated_weight"]
+
+        if weight_res.get("rule_code"):
+            notifications.append({
+                "rule_code": weight_res["rule_code"],
+                "params": weight_res.get("params", {})
+            })
 
         # 2. Проверка применимости Таблицы 3 (только Import / Export)
         is_table_3_applicable = shipment_type.lower() in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
@@ -49,13 +71,6 @@ class TariffCalculator:
         )
         
         applied_rules_list = rules_res.get("rules", [])
-        notifications = []
-
-        if weight_res.get("rule_code"):
-            notifications.append({
-                "rule_code": weight_res["rule_code"],
-                "params": weight_res.get("params", {})
-            })
 
         for rule in applied_rules_list:
             notifications.append({
@@ -81,7 +96,7 @@ class TariffCalculator:
             final_rate_per_ton = round(base_rate_per_ton, 2)
 
         return {
-            "actual_weight": actual_weight,
+            "actual_weight": act_w,
             "billable_weight": billable_weight,
             "distance_km": distance_km,
             "base_rate_chf_per_ton": base_rate_per_ton,
