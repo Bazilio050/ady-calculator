@@ -1,11 +1,10 @@
-# ==============================================================================
-# ОСНОВНОЙ ВЕБ-ИНТЕРФЕЙС КАЛЬКУЛЯТОРА ADY (STREAMLIT APP)
-# ==============================================================================
+# app.py
+
 import sys
 import os
 
 # ------------------------------------------------------------------------------
-# БЛОК 1: Настройка путей импорта Python и системных зависимостей
+# БЛОК 1: Настройка путей импорта Python
 # ------------------------------------------------------------------------------
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 if ROOT_DIR not in sys.path:
@@ -13,14 +12,12 @@ if ROOT_DIR not in sys.path:
 
 import streamlit as st
 
-# Импорты внутренних модулей из папки core
-from core.gemini_parser import parse_user_request
+# Импорт актуальных модулей
+from core.parser import parse_user_request
 from core.calculator import calculate_freight
-from core.route_helpers import normalize_nlu_stations
-from core.currency import get_formatted_currency_display
 
 # ------------------------------------------------------------------------------
-# БЛОК 2: Конфигурация страницы и глобальные CSS-стили
+# БЛОК 2: Конфигурация страницы и CSS-стили
 # ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="ADY — Tariff Calculator", 
@@ -29,11 +26,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Инициализация состояния сессии
 if "calc_result" not in st.session_state:
     st.session_state.calc_result = None
-if "nlu_res" not in st.session_state:
-    st.session_state.nlu_res = None
 
 st.markdown("""
     <style>
@@ -115,20 +109,6 @@ st.markdown("""
         margin-top: 4px !important;
         margin-bottom: 12px !important;
     }
-    div[data-testid="stAudioInput"] button {
-        width: 48px !important;
-        height: 48px !important;
-        border-radius: 50% !important;
-        background-color: #ff5500 !important;
-        color: #ffffff !important;
-        border: none !important;
-        box-shadow: 0 3px 10px rgba(255, 85, 0, 0.4) !important;
-    }
-    div[data-testid="stAudioInput"] button svg {
-        fill: #ffffff !important;
-        width: 22px !important;
-        height: 22px !important;
-    }
     .or-divider {
         display: flex;
         align-items: center;
@@ -147,7 +127,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# БЛОК 3: Многоязычные тексты пользовательского интерфейса (UI_TEXT)
+# БЛОК 3: Многоязычные тексты UI
 # ------------------------------------------------------------------------------
 UI_TEXT = {
     "AZ": {
@@ -160,14 +140,13 @@ UI_TEXT = {
         "calc_btn": "🚀 Tarifi hesabla", "warning_empty": "Xahiş olunur, hesablama şərtlərini daxil edin.",
         "spinner_text": "ADY Policy {} tarifləri üzrə hesablanır...", 
         "success": "Hesablama uğurla tamamlandı! (ADY Policy {})",
-        "sec1_title": "1. Marşrut və daşıma şərtləri", "sec2_title": "2. Əmsallar və valyuta məzənnəsi",
+        "sec1_title": "1. Marşrut və daşıma şərtləri", "sec2_title": "2. Əmsallar",
         "sec3_title": "3. Tarifin hesablanması", "notes_title": "Qeydlər:", 
         "col_param": "Parametr", "col_val": "Qiymət / Həcm", "col_rate_type": "Tarif növü", "col_amount": "Məblağ",
         "lbl_route": "Marşrut", "lbl_type": "Daşıma növü", "lbl_dist": "Məsafə", "lbl_cargo": "Yük / Vəziyyət",
-        "lbl_weight": "Faktiki / Hesablama çəkisi", "lbl_period": "Dövr", "lbl_exchange": "CHF/USD", 
+        "lbl_weight": "Çəki", "lbl_period": "Dövr", 
         "lbl_base_rate": "Baza tarifi", "lbl_net_rate": "Yekun ADY tarifi", 
-        "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur.",
-        "json_expander": "🔍 Gemini NLU JSON (Tanınmanın yoxlanılması üçün)"
+        "footer_owner": "Bu layihə **AGT Cargo** şirkətinə məxsusdur."
     },
     "RU": {
         "title": "Тарифный калькулятор ADY", 
@@ -179,14 +158,13 @@ UI_TEXT = {
         "calc_btn": "🚀 Рассчитать тариф", "warning_empty": "Пожалуйста, введите условия расчета.",
         "spinner_text": "Считаем тариф согласно Тарифной политике {}...", 
         "success": "Расчет успешно выполнен! (Тарифная политика {})",
-        "sec1_title": "1. Маршрут и условия перевозки", "sec2_title": "2. Коэффициенты и курс валют",
+        "sec1_title": "1. Маршрут и условия перевозки", "sec2_title": "2. Коэффициенты",
         "sec3_title": "3. Расчет тарифа", "notes_title": "Примечания:", 
         "col_param": "Параметр", "col_val": "Значение / Объем", "col_rate_type": "Тип тарифа", "col_amount": "Сумма",
         "lbl_route": "Маршрут", "lbl_type": "Вид перевозки", "lbl_dist": "Расстояние", "lbl_cargo": "Груз / Состояние",
-        "lbl_weight": "Фактический / Расчетный вес", "lbl_period": "Период", "lbl_exchange": "CHF/USD", 
+        "lbl_weight": "Вес", "lbl_period": "Период", 
         "lbl_base_rate": "Базовый тариф", "lbl_net_rate": "Итоговый тариф ADY", 
-        "footer_owner": "Данный проект принадлежит компании **AGT Cargo**.",
-        "json_expander": "🔍 Gemini NLU JSON (Для проверки распознавания)"
+        "footer_owner": "Данный проект принадлежит компании **AGT Cargo**."
     },
     "EN": {
         "title": "ADY Tariff Calculator", 
@@ -198,19 +176,18 @@ UI_TEXT = {
         "calc_btn": "🚀 Calculate Freight Rate", "warning_empty": "Please enter shipment requirements.",
         "spinner_text": "Calculating rates according to Tariff Policy {}...", 
         "success": "Calculation completed successfully! (Tariff Policy {})",
-        "sec1_title": "1. Route and Shipment Conditions", "sec2_title": "2. Coefficients and Exchange Rate",
+        "sec1_title": "1. Route and Shipment Conditions", "sec2_title": "2. Coefficients",
         "sec3_title": "3. Rate Calculation", "notes_title": "Notes:", 
         "col_param": "Parameter", "col_val": "Value / Volume", "col_rate_type": "Rate Type", "col_amount": "Amount",
         "lbl_route": "Route", "lbl_type": "Shipment Type", "lbl_dist": "Distance", "lbl_cargo": "Cargo / Condition",
-        "lbl_weight": "Actual / Billable Weight", "lbl_period": "Period", "lbl_exchange": "CHF/USD", 
+        "lbl_weight": "Weight", "lbl_period": "Period", 
         "lbl_base_rate": "Base Tariff", "lbl_net_rate": "Final ADY Tariff", 
-        "footer_owner": "This project belongs to **AGT Cargo**.",
-        "json_expander": "🔍 Gemini NLU JSON (For recognition check)"
+        "footer_owner": "This project belongs to **AGT Cargo**."
     }
 }
 
 # ------------------------------------------------------------------------------
-# БЛОК 4: Верхняя панель управления и логотип компании
+# БЛОК 4: Верхняя панель управления
 # ------------------------------------------------------------------------------
 logo_path = "data/Logo.png" if os.path.exists("data/Logo.png") else ("Logo.png" if os.path.exists("Logo.png") else None)
 
@@ -234,9 +211,8 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# БЛОК 5: Поля текстового и голосового ввода параметров
+# БЛОК 5: Поля ввода
 # ------------------------------------------------------------------------------
-# 1. Текстовый ввод
 st.markdown(f"**{t['input_header']}**")
 user_input = st.text_area(
     "", 
@@ -246,16 +222,14 @@ user_input = st.text_area(
     label_visibility="collapsed"
 )
 
-# 2. Разделитель "ИЛИ"
 st.markdown(f'<div class="or-divider">{t["or_text"]}</div>', unsafe_allow_html=True)
 
-# 3. Голосовой ввод
+# Задел под голосовой ввод сохранен
 audio_file = st.audio_input(t["audio_label"])
 
 # ------------------------------------------------------------------------------
-# БЛОК 6: Обработка кнопки расчета и вызов бизнес-логики
+# БЛОК 6: Обработка расчета
 # ------------------------------------------------------------------------------
-# CHANGED BY AI ARCHITECT [Гарантированная передача from_station и to_station в calculate_freight]
 if st.button(t["calc_btn"], type="primary", use_container_width=False):
     current_input = st.session_state.get("main_input_area", user_input)
     if not current_input.strip():
@@ -273,33 +247,17 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
         """, unsafe_allow_html=True)
 
         try:
-            # 1. Распознавание через gemini_parser с указанием языка интерфейса
-            nlu_res = parse_user_request(current_input, lang=selected_lang)
+            # Парсим запрос через parser.py
+            parsed_params = parse_user_request(current_input)
 
-            # 2. Нормализация станций
-            nlu_res = normalize_nlu_stations(nlu_res, raw_text=current_input)
-            st.session_state.nlu_res = nlu_res
-
-            # 3. Гарантированное извлечение станций (страховка от разных названий ключей)
-            from_st = nlu_res.get("from_station") or nlu_res.get("from_station_name") or ""
-            to_st = nlu_res.get("to_station") or nlu_res.get("to_station_name") or ""
-
-            # 4. Очистка параметров от служебных ключей и станций
-            calc_params = {
-                k: v for k, v in nlu_res.items() 
-                if v is not None and k not in [
-                    "lang", "raw_prompt", 
-                    "from_station", "to_station", 
-                    "from_station_name", "to_station_name"
-                ]
-            }
-
-            # 5. Вызов расчета с явной передачей обязательных аргументов from_station и to_station
+            # Вызываем основной расчет
             calc_res = calculate_freight(
-                from_station=from_st,
-                to_station=to_st,
-                **calc_params, 
-                lang=selected_lang, 
+                from_station=parsed_params["from_station"],
+                to_station=parsed_params["to_station"],
+                gng_code=parsed_params["gng_code"],
+                weight_tons=parsed_params["weight_tons"],
+                wagon_type=parsed_params["wagon_type"],
+                lang=selected_lang,
                 raw_prompt=current_input
             )
 
@@ -315,18 +273,15 @@ if st.button(t["calc_btn"], type="primary", use_container_width=False):
             st.session_state.calc_result = None
 
 # ------------------------------------------------------------------------------
-# БЛОК 7: Отрисовка результатов расчета и таблиц
+# БЛОК 7: Отрисовка результатов
 # ------------------------------------------------------------------------------
 if st.session_state.calc_result:
     data = st.session_state.calc_result
     st.success(t["success"].format(selected_year))
-    
-    with st.expander(t["json_expander"]):
-        st.json(st.session_state.nlu_res)
 
     p1, p2, p3 = data["part1"], data["part2"], data["part3"]
     
-    # 📍 1. Маршрут и условия перевозки
+    # 📍 1. Маршрут и условия
     st.markdown(f"#### 📍 {t['sec1_title']}")
     st.markdown(
         f"| {t['col_param']} | {t['col_val']} |\n"
@@ -339,16 +294,9 @@ if st.session_state.calc_result:
         f"| **{t['lbl_period']}** | {p1['period']} |"
     )
 
-    # ⚙️ 2. Коэффициенты и курс валют (Форматирование CHF/USD через currency.py)
+    # ⚙️ 2. Коэффициенты
     st.markdown(f"#### ⚙️ {t['sec2_title']}")
-    
-    curr_info = get_formatted_currency_display()
-    exchange_display = curr_info["display_chf_usd"]
-
-    t2_rows = [
-        f"| **{t['lbl_exchange']}** | {exchange_display} |", 
-        f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"
-    ]
+    t2_rows = [f"| **{t['lbl_base_rate']}** | {p2['base_tariff']} |"]
     for coeff in p2.get("coefficients", []):
         t2_rows.append(f"| **{coeff['name']}** | {coeff['value']} |")
     st.markdown(f"| {t['col_param']} | {t['col_val']} |\n| :--- | :--- |\n" + "\n".join(t2_rows))
@@ -356,18 +304,13 @@ if st.session_state.calc_result:
     # 📐 3. Расчет тарифа
     st.markdown(f"#### 📐 {t['sec3_title']}")
     st.code(p3["formula"], language="text")
-    
-    table_rows = [
-        f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |"
-    ]
-
     st.markdown(
         f"| {t['col_rate_type']} | {t['col_amount']} |\n"
-        f"| :--- | :--- |\n" +
-        "\n".join(table_rows)
+        f"| :--- | :--- |\n"
+        f"| **{t['lbl_net_rate']}** | **{p3['net_ady_rate']}** |"
     )
 
-    # Динамические сноски и примечания напрямую из calculator.py
+    # Примечания
     notes_list = p3.get("notes", [])
     if notes_list:
         st.markdown(f"**{t['notes_title']}**")
@@ -376,7 +319,7 @@ if st.session_state.calc_result:
                 st.markdown(f"{idx}. *{note}*")
 
 # ------------------------------------------------------------------------------
-# БЛОК 8: Футер компании AGT Cargo
+# БЛОК 8: Футер AGT Cargo
 # ------------------------------------------------------------------------------
 st.markdown(f"""
     <div class="agt-footer">
