@@ -48,14 +48,14 @@ def check_precious_metals_multiplier(gng_code: str) -> bool:
 def apply_main_rules(
     shipment_type: str,           # 'import', 'export', 'transit', 'local'
     gng_code: str,                # Полный код ГНГ
-    wagon_type: str,              # 'tank', 'bunker', 'ref_section', 'ref_container', 'arv', 'other'
-    from_canonical_name: str,     # Каноническое имя станции отправления из stations_mapping.py
-    to_canonical_name: str,       # Каноническое имя станции назначения из stations_mapping.py
-    is_table_3: bool = False,     # Флаг: выполняется ли расчет по Таблице 3
+    wagon_type: str,              # Тип вагона
+    from_canonical_name: str,     # Каноническое имя станции отправления
+    to_canonical_name: str,       # Каноническое имя станции назначения
+    is_table_3: bool = False,     # Флаг: расчет выполняется строго по Таблице 3
     is_methanol: bool = False,    # Флаг: является ли груз метанолом
     is_oil_product: bool = False, # Флаг: нефть/нефтепродукты (Таблица 6, столбец 2)
-    is_empty: bool = False,       # Флаг: порожний возврат вагона (boş dönüşü)
-    is_private_wagon: bool = False # Флаг: собственный/приватный вагон (СПС / mülkiyyət)
+    is_empty: bool = False,       # Флаг: порожний возврат вагона
+    is_private_wagon: bool = False # Флаг: собственный/приватный вагон (СПС)
 ) -> Dict[str, Any]:
     """
     ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -82,6 +82,7 @@ def apply_main_rules(
     # ПРАВИЛО 1: Коэффициент 1.50 на Импорт и Экспорт (с учетом исключений)
     # --------------------------------------------------------------------------
     if shipment in ["import", "export"]:
+        # Исключение срабатывает строго для Таблицы 3 и перечисленных специфических грузов
         is_exception = (
             is_table_3
             or is_wood_group
