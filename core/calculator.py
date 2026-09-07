@@ -92,32 +92,34 @@ class TariffCalculator:
                 "params": rule.get("params", {})
             })
 
-        # 4. Получение базовой ставки в CHF
+       # 4. Получение базовой ставки в CHF
         base_rate_chf = 0.0
         sps_wagon_types = ["refrigerator", "arv", "thermos", "ice_wagon", "car_carrier", "two_tier_platform", "inv", "anv", "inv_anv"]
 
         if wagon_type.lower() in sps_wagon_types:
             table_name = "Таблица 5"
-            table_5_res = Table5Calculator.get_base_rate(
+            base_rate_chf = Table5Calculator.get_base_rate(
                 distance_km=distance_km,
                 weight_tons=billable_weight,
                 equipment_type=wagon_type,
                 ref_section_wagons_count=ref_section_wagons_count
             )
-            base_rate_chf = table_5_res["base_rate_chf"]
-            
-            if table_5_res["applied_rule_code"]:
-                notifications.append({
-                    "rule_code": table_5_res["applied_rule_code"],
-                    "params": {}
-                })
+
+            # Формирование уведомления для рефсекций
+            if wagon_type.lower() in ["refrigerator", "arv", "ref_section"] and ref_section_wagons_count:
+                coeff_map = {1: "1_70", 2: "1_40", 3: "1_10", 4: "1_00"}
+                rule_suffix = coeff_map.get(ref_section_wagons_count, "0_85" if ref_section_wagons_count >= 5 else None)
+                if rule_suffix:
+                    notifications.append({
+                        "rule_code": f"REF_SECTION_COEFF_{rule_suffix}",
+                        "params": {}
+                    })
         else:
-            # Для универсальных вагонов (полувагоны, крытые, платформы) используем Таблицу 3 / 4
+            # Универсальные вагоны — Вызов Таблицы 3 строго со стандартными параметрами
             table_name = "Таблица 3" if is_table_3_applicable else "Таблица 4"
             base_rate_chf = Table3Calculator.get_base_rate(
                 distance_km=distance_km,
-                weight_tons=billable_weight,
-                gng_code=gng_code
+                weight_tons=billable_weight
             )
                 
         # 5. Получение курса валюты и перевод базовой ставки в USD (база / курс)
