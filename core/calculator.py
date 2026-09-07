@@ -63,13 +63,17 @@ class TariffCalculator:
         is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"]
 
         # 3. Расчет правил и коэффициентов
+        # Флаг is_table_3 передается True ТОЛЬКО если используется Таблица 3 (для спецвагонов Таблицы 5 передаем False)
+        sps_wagon_types = ["refrigerator", "arv", "thermos", "ice_wagon", "car_carrier", "two_tier_platform", "inv", "anv", "inv_anv"]
+        is_sps_wagon = wagon_type.lower() in sps_wagon_types
+
         rules_res = apply_main_rules(
             shipment_type=shipment_type,
             gng_code=gng_code,
             wagon_type=wagon_type,
             from_canonical_name=from_canonical_name,
             to_canonical_name=to_canonical_name,
-            is_table_3=is_table_3_applicable or is_table_4_applicable,
+            is_table_3=is_table_3_applicable and not is_sps_wagon,
             is_private_wagon=is_private_wagon
         )
         
