@@ -70,9 +70,8 @@ class TariffCalculator:
         is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"]
 
         # 3. Расчет правил и коэффициентов
-        # Флаг is_table_3 передается True ТОЛЬКО если используется Таблица 3 (для спецвагонов Таблицы 5 передаем False)
-        sps_wagon_types = ["refrigerator", "arv", "thermos", "ice_wagon", "car_carrier", "two_tier_platform", "inv", "anv", "inv_anv"]
-        is_sps_wagon = wagon_type.lower() in sps_wagon_types
+        ref_wagon_types = ["refrigerator", "arv", "thermos", "ice_wagon", "car_carrier", "two_tier_platform"]
+        is_ref_wagon = wagon_type.lower() in ref_wagon_types
 
         rules_res = apply_main_rules(
             shipment_type=shipment_type,
@@ -80,7 +79,7 @@ class TariffCalculator:
             wagon_type=wagon_type,
             from_canonical_name=from_canonical_name,
             to_canonical_name=to_canonical_name,
-            is_table_3=is_table_3_applicable and not is_sps_wagon,
+            is_table_3=is_table_3_applicable and not is_ref_wagon,
             is_private_wagon=is_private_wagon
         )
         
@@ -94,9 +93,9 @@ class TariffCalculator:
 
         # 4. Получение базовой ставки в CHF
         base_rate_chf = 0.0
-        sps_wagon_types = ["refrigerator", "arv", "thermos", "ice_wagon", "car_carrier", "two_tier_platform", "inv", "anv", "inv_anv"]
+        table_name = "Таблица 3"
 
-        if wagon_type.lower() in sps_wagon_types:
+        if is_ref_wagon:
             table_name = "Таблица 5"
             base_rate_chf = Table5Calculator.get_base_rate(
                 distance_km=distance_km,
@@ -105,11 +104,13 @@ class TariffCalculator:
                 ref_section_wagons_count=ref_section_wagons_count
             )
         elif is_table_3_applicable:
+            table_name = "Таблица 3"
             base_rate_chf = Table3Calculator.get_base_rate(
                 distance_km=distance_km,
                 weight_tons=billable_weight
             )
         elif is_table_4_applicable:
+            table_name = "Таблица 4"
             base_rate_chf = Table4Calculator.get_base_rate(
                 distance_km=distance_km,
                 weight_tons=billable_weight
@@ -139,7 +140,9 @@ class TariffCalculator:
             "distance_km": distance_km,
             "base_rate_chf_per_ton": base_rate_chf,
             "exchange_rate": exchange_rate,
+            "exchange_rate_chf_to_usd": exchange_rate,
             "base_rate_usd_per_ton": round(base_rate_usd, 2),
+            "table_name": table_name,
             "final_coeff": rules_res.get("calculated_value", 1.0),
             "final_rate_usd_per_ton": final_rate_per_ton_usd,
             "is_private_wagon": is_private_wagon,
