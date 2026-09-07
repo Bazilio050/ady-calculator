@@ -4,16 +4,19 @@ from core.router import RailwayRouter
 from core.calculator import TariffCalculator
 
 
-def _print_calculation_result(test_name: str, route_res, calc_res, gng_code: str, actual_w: float):
+def _print_calculation_result(test_name: str, route_res, calc_res, gng_code: str, actual_w: float, wagon_type: str, is_private: bool):
     """Вспомогательная функция для наглядного вывода результатов расчета."""
+    wagon_ownership = "СПС (приватный)" if is_private else "МПС (инвентарный)"
+    
     print("\n" + "=" * 80)
     print(f"   {test_name.upper()}")
     print("=" * 80)
     print(f"Маршрут:       {route_res.formatted_output('RU')}")
     print(f"ГНГ код:       {gng_code}")
+    print(f"Тип вагона:    {wagon_type} [{wagon_ownership}]")
     print(f"Вес (факт):    {actual_w} т -> Расчетный (Табл.1/Норма): {calc_res['billable_weight']} т")
     print(f"Базовая ставка: {calc_res['base_rate_chf_per_ton']} CHF/т (Таблица 3)")
-    print(f"Коэффициент:   {calc_res['final_coeff']}")
+    print(f"Итоговый коэф: {calc_res['final_coeff']}")
     print(f"Итог за 1 т:   {calc_res['final_rate_chf_per_ton']} CHF/т")
 
     if calc_res["notifications"]:
@@ -41,7 +44,7 @@ def test_import_wheat_min_load():
         is_private_wagon=True
     )
 
-    _print_calculation_result("1. Импорт пшеницы (Ялама -> Апшерон)", route_res, calc_res, "10019900", 42)
+    _print_calculation_result("1. Импорт пшеницы (Ялама -> Апшерон)", route_res, calc_res, "10019900", 42, "крытый", True)
     assert calc_res["billable_weight"] == 60
 
 
@@ -63,7 +66,7 @@ def test_export_timber():
         is_private_wagon=False
     )
 
-    _print_calculation_result("2. Экспорт леса (Апшерон -> Ялама)", route_res, calc_res, "44071100", 40)
+    _print_calculation_result("2. Экспорт леса (Апшерон -> Ялама)", route_res, calc_res, "44071100", 40, "платформа", False)
     assert calc_res["billable_weight"] == 45
 
 
@@ -83,7 +86,7 @@ def test_transit_calculation():
         is_private_wagon=False
     )
 
-    _print_calculation_result("3. Транзит угля (Ялама -> Беюк Кясик)", route_res, calc_res, "27011100", 60)
+    _print_calculation_result("3. Транзит угля (Ялама -> Беюк Кясик)", route_res, calc_res, "27011100", 60, "полувагон", False)
     assert calc_res["base_rate_chf_per_ton"] == 0.0
 
 
@@ -105,7 +108,7 @@ def test_import_timber_sps():
         is_private_wagon=True
     )
 
-    _print_calculation_result("4. Импорт леса СПС (Ялама -> Апшерон)", route_res, calc_res, "4407", 35)
+    _print_calculation_result("4. Импорт леса СПС (Ялама -> Апшерон)", route_res, calc_res, "4407", 35, "платформа", True)
     assert calc_res["billable_weight"] == 45
 
 
@@ -125,5 +128,5 @@ def test_paper_bilajari_boyuk_kesik():
         is_private_wagon=False
     )
 
-    _print_calculation_result("5. Перевозка изделий из бумаги МПС (Баладжары -> Беюк Кясик)", route_res, calc_res, "4818", 26)
+    _print_calculation_result("5. Изделия из бумаги МПС (Баладжары -> Беюк Кясик)", route_res, calc_res, "4818", 26, "хоппер", False)
     assert calc_res["actual_weight"] == 26
