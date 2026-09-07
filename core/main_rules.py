@@ -54,7 +54,8 @@ def apply_main_rules(
     is_table_3: bool = False,     # Флаг: выполняется ли расчет по Таблице 3
     is_methanol: bool = False,    # Флаг: является ли груз метанолом
     is_oil_product: bool = False, # Флаг: нефть/нефтепродукты (Таблица 6, столбец 2)
-    is_empty: bool = False        # Флаг: порожний возврат вагона (boş dönüşü)
+    is_empty: bool = False,       # Флаг: порожний возврат вагона (boş dönüşü)
+    is_private_wagon: bool = False # Флаг: собственный/приватный вагон (СПС / mülkiyyət)
 ) -> Dict[str, Any]:
     """
     ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -167,7 +168,7 @@ def apply_main_rules(
             "calculated_value": 1.20,
             "rule_code": "MAIN_COEFF_1_20_PRECIOUS_METALS",
             "params": {"gng_code": gng}
-        })
+           })
 
     return {
         "calculated_value": round(final_coeff, 4),
@@ -183,4 +184,15 @@ def apply_main_rules(
             "calculated_value": 1.015,
             "rule_code": "MAIN_COEFF_1_015_INTERNATIONAL_LOADED",
             "params": {"shipment_type": shipment, "is_empty": is_empty}
+        })
+
+     # --------------------------------------------------------------------------
+    # ПРАВИЛО 8: Коэффициент 0.85 на собственные (приватные) вагоны
+    # --------------------------------------------------------------------------
+    if is_private_wagon:
+        final_coeff *= 0.85
+        applied_rules.append({
+            "calculated_value": 0.85,
+            "rule_code": "MAIN_COEFF_0_85_PRIVATE_WAGON",
+            "params": {"is_private_wagon": is_private_wagon}
         })
