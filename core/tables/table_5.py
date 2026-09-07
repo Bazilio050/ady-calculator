@@ -68,12 +68,12 @@ class Table5Calculator:
         distance_km: float,
         weight_tons: float = 0.0,
         equipment_type: str = "refrigerator",
-        is_empty: bool = False
+        is_empty: bool = False,
+        ref_section_wagons_count: Optional[int] = None
     ) -> float:
         """
         Возвращает базовую ставку в CHF по Таблице 5.
-        Если ставка в таблице указана за вагон — возвращает ставку за вагон.
-        Если ставка указана за 1 тонну — возвращает ставку за 1 тонну.
+        Учитывает коэффициенты количества вагонов в рефсекции (1+1 -> 1.7, 2+1 -> 1.4, 3+1 -> 1.1, 4+1 -> 1.0, 5+1/6+1 -> 0.85).
         """
         tariffs = cls._load_data()
         dist = int(round(distance_km))
@@ -92,19 +92,28 @@ class Table5Calculator:
         # 1. Рефрижераторы и ARV
         if eq_lower in ("refrigerator", "arv", "ref_section"):
             if weight_tons < 25.0:
-                # Колонка 2: За 1 вагон
-                return matched_rates["col_2"]
+                base_rate = matched_rates["col_2"]
             else:
-                # Колонка 3: За 1 тонну
-                return matched_rates["col_3"]
+                base_rate = matched_rates["col_3"]
+
+            # Применение коэффициента от количества вагонов в рефсекции (п. 3.1.2.1)
+            if ref_section_wagons_count is not None:
+                if ref_section_wagons_count == 1:
+                    base_rate *= 1.7
+                elif ref_section_wagons_count == 2:
+                    base_rate *= 1.4
+                elif ref_section_wagons_count == 3:
+                    base_rate *= 1.1
+                elif ref_section_wagons_count >= 5:
+                    base_rate *= 0.85
+
+            return base_rate
 
         # 2. Вагоны-термосы и ледники
         elif eq_lower in ("thermos", "ice_wagon"):
             if weight_tons < 25.0:
-                # Колонка 4: За 1 вагон
                 return matched_rates["col_4"]
             else:
-                # Колонка 5: За 1 тонну
                 return matched_rates["col_5"]
 
         # 3. Автовозы (Колонка 6: За 1 тонну)
@@ -114,10 +123,8 @@ class Table5Calculator:
         # 4. ИНВ / АНВ
         elif eq_lower in ("inv", "anv", "inv_anv"):
             if is_empty:
-                # Колонка 8: Порожний — за 1 вагон
                 return matched_rates["col_8"]
             else:
-                # Колонка 7: Груженый — за 1 тонну
                 return matched_rates["col_7"]
 
         else:
