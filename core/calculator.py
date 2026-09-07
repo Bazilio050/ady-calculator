@@ -5,6 +5,7 @@ from core.tables.table_1_weight import Table1Calculator
 from core.tables.table_min_load import TableMinLoadCalculator
 from core.tables.table_3 import Table3Calculator
 from core.tables.table_4 import Table4Calculator
+from core.tables.table_5 import Table5Calculator
 from core.main_rules import apply_main_rules
 from data.currency_rates import get_exchange_rate
 
