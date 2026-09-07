@@ -5,13 +5,6 @@ from core.calculator import TariffCalculator
 from data.translations import RULE_MESSAGES
 
 
-# tests/test_full_calculation.py
-
-from core.router import RailwayRouter
-from core.calculator import TariffCalculator
-from data.translations import RULE_MESSAGES
-
-
 def _format_msg(rule_code: str, params: dict, lang: str) -> str:
     """Форматирует строку перевода из RULE_MESSAGES с подстановкой параметров."""
     rule_data = RULE_MESSAGES.get(rule_code, {})
