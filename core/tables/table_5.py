@@ -82,8 +82,8 @@ class Table5Calculator:
                 matched_rates = rates
                 break
 
-            if matched_rates is None:
-                raise ValueError(f"Расстояние {dist} км выходит за пределы Таблицы 5.")
+        if matched_rates is None:
+            raise ValueError(f"Расстояние {dist} км выходит за пределы Таблицы 5.")
 
         eq_lower = equipment_type.lower()
 
