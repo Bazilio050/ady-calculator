@@ -97,12 +97,22 @@ class TariffCalculator:
 
         if is_ref_wagon:
             table_name = "Таблица 5"
-            base_rate_chf = Table5Calculator.get_base_rate(
+            t5_res = Table5Calculator.calculate(
                 distance_km=distance_km,
                 weight_tons=billable_weight,
                 equipment_type=wagon_type,
                 ref_section_wagons_count=ref_section_wagons_count
             )
+            base_rate_chf = t5_res["base_rate"]
+
+            # Забираем правила составности, которые сформировала сама Таблица 5
+            t5_rules = t5_res.get("applied_rules", [])
+            for r in t5_rules:
+                applied_rules_list.append(r)
+                notifications.append({
+                    "rule_code": r["rule_code"],
+                    "params": r.get("params", {})
+                })
         elif is_table_3_applicable:
             table_name = "Таблица 3"
             base_rate_chf = Table3Calculator.get_base_rate(
