@@ -16,7 +16,7 @@ def _format_msg(rule_code: str, params: dict, lang: str) -> str:
 
 
 def _print_calculation_result(test_name: str, route_res, calc_res, gng_code: str, actual_w: float, wagon_type: str, is_private: bool):
-    """Вспомогательная функция для чистой печати результатов без технического мусора."""
+    """Вспомогательная функция для чистой печати результатов расчета в USD."""
     wagon_ownership = "СПС (приватный)" if is_private else "МПС (инвентарный)"
 
     print("\n" + "=" * 80)
@@ -26,15 +26,16 @@ def _print_calculation_result(test_name: str, route_res, calc_res, gng_code: str
     print(f"ГНГ код: {gng_code}")
     print(f"Тип вагона: {wagon_type} [{wagon_ownership}]")
     print(f"Вес (факт): {actual_w} т -> Расчетный (Табл.1/Норма): {calc_res['billable_weight']} т")
-    print(f"Базовая ставка: {calc_res['base_rate_chf_per_ton']} CHF/т (Таблица 3)\n")
+    print(f"Базовая ставка: {calc_res['base_rate_chf_per_ton']} CHF/т (Таблица 3)")
+    print(f"Курс конвертации (CHF -> USD): {calc_res['exchange_rate']}")
+    print(f"Базовая ставка в USD: {calc_res['base_rate_usd_per_ton']} USD/т\n")
 
-    # Вывод коэффициентов (только чистый текст на русском)
+    # Вывод коэффициентов (на русском языке)
     for note in calc_res["notifications"]:
         code = note["rule_code"]
         params = note.get("params", {})
         if code.startswith("MAIN_COEFF_"):
             ru_desc = _format_msg(code, params, "ru")
-            # Подставляем текстовую метку коэффициента
             if "1_04" in code:
                 coeff_str = "1,04"
             elif "1_015" in code:
@@ -50,7 +51,7 @@ def _print_calculation_result(test_name: str, route_res, calc_res, gng_code: str
             
             print(f"Коэф. {coeff_str}: {ru_desc}")
 
-    print(f"\nИтог за 1 т: {calc_res['final_rate_chf_per_ton']} CHF/т\n")
+    print(f"\nИтог за 1 т: {calc_res['final_rate_usd_per_ton']} USD/т\n")
 
     print("Уведомления:")
     for note in calc_res["notifications"]:
