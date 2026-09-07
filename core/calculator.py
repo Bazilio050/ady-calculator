@@ -32,9 +32,9 @@ class TariffCalculator:
         """
         # 1. Расчет billable_weight (Таблица 1 / Минимальные нормы)
         weight_res = Table1Calculator.calculate_billable_weight(
-            gng_code=gng_code,
-            actual_weight=actual_weight,
-            wagon_type=wagon_type
+            gng_code,
+            actual_weight,
+            wagon_type
         )
         billable_weight = weight_res["billable_weight"]
 
