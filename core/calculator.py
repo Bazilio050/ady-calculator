@@ -34,9 +34,47 @@ class TariffCalculator:
         """
         notifications: List[Dict[str, Any]] = []
 
-        # Шаг 1.1: Расчет веса (минимальная норма и Таблица 1)
-        # (Логика будет добавлена на Шаге 2)
+        # 1. Проверка минимальной нормы загрузки
+        min_load_res = TableMinLoadCalculator.get_min_load_weight(gng_code, actual_weight)
+        weight_after_min_norm = min_load_res["calculated_weight"]
+        if min_load_res["rule_code"]:
+            notifications.append({
+                "rule_code": min_load_res["rule_code"],
+                "params": min_load_res["params"]
+            })
+
+        # 2. Определение расчетной категории веса по Таблице 1
+        table1_res = Table1Calculator.calculate_billable_weight(weight_after_min_norm)
+        billable_weight = table1_res["calculated_weight"]
+        if table1_res["rule_code"]:
+            notifications.append({
+                "rule_code": table1_res["rule_code"],
+                "params": table1_res["params"]
+            })
+
+        # 3. Расчет коэффициентов по Главным правилам
+        is_table_3_applicable = shipment_type.lower() in ["import", "export"]
+        rules_res = apply_main_rules(
+            shipment_type=shipment_type,
+            gng_code=gng_code,
+            wagon_type=wagon_type,
+            from_canonical_name=from_canonical_name,
+            to_canonical_name=to_canonical_name,
+            is_table_3=is_table_3_applicable,
+            is_methanol=is_methanol,
+            is_oil_product=is_oil_product,
+            is_empty=is_empty,
+            is_private_wagon=is_private_wagon
+        )
+
+        for rule in rules_res["rules"]:
+            notifications.append({
+                "rule_code": rule["rule_code"],
+                "params": rule.get("params", {})
+            })
 
         return {
-            "status": "draft"
+            "billable_weight": billable_weight,
+            "final_coeff": rules_res["calculated_value"],
+            "notifications": notifications
         }
