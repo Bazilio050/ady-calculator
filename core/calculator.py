@@ -106,12 +106,19 @@ class TariffCalculator:
             )
             base_rate_chf = table_5_res["base_rate_chf"]
             
-            # Если к рефсекции применился коэффициент состава, записываем уведомление
             if table_5_res["applied_rule_code"]:
                 notifications.append({
                     "rule_code": table_5_res["applied_rule_code"],
                     "params": {}
                 })
+        else:
+            # Для универсальных вагонов (полувагоны, крытые, платформы) используем Таблицу 3 / 4
+            table_name = "Таблица 3" if is_table_3_applicable else "Таблица 4"
+            base_rate_chf = Table3Calculator.get_base_rate(
+                distance_km=distance_km,
+                weight_tons=billable_weight,
+                gng_code=gng_code
+            )
                 
         # 5. Получение курса валюты и перевод базовой ставки в USD (база / курс)
         exchange_rate = get_exchange_rate(shipment_date)
