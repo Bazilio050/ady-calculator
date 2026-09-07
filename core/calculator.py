@@ -81,9 +81,17 @@ class TariffCalculator:
                 "params": rule.get("params", {})
             })
 
-        # 4. Получение базовой ставки в CHF (Таблица 3 или Таблица 4)
+        # 4. Получение базовой ставки в CHF
         base_rate_chf = 0.0
-        if is_table_3_applicable:
+        sps_wagon_types = ["refrigerator", "arv", "thermos", "ice_wagon", "car_carrier", "two_tier_platform", "inv", "anv", "inv_anv"]
+        
+        if wagon_type.lower() in sps_wagon_types:
+            base_rate_chf = Table5Calculator.get_base_rate(
+                distance_km=distance_km,
+                weight_tons=billable_weight,
+                equipment_type=wagon_type
+            )
+        elif is_table_3_applicable:
             base_rate_chf = Table3Calculator.get_base_rate(
                 distance_km=distance_km,
                 weight_tons=billable_weight
