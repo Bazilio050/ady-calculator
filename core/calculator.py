@@ -10,8 +10,8 @@ from core.main_rules import apply_main_rules
 class TariffCalculator:
     """
     ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
-    Центральный модуль расчета провозной платы. 
-    Объединяет данные весовых таблиц, базовых ставок и сквозных коэффициентов.
+    Центральный модуль расчета провозной платы ADY.
+    Последовательно применяет коэффициенты правила за правилом.
     """
 
     @classmethod
@@ -26,14 +26,10 @@ class TariffCalculator:
         to_canonical_name: str,
         is_private_wagon: bool = False
     ) -> dict:
-        """
-        ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
-        Выполняет полный расчет тарифа. Применяет коэффициенты последовательно к базовой ставке.
-        """
         act_w = int(actual_weight)
         notifications = []
 
-        # 1.1. Проверка минимальной нормы загрузки по ГНГ (Таблица 2 / Спецнормы)
+        # 1.1. Минимальная норма по ГНГ
         min_load_res = TableMinLoadCalculator.get_min_load_weight(
             gng_code=gng_code,
             actual_weight=act_w
@@ -46,7 +42,7 @@ class TariffCalculator:
                 "params": min_load_res.get("params", {})
             })
 
-        # 1.2. Расчет billable_weight по Таблице 1
+        # 1.2. Округление по Таблице 1
         weight_res = Table1Calculator.calculate_billable_weight(weight_after_min_norm)
         billable_weight = weight_res["calculated_weight"]
 
@@ -56,10 +52,10 @@ class TariffCalculator:
                 "params": weight_res.get("params", {})
             })
 
-        # 2. Проверка применимости Таблицы 3 (только Import / Export)
+        # 2. Проверка применимости Таблицы 3
         is_table_3_applicable = shipment_type.lower() in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
 
-        # 3. Расчет коэффициентов по Главным правилам
+        # 3. Получение списка правил
         rules_res = apply_main_rules(
             shipment_type=shipment_type,
             gng_code=gng_code,
@@ -78,7 +74,7 @@ class TariffCalculator:
                 "params": rule.get("params", {})
             })
 
-        # 4. Поиск базовой ставки и последовательное применение коэффициентов по правилам ЖД
+        # 4. Базовая ставка
         base_rate_per_ton = 0.0
         if is_table_3_applicable:
             base_rate_per_ton = Table3Calculator.get_base_rate(
@@ -86,14 +82,13 @@ class TariffCalculator:
                 weight_tons=billable_weight
             )
 
-        running_rate = base_rate_per_ton
+        # 5. ПОСЛЕДОВАТЕЛЬНОЕ ПРИМЕНЕНИЕ КОЭФФИЦИЕНТОВ
+        current_rate = base_rate_per_ton
+        for rule in applied_rules_list:
+            coeff_val = rule["calculated_value"]
+            current_rate = current_rate * coeff_val
 
-        if applied_rules_list:
-            for rule in applied_rules_list:
-                running_rate *= rule["calculated_value"]
-            final_rate_per_ton = round(running_rate, 2)
-        else:
-            final_rate_per_ton = round(base_rate_per_ton, 2)
+        final_rate_per_ton = round(current_rate, 2)
 
         return {
             "actual_weight": act_w,
@@ -102,5 +97,6 @@ class TariffCalculator:
             "base_rate_chf_per_ton": base_rate_per_ton,
             "final_coeff": rules_res.get("calculated_value", 1.0),
             "final_rate_chf_per_ton": final_rate_per_ton,
+            "is_private_wagon": is_private_wagon,
             "notifications": notifications
         }
