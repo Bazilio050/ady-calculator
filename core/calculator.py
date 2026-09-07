@@ -90,10 +90,12 @@ class TariffCalculator:
         sps_wagon_types = ["refrigerator", "arv", "thermos", "ice_wagon", "car_carrier", "two_tier_platform", "inv", "anv", "inv_anv"]
         
         if wagon_type.lower() in sps_wagon_types:
+            table_name = "Таблица 5"
             base_rate_chf = Table5Calculator.get_base_rate(
                 distance_km=distance_km,
                 weight_tons=billable_weight,
-                equipment_type=wagon_type
+                equipment_type=wagon_type,
+                ref_section_wagons_count=kwargs.get("ref_section_wagons_count")
             )
         elif is_table_3_applicable:
             base_rate_chf = Table3Calculator.get_base_rate(
