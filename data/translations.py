@@ -87,5 +87,15 @@ RULE_MESSAGES = {
         "az": "5 və daha çox yük vaqonu + 1 dizel-generator tərkibli refrijerator seksiyasına 0.85 əmsalı tətbiq edilmişdir.",
         "ru": "Применен коэффициент 0.85 для рефсекции состава 5 и более грузовых вагонов + 1 дизель-генератор.",
         "en": "A coefficient of 0.85 was applied for a reefer section with 5 or more cargo wagons + 1 diesel generator."
+    },
+    "REF_FRUIT_VEG_COEFF_0_60": {
+        "az": "Tarif Razılaşması iştirakçısı olan ölkələrdə istehsal olunmuş meyvə-tərəvəz yüklərinə 0.60 əmsalı tətbiq edilmişdir.",
+        "ru": "Применен коэффициент 0.60 на перевозку плодоовощной продукции, произведенной в странах Тарифного Соглашения.",
+        "en": "A coefficient of 0.60 was applied for fruit and vegetable products originating from Tariff Agreement countries."
+    },
+    "REF_DIESEL_GENERATOR_AXLE_RATE": {
+        "az": "Özəl refrijerator seksiyasının tərkibində gedən dizel-generator vaqonu üçün hər ox-km-ə 0.12 İsveçrə frankı tarifi tətbiq edilmişdir.",
+        "ru": "Применен тариф 0.12 CHF за 1 ось-км для дизель-генераторного вагона в составе приватной рефсекции.",
+        "en": "A rate of 0.12 CHF per axle-km was applied for a diesel generator wagon within a private reefer section."
     }
 }
