@@ -97,5 +97,10 @@ RULE_MESSAGES = {
         "az": "Özəl refrijerator seksiyasının tərkibində gedən dizel-generator vaqonu üçün hər ox-km-ə 0.12 İsveçrə frankı tarifi tətbiq edilmişdir.",
         "ru": "Применен тариф 0.12 CHF за 1 ось-км для дизель-генераторного вагона в составе приватной рефсекции.",
         "en": "A rate of 0.12 CHF per axle-km was applied for a diesel generator wagon within a private reefer section."
+    },
+    "REF_EMPTY_WAGON_IN_LOADED_SECTION_AXLE_RATE": {
+        "az": "Yüklü refrijerator seksiyasının tərkibində olan boş vaqon üçün hər ox-km-ə 0.10 İsveçrə frankı tarifi tətbiq edilmişdir.",
+        "ru": "Применен тариф 0.10 CHF за 1 ось-км для порожнего вагона в составе груженой рефсекции.",
+        "en": "A rate of 0.10 CHF per axle-km was applied for an empty wagon within a loaded reefer section."
     }
 }
