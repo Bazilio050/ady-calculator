@@ -78,16 +78,41 @@ class Table5Calculator:
         is_empty: bool = False,
         ref_section_wagons_count: Optional[int] = None,
         gng_code: Optional[str] = None,
-        is_tariff_agreement_origin: bool = False
+        is_tariff_agreement_origin: bool = False,
+        axle_count: int = 4
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
-        Расчитывает базовую ставку CHF/т по Таблице 5 и возвращает детальную информацию
-        включая коэффициенты составности рефсекции и скидку 0.60 на плодоовощную продукцию.
+        Расчитывает базовую ставку CHF/т по Таблице 5 и спецвагонам, включая коэффициенты
+        составности рефсекции, скидку 0.60 на овощи/фрукты и аксиальную ставку 0.12 CHF/ось-км для дизель-генераторов.
         """
-        tariffs = cls._load_data()
         dist = int(round(distance_km))
+        eq_lower = equipment_type.lower()
+        applied_rules = []
 
+        # 0. Дизель-генераторный вагон в составе приватной рефсекции (0.12 CHF / ось-км)
+        if eq_lower in ("diesel_generator", "diesel_gen", "дизель_генератор"):
+            rate_per_axle_km = 0.12
+            total_chf_flat = round(rate_per_axle_km * axle_count * dist, 2)
+            
+            applied_rules.append({
+                "rule_code": "REF_DIESEL_GENERATOR_AXLE_RATE",
+                "calculated_value": rate_per_axle_km,
+                "params": {
+                    "axle_count": axle_count,
+                    "distance_km": dist,
+                    "rate_per_axle_km": rate_per_axle_km
+                }
+            })
+            
+            return {
+                "base_rate": total_chf_flat,
+                "raw_base_rate": total_chf_flat,
+                "is_flat_fee": True,
+                "applied_rules": applied_rules
+            }
+
+        tariffs = cls._load_data()
         matched_rates = None
         for (min_dist, max_dist), rates in tariffs.items():
             if min_dist <= dist <= max_dist:
@@ -97,8 +122,6 @@ class Table5Calculator:
         if matched_rates is None:
             raise ValueError(f"Расстояние {dist} км выходит за пределы Таблицы 5.")
 
-        eq_lower = equipment_type.lower()
-        applied_rules = []
         base_rate = 0.0
 
         # 1. Рефрижераторы и ARV
@@ -180,7 +203,8 @@ class Table5Calculator:
         is_empty: bool = False,
         ref_section_wagons_count: Optional[int] = None,
         gng_code: Optional[str] = None,
-        is_tariff_agreement_origin: bool = False
+        is_tariff_agreement_origin: bool = False,
+        axle_count: int = 4
     ) -> float:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -193,7 +217,8 @@ class Table5Calculator:
             is_empty=is_empty,
             ref_section_wagons_count=ref_section_wagons_count,
             gng_code=gng_code,
-            is_tariff_agreement_origin=is_tariff_agreement_origin
+            is_tariff_agreement_origin=is_tariff_agreement_origin,
+            axle_count=axle_count
         )
         return res["base_rate"]
         """
