@@ -109,6 +109,7 @@ class TariffCalculator:
                 distance_km=distance_km,
                 weight_tons=billable_weight,
                 equipment_type=wagon_type,
+                is_empty=(actual_weight == 0),
                 ref_section_wagons_count=ref_section_wagons_count,
                 gng_code=gng_code,
                 is_tariff_agreement_origin=is_tariff_agreement_origin,
@@ -116,6 +117,8 @@ class TariffCalculator:
                 is_in_loaded_ref_section=is_in_loaded_ref_section
             )
             base_rate_chf = t5_res["base_rate"]
+            if "applied_rules" in t5_res:
+                notifications.extend(t5_res["applied_rules"])
 
             # Забираем правила составности, которые сформировала сама Таблица 5
             t5_rules = t5_res.get("applied_rules", [])
