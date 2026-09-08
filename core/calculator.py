@@ -92,15 +92,21 @@ class TariffCalculator:
         is_table_3_applicable = ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
         is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"]
 
-        # 3. Расчет правил и коэффициентов
-        ref_wagon_types = [
-            "refrigerator", "arv", "ref_section", "thermos", "ice_wagon",
-            "car_carrier", "two_tier_platform", "двухъярусная_платформа",
-            "diesel_generator", "diesel_gen", "дизель_генератор",
-            "inv", "anv", "inv_anv"
-        ]
-        is_ref_wagon = wagon_type.lower() in ref_wagon_types
+       # 3. Определение таблицы и флагов груза до применения главных правил
+        column_name = None
+        is_private_discount_included = False
 
+        if is_tank_wagon:
+            table_name = "Таблица 6"
+            column_name = Table6Calculator.determine_column(
+                gng_code=gng_code,
+                is_private_wagon=is_private_wagon
+            )
+
+        # Флаг для Таблицы 6 (Столбец 2 - нефть и нефтепродукты)
+        is_oil_product = (is_tank_wagon and column_name == "col_2")
+
+        # Вызов главных правил
         rules_res = apply_main_rules(
             shipment_type=shipment_type,
             gng_code=gng_code,
@@ -108,9 +114,10 @@ class TariffCalculator:
             from_canonical_name=from_canonical_name,
             to_canonical_name=to_canonical_name,
             is_table_3=is_table_3_applicable and not (is_ref_wagon or is_tank_wagon),
+            is_oil_product=is_oil_product,
             is_private_wagon=is_private_wagon
         )
-        
+
         applied_rules_list = rules_res.get("rules", [])
 
         for rule in applied_rules_list:
@@ -122,7 +129,6 @@ class TariffCalculator:
         # 4. Получение базовой ставки в CHF
         base_rate_chf = 0.0
         table_name = "Таблица 3"
-        is_private_discount_included = False
 
         if is_tank_wagon:
             table_name = "Таблица 6"
