@@ -174,10 +174,10 @@ class TariffCalculator:
         exchange_rate = get_exchange_rate(shipment_date)
         base_rate_usd = (base_rate_chf / exchange_rate) if exchange_rate > 0 else base_rate_chf
 
-        # 6. Последовательное применение коэффициентов:
-        # Если для Таблицы 6 выбрана колонка 8, исключаем повторную скидку 0.85
+        # Если для Таблицы 6 выбрана колонка 8, исключаем скидку 0.85 из правил И из уведомлений
         if is_private_discount_included:
             applied_rules_list = [r for r in applied_rules_list if r["rule_code"] != "MAIN_COEFF_0_85_PRIVATE_WAGON"]
+            notifications = [n for n in notifications if n.get("rule_code") != "MAIN_COEFF_0_85_PRIVATE_WAGON"]
 
         specific_rules = [r for r in applied_rules_list if r["rule_code"] not in ["MAIN_COEFF_1_015_INTERNATIONAL_LOADED", "MAIN_COEFF_0_85_PRIVATE_WAGON"]]
         loaded_rule = [r for r in applied_rules_list if r["rule_code"] == "MAIN_COEFF_1_015_INTERNATIONAL_LOADED"]
