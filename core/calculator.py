@@ -101,9 +101,6 @@ class TariffCalculator:
         ]
         is_ref_wagon = wagon_type.lower() in ref_wagon_types
 
-        # Автоматическое определение нефтепродуктов (Столбец 2 Таблицы 6)
-        is_oil_product = (applied_table == "Таблица 6" and column_name == "col_2")
-
         rules_res = apply_main_rules(
             shipment_type=shipment_type,
             gng_code=gng_code,
@@ -111,7 +108,6 @@ class TariffCalculator:
             from_canonical_name=from_canonical_name,
             to_canonical_name=to_canonical_name,
             is_table_3=is_table_3_applicable and not (is_ref_wagon or is_tank_wagon),
-            is_oil_product=is_oil_product,
             is_private_wagon=is_private_wagon
         )
         
