@@ -53,17 +53,17 @@ STATIONS_MAPPING = {
     "code": "558631",
     "export_code": "558701",
     "is_border": True,
-    "AZ": ["Böyük Kəsik", "Boyuk Kesik"],
-    "RU": ["Беюк Кясик", "Беюк-Кясик"],
-    "EN": ["Boyuk Kesik"]
+    "AZ": ["Böyük Kəsik", "BK", "Boyuk Kesik"],
+    "RU": ["Беюк Кясик", "БК"? "Беюк-Кясик"],
+    "EN": ["Boyuk Kesik", "BK"]
 },
 "Böyük Kəsik (eksport)": {
     "code": "558701",
     "export_code": "558701",
     "is_border": True,
-    "AZ": ["Böyük Kəsik eksport", "Boyuk Kesik eksp"],
-    "RU": ["Беюк Кясик экспорт", "Беюк Кясик-эксп."],
-    "EN": ["Boyuk Kesik exp"]
+    "AZ": ["Böyük Kəsik eksport", "BK", ""Boyuk Kesik eksp"],
+    "RU": ["Беюк Кясик экспорт", "БК", "Беюк Кясик-эксп."],
+    "EN": ["Boyuk Kesik exp", "BK"]
 },
     "Çarxı": {"code": "545400", "AZ": ["Çarxı"], "RU": ["Чархи"], "EN": ["Charkhi"]},
     "Cəlilabad": {"code": "553303", "AZ": ["Cəlilabad"], "RU": ["Джалилабад"], "EN": ["Jalilabad"]},
