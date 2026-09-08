@@ -122,8 +122,19 @@ class TariffCalculator:
         # 4. Получение базовой ставки в CHF
         base_rate_chf = 0.0
         table_name = "Таблица 3"
+        is_private_discount_included = False
 
-        if is_ref_wagon:
+        if is_tank_wagon:
+            table_name = "Таблица 6"
+            t6_res = Table6Calculator.calculate(
+                distance_km=distance_km,
+                gng_code=gng_code,
+                is_private_wagon=is_private_wagon
+            )
+            base_rate_chf = t6_res["base_rate"]
+            is_private_discount_included = t6_res.get("is_private_discount_included", False)
+
+        elif is_ref_wagon:
             table_name = "Таблица 5"
             t5_res = Table5Calculator.calculate(
                 distance_km=distance_km,
@@ -164,7 +175,10 @@ class TariffCalculator:
         base_rate_usd = (base_rate_chf / exchange_rate) if exchange_rate > 0 else base_rate_chf
 
         # 6. Последовательное применение коэффициентов:
-        # Сначала спец-правила, затем 1.015, в самом конце 0.85
+        # Если для Таблицы 6 выбрана колонка 8, исключаем повторную скидку 0.85
+        if is_private_discount_included:
+            applied_rules_list = [r for r in applied_rules_list if r["rule_code"] != "MAIN_COEFF_0_85_PRIVATE_WAGON"]
+
         specific_rules = [r for r in applied_rules_list if r["rule_code"] not in ["MAIN_COEFF_1_015_INTERNATIONAL_LOADED", "MAIN_COEFF_0_85_PRIVATE_WAGON"]]
         loaded_rule = [r for r in applied_rules_list if r["rule_code"] == "MAIN_COEFF_1_015_INTERNATIONAL_LOADED"]
         private_rule = [r for r in applied_rules_list if r["rule_code"] == "MAIN_COEFF_0_85_PRIVATE_WAGON"]
