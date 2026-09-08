@@ -1,3 +1,5 @@
+# tests/test_table_5_full.py
+
 import pytest
 from core.router import RailwayRouter
 from core.calculator import TariffCalculator
@@ -156,3 +158,95 @@ def test_ref_section_6_1_import():
 
     _print_calculation_result("5. Рефсекция 6+1 (Апшерон -> Ялама)", route_res, calc_res, "0404", 28, "refrigerator (6+1)", True)
     assert calc_res["base_rate_chf_per_ton"] > 0
+
+
+# ------------------------------------------------------------------------------
+# 2. ТЕСТЫ ДЛЯ СПЕЦИАЛЬНЫХ ПРАВИЛ ТАБЛИЦЫ 5
+# ------------------------------------------------------------------------------
+
+def test_diesel_generator_axle_rate():
+    """Тест 6: Дизель-генераторный вагон (0.12 CHF / ось-км)"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "Астара")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="0000",
+        actual_weight=0,
+        distance_km=route_res.distance_km,
+        wagon_type="diesel_generator",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True,
+        axle_count=4
+    )
+
+    _print_calculation_result("6. Дизель-генератор (Ялама -> Астара)", route_res, calc_res, "0000", 0, "diesel_generator", True)
+    rule_codes = [n["rule_code"] for n in calc_res["notifications"]]
+    assert "REF_DIESEL_GENERATOR_AXLE_RATE" in rule_codes
+
+
+def test_fruit_veg_discount_tariff_agreement():
+    """Тест 7: Овощи/фрукты из стран ТС (Коэф. 0.60)"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "Апшерон")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="08081000",  # Яблоки
+        actual_weight=28,
+        distance_km=route_res.distance_km,
+        wagon_type="refrigerator",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True,
+        is_tariff_agreement_origin=True
+    )
+
+    _print_calculation_result("7. Овощи/фрукты ТС (Ялама -> Апшерон)", route_res, calc_res, "08081000", 28, "refrigerator", True)
+    rule_codes = [n["rule_code"] for n in calc_res["notifications"]]
+    assert "REF_FRUIT_VEG_COEFF_0_60" in rule_codes
+
+
+def test_empty_wagon_in_loaded_ref_section():
+    """Тест 8: Порожний вагон в гружёной секции (0.10 CHF / ось-км)"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "Беюк Кясик")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="0000",
+        actual_weight=0,
+        distance_km=route_res.distance_km,
+        wagon_type="refrigerator",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True,
+        is_in_loaded_ref_section=True,
+        axle_count=4
+    )
+
+    _print_calculation_result("8. Порожний вагон в гружёной секции (Ялама -> Беюк Кясик)", route_res, calc_res, "0000", 0, "refrigerator (empty in loaded section)", True)
+    rule_codes = [n["rule_code"] for n in calc_res["notifications"]]
+    assert "REF_EMPTY_WAGON_IN_LOADED_SECTION_AXLE_RATE" in rule_codes
+
+
+def test_two_tier_car_carrier_platform():
+    """Тест 9: Двухъярусная платформа-автовоз (Коэф. 0.80)"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Баку-Товарная", "Гянджа")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="8703",
+        actual_weight=15,
+        distance_km=route_res.distance_km,
+        wagon_type="two_tier_platform",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True
+    )
+
+    _print_calculation_result("9. Двухъярусная платформа-автовоз (Баку -> Гянджа)", route_res, calc_res, "8703", 15, "two_tier_platform", True)
+    rule_codes = [n["rule_code"] for n in calc_res["notifications"]]
+    assert "CAR_CARRIER_TWO_TIER_COEFF_0_80" in rule_codes
