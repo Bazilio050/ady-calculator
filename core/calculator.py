@@ -31,7 +31,8 @@ class TariffCalculator:
         to_canonical_name: str,
         is_private_wagon: bool = False,
         shipment_date: Optional[str] = None,
-        ref_section_wagons_count: Optional[int] = None
+        ref_section_wagons_count: Optional[int] = None,
+        is_tariff_agreement_origin: bool = False
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
