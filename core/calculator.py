@@ -102,7 +102,9 @@ class TariffCalculator:
                 distance_km=distance_km,
                 weight_tons=billable_weight,
                 equipment_type=wagon_type,
-                ref_section_wagons_count=ref_section_wagons_count
+                ref_section_wagons_count=ref_section_wagons_count,
+                gng_code=gng_code,
+                is_tariff_agreement_origin=is_tariff_agreement_origin
             )
             base_rate_chf = t5_res["base_rate"]
 
