@@ -55,6 +55,7 @@ def test_table_6_col_2_oil_transit_kuryk():
     """Тест 1: Наливные грузы — Колонка 2 (Нефть и нефтепродукты | Ялама -> Курык)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "Курык")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
@@ -76,6 +77,7 @@ def test_table_6_col_3_energy_gases_export_trk():
     """Тест 2: Наливные грузы — Колонка 3 (Энергетические газы | Апшерон -> ТРК)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Апшерон", "ТРК")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
@@ -97,6 +99,7 @@ def test_table_6_col_4_gases_hydrocarbons_import_alat():
     """Тест 3: Наливные грузы — Колонка 4 (Газы и химические углеводороды | Алят-эксп. -> Гаджигабул)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Алят-эксп", "Гаджигабул")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
@@ -118,6 +121,7 @@ def test_table_6_col_5_alcohols_phenols_transit_alat():
     """Тест 4: Наливные грузы — Колонка 5 (Спирты и фенолы | Ялама -> Алят-эксп.)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "Алят-эксп")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
@@ -139,6 +143,7 @@ def test_table_6_col_6_perishable_liquids_export_alat():
     """Тест 5: Наливные грузы — Колонка 6 (Скоропортящиеся наливные | Гянджа -> Курык)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Гянджа", "Курык")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
@@ -160,6 +165,7 @@ def test_table_6_col_7_other_liquids_import_alat():
     """Тест 6: Наливные грузы — Колонка 7 (Прочие наливные грузы | Алят-эксп. -> Сумгаит)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Алят-эксп.", "Сумгаит")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
@@ -181,6 +187,7 @@ def test_table_6_col_8_private_tank_transit_alat():
     """Тест 7: Наливные грузы — Колонка 8 (Приватные цистерны | Беюк Кясик -> Алят-эксп.)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("БК", "Алят-эксп.")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
