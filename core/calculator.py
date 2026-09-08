@@ -6,6 +6,7 @@ from core.tables.table_min_load import TableMinLoadCalculator
 from core.tables.table_3 import Table3Calculator
 from core.tables.table_4 import Table4Calculator
 from core.tables.table_5 import Table5Calculator
+from core.tables.table_6 import Table6Calculator
 from typing import Dict, Any, List, Optional
 from core.main_rules import apply_main_rules
 from data.currency_rates import get_exchange_rate
@@ -44,6 +45,19 @@ class TariffCalculator:
         act_w = int(actual_weight)
         notifications = []
         ship_type_lower = shipment_type.lower()
+        wagon_type_lower = wagon_type.lower()
+
+        # Определение типа вагона (Спецвагон / Цистерна / Универсальный)
+        ref_wagon_types = [
+            "refrigerator", "arv", "ref_section", "thermos", "ice_wagon",
+            "car_carrier", "two_tier_platform", "двухъярусная_платформа",
+            "diesel_generator", "diesel_gen", "дизель_генератор",
+            "inv", "anv", "inv_anv"
+        ]
+        tank_wagon_types = ["cistern", "tank", "цистерна", "бункер", "bunker"]
+
+        is_ref_wagon = wagon_type_lower in ref_wagon_types
+        is_tank_wagon = wagon_type_lower in tank_wagon_types
 
         # 1.1. Минимальная норма загрузки по ГНГ
         min_load_res = TableMinLoadCalculator.get_min_load_weight(
