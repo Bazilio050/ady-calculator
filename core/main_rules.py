@@ -114,9 +114,10 @@ def apply_main_rules(
     # ПРАВИЛО 3: Коэффициент 1.20 для транзита Алят — Беюк-Кесик — Алят
     # --------------------------------------------------------------------------
     alat_border_names = {
+        "Ələt-eksp.",
         "Ələt eksport-Kurik",
         "Ələt eksport-Türk.",
-        "Ələt eksport-Aktau"
+        "Ələt eksport-Aktau",
     }
     boyuk_kesik_names = {
         "Böyük Kəsik",
