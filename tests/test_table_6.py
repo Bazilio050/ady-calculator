@@ -178,9 +178,9 @@ def test_table_6_col_7_other_liquids_import_alat():
 
 
 def test_table_6_col_8_private_tank_transit_alat():
-    """Тест 7: Наливные грузы — Колонка 8 (Приватные цистерны | Ялама -> Алят-эксп.)"""
+    """Тест 7: Наливные грузы — Колонка 8 (Приватные цистерны | Беюк Кясик -> Алят-эксп.)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Ялама", "Алят-эксп.")
+    route_res = router.calculate_route("БК", "Алят-эксп.")
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
