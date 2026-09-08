@@ -149,7 +149,7 @@ STATIONS_MAPPING = {
     "Göylərçöl": {"code": "554402", "AZ": ["Göylərçöl"], "RU": ["Гейлярчель"], "EN": ["Goylarchol"]},
     "Gövşaban": {"code": "553801", "AZ": ["Gövşaban"], "RU": ["Гевшабан"], "EN": ["Govshaban"]},
     "Güzdək": {"code": "546600", "AZ": ["Güzdək"], "RU": ["Гюздек"], "EN": ["Guzdek"]},
-    "Hacıqabul": {"code": "554202", "AZ": ["Hacıqabul"], "RU": ["Кази-Магомед"], "EN": ["Hajigabul"]},
+    "Hacıqabul": {"code": "554202", "AZ": ["Hacıqabul"], "RU": ["Кази-Магомед", "Гаджигабул"], "EN": ["Hajigabul"]},
     "Həkəri": {"code": "551505", "AZ": ["Həkəri"], "RU": ["Акари"], "EN": ["Hakari"]},
     "Horadiz": {"code": "551806", "AZ": ["Horadiz"], "RU": ["Горадиз"], "EN": ["Horadiz"]},
     "Hövsan": {"code": "547800", "AZ": ["Hövsan"], "RU": ["Говсаны"], "EN": ["Hovsan"]},
