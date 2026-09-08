@@ -140,7 +140,7 @@ def apply_main_rules(
     # --------------------------------------------------------------------------
     # ПРАВИЛО 4: Коэффициент 1.20 на Нефтепродукты в цистернах (Однократно)
     # --------------------------------------------------------------------------
-    if shipment in ["import", "transit"] and is_oil_product and wagon_type in ["tank", "bunker"]:
+    if shipment in ["import", "transit"] and is_oil_product and wagon_type in ["tank", "bunker", "cistern"]:
         if not any(rule["calculated_value"] == 1.20 for rule in applied_rules):
             final_coeff *= 1.20
             applied_rules.append({
