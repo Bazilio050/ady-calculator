@@ -107,7 +107,7 @@ class TariffCalculator:
             wagon_type=wagon_type,
             from_canonical_name=from_canonical_name,
             to_canonical_name=to_canonical_name,
-            is_table_3=is_table_3_applicable and not is_ref_wagon,
+            is_table_3=is_table_3_applicable and not (is_ref_wagon or is_tank_wagon),
             is_private_wagon=is_private_wagon
         )
         
