@@ -12,7 +12,7 @@ def _print_test_header(title: str):
 
 def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, weight: float, wagon_type: str, is_private: bool):
     _print_test_header(title)
-    print(f"Маршрут: {route_res.from_station.canonical_name} ({route_res.from_station.code}) - {route_res.to_station.canonical_name} ({route_res.to_station.code}) [{route_res.shipment_type.value}] - {route_res.apply_min_distance_rule} км")
+    print(f"Маршрут: {route_res.from_station.canonical_name} ({route_res.from_station.code}) - {route_res.to_station.canonical_name} ({route_res.to_station.code}) [{route_res.shipment_type.value}] - {route_res.distance_km} км")
     print(f"ГНГ код: {gng_code}")
     print(f"Тип вагона: {wagon_type} [{'СПС (приватный)' if is_private else 'СПС (инвентарный)'}]")
     print(f"Вес (факт): {weight} т -> Расчетный (Табл.6/Правило 2): {calc_res['billable_weight']} т")
@@ -60,7 +60,7 @@ def test_table_6_col_2_oil_transit_kuryk():
         shipment_type=route_res.shipment_type.value,
         gng_code="27101921",
         actual_weight=60.0,
-        distance_km=apply_min_distance_rule,
+        distance_km=effective_dist,
         wagon_type="cistern",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -81,7 +81,7 @@ def test_table_6_col_3_energy_gases_export_trk():
         shipment_type=route_res.shipment_type.value,
         gng_code="27111211",
         actual_weight=45.0,
-        distance_km=route_res.apply_min_distance_rule,
+        distance_km=route_res.effective_dist,
         wagon_type="cistern",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -102,7 +102,7 @@ def test_table_6_col_4_gases_hydrocarbons_import_alat():
         shipment_type=route_res.shipment_type.value,
         gng_code="28141000",
         actual_weight=50.0,
-        distance_km=route_res.apply_min_distance_rule,
+        distance_km=route_res.effective_dist,
         wagon_type="cistern",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -123,7 +123,7 @@ def test_table_6_col_5_alcohols_phenols_transit_alat():
         shipment_type=route_res.shipment_type.value,
         gng_code="29051100",
         actual_weight=55.0,
-        distance_km=route_res.apply_min_distance_rule,
+        distance_km=route_res.effective_dist,
         wagon_type="cistern",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -144,7 +144,7 @@ def test_table_6_col_6_perishable_liquids_export_alat():
         shipment_type=route_res.shipment_type.value,
         gng_code="04011000",
         actual_weight=40.0,
-        distance_km=route_res.apply_min_distance_rule,
+        distance_km=route_res.effective_dist,
         wagon_type="cistern",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -165,7 +165,7 @@ def test_table_6_col_7_other_liquids_import_alat():
         shipment_type=route_res.shipment_type.value,
         gng_code="99999999",
         actual_weight=50.0,
-        distance_km=route_res.apply_min_distance_rule,
+        distance_km=route_res.effective_dist,
         wagon_type="cistern",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -186,7 +186,7 @@ def test_table_6_col_8_private_tank_transit_alat():
         shipment_type=route_res.shipment_type.value,
         gng_code="27071000",
         actual_weight=50.0,
-        distance_km=route_res.apply_min_distance_rule,
+        distance_km=route_res.effective_dist,
         wagon_type="cistern",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
