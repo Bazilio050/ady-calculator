@@ -63,6 +63,12 @@ class Table5Calculator:
         cls._rates_cache = tariffs
         return cls._rates_cache
 
+    FRUIT_VEG_GNG_PREFIXES = (
+        "0701", "0702", "0703", "0704", "0705", "0706", "0707", "0708", "0709", "0710",
+        "0803", "0804", "0805", "0806", "0807", "0808", "0809", "0810",
+        "12129100"
+    )
+
     @classmethod
     def calculate(
         cls,
@@ -70,12 +76,14 @@ class Table5Calculator:
         weight_tons: float = 0.0,
         equipment_type: str = "refrigerator",
         is_empty: bool = False,
-        ref_section_wagons_count: Optional[int] = None
+        ref_section_wagons_count: Optional[int] = None,
+        gng_code: Optional[str] = None,
+        is_tariff_agreement_origin: bool = False
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
         Расчитывает базовую ставку CHF/т по Таблице 5 и возвращает детальную информацию
-        включая сработавшие локальные правила и коэффициенты составности рефсекции.
+        включая коэффициенты составности рефсекции и скидку 0.60 на плодоовощную продукцию.
         """
         tariffs = cls._load_data()
         dist = int(round(distance_km))
@@ -124,6 +132,17 @@ class Table5Calculator:
                     "params": {"ref_section_wagons_count": ref_section_wagons_count}
                 })
 
+            # Скидка 0.60 на плодоовощную продукцию стран Тарифного Соглашения
+            if is_tariff_agreement_origin and gng_code:
+                clean_gng = str(gng_code).strip()
+                if any(clean_gng.startswith(prefix) for prefix in cls.FRUIT_VEG_GNG_PREFIXES):
+                    coeff_val *= 0.60
+                    applied_rules.append({
+                        "rule_code": "REF_FRUIT_VEG_COEFF_0_60",
+                        "calculated_value": 0.60,
+                        "params": {"gng_code": clean_gng}
+                    })
+
             final_rate = base_rate * coeff_val
             return {
                 "base_rate": final_rate,
@@ -159,7 +178,9 @@ class Table5Calculator:
         weight_tons: float = 0.0,
         equipment_type: str = "refrigerator",
         is_empty: bool = False,
-        ref_section_wagons_count: Optional[int] = None
+        ref_section_wagons_count: Optional[int] = None,
+        gng_code: Optional[str] = None,
+        is_tariff_agreement_origin: bool = False
     ) -> float:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -170,7 +191,9 @@ class Table5Calculator:
             weight_tons=weight_tons,
             equipment_type=equipment_type,
             is_empty=is_empty,
-            ref_section_wagons_count=ref_section_wagons_count
+            ref_section_wagons_count=ref_section_wagons_count,
+            gng_code=gng_code,
+            is_tariff_agreement_origin=is_tariff_agreement_origin
         )
         return res["base_rate"]
         """
