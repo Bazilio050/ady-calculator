@@ -30,3 +30,7 @@ jobs:
       - name: Запуск тестов Таблицы 5 (Специализированный подвижной состав)
         run: |
           python -m pytest tests/test_table_5_full.py -v -s
+      
+      - name: Запуск тестов Таблицы 6 (Наливные грузы в цистернах)
+        run: |
+          pytest tests/test_table_6.py
