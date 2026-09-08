@@ -106,9 +106,16 @@
         elif eq_lower in ("thermos", "ice_wagon"):
             base_rate = matched_rates["col_4"] if weight_tons < 25.0 else matched_rates["col_5"]
 
-        # 3. Автовозы
-        elif eq_lower == "car_carrier":
+        # 3. Автовозы и двухъярусные платформы
+        elif eq_lower in ("car_carrier", "two_tier_platform", "двухъярусная_платформа"):
             base_rate = matched_rates["col_6"]
+            if eq_lower in ("two_tier_platform", "двухъярусная_платформа"):
+                base_rate *= 0.80
+                applied_rules.append({
+                    "rule_code": "CAR_CARRIER_TWO_TIER_COEFF_0_80",
+                    "calculated_value": 0.80,
+                    "params": {"equipment_type": equipment_type}
+                })
 
         # 4. ИНВ / АНВ
         elif eq_lower in ("inv", "anv", "inv_anv"):
