@@ -73,7 +73,12 @@ class TariffCalculator:
         is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"]
 
         # 3. Расчет правил и коэффициентов
-        ref_wagon_types = ["refrigerator", "arv", "thermos", "ice_wagon", "car_carrier", "two_tier_platform"]
+        ref_wagon_types = [
+            "refrigerator", "arv", "ref_section", "thermos", "ice_wagon",
+            "car_carrier", "two_tier_platform", "двухъярусная_платформа",
+            "diesel_generator", "diesel_gen", "дизель_генератор",
+            "inv", "anv", "inv_anv"
+        ]
         is_ref_wagon = wagon_type.lower() in ref_wagon_types
 
         rules_res = apply_main_rules(
