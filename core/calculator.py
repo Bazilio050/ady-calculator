@@ -117,10 +117,8 @@ class TariffCalculator:
                 is_in_loaded_ref_section=is_in_loaded_ref_section
             )
             base_rate_chf = t5_res["base_rate"]
-            if "applied_rules" in t5_res:
-                notifications.extend(t5_res["applied_rules"])
 
-            # Забираем правила составности, которые сформировала сама Таблица 5
+            # Переносим правила из Таблицы 5 ровно один раз без дублирования
             t5_rules = t5_res.get("applied_rules", [])
             for r in t5_rules:
                 applied_rules_list.append(r)
