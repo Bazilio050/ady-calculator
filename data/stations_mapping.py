@@ -61,7 +61,7 @@ STATIONS_MAPPING = {
     "code": "558701",
     "export_code": "558701",
     "is_border": True,
-    "AZ": ["Böyük Kəsik eksport", "BK", ""Boyuk Kesik eksp"],
+    "AZ": ["Böyük Kəsik eksport", "BK", "Boyuk Kesik eksp"],
     "RU": ["Беюк Кясик экспорт", "БК", "Беюк Кясик-эксп."],
     "EN": ["Boyuk Kesik exp", "BK"]
 },
