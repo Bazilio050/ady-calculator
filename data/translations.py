@@ -102,5 +102,10 @@ RULE_MESSAGES = {
         "az": "Yüklü refrijerator seksiyasının tərkibində olan boş vaqon üçün hər ox-km-ə 0.10 İsveçrə frankı tarifi tətbiq edilmişdir.",
         "ru": "Применен тариф 0.10 CHF за 1 ось-км для порожнего вагона в составе груженой рефсекции.",
         "en": "A rate of 0.10 CHF per axle-km was applied for an empty wagon within a loaded reefer section."
+    },
+    "CAR_CARRIER_TWO_TIER_COEFF_0_80": {
+        "az": "Avtomobil daşıyan ikimərtəbəli platformalarda daşınmaya 0.80 əmsalı tətbiq edilmişdir.",
+        "ru": "Применен коэффициент 0.80 для перевозки автомобилей на двухъярусных платформах.",
+        "en": "A coefficient of 0.80 was applied for vehicle transport on two-tier platforms."
     }
 }
