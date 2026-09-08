@@ -59,28 +59,34 @@ class TariffCalculator:
         is_ref_wagon = wagon_type_lower in ref_wagon_types
         is_tank_wagon = wagon_type_lower in tank_wagon_types
 
-        # 1.1. Минимальная норма загрузки по ГНГ
-        min_load_res = TableMinLoadCalculator.get_min_load_weight(
-            gng_code=gng_code,
-            actual_weight=act_w
-        )
-        weight_after_min_norm = min_load_res["calculated_weight"]
+        # 1.1. Минимальная норма загрузки по ГНГ (для цистерн — фиксированные 25т по Правилу 2)
+        if is_tank_wagon:
+            weight_after_min_norm = 25.0
+        else:
+            min_load_res = TableMinLoadCalculator.get_min_load_weight(
+                gng_code=gng_code,
+                actual_weight=act_w
+            )
+            weight_after_min_norm = min_load_res["calculated_weight"]
 
-        if min_load_res.get("rule_code"):
-            notifications.append({
-                "rule_code": min_load_res["rule_code"],
-                "params": min_load_res.get("params", {})
-            })
+            if min_load_res.get("rule_code"):
+                notifications.append({
+                    "rule_code": min_load_res["rule_code"],
+                    "params": min_load_res.get("params", {})
+                })
 
         # 1.2. Округление категории веса по Таблице 1
-        weight_res = Table1Calculator.calculate_billable_weight(weight_after_min_norm)
-        billable_weight = weight_res["calculated_weight"]
+        if is_tank_wagon:
+            billable_weight = 25.0
+        else:
+            weight_res = Table1Calculator.calculate_billable_weight(weight_after_min_norm)
+            billable_weight = weight_res["calculated_weight"]
 
-        if weight_res.get("rule_code"):
-            notifications.append({
-                "rule_code": weight_res["rule_code"],
-                "params": weight_res.get("params", {})
-            })
+            if weight_res.get("rule_code"):
+                notifications.append({
+                    "rule_code": weight_res["rule_code"],
+                    "params": weight_res.get("params", {})
+                })
 
         # 2. Проверка применимости Таблиц 3 и 4
         is_table_3_applicable = ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
