@@ -188,8 +188,8 @@ def test_table_6_col_8_private_tank_transit_alat():
         actual_weight=50.0,
         distance_km=route_res.distance_km,
         wagon_type="cistern",
-        from_canonical_name="Yalama",
-        to_canonical_name="Ələt-eksp.",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
         is_private_wagon=True
     )
 
