@@ -32,7 +32,9 @@ class TariffCalculator:
         is_private_wagon: bool = False,
         shipment_date: Optional[str] = None,
         ref_section_wagons_count: Optional[int] = None,
-        is_tariff_agreement_origin: bool = False
+        is_tariff_agreement_origin: bool = False,
+        axle_count: int = 4,
+        is_in_loaded_ref_section: bool = False
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -104,7 +106,9 @@ class TariffCalculator:
                 equipment_type=wagon_type,
                 ref_section_wagons_count=ref_section_wagons_count,
                 gng_code=gng_code,
-                is_tariff_agreement_origin=is_tariff_agreement_origin
+                is_tariff_agreement_origin=is_tariff_agreement_origin,
+                axle_count=axle_count,
+                is_in_loaded_ref_section=is_in_loaded_ref_section
             )
             base_rate_chf = t5_res["base_rate"]
 
