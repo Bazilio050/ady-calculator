@@ -232,21 +232,22 @@ def test_empty_wagon_in_loaded_ref_section():
 
 
 def test_two_tier_car_carrier_platform():
-    """Тест 9: Двухъярусная платформа-автовоз (Коэф. 0.80)"""
+    """Тест 9: Двухъярусная платформа-автовоз (Коэф. 0.80, транзит Ялама -> Беюк Кясик)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Баку-Товарная", "Гянджа")
+    route_res = router.calculate_route("Ялама", "Беюк Кясик")
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
         gng_code="8703",
         actual_weight=15,
-        distance_km=route_res.distance_km,
+        distance_km=effective_dist,
         wagon_type="two_tier_platform",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
         is_private_wagon=True
     )
 
-    _print_calculation_result("9. Двухъярусная платформа-автовоз (Баку -> Гянджа)", route_res, calc_res, "8703", 15, "two_tier_platform", True)
+    _print_calculation_result("9. Двухъярусная платформа-автовоз (Ялама -> Беюк Кясик)", route_res, calc_res, "8703", 15, "two_tier_platform", True)
     rule_codes = [n["rule_code"] for n in calc_res["notifications"]]
     assert "CAR_CARRIER_TWO_TIER_COEFF_0_80" in rule_codes
