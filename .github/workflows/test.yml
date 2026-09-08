@@ -33,4 +33,4 @@ jobs:
       
       - name: Запуск тестов Таблицы 6 (Наливные грузы в цистернах)
         run: |
-          pytest tests/test_table_6.py
+          python -m pytest tests/test_table_6.py -v -s
