@@ -37,4 +37,6 @@ jobs:
 
       - name: Запуск тестов Таблицы 7 (пассажирский вагон 99910000)
         run: |
+          ls -la tests/
+          python -m pytest tests/test_table_7.py -v -s --collect-only
           python -m pytest tests/test_table_7.py -v -s
