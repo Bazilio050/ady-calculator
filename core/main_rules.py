@@ -186,15 +186,10 @@ def apply_main_rules(
     # --------------------------------------------------------------------------
     # ПРАВИЛО 8: Коэффициент 0.85 на собственные (приватные) вагоны
     # --------------------------------------------------------------------------
-    if is_private_wagon:
+    if is_private_wagon and not is_empty:
         final_coeff *= 0.85
         applied_rules.append({
             "calculated_value": 0.85,
             "rule_code": "MAIN_COEFF_0_85_PRIVATE_WAGON",
             "params": {"is_private_wagon": is_private_wagon}
         })
-
-    return {
-        "calculated_value": round(final_coeff, 4),
-        "rules": applied_rules
-    }
