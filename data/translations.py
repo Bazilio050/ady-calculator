@@ -107,5 +107,69 @@ RULE_MESSAGES = {
         "az": "Avtomobil daşıyan ikimərtəbəli platformalarda daşınmaya 0.80 əmsalı tətbiq edilmişdir.",
         "ru": "Применен коэффициент 0.80 для перевозки автомобилей на двухъярусных платформах.",
         "en": "A coefficient of 0.80 was applied for vehicle transport on two-tier platforms."
-    }
+    },
+
+    # ------------------------------------------------------------------------------
+    # БЛОК: Локализация Таблицы 7 (Контейнерные и малотоннажные отправки)
+    # ------------------------------------------------------------------------------
+    "TABLE_7_BASE_LOOKUP": {
+        "ru": "Базовая ставка по Таблице 7 ({interval} км, колонка {column}): {base_rate_chf} CHF",
+        "az": "Cədvəl 7 üzrə baza tarifi ({interval} km, sütun {column}): {base_rate_chf} CHF",
+        "en": "Base rate per Table 7 ({interval} km, column {column}): {base_rate_chf} CHF",
+    },
+    "TABLE_7_COL_2_WAGON_5T": {
+        "ru": "Повагонная отправка малой тоннажности (категория 5 тонн)",
+        "az": "Kiçik tonnajlı vaqon daşıması (5 ton kateqoriyası)",
+        "en": "Small-tonnage wagon shipment (5-ton category)",
+    },
+    "TABLE_7_COL_3_WAGON_10T": {
+        "ru": "Повагонная отправка малой тоннажности (категория 10 тонн)",
+        "az": "Kiçik tonnajlı vaqon daşıması (10 ton kateqoriyası)",
+        "en": "Small-tonnage wagon shipment (10-ton category)",
+    },
+    "TABLE_7_COL_4_WAGON_15T": {
+        "ru": "Повагонная отправка малой тоннажности (категория 15 тонн)",
+        "az": "Kiçik tonnajlı vaqon daşıması (15 ton kateqoriyası)",
+        "en": "Small-tonnage wagon shipment (15-ton category)",
+    },
+    "TABLE_7_COL_5_WAGON_20T": {
+        "ru": "Повагонная отправка малой тоннажности (категория 20 тонн)",
+        "az": "Kiçik tonnajlı vaqon daşıması (20 ton kateqoriyası)",
+        "en": "Small-tonnage wagon shipment (20-ton category)",
+    },
+    "TABLE_7_COL_6_WAGON_25T": {
+        "ru": "Повагонная отправка малой тоннажности (категория 25 тонн)",
+        "az": "Kiçik tonnajlı vaqon daşıması (25 ton kateqoriyası)",
+        "en": "Small-tonnage wagon shipment (25-ton category)",
+    },
+    "TABLE_7_COL_6_PASSENGER_POSTAL": {
+        "ru": "Перевозка в пассажирском вагоне / Почтовое отправление (п. 3.1.2.5, колонка 6)",
+        "az": "Sərnişin vaqonunda daşıma / Poçt göndərişi (bənd 3.1.2.5, sütun 6)",
+        "en": "Carriage in passenger car / Postal shipment (clause 3.1.2.5, column 6)",
+    },
+    "TABLE_7_MIN_PASSENGER_POSTAL_WEIGHT_66T": {
+        "ru": "Применена минимальная расчетная масса 66 тонн для пассажирского/почтового вагона (фактическая: {actual_weight} т)",
+        "az": "Sərnişin/poçt vaqonu üçün minimum 66 ton hesablama çəkisi tətbiq olunub (faktiki: {actual_weight} t)",
+        "en": "Minimum billable weight of 66 tons applied for passenger/postal car (actual: {actual_weight} t)",
+    },
+    "TABLE_7_COL_7_CONTAINER_3T_LOADED": {
+        "ru": "Среднетоннажный контейнер 3т (гружёный)",
+        "az": "Orta tonnajlı konteyner 3t (yüklü)",
+        "en": "Medium-tonnage container 3t (loaded)",
+    },
+    "TABLE_7_COL_8_CONTAINER_5T_LOADED": {
+        "ru": "Среднетоннажный контейнер 5т (гружёный)",
+        "az": "Orta tonnajlı konteyner 5t (yüklü)",
+        "en": "Medium-tonnage container 5t (loaded)",
+    },
+    "TABLE_7_COL_9_CONTAINER_3T_EMPTY": {
+        "ru": "Среднетоннажный контейнер 3т (порожний)",
+        "az": "Orta tonnajlı konteyner 3t (boş)",
+        "en": "Medium-tonnage container 3t (empty)",
+    },
+    "TABLE_7_COL_10_CONTAINER_5T_EMPTY": {
+        "ru": "Среднетоннажный контейнер 5т (порожний)",
+        "az": "Orta tonnajlı konteyner 5t (boş)",
+        "en": "Medium-tonnage container 5t (empty)",
+    },
 }
