@@ -157,8 +157,22 @@ class TariffCalculator:
         # Объявляем флаг Таблицы 7 до начала ветвления if/elif
         is_table_7 = (calc_type_table_7 is not None) or is_passenger_wagon or (gng_code == "99910000")
 
-        if is_tank_wagon:
+        is_transporter = wagon_type_lower in ("transporter", "транспортер")
+
+        # ------------------------------------------------------------------------------
+        # БЛОК: Правило 3.2.2 (Порожний приватный вагон — 0.10 CHF / ось-км)
+        # ------------------------------------------------------------------------------
+        if is_empty_wagon and is_private_wagon and not is_transporter:
+            table_name = "Пункт 3.2.2"
+            base_rate_chf = distance_km * axle_count * 0.10
+            notifications.append({
+                "rule_code": "MAIN_EMPTY_PRIVATE_WAGON_0_10_AXLE_KM",
+                "params": {"axle_count": axle_count, "distance_km": distance_km}
+            })
+
+        elif is_tank_wagon:
             table_name = "Таблица 6"
+            ...
             t6_res = Table6Calculator.calculate(
                 distance_km=distance_km,
                 gng_code=gng_code,
