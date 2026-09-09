@@ -114,7 +114,7 @@ def test_empty_private_wagon_boyuk_kasik_kuryk():
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
-        gng_code="99210000",
+        gng_code="99220000",
         actual_weight=0.0,
         distance_km=effective_dist,
         wagon_type="covered",
@@ -144,7 +144,7 @@ def test_empty_private_wagon_8_axles_alyat_exp_yalama():
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
-        gng_code="99210000",
+        gng_code="99220000",
         actual_weight=0.0,
         distance_km=effective_dist,
         wagon_type="cistern",
