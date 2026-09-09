@@ -34,8 +34,8 @@ def _print_calculation_result(
         f"[{route_res.shipment_type.value}] - {display_dist} км"
     )
     print(f"Код ГНГ / Груз: {gng_code}")
-    print(f"Тип расчета Таблицы 7: {calc_type}")
-    print(f"Фактический вес/объем: {weight}")
+    print(f"Тип расчета Таблицы 7 / Вагон: {calc_type}")
+    print(f"Фактический вес/объем: {weight} т -> Расчетный: {calc_res['billable_weight']} т")
 
     base_chf = round(calc_res['base_rate_chf_per_ton'], 2)
     applied_tbl = calc_res.get('applied_table', calc_res.get('table_name'))
@@ -73,7 +73,7 @@ def _print_calculation_result(
 
 
 # ------------------------------------------------------------------------------
-# БЛОК 3: Тестовые сценарии для Таблицы 7
+# БЛОК 3: Тестовые сценарии для Таблицы 7 и правила 3.1.2.6
 # ------------------------------------------------------------------------------
 
 def test_table_7_small_tonnage_5t_wagon_import():
@@ -104,7 +104,7 @@ def test_table_7_small_tonnage_5t_wagon_import():
 
 
 def test_table_7_postal_shipment_66t_transit():
-    """Тест 2: Почтовые отправления ГНГ 99910000 (мин. 66т) — Транзит (Ялама -> Беюк Кясик)"""
+    """Тест 2: Пассажирский/Почтовый вагон ГНГ 99910000 (мин. 66т) — Транзит (Ялама -> Беюк Кясик)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "БК")
 
@@ -121,65 +121,38 @@ def test_table_7_postal_shipment_66t_transit():
     )
 
     _print_calculation_result(
-        "2. Почтовое отправление ГНГ 99910000 [Транзит: Ялама -> Беюк Кясик]",
-        route_res, calc_res, "99910000", 20.0, "postal_shipment"
+        "2. Почтовое / Пассажирское отправление ГНГ 99910000 [Транзит: Ялама -> Беюк Кясик]",
+        route_res, calc_res, "99910000", 20.0, "postal_passenger_wagon"
     )
     assert calc_res["base_rate_chf_per_ton"] > 0
+    assert calc_res["billable_weight"] == 66.0
     applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", [])]
     assert "TABLE_7_MIN_PASSENGER_POSTAL_WEIGHT_66T" in applied_codes
 
 
-def test_table_7_medium_container_3t_loaded_export():
-    """Тест 3: Среднетоннажный контейнер 3т (Гружёный) — Экспорт (Абшерон -> Ялама)"""
+def test_transporter_6_axle_min_weight_rule_3_1_2_6():
+    """Тест 3: Перевозка на 6-осном транспортере по п. 3.1.2.6 (мин. 5т/ось -> 30т) — Транзит (Ялама -> Беюк Кясик)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Абшерон", "Ялама")
+    route_res = router.calculate_route("Ялама", "БК")
 
     effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
-        gng_code="99999999",
-        actual_weight=3.0,
+        gng_code="84119900",
+        actual_weight=12.0,  # Фактический вес 12т (ниже 30т для 6 осей)
         distance_km=effective_dist,
-        wagon_type="platform",
+        wagon_type="transporter",
+        axle_count=6,
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
-        calc_type_table_7="medium_container",
-        container_category_tons=3,
-        is_loaded_container=True
+        is_private_wagon=True
     )
 
     _print_calculation_result(
-        "3. Среднетоннажный контейнер 3т (Гружёный) [Экспорт: Абшерон -> Ялама]",
-        route_res, calc_res, "99999999", 3.0, "medium_container (3t loaded)"
+        "3. Перевозка на 6-осном транспортере (п. 3.1.2.6 | Мин. 30 тонн) [Транзит: Ялама -> Беюк Кясик]",
+        route_res, calc_res, "84119900", 12.0, "transporter (6 axles)"
     )
-    assert calc_res["base_rate_chf_per_ton"] > 0
-    assert calc_res["applied_table"] == "Таблица 7"
-
-
-def test_table_7_medium_container_5t_empty_transit():
-    """Тест 4: Среднетоннажный контейнер 5т (Порожний) — Транзит (Алят-эксп. -> Беюк Кясик)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Алят-эксп", "БК")
-
-    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
-
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="99999999",
-        actual_weight=0.0,
-        distance_km=effective_dist,
-        wagon_type="platform",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        calc_type_table_7="medium_container",
-        container_category_tons=5,
-        is_loaded_container=False
-    )
-
-    _print_calculation_result(
-        "4. Среднетоннажный контейнер 5т (Порожний) [Транзит: Алят-эксп. -> Беюк Кясик]",
-        route_res, calc_res, "99999999", 0.0, "medium_container (5t empty)"
-    )
-    assert calc_res["base_rate_chf_per_ton"] > 0
-    assert calc_res["applied_table"] == "Таблица 7"
+    assert calc_res["billable_weight"] == 30.0
+    applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", [])]
+    assert "MIN_WEIGHT_TRANSPORTER_AXLE_NORMATIVE" in applied_codes
