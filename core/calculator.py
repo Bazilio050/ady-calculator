@@ -44,7 +44,7 @@ class TariffCalculator:
         is_passenger_wagon: bool = False,                    # Флаг пассажирского вагона
         is_specialized_platform: bool = False,               # Флаг специализированной платформы
         coupling_distance_over_19m: bool = False,            # Расстояние между осями сцепа > 19 м
-        is_oversized_cargo: bool = False                     # Флаг габаритного груза (əndazəli)
+        is_oversized_cargo: bool = False,                    # Флаг габаритного груза (əndazəli)
         is_empty_wagon: bool = False                         # Флаг порожнего вагона (boş вагон)
     ) -> Dict[str, Any]:
         """
