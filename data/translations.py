@@ -187,4 +187,10 @@ RULE_MESSAGES = {
         "ru": "Применен коэффициент 1.20 на перевозку габаритных грузов на специализированных платформах инвентарного парка длиной более 19 м (п. 3.1.2.7).",
         "en": "A factor of 1.20 was applied for the transportation of gauged cargo on specialized platforms of the inventory fleet over 19m long (clause 3.1.2.7)."
     },
+
+    "MAIN_EMPTY_PRIVATE_WAGON_0_10_AXLE_KM": {
+        "az": "Özəl/icarəyə götürülmüş boş vaqonların daşınması haqqı hər ox-km üçün 0,10 İsveçrə frankı tarifi ilə hesablanıb (bənd 3.2.2).",
+        "ru": "Расчет провозной платы за перевозку собственных/арендованных порожних вагонов выполнен по ставке 0.10 CHF/ось-км (п. 3.2.2).",
+        "en": "Transportation fee for private/leased empty wagons calculated at 0.10 CHF per axle-km (clause 3.2.2)."
+    },
 }
