@@ -220,23 +220,21 @@ class Table7Calculator:
         })
 
         # Вычисление итоговой ставки CHF для данного этапа
+        # ------------------------------------------------------------------------------
+        # БЛОК 4: Расчет базовой ставки в CHF (Ставка за 1т * Вес пользователя)
+        # ------------------------------------------------------------------------------
         clean_gng = str(cargo_code_gng).strip() if cargo_code_gng else ""
         if calc_type == "wagon_small_tonnage" or is_passenger_wagon or clean_gng == "99910000":
             billable_weight = weight_tons
-            if is_passenger_wagon or clean_gng == "99910000":
-                if billable_weight < 66.0:
-                    billable_weight = 66.0
-                    applied_rules.append({
-                        "rule_code": "TABLE_7_MIN_PASSENGER_POSTAL_WEIGHT_66T",
-                        "params": {"actual_weight": weight_tons, "applied_weight": 66.0}
-                    })
             calculated_rate_chf = round(base_rate * billable_weight, 2)
         else:
+            billable_weight = weight_tons
             calculated_rate_chf = round(base_rate, 2)
 
         return {
             "base_rate": base_rate,
             "column_name": column_name,
+            "billable_weight": billable_weight,
             "calculated_rate_chf": calculated_rate_chf,
             "applied_rules": applied_rules
         }
