@@ -73,19 +73,21 @@ def _print_calculation_result(
 
 
 # ------------------------------------------------------------------------------
-# БЛОК 3: Тестовые сценарии для Таблицы 7
+# БЛОК 3: Обновленные тестовые сценарии (Импорт / Экспорт / Транзит)
 # ------------------------------------------------------------------------------
 
-def test_table_7_small_tonnage_5t_wagon():
-    """Тест 1: Повагонная отправка малой тоннажности — 5 тонн (Ялама -> Абшерон)"""
+def test_table_7_small_tonnage_5t_wagon_import():
+    """Тест 1: Повагонная отправка малой тоннажности (5 тонн) — Импорт (Ялама -> Абшерон)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "Абшерон")
+
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
         gng_code="10019000",
         actual_weight=5.0,
-        distance_km=route_res.calculated_distance_km,
+        distance_km=effective_dist,
         wagon_type="covered",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -94,30 +96,32 @@ def test_table_7_small_tonnage_5t_wagon():
     )
 
     _print_calculation_result(
-        "1. Малотоннажная отправка вагона (Категория 5т) [Ялама -> Абшерон]",
+        "1. Малотоннажная отправка вагона (5т) [Импорт: Ялама -> Абшерон]",
         route_res, calc_res, "10019000", 5.0, "wagon_small_tonnage (5t)"
     )
     assert calc_res["base_rate_chf_per_ton"] > 0
     assert calc_res["applied_table"] == "Таблица 7"
 
 
-def test_table_7_postal_shipment_66t_minimum():
-    """Тест 2: Почтовые отправления ГНГ 99910000 с проверкой норматива 66 тонн (Ялама -> БК)"""
+def test_table_7_postal_shipment_66t_transit():
+    """Тест 2: Почтовые отправления ГНГ 99910000 (мин. 66т) — Транзит (Ялама -> Беюк Кясик)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "БК")
+
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
         gng_code="99910000",
-        actual_weight=20.0,  # Фактический вес ниже 66т для проверки подтяжки норматива
-        distance_km=route_res.calculated_distance_km,
+        actual_weight=20.0,
+        distance_km=effective_dist,
         wagon_type="covered",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name
     )
 
     _print_calculation_result(
-        "2. Почтовое отправление ГНГ 99910000 (Проверка норматива 66 тонн) [Ялама -> БК]",
+        "2. Почтовое отправление ГНГ 99910000 [Транзит: Ялама -> Беюк Кясик]",
         route_res, calc_res, "99910000", 20.0, "postal_shipment"
     )
     assert calc_res["base_rate_chf_per_ton"] > 0
@@ -125,16 +129,18 @@ def test_table_7_postal_shipment_66t_minimum():
     assert "TABLE_7_MIN_PASSENGER_POSTAL_WEIGHT_66T" in applied_codes
 
 
-def test_table_7_medium_container_3t_loaded():
-    """Тест 3: Среднетоннажный контейнер 3 тонны — Гружёный (Абшерон -> Гянджа)"""
+def test_table_7_medium_container_3t_loaded_export():
+    """Тест 3: Среднетоннажный контейнер 3т (Гружёный) — Экспорт (Абшерон -> Ялама)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Абшерон", "Гянджа")
+    route_res = router.calculate_route("Абшерон", "Ялама")
+
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
         gng_code="99999999",
         actual_weight=3.0,
-        distance_km=route_res.calculated_distance_km,
+        distance_km=effective_dist,
         wagon_type="platform",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -144,23 +150,25 @@ def test_table_7_medium_container_3t_loaded():
     )
 
     _print_calculation_result(
-        "3. Среднетоннажный контейнер 3т (Гружёный) [Абшерон -> Гянджа]",
+        "3. Среднетоннажный контейнер 3т (Гружёный) [Экспорт: Абшерон -> Ялама]",
         route_res, calc_res, "99999999", 3.0, "medium_container (3t loaded)"
     )
     assert calc_res["base_rate_chf_per_ton"] > 0
     assert calc_res["applied_table"] == "Таблица 7"
 
 
-def test_table_7_medium_container_5t_empty():
-    """Тест 4: Среднетоннажный контейнер 5 тонн — Порожний (Алят-эксп. -> Ялама)"""
+def test_table_7_medium_container_5t_empty_transit():
+    """Тест 4: Среднетоннажный контейнер 5т (Порожний) — Транзит (Алят-эксп. -> Беюк Кясик)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Алят-эксп", "Ялама")
+    route_res = router.calculate_route("Алят-эксп", "БК")
+
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
         gng_code="99999999",
         actual_weight=0.0,
-        distance_km=route_res.calculated_distance_km,
+        distance_km=effective_dist,
         wagon_type="platform",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -170,8 +178,11 @@ def test_table_7_medium_container_5t_empty():
     )
 
     _print_calculation_result(
-        "4. Среднетоннажный контейнер 5т (Порожний) [Алят-эксп. -> Ялама]",
+        "4. Среднетоннажный контейнер 5т (Порожний) [Транзит: Алят-эксп. -> Беюк Кясик]",
         route_res, calc_res, "99999999", 0.0, "medium_container (5t empty)"
+    )
+    assert calc_res["base_rate_chf_per_ton"] > 0
+    assert calc_res["applied_table"] == "Таблица 7"
     )
     assert calc_res["base_rate_chf_per_ton"] > 0
     assert calc_res["applied_table"] == "Таблица 7"
