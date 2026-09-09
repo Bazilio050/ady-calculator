@@ -7,6 +7,7 @@ from core.tables.table_3 import Table3Calculator
 from core.tables.table_4 import Table4Calculator
 from core.tables.table_5 import Table5Calculator
 from core.tables.table_6 import Table6Calculator
+from core.tables.table_7 import Table7Calculator
 from typing import Dict, Any, List, Optional
 from core.main_rules import apply_main_rules
 from data.currency_rates import get_exchange_rate
@@ -35,7 +36,12 @@ class TariffCalculator:
         ref_section_wagons_count: Optional[int] = None,
         is_tariff_agreement_origin: bool = False,
         axle_count: int = 4,
-        is_in_loaded_ref_section: bool = False
+        is_in_loaded_ref_section: bool = False,
+        calc_type_table_7: Optional[str] = None,             # "wagon_small_tonnage" или "medium_container"
+        weight_category_table_7: Optional[int] = None,       # 5, 10, 15, 20, 25 тонн
+        container_category_tons: Optional[int] = None,       # 3 или 5 тонн
+        is_loaded_container: bool = True,                    # True = гружёный, False = порожний
+        is_passenger_wagon: bool = False                     # Флаг пассажирского вагона
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -139,6 +145,29 @@ class TariffCalculator:
             )
             base_rate_chf = t6_res["base_rate"]
             is_private_discount_included = t6_res.get("is_private_discount_included", False)
+
+        elif is_table_7:
+            table_name = "Таблица 7"
+            calc_type_t7 = calc_type_table_7 or "wagon_small_tonnage"
+
+            t7_res = Table7Calculator.calculate(
+                distance_km=distance_km,
+                calc_type=calc_type_t7,
+                weight_tons=actual_weight,
+                weight_category=weight_category_table_7,
+                container_category_tons=container_category_tons,
+                is_loaded=is_loaded_container,
+                cargo_code_gng=gng_code,
+                is_passenger_wagon=is_passenger_wagon
+            )
+            base_rate_chf = t7_res["base_rate"]
+
+            for r in t7_res.get("applied_rules", []):
+                notifications.append({
+                    "rule_code": r["rule_code"],
+                    "params": r.get("params", {})
+                })
+            
 
         elif is_ref_wagon:
             table_name = "Таблица 5"
