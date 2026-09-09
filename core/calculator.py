@@ -136,6 +136,9 @@ class TariffCalculator:
         base_rate_chf = 0.0
         table_name = "Таблица 3"
 
+        # Объявляем флаг Таблицы 7 до начала ветвления if/elif
+        is_table_7 = (calc_type_table_7 is not None) or is_passenger_wagon or (gng_code == "99910000")
+
         if is_tank_wagon:
             table_name = "Таблица 6"
             t6_res = Table6Calculator.calculate(
