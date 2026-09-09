@@ -65,9 +65,16 @@ class TariffCalculator:
         is_ref_wagon = wagon_type_lower in ref_wagon_types
         is_tank_wagon = wagon_type_lower in tank_wagon_types
 
-        # 1.1. Минимальная норма загрузки по ГНГ (для цистерн — фиксированные 25т по Правилу 2)
+        # 1.1. Минимальная норма загрузки (для цистерн — 25т, для транспортеров — п. 3.1.2.6)
         if is_tank_wagon:
             weight_after_min_norm = 25.0
+        elif wagon_type_lower in ("transporter", "транспортер"):
+            weight_after_min_norm, transp_rule = Table7Calculator.check_transporter_min_weight(
+                actual_weight=actual_weight,
+                axle_count=axle_count
+            )
+            if transp_rule:
+                notifications.append(transp_rule)
         else:
             min_load_res = TableMinLoadCalculator.get_min_load_weight(
                 gng_code=gng_code,
