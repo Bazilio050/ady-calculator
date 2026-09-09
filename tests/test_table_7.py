@@ -73,7 +73,7 @@ def _print_calculation_result(
 
 
 # ------------------------------------------------------------------------------
-# БЛОК 3: Обновленные тестовые сценарии (Импорт / Экспорт / Транзит)
+# БЛОК 3: Тестовые сценарии для Таблицы 7
 # ------------------------------------------------------------------------------
 
 def test_table_7_small_tonnage_5t_wagon_import():
@@ -180,9 +180,6 @@ def test_table_7_medium_container_5t_empty_transit():
     _print_calculation_result(
         "4. Среднетоннажный контейнер 5т (Порожний) [Транзит: Алят-эксп. -> Беюк Кясик]",
         route_res, calc_res, "99999999", 0.0, "medium_container (5t empty)"
-    )
-    assert calc_res["base_rate_chf_per_ton"] > 0
-    assert calc_res["applied_table"] == "Таблица 7"
     )
     assert calc_res["base_rate_chf_per_ton"] > 0
     assert calc_res["applied_table"] == "Таблица 7"
