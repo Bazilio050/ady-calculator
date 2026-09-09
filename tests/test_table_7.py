@@ -103,7 +103,7 @@ def test_table_7_small_tonnage_5t_wagon_import():
     assert calc_res["applied_table"] == "Таблица 7"
 
 
-ef test_table_7_postal_shipment_transit():
+def test_table_7_postal_shipment_transit():
     """Тест 2: Пассажирский/Почтовый вагон ГНГ 99910000 — Расчет по Таблице 7 (Колонка 6)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "БК")
