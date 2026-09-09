@@ -171,6 +171,8 @@ class TariffCalculator:
                 is_passenger_wagon=is_passenger_wagon
             )
             base_rate_chf = t7_res["base_rate"]
+
+            # Фиксируем актуальный расчетный вес из Таблицы 7 (например, 66т для почты)
             if "billable_weight" in t7_res:
                 billable_weight = t7_res["billable_weight"]
 
