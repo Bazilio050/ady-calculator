@@ -23,9 +23,14 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
     print(f"Курс конвертации (CHF -> USD): {calc_res['exchange_rate']}")
     print(f"Базовая ставка в USD: {calc_res['base_rate_usd_per_ton']} USD/т\n")
 
-    # Вывод коэффициентов из словаря переводов (RU версия)
-    notifications = calc_res.get("notifications", [])
-    for notif in notifications:
+    # Собираем уведомления от Роутера (минимальное расстояние) и от Калькулятора
+    all_notifications = []
+    if route_res.rule_code:
+        all_notifications.append({"rule_code": route_res.rule_code, "params": route_res.params})
+    all_notifications.extend(calc_res.get("notifications", []))
+
+    # Вывод RU версий
+    for notif in all_notifications:
         code = notif.get("rule_code")
         params = notif.get("params", {})
         if code in RULE_MESSAGES and code != "TABLE_1_ROUNDING":
@@ -34,13 +39,13 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
 
     print(f"\nИтог за 1 т: {calc_res['final_rate_usd_per_ton']} USD/т\n")
 
-    # Вывод двуязычных уведомлений AZ и EN из центрального словаря
-    if notifications:
+    # Вывод AZ и EN версий
+    if all_notifications:
         print("Уведомления:")
-        for notif in notifications:
+        for notif in all_notifications:
             code = notif.get("rule_code")
             params = notif.get("params", {})
-            if code in RULE_MESSAGES:
+            if code in RULE_MESSAGES and code != "TABLE_1_ROUNDING":
                 az_msg = RULE_MESSAGES[code]["az"].format(**params) if params else RULE_MESSAGES[code]["az"]
                 en_msg = RULE_MESSAGES[code]["en"].format(**params) if params else RULE_MESSAGES[code]["en"]
                 print(f"AZ: {az_msg}")
