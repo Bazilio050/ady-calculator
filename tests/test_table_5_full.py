@@ -251,3 +251,31 @@ def test_two_tier_car_carrier_platform():
     _print_calculation_result("9. Двухъярусная платформа-автовоз (Ялама -> Беюк Кясик)", route_res, calc_res, "8703", 15, "two_tier_platform", True)
     rule_codes = [n["rule_code"] for n in calc_res["notifications"]]
     assert "CAR_CARRIER_TWO_TIER_COEFF_0_80" in rule_codes
+
+def test_car_carrier_yalama_boyuk_kesik_p3123():
+    """Тест 10: Перевозка автомобилей на спецсоставе (п. 3.1.2.3 | Ялама -> Беюк Кясик)"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "БК")
+
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="8703",
+        actual_weight=8.0,  # Фактический вес 8т (ниже 10т) для проверки правила мин. 10т
+        distance_km=effective_dist,
+        wagon_type="car_carrier",
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True
+    )
+
+    _print_calculation_result(
+        "10. Автовоз по п. 3.1.2.3 (Проверка мин. массы 10 тонн) [Ялама -> Беюк Кясик]",
+        route_res, calc_res, "8703", 8.0, "car_carrier", True
+    )
+
+    # Ставка Таблицы 5 для 680 км (колонка 6) = 116.31 CHF
+    assert calc_res["base_rate_chf_per_ton"] == 116.31
+    assert calc_res["billable_weight"] == 10.0
+    assert calc_res["applied_table"] == "Таблица 5"
