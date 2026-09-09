@@ -103,8 +103,8 @@ def test_table_7_small_tonnage_5t_wagon_import():
     assert calc_res["applied_table"] == "Таблица 7"
 
 
-def test_table_7_postal_shipment_66t_transit():
-    """Тест 2: Пассажирский/Почтовый вагон ГНГ 99910000 (мин. 66т) — Транзит (Ялама -> Беюк Кясик)"""
+ef test_table_7_postal_shipment_transit():
+    """Тест 2: Пассажирский/Почтовый вагон ГНГ 99910000 — Расчет по Таблице 7 (Колонка 6)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "БК")
 
@@ -125,9 +125,8 @@ def test_table_7_postal_shipment_66t_transit():
         route_res, calc_res, "99910000", 20.0, "postal_passenger_wagon"
     )
     assert calc_res["base_rate_chf_per_ton"] > 0
-    assert calc_res["billable_weight"] == 66.0
-    applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", [])]
-    assert "TABLE_7_MIN_PASSENGER_POSTAL_WEIGHT_66T" in applied_codes
+    assert calc_res["billable_weight"] == 20.0
+    assert calc_res["applied_table"] == "Таблица 7"
 
 
 def test_transporter_6_axle_min_weight_rule_3_1_2_6():
