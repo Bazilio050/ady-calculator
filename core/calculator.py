@@ -187,14 +187,15 @@ class TariffCalculator:
             )
             base_rate_chf = t5_res["base_rate"]
 
-            # Переносим правила из Таблицы 5 ровно один раз без дублирования
+            # Переносим правила Таблицы 5 в общий список без дублирования
             t5_rules = t5_res.get("applied_rules", [])
             for r in t5_rules:
-                applied_rules_list.append(r)
-                notifications.append({
-                    "rule_code": r["rule_code"],
-                    "params": r.get("params", {})
-                })
+                if r not in applied_rules_list:
+                    applied_rules_list.append(r)
+                    notifications.append({
+                        "rule_code": r["rule_code"],
+                        "params": r.get("params", {})
+                    })
         elif is_table_3_applicable:
             table_name = "Таблица 3"
             base_rate_chf = Table3Calculator.get_base_rate(
