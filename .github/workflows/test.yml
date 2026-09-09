@@ -39,3 +39,7 @@ jobs:
         run: |
           python -c "import tests.test_table_7"
           python -m pytest tests/test_table_7.py -v -s
+
+      - name: Запуск тестов Правила 3.2.2 (Порожние приватные вагоны)
+        run: |
+          python -m pytest tests/test_rule_porojniy.py -v -s
