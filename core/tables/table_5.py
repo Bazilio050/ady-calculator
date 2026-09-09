@@ -201,13 +201,18 @@ class Table5Calculator:
         elif eq_lower in ("car_carrier", "two_tier_platform", "двухъярусная_платформа"):
             base_rate = matched_rates["col_6"]
             if eq_lower in ("two_tier_platform", "двухъярусная_платформа"):
-                base_rate *= 0.80
                 applied_rules.append({
                     "rule_code": "CAR_CARRIER_TWO_TIER_COEFF_0_80",
                     "calculated_value": 0.80,
                     "params": {"equipment_type": equipment_type}
                 })
 
+            return {
+                "base_rate": base_rate,
+                "raw_base_rate": base_rate,
+                "applied_rules": applied_rules
+            }
+            
         # 4. ИНВ / АНВ
         elif eq_lower in ("inv", "anv", "inv_anv"):
             base_rate = matched_rates["col_8"] if is_empty else matched_rates["col_7"]
