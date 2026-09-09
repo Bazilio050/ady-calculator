@@ -236,13 +236,24 @@ class TariffCalculator:
             applied_rules_list = [r for r in applied_rules_list if r["rule_code"] != "MAIN_COEFF_0_85_PRIVATE_WAGON"]
             notifications = [n for n in notifications if n.get("rule_code") != "MAIN_COEFF_0_85_PRIVATE_WAGON"]
 
-        specific_rules = [r for r in applied_rules_list if r["rule_code"] not in ["MAIN_COEFF_1_015_INTERNATIONAL_LOADED", "MAIN_COEFF_0_85_PRIVATE_WAGON"]]
-        loaded_rule = [r for r in applied_rules_list if r["rule_code"] == "MAIN_COEFF_1_015_INTERNATIONAL_LOADED"]
-        private_rule = [r for r in applied_rules_list if r["rule_code"] == "MAIN_COEFF_0_85_PRIVATE_WAGON"]
-
-        ordered_rules = specific_rules + loaded_rule + private_rule
-
-        running_rate = base_rate_usd
+        # ------------------------------------------------------------------------------
+        # БЛОК: Правило 3.1.2.7 (Спецплатформа > 19м с габаритным грузом, МПС)
+        # ------------------------------------------------------------------------------
+        if (
+            is_specialized_platform
+            and coupling_distance_over_19m
+            and is_oversized_cargo
+            and not is_private_wagon
+        ):
+            rule_3_1_2_7 = {
+                "rule_code": "MAIN_COEFF_SPECIAL_PLATFORM_OVER_19M_1_20",
+                "calculated_value": 1.20
+            }
+            applied_rules_list.append(rule_3_1_2_7)
+            notifications.append({
+                "rule_code": "MAIN_COEFF_SPECIAL_PLATFORM_OVER_19M_1_20",
+                "params": {}
+            })
         for rule in ordered_rules:
             running_rate = running_rate * rule["calculated_value"]
 
