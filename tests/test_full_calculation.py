@@ -24,7 +24,7 @@ def _print_calculation_result(test_name: str, route_res, calc_res, gng_code: str
     table_name = "Таблица 4" if ship_type in ["transit", "транзит", "tranzit"] else "Таблица 3"
 
     print("\n" + "=" * 80)
-    print(f"   {test_name.upper()}")
+    print(f"    {test_name.upper()}")
     print("=" * 80)
     print(f"Маршрут: {route_res.formatted_output('RU')}")
     print(f"ГНГ код: {gng_code}")
@@ -113,6 +113,7 @@ def test_export_timber():
     _print_calculation_result("2. Экспорт леса (Апшерон -> Ялама)", route_res, calc_res, "44071100", 40, "платформа", False)
     assert calc_res["billable_weight"] == 45
 
+
 def test_import_timber_sps():
     """Тест 4: Ялама -> Апшерон | ГНГ 4407 | платформа | 35т | СПС (приватный)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
@@ -140,11 +141,13 @@ def test_paper_bilajari_boyuk_kesik():
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Баладжары", "Беюк Кясик")
 
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
         gng_code="4818",
         actual_weight=26,
-        distance_km=route_res.distance_km,
+        distance_km=effective_dist,
         wagon_type="хоппер",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -154,16 +157,19 @@ def test_paper_bilajari_boyuk_kesik():
     _print_calculation_result("5. Изделия из бумаги МПС (Баладжары -> Беюк Кясик)", route_res, calc_res, "4818", 26, "хоппер", False)
     assert calc_res["actual_weight"] == 26
 
+
 def test_alat_exp_boyuk_kesik():
     """Тест 6: Алят (эксп) -> Беюк Кясик | ГНГ 78 | крытый | 35т | СПС | Ноябрь 2026"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Алят-эксп.", "Беюк Кясик")
 
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
         gng_code="78",
         actual_weight=35,
-        distance_km=route_res.distance_km,
+        distance_km=effective_dist,
         wagon_type="крытый",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -180,11 +186,13 @@ def test_kuryk_khirdalan():
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Курык", "Хырдалан")
 
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
         gng_code="28049",
         actual_weight=50,
-        distance_km=route_res.distance_km,
+        distance_km=effective_dist,
         wagon_type="платформа",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -193,6 +201,7 @@ def test_kuryk_khirdalan():
 
     _print_calculation_result("7. Курык -> Хырдалан (ГНГ 28049)", route_res, calc_res, "28049", 50, "платформа", True)
     assert calc_res["actual_weight"] == 50
+    assert calc_res["billable_weight"] == 60
 
 
 def test_yalama_trk_wheat_hopper():
@@ -200,11 +209,13 @@ def test_yalama_trk_wheat_hopper():
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "ТРК")
 
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
         gng_code="1001",
         actual_weight=55,
-        distance_km=route_res.distance_km,
+        distance_km=effective_dist,
         wagon_type="хоппер",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
@@ -214,16 +225,19 @@ def test_yalama_trk_wheat_hopper():
     _print_calculation_result("8. Ялама -> ТРК Пшеница Хоппер", route_res, calc_res, "1001", 55, "хоппер", True)
     assert calc_res["actual_weight"] == 55
 
+
 def test_transit_coal_yalama_boyuk_kesik():
     """Тест: Транзит угля (Ялама -> Беюк Кясик, 60 т, полувагон)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "Беюк Кясик")
 
+    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
         gng_code="27011100",
         actual_weight=60,
-        distance_km=route_res.distance_km,
+        distance_km=effective_dist,
         wagon_type="полувагон",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
