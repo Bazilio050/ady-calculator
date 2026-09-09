@@ -69,6 +69,20 @@ class ShipmentQuery(BaseModel):
         description="True, если вагон следует порожним в составе гружёной рефсекции (0.10 CHF/ось-км)"
     )
 
+    # 5. Специфичные поля для специализированных платформ (Правило 3.1.2.7)
+    is_specialized_platform: bool = Field(
+        default=False,
+        description="True, если перевозка выполняется на специализированной платформе для крупнотоннажных контейнеров"
+    )
+    coupling_distance_over_19m: bool = Field(
+        default=False,
+        description="True, если расстояние между осями сцепа автосцепок платформы превышает 19 метров"
+    )
+    is_oversized_cargo: bool = Field(
+        default=False,
+        description="True, если перевозимый груз является габаритным/очерченным (əndazəli)"
+    )
+
     @field_validator("gng_code")
     @classmethod
     def validate_gng_code(cls, value: Optional[str]) -> Optional[str]:
