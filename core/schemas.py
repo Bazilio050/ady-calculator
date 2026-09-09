@@ -21,6 +21,9 @@ class ShipmentQuery(BaseModel):
     
     # 2. Поля груза и веса
     gng_code: Optional[str] = Field(
+        default="99220000",
+        description="Код ГНГ (от 2 до 8 цифр). Если вагон порожний (is_empty_wagon=True) и код не указан, по умолчанию 99220000."
+    )r] = Field(
         default=None, 
         description="Код ГНГ груза (строго от 2 до 8 цифр)"
     )
