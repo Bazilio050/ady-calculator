@@ -35,8 +35,7 @@ jobs:
         run: |
           python -m pytest tests/test_table_6.py -v -s
 
-      - name: Запуск тестов Таблицы 7 (пассажирский вагон 99910000)
+      - name: Запуск тестов Таблицы 7 (Диагностика)
         run: |
-          ls -la tests/
-          python -m pytest tests/test_table_7.py -v -s --collect-only
+          python -c "import tests.test_table_7"
           python -m pytest tests/test_table_7.py -v -s
