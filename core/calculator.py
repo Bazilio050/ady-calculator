@@ -141,10 +141,12 @@ class TariffCalculator:
             is_oil_product=is_oil_product,
             is_empty=is_empty_wagon,
             is_private_wagon=is_private_wagon
-        ) or {}
+        )
+
+        if rules_res is None:
+            rules_res = {}
 
         applied_rules_list = rules_res.get("rules", [])
-
         for rule in applied_rules_list:
             notifications.append({
                 "rule_code": rule["rule_code"],
