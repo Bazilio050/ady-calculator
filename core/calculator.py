@@ -163,7 +163,7 @@ class TariffCalculator:
             t7_res = Table7Calculator.calculate(
                 distance_km=distance_km,
                 calc_type=calc_type_t7,
-                weight_tons=actual_weight,
+                weight_tons=billable_weight,
                 weight_category=weight_category_table_7,
                 container_category_tons=container_category_tons,
                 is_loaded=is_loaded_container,
