@@ -41,7 +41,10 @@ class TariffCalculator:
         weight_category_table_7: Optional[int] = None,       # 5, 10, 15, 20, 25 тонн
         container_category_tons: Optional[int] = None,       # 3 или 5 тонн
         is_loaded_container: bool = True,                    # True = гружёный, False = порожний
-        is_passenger_wagon: bool = False                     # Флаг пассажирского вагона
+        is_passenger_wagon: bool = False,                    # Флаг пассажирского вагона
+        is_specialized_platform: bool = False,               # Флаг специализированной платформы
+        coupling_distance_over_19m: bool = False,            # Расстояние между осями сцепа > 19 м
+        is_oversized_cargo: bool = False                     # Флаг габаритного груза (əndazəli)
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
