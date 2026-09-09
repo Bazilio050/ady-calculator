@@ -75,10 +75,10 @@ def _print_calculation_result(
 # БЛОК 3: Тестовые сценарии для правила 3.2.2 (Порожний приватный вагон)
 # ------------------------------------------------------------------------------
 
-def test_empty_private_wagon_ganja_absheron():
-    """Тест 1: Порожний приватный вагон (4 оси) — Гянджа -> Абшерон"""
+def test_empty_private_wagon_ganja_yalama():
+    """Тест 1: Порожний приватный вагон (4 оси) — Гянджа -> Ялама"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Гянджа", "Абшерон")
+    route_res = router.calculate_route("Гянджа", "Ялама")
 
     effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
 
@@ -96,7 +96,7 @@ def test_empty_private_wagon_ganja_absheron():
     )
 
     _print_calculation_result(
-        "1. Порожний приватный вагон (4 оси) [Гянджа -> Абшерон]",
+        "1. Порожний приватный вагон (4 оси) [Гянджа -> Ялама]",
         route_res, calc_res, "99210000", 4
     )
 
