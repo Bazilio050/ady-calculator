@@ -31,10 +31,10 @@ jobs:
         run: |
           python -m pytest tests/test_table_5_full.py -v -s
       
-      - name: Запуск тестов Таблицы 7 (пассажирский вагон 99910000)
+      - name: Запуск тестов Таблицы 6 (Наливные грузы в цистернах)
         run: |
           python -m pytest tests/test_table_6.py -v -s
 
-      - name: Запуск тестов Таблицы 6 (Наливные грузы в цистернах)
+      - name: Запуск тестов Таблицы 7 (пассажирский вагон 99910000)
         run: |
           python -m pytest tests/test_table_7.py -v -s
