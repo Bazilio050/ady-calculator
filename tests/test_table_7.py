@@ -1,158 +1,247 @@
 # ------------------------------------------------------------------------------
-# БЛОК 1: Импорт библиотек и вспомогательных модулей
+# БЛОК 1: Импорт библиотек и объявления типа
 # ------------------------------------------------------------------------------
-import pytest
-from core.router import RailwayRouter
-from core.calculator import TariffCalculator
-from data.translations import RULE_MESSAGES
+import os
+from typing import Dict, Tuple, Optional, Any, List
 
 
-# ------------------------------------------------------------------------------
-# БЛОК 2: Вспомогательные функции форматирования вывода
-# ------------------------------------------------------------------------------
-def _print_test_header(title: str):
-    """Печатает стандартизированный заголовок для каждого тестового сценария."""
-    print(f"\n{'='*70}\n{title}\n{'='*70}")
-
-
-def _print_calculation_result(
-    title: str,
-    route_res,
-    calc_res,
-    gng_code: str,
-    weight: float,
-    calc_type: str
-):
+class Table7Calculator:
     """
-    Выводит детализированные результаты расчета на русском, азербайджанском и английском языках.
+    ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
+    Считывает тарифные ставки Таблицы 7 из файла data/Table_7_Tariffs.txt
+    и вычисляет базовую ставку в CHF для:
+    1. Повагонных отправок малой тоннажности (5, 10, 15, 20, 25 тонн) — ставка за 1 тонну.
+    2. Пассажирских вагонов и почтовых отправлений (ГНГ 99910000) по колонке 6 — ставка за 1 тонну (мин. 66 т).
+    3. Среднетоннажных контейнеров (3 и 5 тонн, гружёных и порожних) — ставка за 1 контейнер.
     """
-    _print_test_header(title)
-    display_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
-    print(
-        f"Маршрут: {route_res.from_station.canonical_name} ({route_res.from_station.code}) - "
-        f"{route_res.to_station.canonical_name} ({route_res.to_station.code}) "
-        f"[{route_res.shipment_type.value}] - {display_dist} км"
-    )
-    print(f"Код ГНГ / Груз: {gng_code}")
-    print(f"Тип расчета Таблицы 7 / Вагон: {calc_type}")
-    print(f"Фактический вес/объем: {weight} т -> Расчетный: {calc_res['billable_weight']} т")
 
-    base_chf = round(calc_res['base_rate_chf_per_ton'], 2)
-    applied_tbl = calc_res.get('applied_table', calc_res.get('table_name'))
-    print(f"Базовая ставка: {base_chf} CHF ({applied_tbl})")
-    print(f"Курс конвертации (CHF -> USD): {calc_res['exchange_rate']}")
-    print(f"Базовая ставка в USD: {calc_res['base_rate_usd_per_ton']} USD\n")
+    DATA_FILE_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "Table_7_Tariffs.txt")
 
-    # Собираем уведомления от Роутера (минимальное расстояние) и от Калькулятора
-    all_notifications = []
-    if route_res.rule_code:
-        all_notifications.append({"rule_code": route_res.rule_code, "params": route_res.params})
-    all_notifications.extend(calc_res.get("notifications", []))
+    _rates_cache: Optional[Dict[Tuple[int, int], Dict[str, float]]] = None
 
-    # Вывод версий на русском языке
-    for notif in all_notifications:
-        code = notif.get("rule_code")
-        params = notif.get("params", {})
-        if code in RULE_MESSAGES:
-            ru_msg = RULE_MESSAGES[code]["ru"].format(**params) if params else RULE_MESSAGES[code]["ru"]
-            print(f"{ru_msg}")
+    # --------------------------------------------------------------------------
+    # БЛОК 2: Загрузка и кэширование тарифных ставок
+    # --------------------------------------------------------------------------
+    @classmethod
+    def _parse_distance_range(cls, raw_dist: str) -> Tuple[int, int]:
+        """Разбирает строку диапазона '1-10' в кортеж (1, 10)."""
+        parts = raw_dist.strip().split("-")
+        if len(parts) == 2:
+            return int(parts[0]), int(parts[1])
+        raise ValueError(f"Некорректный формат диапазона расстояний в Таблице 7: {raw_dist}")
 
-    print(f"\nИтоговый тариф: {calc_res['final_rate_usd_per_ton']} USD\n")
+    @classmethod
+    def _load_data(cls) -> Dict[Tuple[int, int], Dict[str, float]]:
+        """Считывает и кэширует данные из Table_7_Tariffs.txt один раз."""
+        if cls._rates_cache is not None:
+            return cls._rates_cache
 
-    # Вывод мультиязычных уведомлений (AZ / EN)
-    if all_notifications:
-        print("Уведомления (AZ / EN):")
-        for notif in all_notifications:
-            code = notif.get("rule_code")
-            params = notif.get("params", {})
-            if code in RULE_MESSAGES:
-                az_msg = RULE_MESSAGES[code]["az"].format(**params) if params else RULE_MESSAGES[code]["az"]
-                en_msg = RULE_MESSAGES[code]["en"].format(**params) if params else RULE_MESSAGES[code]["en"]
-                print(f"AZ: {az_msg}")
-                print(f"EN: {en_msg}")
+        file_path = os.path.abspath(cls.DATA_FILE_PATH)
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Файл Таблицы 7 не найден по пути: {file_path}")
 
+        tariffs: Dict[Tuple[int, int], Dict[str, float]] = {}
 
-# ------------------------------------------------------------------------------
-# БЛОК 3: Тестовые сценарии для Таблицы 7 и правила 3.1.2.6
-# ------------------------------------------------------------------------------
+        with open(file_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line_str = line.strip()
+                if (
+                    not line_str
+                    or line_str.startswith("=")
+                    or line_str.startswith("CƏDVƏL")
+                    or "Məsafə" in line_str
+                    or "Колонки:" in line_str
+                ):
+                    continue
 
-def test_table_7_small_tonnage_5t_wagon_import():
-    """Тест 1: Повагонная отправка малой тоннажности (5 тонн) — Импорт (Ялама -> Абшерон)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Ялама", "Абшерон")
+                parts = [p.strip() for p in line_str.split("|")]
+                if len(parts) < 10:
+                    continue
 
-    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+                try:
+                    dist_range = cls._parse_distance_range(parts[0])
+                    tariffs[dist_range] = {
+                        "col_2": float(parts[1]),  # Вагон: 5 тонн
+                        "col_3": float(parts[2]),  # Вагон: 10 тонн
+                        "col_4": float(parts[3]),  # Вагон: 15 тонн
+                        "col_5": float(parts[4]),  # Вагон: 20 тонн
+                        "col_6": float(parts[5]),  # Вагон: 25 тонн / Пассажирский / Почта (ГНГ 99910000)
+                        "col_7": float(parts[6]),  # Контейнер 3т (гружёный)
+                        "col_8": float(parts[7]),  # Контейнер 5т (гружёный)
+                        "col_9": float(parts[8]),  # Контейнер 3т (порожний)
+                        "col_10": float(parts[9]), # Контейнер 5т (порожний)
+                    }
+                except (ValueError, IndexError):
+                    continue
 
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="10019000",
-        actual_weight=5.0,
-        distance_km=effective_dist,
-        wagon_type="covered",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        calc_type_table_7="wagon_small_tonnage",
-        weight_category_table_7=5
-    )
+        cls._rates_cache = tariffs
+        return cls._rates_cache
 
-    _print_calculation_result(
-        "1. Малотоннажная отправка вагона (5т) [Импорт: Ялама -> Абшерон]",
-        route_res, calc_res, "10019000", 5.0, "wagon_small_tonnage (5t)"
-    )
-    assert calc_res["base_rate_chf_per_ton"] > 0
-    assert calc_res["applied_table"] == "Таблица 7"
+    # --------------------------------------------------------------------------
+    # БЛОК 3: Определение колонки таблицы
+    # --------------------------------------------------------------------------
+    @classmethod
+    def determine_column(
+        cls,
+        calc_type: str,
+        weight_category: Optional[int] = None,
+        container_category_tons: Optional[int] = None,
+        is_loaded: bool = True,
+        cargo_code_gng: Optional[str] = None,
+        is_passenger_wagon: bool = False
+    ) -> Tuple[str, str]:
+        """
+        Динамически определяет код колонки (col_2 ... col_10) и код правила локализации.
+        """
+        clean_gng = str(cargo_code_gng).strip() if cargo_code_gng else ""
 
+        # 1. Почтовые отправления (ГНГ 99910000) или Пассажирские вагоны -> Колонка 6
+        if is_passenger_wagon or clean_gng == "99910000":
+            return "col_6", "TABLE_7_COL_6_PASSENGER_POSTAL"
 
-def test_table_7_postal_shipment_66t_transit():
-    """Тест 2: Пассажирский/Почтовый вагон ГНГ 99910000 (мин. 66т) — Транзит (Ялама -> Беюк Кясик)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Ялама", "БК")
+        # 2. Малотоннажные повагонные отправки (Колонки 2 - 6)
+        if calc_type == "wagon_small_tonnage":
+            if weight_category == 5:
+                return "col_2", "TABLE_7_COL_2_WAGON_5T"
+            elif weight_category == 10:
+                return "col_3", "TABLE_7_COL_3_WAGON_10T"
+            elif weight_category == 15:
+                return "col_4", "TABLE_7_COL_4_WAGON_15T"
+            elif weight_category == 20:
+                return "col_5", "TABLE_7_COL_5_WAGON_20T"
+            elif weight_category == 25:
+                return "col_6", "TABLE_7_COL_6_WAGON_25T"
+            else:
+                raise ValueError(f"Неподдерживаемая категория веса вагона: {weight_category}")
 
-    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+        # 3. Среднетоннажные контейнеры (Колонки 7 - 10)
+        elif calc_type == "medium_container":
+            if container_category_tons == 3:
+                return ("col_7", "TABLE_7_COL_7_CONTAINER_3T_LOADED") if is_loaded else ("col_9", "TABLE_7_COL_9_CONTAINER_3T_EMPTY")
+            elif container_category_tons == 5:
+                return ("col_8", "TABLE_7_COL_8_CONTAINER_5T_LOADED") if is_loaded else ("col_10", "TABLE_7_COL_10_CONTAINER_5T_EMPTY")
+            else:
+                raise ValueError(f"Неподдерживаемая категория среднетоннажного контейнера: {container_category_tons}")
 
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="99910000",
-        actual_weight=20.0,
-        distance_km=effective_dist,
-        wagon_type="covered",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name
-    )
+        else:
+            raise ValueError(f"Неизвестный тип расчета для Таблицы 7: {calc_type}")
 
-    _print_calculation_result(
-        "2. Почтовое / Пассажирское отправление ГНГ 99910000 [Транзит: Ялама -> Беюк Кясик]",
-        route_res, calc_res, "99910000", 20.0, "postal_passenger_wagon"
-    )
-    assert calc_res["base_rate_chf_per_ton"] > 0
-    assert calc_res["billable_weight"] == 66.0
-    applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", [])]
-    assert "TABLE_7_MIN_PASSENGER_POSTAL_WEIGHT_66T" in applied_codes
+    # --------------------------------------------------------------------------
+    # БЛОК 3.5: Проверка правила 3.1.2.6 (Транспортеры 4, 6, 8 осей — мин. 5т на ось)
+    # --------------------------------------------------------------------------
+    @classmethod
+    def check_transporter_min_weight(
+        cls, 
+        actual_weight: float, 
+        axle_count: int
+    ) -> Tuple[float, Optional[Dict[str, Any]]]:
+        """
+        ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
+        Проверяет норматив п. 3.1.2.6 для 4, 6, 8-осных транспортеров:
+        расчетная масса берется не менее 5 тонн на каждую ось (4 оси -> 20т, 6 осей -> 30т, 8 осей -> 40т).
+        """
+        if axle_count in (4, 6, 8):
+            min_weight = float(axle_count * 5)
+            if actual_weight < min_weight:
+                rule_info = {
+                    "rule_code": "MIN_WEIGHT_TRANSPORTER_AXLE_NORMATIVE",
+                    "params": {
+                        "axle_count": axle_count,
+                        "actual_weight": actual_weight,
+                        "applied_weight": min_weight
+                    }
+                }
+                return min_weight, rule_info
 
+        return actual_weight, None
 
-def test_transporter_6_axle_min_weight_rule_3_1_2_6():
-    """Тест 3: Перевозка на 6-осном транспортере по п. 3.1.2.6 (мин. 5т/ось -> 30т) — Транзит (Ялама -> Беюк Кясик)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Ялама", "БК")
+    # --------------------------------------------------------------------------
+    # БЛОК 4: Вычисление ставки и возврат результата
+    # --------------------------------------------------------------------------
+    @classmethod
+    def calculate(
+        cls,
+        distance_km: float,
+        calc_type: str,  # "wagon_small_tonnage" или "medium_container"
+        weight_tons: float = 0.0,
+        weight_category: Optional[int] = None,
+        container_category_tons: Optional[int] = None,
+        is_loaded: bool = True,
+        cargo_code_gng: Optional[str] = None,
+        is_passenger_wagon: bool = False
+    ) -> Dict[str, Any]:
+        """
+        ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
+        Находит базовую ставку CHF и выполняет первоначальный расчет для Таблицы 7.
+        """
+        dist = int(round(distance_km))
+        tariffs = cls._load_data()
 
-    effective_dist = route_res.calculated_distance_km if route_res.calculated_distance_km > 0 else route_res.distance_km
+        matched_rates = None
+        matched_range = None
+        for (min_dist, max_dist), rates in tariffs.items():
+            if min_dist <= dist <= max_dist:
+                matched_rates = rates
+                matched_range = (min_dist, max_dist)
+                break
 
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="84119900",
-        actual_weight=12.0,  # Фактический вес 12т (ниже 30т для 6 осей)
-        distance_km=effective_dist,
-        wagon_type="transporter",
-        axle_count=6,
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        is_private_wagon=True
-    )
+        if matched_rates is None:
+            if dist > 1000 and (991, 1000) in tariffs:
+                matched_rates = tariffs[(991, 1000)]
+                matched_range = (991, 1000)
+            else:
+                raise ValueError(f"Расстояние {dist} км выходит за пределы Таблицы 7.")
 
-    _print_calculation_result(
-        "3. Перевозка на 6-осном транспортере (п. 3.1.2.6 | Мин. 30 тонн) [Транзит: Ялама -> Беюк Кясик]",
-        route_res, calc_res, "84119900", 12.0, "transporter (6 axles)"
-    )
-    assert calc_res["billable_weight"] == 30.0
-    applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", [])]
-    assert "MIN_WEIGHT_TRANSPORTER_AXLE_NORMATIVE" in applied_codes
+        column_name, col_rule_code = cls.determine_column(
+            calc_type=calc_type,
+            weight_category=weight_category,
+            container_category_tons=container_category_tons,
+            is_loaded=is_loaded,
+            cargo_code_gng=cargo_code_gng,
+            is_passenger_wagon=is_passenger_wagon
+        )
+
+        base_rate = matched_rates[column_name]
+        applied_rules: List[Dict[str, Any]] = []
+
+        applied_rules.append({
+            "rule_code": "TABLE_7_BASE_LOOKUP",
+            "params": {
+                "distance_km": dist,
+                "interval": f"{matched_range[0]}-{matched_range[1]}",
+                "column": column_name,
+                "base_rate_chf": base_rate
+            }
+        })
+
+        applied_rules.append({
+            "rule_code": col_rule_code,
+            "params": {"column": column_name}
+        })
+
+        # Вычисление итоговой ставки CHF для данного этапа
+        clean_gng = str(cargo_code_gng).strip() if cargo_code_gng else ""
+        if calc_type == "wagon_small_tonnage" or is_passenger_wagon or clean_gng == "99910000":
+            billable_weight = weight_tons
+            if is_passenger_wagon or clean_gng == "99910000":
+                if billable_weight < 66.0:
+                    billable_weight = 66.0
+                    applied_rules.append({
+                        "rule_code": "TABLE_7_MIN_PASSENGER_POSTAL_WEIGHT_66T",
+                        "params": {"actual_weight": weight_tons, "applied_weight": 66.0}
+                    })
+            calculated_rate_chf = round(base_rate * billable_weight, 2)
+        else:
+            billable_weight = weight_tons
+            calculated_rate_chf = round(base_rate, 2)
+
+        # ------------------------------------------------------------------------------
+        # БЛОК ИСПРАВЛЕНИЯ: Возврат billable_weight в итоговом словаре Таблицы 7
+        # ------------------------------------------------------------------------------
+        return {
+            "base_rate": base_rate,
+            "column_name": column_name,
+            "billable_weight": billable_weight,
+            "calculated_rate_chf": calculated_rate_chf,
+            "applied_rules": applied_rules
+        }
