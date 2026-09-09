@@ -171,6 +171,8 @@ class TariffCalculator:
                 is_passenger_wagon=is_passenger_wagon
             )
             base_rate_chf = t7_res["base_rate"]
+            if "billable_weight" in t7_res:
+                billable_weight = t7_res["billable_weight"]
 
             for r in t7_res.get("applied_rules", []):
                 notifications.append({
