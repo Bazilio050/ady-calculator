@@ -172,4 +172,13 @@ RULE_MESSAGES = {
         "az": "Orta tonnajlı konteyner 5t (boş)",
         "en": "Medium-tonnage container 5t (empty)",
     },
+
+        # ------------------------------------------------------------------------------
+    # БЛОК: Локализация правила 3.1.2.6 (Транспортеры 4, 6, 8 осей)
+    # ------------------------------------------------------------------------------
+    "MIN_WEIGHT_TRANSPORTER_AXLE_NORMATIVE": {
+        "ru": "Применена минимальная расчетная масса {applied_weight} тонн для {axle_count}-осного транспортера (п. 3.1.2.6, фактическая: {actual_weight} т)",
+        "az": "{axle_count} oxlu transporter üçün minimum {applied_weight} ton hesablama çəkisi tətbiq olunub (bənd 3.1.2.6, faktiki: {actual_weight} t)",
+        "en": "Minimum billable weight of {applied_weight} tons applied for {axle_count}-axle transporter (clause 3.1.2.6, actual: {actual_weight} t)",
+    },
 }
