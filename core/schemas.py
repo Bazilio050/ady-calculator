@@ -50,6 +50,10 @@ class ShipmentQuery(BaseModel):
         default=None,
         description="Дата отправки в формате YYYY-MM-DD (для определения курса валют)"
     )
+    is_empty_wagon: bool = Field(
+        default=False,
+        description="True, если вагон следует в порожнем состоянии (boş вагон)"
+    )
 
     # 4. Специфичные поля Таблицы 5 (Спецвагоны и рефсекции)
     ref_section_wagons_count: Optional[int] = Field(
