@@ -107,8 +107,9 @@ class Table5Calculator:
             })
             
             return {
-                "base_rate": base_rate,
-                "raw_base_rate": base_rate,
+                "base_rate": total_chf_flat,
+                "raw_base_rate": total_chf_flat,
+                "is_flat_fee": True,
                 "applied_rules": applied_rules
             }
 
