@@ -107,8 +107,8 @@ class Table5Calculator:
             })
             
             return {
-                "base_rate": total_chf_flat,
-                "raw_base_rate": total_chf_flat,
+                "base_rate": base_rate,
+                "raw_base_rate": base_rate,
                 "applied_rules": applied_rules
             }
 
@@ -140,10 +140,10 @@ class Table5Calculator:
                     }
                 })
                 return {
-                    "base_rate": total_chf_flat,
-                    "raw_base_rate": total_chf_flat,
-                    "applied_rules": applied_rules
-                }
+                "base_rate": base_rate,
+                "raw_base_rate": base_rate,
+                "applied_rules": applied_rules
+            }
 
             base_rate = matched_rates["col_2"] if weight_tons < 25.0 else matched_rates["col_3"]
 
@@ -187,7 +187,7 @@ class Table5Calculator:
 
             final_rate = base_rate * coeff_val
             return {
-                "base_rate": final_rate,
+                "base_rate": base_rate,
                 "raw_base_rate": base_rate,
                 "applied_rules": applied_rules
             }
@@ -215,10 +215,10 @@ class Table5Calculator:
             raise ValueError(f"Неизвестный тип подвижного состава для Таблицы 5: {equipment_type}")
 
         return {
-            "base_rate": base_rate,
-            "raw_base_rate": base_rate,
-            "applied_rules": applied_rules
-        }
+                "base_rate": base_rate,
+                "raw_base_rate": base_rate,
+                "applied_rules": applied_rules
+            }
 
     @classmethod
     def get_base_rate(
