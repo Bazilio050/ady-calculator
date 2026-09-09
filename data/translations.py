@@ -181,4 +181,10 @@ RULE_MESSAGES = {
         "az": "{axle_count} oxlu transporter üçün minimum {applied_weight} ton hesablama çəkisi tətbiq olunub (bənd 3.1.2.6, faktiki: {actual_weight} t)",
         "en": "Minimum billable weight of {applied_weight} tons applied for {axle_count}-axle transporter (clause 3.1.2.6, actual: {actual_weight} t)",
     },
+
+    "MAIN_COEFF_SPECIAL_PLATFORM_OVER_19M_1_20": {
+        "az": "İnventar parka məsub, oxları arasındakı məsafə 19 metrdən artıq olan ixtisaslaşdırılmış platformalarda əndazəli yüklərin daşınmasına 1,20 əmsalı tətbiq edilib (bənd 3.1.2.7).",
+        "ru": "Применен коэффициент 1.20 на перевозку габаритных грузов на специализированных платформах инвентарного парка длиной более 19 м (п. 3.1.2.7).",
+        "en": "A factor of 1.20 was applied for the transportation of gauged cargo on specialized platforms of the inventory fleet over 19m long (clause 3.1.2.7)."
+    },
 }
