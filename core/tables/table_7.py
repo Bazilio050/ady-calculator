@@ -128,6 +128,34 @@ class Table7Calculator:
             raise ValueError(f"Неизвестный тип расчета для Таблицы 7: {calc_type}")
 
     # --------------------------------------------------------------------------
+    # БЛОК 3.5: Проверка правила 3.1.2.6 (Транспортеры 4, 6, 8 осей — мин. 5т на ось)
+    # --------------------------------------------------------------------------
+    @classmethod
+    def check_transporter_min_weight(
+        cls, 
+        actual_weight: float, 
+        axle_count: int
+    ) -> Tuple[float, Optional[Dict[str, Any]]]:
+        """
+        ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
+        Проверяет норматив п. 3.1.2.6 для 4, 6, 8-осных транспортеров:
+        расчетная масса берется не менее 5 тонн на каждую ось (4 оси -> 20т, 6 осей -> 30т, 8 осей -> 40т).
+        """
+        if axle_count in (4, 6, 8):
+            min_weight = float(axle_count * 5)
+            if actual_weight < min_weight:
+                rule_info = {
+                    "rule_code": "MIN_WEIGHT_TRANSPORTER_AXLE_NORMATIVE",
+                    "params": {
+                        "axle_count": axle_count,
+                        "actual_weight": actual_weight,
+                        "applied_weight": min_weight
+                    }
+                }
+                return min_weight, rule_info
+        return actual_weight, None
+
+    # --------------------------------------------------------------------------
     # БЛОК 4: Вычисление ставки и возврат результата
     # --------------------------------------------------------------------------
     @classmethod
