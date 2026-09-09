@@ -93,12 +93,11 @@ class TariffCalculator:
 
         is_table_7 = (calc_type_table_7 is not None) or is_passenger_wagon or (str(gng_code).strip() == "99910000")
 
-        # 1.2. Округление категории веса по Таблице 1
         if is_tank_wagon:
             billable_weight = 25.0
-        elif is_table_7 and (is_passenger_wagon or str(gng_code).strip() == "99910000"):
-            # Для почты/пассажирских вагонов минимальный расчетный вес — 66 тонн (п. 3.1.2.6 / Таблица 7)
-            billable_weight = max(weight_after_min_norm, 66.0)
+        elif is_table_7:
+            # Для Таблицы 7 берем фактический вес пользователя без округления по Таблице 1
+            billable_weight = float(actual_weight)
         else:
             weight_res = Table1Calculator.calculate_billable_weight(weight_after_min_norm)
             billable_weight = weight_res["calculated_weight"]
