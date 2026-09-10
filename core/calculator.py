@@ -263,7 +263,8 @@ class TariffCalculator:
                     "rule_code": "TANK_CONTAINER_COEFF_1_40_RULE_3_4_3_1",
                     "params": {}
                 })
-        
+
+                
         elif is_ref_wagon:
             table_name = "Таблица 5"
             # Для п. 3.3.1 (гружёные İNV / ANV): минимум 10т
