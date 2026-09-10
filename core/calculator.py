@@ -12,6 +12,9 @@ from typing import Dict, Any, List, Optional
 from core.main_rules import apply_main_rules
 from data.currency_rates import get_exchange_rate
 
+# Константа префиксов ГНГ для порожних вагонов
+EMPTY_WAGON_GNG_PREFIXES = ("9921", "9922")
+
 
 class TariffCalculator:
     """
@@ -56,6 +59,11 @@ class TariffCalculator:
         notifications = []
         ship_type_lower = shipment_type.lower()
         wagon_type_lower = wagon_type.lower()
+
+        # Автоматическое определение порожнего состояния по префиксу ГНГ (9921 / 9922)
+        clean_gng = str(gng_code).strip() if gng_code else ""
+        if clean_gng.startswith(EMPTY_WAGON_GNG_PREFIXES):
+            is_empty_wagon = True
 
         # Определение типа вагона (Спецвагон / Цистерна / Универсальный)
         ref_wagon_types = [
