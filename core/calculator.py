@@ -215,11 +215,15 @@ class TariffCalculator:
 
         elif is_ref_wagon:
             table_name = "Таблица 5"
+            # Для п. 3.3.1 (гружёные İNV / ANV): если вес меньше 10т, устанавливаем минимум 10т
+            if wagon_type_lower in ("inv", "anv", "inv_anv") and not is_empty_wagon and billable_weight < 10.0:
+                billable_weight = 10.0
+
             t5_res = Table5Calculator.calculate(
                 distance_km=distance_km,
                 weight_tons=billable_weight,
                 equipment_type=wagon_type,
-                is_empty=(actual_weight == 0),
+                is_empty=is_empty_wagon,
                 ref_section_wagons_count=ref_section_wagons_count,
                 gng_code=gng_code,
                 is_tariff_agreement_origin=is_tariff_agreement_origin,
