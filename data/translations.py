@@ -250,9 +250,5 @@ RULE_MESSAGES = {
         "ru": "Применены тарифы для специализированных контейнеров (танк-контейнеры, рефконтейнеры, вино/соки) по п. 3.4.3.1.",
         "en": "Tariffs for specialized containers (tank containers, reefer containers, wine/juices) applied under clause 3.4.3.1."
     },
-    "TANK_CONTAINER_COEFF_1_40_RULE_3_4_3_1": {
-        "az": "Yüklü və özəl boş tank-konteynerlərin daşınmasına 1.40 əmsalı tətbiq olunub (bənd 3.4.3.1).",
-        "ru": "Применен коэффициент 1.40 для гружёных и приватных порожних танк-контейнеров (п. 3.4.3.1).",
-        "en": "Multiplier 1.40 applied for loaded and private empty tank containers (clause 3.4.3.1)."
-    },
+   
 }
