@@ -184,12 +184,14 @@ def apply_main_rules(
             "params": {"shipment_type": shipment, "is_empty": is_empty}
         })
 
-    # --------------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # ПРАВИЛО 8: Коэффициент на собственные (приватные) вагоны (0.85 или 0.70 по п. 3.2.5)
-    # --------------------------------------------------------------------------
-    if is_private_wagon and not is_empty:
+    # ------------------------------------------------------------------
+    is_container = wagon_type in ["tank_container", "reefer_container", "wine_juice_container", "container", "universal_container"]
+
+    if is_private_wagon and not is_empty and not is_container:
         is_tank = wagon_type in ["tank", "cistern", "цистерна", "бункер", "bunker"]
-        
+
         if is_tank and Table6Calculator.is_rule_3_2_5(gng):
             coeff_val = 0.70
             rule_code_str = "MAIN_COEFF_0_70_SPECIAL_CHEMICALS_TANK"
