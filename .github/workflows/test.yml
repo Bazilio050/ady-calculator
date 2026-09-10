@@ -43,3 +43,7 @@ jobs:
       - name: Запуск тестов Правила 3.2.2 (Порожние приватные вагоны)
         run: |
           python -m pytest tests/test_rule_porojniy.py -v -s
+
+      - name: Запуск тестов Правила 3.2.6 (Груженый автопоезд, Перевозка автопоезда, Порожний полуприцеп)
+        run: |
+          python -m pytest tests/test_rule_3_2_6.py -v -s         
