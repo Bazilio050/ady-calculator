@@ -213,4 +213,18 @@ RULE_MESSAGES = {
         "ru": "Применена минимальная расчетная масса 10 тонн для груженых İNV/ANV на спецплатформах (п. 3.3.1, фактическая: {actual_weight} т).",
         "en": "Minimum billable weight of 10 tons applied for loaded İNV/ANV on special platforms (clause 3.3.1, actual: {actual_weight} t)."
     },
+
+    # ------------------------------------------------------------------------------
+    # БЛОК: Локализация п. 3.3.2 (Порожние автопоезда/полуприцепы — 7т, кузова — 5т)
+    # ------------------------------------------------------------------------------
+    "EMPTY_ROAD_TRAIN_WEIGHT_7T_RULE_3_3_2": {
+        "az": "Xüsusi təyinatlı platformalarda boş avtoqatarlar, qoşqular və yarımqoşqular üçün 7 ton hesablama çəkisi tətbiq olunub (bənd 3.3.2).",
+        "ru": "Применена фиксированная расчетная масса 7 тонн для порожних автопоездов/прицепов/полуприцепов на спецплатформах (п. 3.3.2).",
+        "en": "Fixed billable weight of 7 tons applied for empty road trains/trailers/semi-trailers on special platforms (clause 3.3.2)."
+    },
+    "EMPTY_AUTO_BODY_WEIGHT_5T_RULE_3_3_2": {
+        "az": "Xüsusi təyinatlı platformalarda çıxarılan boş avtomobil kuzovları üçün 5 ton hesablama çəkisi tətbiq olunub (bənd 3.3.2).",
+        "ru": "Применена фиксированная расчетная масса 5 тонн для съемных порожних автокузовов на спецплатформах (п. 3.3.2).",
+        "en": "Fixed billable weight of 5 tons applied for empty detachable truck bodies on special platforms (clause 3.3.2)."
+    },
 }
