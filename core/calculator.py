@@ -81,6 +81,7 @@ class TariffCalculator:
 
         is_ref_wagon = wagon_type_lower in ref_wagon_types
         is_tank_wagon = wagon_type_lower in tank_wagon_types
+        is_special_container = wagon_type_lower in ("tank_container", "reefer_container", "wine_juice_container")
 
         # ------------------------------------------------------------------------------
         # БЛОК 1.1: Определение минимальной нормы загрузки (Цистерны / Транспортеры / ГНГ)
@@ -223,8 +224,7 @@ class TariffCalculator:
                     "params": r.get("params", {})
                 })
 
-        is_special_container = wagon_type_lower in ("tank_container", "reefer_container", "wine_juice_container")
-
+        
         if is_special_container:
             table_name = "Таблица 10"
             # Определяем категорию для Таблицы 10
