@@ -63,27 +63,27 @@ class TariffCalculator:
         ship_type_lower = shipment_type.lower()
         wagon_type_lower = wagon_type.lower()
 
-        # Автоматическое определение порожнего состояния по префиксу ГНГ (9921 / 9922) или весу = 0
-        clean_gng = str(gng_code).strip() if gng_code else ""
-        if clean_gng.startswith(EMPTY_WAGON_GNG_PREFIXES) or act_w == 0:
-            is_empty_wagon = True
-            
-    
-            # Определение типа вагона (Спецвагон / Цистерна / Специализированный контейнер)
-            ref_wagon_types = [
-                "refrigerator", "arv", "ref_section", "thermos", "ice_wagon",
-                "car_carrier", "two_tier_platform", "двухъярусная_платформа",
-                "diesel_generator", "diesel_gen", "дизель_генератор", "diesel_generator_wagon",
-                "inv", "anv", "inv_anv",
-                "road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп",
-                "auto_body", "detachable_body", "кузов"
-            ]
-        tank_wagon_types = ["cistern", "tank", "цистерна", "бункер", "bunker"]
+        # ------------------------------------------------------------------------------
+        # Списки типов вагонов (ДОЛЖНЫ БЫТЬ В САМОМ НАЧАЛЕ)
+        # ------------------------------------------------------------------------------
+        ref_wagon_types = [
+            "refrigerator", "arv", "ref_section", "thermos", "ice_wagon",
+            "car_carrier", "two_tier_platform", "двухъярусная_платформа",
+            "diesel_generator", "diesel_gen", "дизель_генератор", "diesel_generator_wagon",
+            "inv", "anv", "inv_anv",
+            "road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп",
+            "auto_body", "detachable_body", "кузов"
+        ]
         tank_wagon_types = ["cistern", "tank", "цистерна", "бункер", "bunker"]
 
         is_ref_wagon = wagon_type_lower in ref_wagon_types
         is_tank_wagon = wagon_type_lower in tank_wagon_types
         is_special_container = wagon_type_lower in ("tank_container", "reefer_container", "wine_juice_container")
+
+        # Автоматическое определение порожнего состояния по префиксу ГНГ (9921 / 9922) или весу = 0
+        clean_gng = str(gng_code).strip() if gng_code else ""
+        if clean_gng.startswith(EMPTY_WAGON_GNG_PREFIXES) or act_w == 0:
+            is_empty_wagon = True
 
         # ------------------------------------------------------------------------------
         # БЛОК 1.1: Определение минимальной нормы загрузки (Цистерны / Транспортеры / ГНГ)
