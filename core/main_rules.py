@@ -184,12 +184,21 @@ def apply_main_rules(
         })
 
     # --------------------------------------------------------------------------
-    # ПРАВИЛО 8: Коэффициент 0.85 на собственные (приватные) вагоны
+    # ПРАВИЛО 8: Коэффициент на собственные (приватные) вагоны (0.85 или 0.70 по п. 3.2.5)
     # --------------------------------------------------------------------------
     if is_private_wagon and not is_empty:
-        final_coeff *= 0.85
+        is_tank = wagon_type in ["tank", "cistern", "цистерна", "бункер", "bunker"]
+        
+        if is_tank and check_rule_3_2_5_gng(gng_code):
+            coeff_val = 0.70
+            rule_code_str = "MAIN_COEFF_0_70_SPECIAL_CHEMICALS_TANK"
+        else:
+            coeff_val = 0.85
+            rule_code_str = "MAIN_COEFF_0_85_PRIVATE_WAGON"
+
+        final_coeff *= coeff_val
         applied_rules.append({
-            "calculated_value": 0.85,
-            "rule_code": "MAIN_COEFF_0_85_PRIVATE_WAGON",
-            "params": {"is_private_wagon": is_private_wagon}
+            "calculated_value": coeff_val,
+            "rule_code": rule_code_str,
+            "params": {"is_private_wagon": is_private_wagon, "gng_code": gng_code}
         })
