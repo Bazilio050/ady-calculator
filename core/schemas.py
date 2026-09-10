@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class ShipmentQuery(BaseModel):
-    """Схема структурированных данных запроса на перевозку (Таблицы 1, 3, 4, 5)."""
+    """Схема структурированных данных запроса на перевозку (Таблицы 1, 3, 4, 5, 6, 7)."""
     
     # 1. Поля маршрута
     raw_from: str = Field(description="Станция отправления из текста запроса")
@@ -22,11 +22,7 @@ class ShipmentQuery(BaseModel):
     # 2. Поля груза и веса
     gng_code: Optional[str] = Field(
         default="99220000",
-        description="Код ГНГ (8 цифр). Для порожних вагонов используются коды 99210000, 99213000, 99220000, 99223000. По умолчанию 99220000."
-    )
-    )r] = Field(
-        default=None, 
-        description="Код ГНГ груза (строго от 2 до 8 цифр)"
+        description="Код ГНГ груза (строго от 2 до 8 цифр). По умолчанию 99220000."
     )
     gng_name: Optional[str] = Field(
         default=None, 
@@ -40,7 +36,7 @@ class ShipmentQuery(BaseModel):
     # 3. Поля вагона и принадлежности
     wagon_type: Optional[str] = Field(
         default=None, 
-        description="Тип вагона (крытый, полувагон, цистерна, платформа, рефрижератор, дизель-генератор, двухъярусная платформа)"
+        description="Тип вагона (крытый, полувагон, цистерна, платформа, рефрижератор, дизель-генератор, двухъярусная платформа, автопоезд, полуприцеп, road_train, semi_trailer, road_train_platform)"
     )
     wagon_ownership: Optional[str] = Field(
         default=None, 
