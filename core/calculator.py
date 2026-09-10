@@ -171,7 +171,7 @@ class TariffCalculator:
         # Определение спецподвижного состава автотехники (п. 3.2.6)
         is_road_train = wagon_type_lower in ("road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп")
 
-        if is_empty_wagon and is_private_wagon and not is_transporter and not is_road_train:
+        if is_empty_wagon and is_private_wagon and not is_transporter and not is_ref_wagon:
             table_name = "Пункт 3.2.2"
             base_rate_chf = distance_km * axle_count * 0.10
             notifications.append({
