@@ -33,7 +33,6 @@ class ShipmentQuery(BaseModel):
         description="Фактический вес груза в тоннах"
     )
     
-    # 3. Поля вагона и принадлежности
     wagon_type: Optional[str] = Field(
         default=None, 
         description="Тип вагона (крытый, полувагон, цистерна, платформа, рефрижератор, дизель-генератор, двухъярусная платформа, автопоезд, полуприцеп, road_train, semi_trailer, road_train_platform)"
