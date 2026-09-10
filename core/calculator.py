@@ -104,12 +104,16 @@ class TariffCalculator:
 
         is_table_7 = (calc_type_table_7 is not None) or is_passenger_wagon or (str(gng_code).strip() == "99910000")
         is_inv_anv = wagon_type_lower in ("inv", "anv", "inv_anv")
+        is_auto_special = wagon_type_lower in ("auto_body", "detachable_body", "кузов", "road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп")
 
         if is_tank_wagon:
             billable_weight = 25.0
         elif is_table_7 or is_inv_anv:
             # Для Таблицы 7 и İNV/ANV берем фактический вес пользователя без округления по Таблице 1
             billable_weight = float(actual_weight)
+        elif is_auto_special and is_empty_wagon:
+            # Для п. 3.3.2 в порожнем состоянии фиксируем вес: 5т для кузовов, 7т для автопоездов
+            billable_weight = 5.0 if wagon_type_lower in ("auto_body", "detachable_body", "кузов") else 7.0
         else:
             weight_res = Table1Calculator.calculate_billable_weight(weight_after_min_norm)
             billable_weight = weight_res["calculated_weight"]
