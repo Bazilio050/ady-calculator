@@ -8,7 +8,8 @@ class Table5Calculator:
     """
     ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
     Считывает тарифные ставки Таблицы 5 из файла data/Table_5_Tariffs.txt 
-    и вычисляет базовую ставку для специализированного подвижного состава (СПС).
+    и вычисляет базовую ставку для специализированного подвижного состава (СПС),
+    включая рефрижераторы, термосы, автовозы, ИНВ/АНВ и автопоезда на спецплатформах (п. 3.2.6).
     """
 
     DATA_FILE_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "Table_5_Tariffs.txt")
@@ -59,8 +60,8 @@ class Table5Calculator:
                         "col_4": float(parts[3]),  # Термосы/ледники <25т (за вагон)
                         "col_5": float(parts[4]),  # Термосы/ледники >=25т (за 1т)
                         "col_6": float(parts[5]),  # Автовозы >=10т (за 1т)
-                        "col_7": float(parts[6]),  # ИНВ / АНВ груженый (за 1т)
-                        "col_8": float(parts[7]),  # ИНВ / АНВ порожний (за вагон)
+                        "col_7": float(parts[6]),  # ИНВ / АНВ / Автопоезда груженый (за 1т)
+                        "col_8": float(parts[7]),  # ИНВ / АНВ / Автопоезда порожний (за вагон)
                     }
                 except (ValueError, IndexError):
                     continue
@@ -83,9 +84,9 @@ class Table5Calculator:
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
-        Расчитывает базовую ставку CHF/т по Таблице 5 и спецвагонам, включая коэффициенты
+        Рассчитывает базовую ставку CHF/т по Таблице 5 и спецвагонам, включая коэффициенты
         составности рефсекции, скидку 0.60 на овощи/фрукты, аксиальную ставку 0.12 CHF/ось-км 
-        для дизель-генераторов и 0.10 CHF/ось-км для порожних вагонов в гружёных секциях.
+        для дизель-генераторов, а также автопоезда/полуприцепы на спецплатформах по п. 3.2.6 (колонки 7 и 8).
         """
         dist = int(round(distance_km))
         eq_lower = equipment_type.lower()
@@ -141,10 +142,10 @@ class Table5Calculator:
                     }
                 })
                 return {
-                "base_rate": base_rate,
-                "raw_base_rate": base_rate,
-                "applied_rules": applied_rules
-            }
+                    "base_rate": total_chf_flat,
+                    "raw_base_rate": total_chf_flat,
+                    "applied_rules": applied_rules
+                }
 
             base_rate = matched_rates["col_2"] if weight_tons < 25.0 else matched_rates["col_3"]
 
@@ -188,7 +189,7 @@ class Table5Calculator:
 
             final_rate = base_rate * coeff_val
             return {
-                "base_rate": base_rate,
+                "base_rate": final_rate,
                 "raw_base_rate": base_rate,
                 "applied_rules": applied_rules
             }
@@ -217,14 +218,23 @@ class Table5Calculator:
         elif eq_lower in ("inv", "anv", "inv_anv"):
             base_rate = matched_rates["col_8"] if is_empty else matched_rates["col_7"]
 
+        # 5. Пункт 3.2.6: Автопоезда, полуприцепы, автомобильные кузова на спецплатформах
+        elif eq_lower in ("road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп"):
+            base_rate = matched_rates["col_8"] if is_empty else matched_rates["col_7"]
+            applied_rules.append({
+                "rule_code": "ROAD_TRAIN_SPECIAL_PLATFORM_RULE_3_2_6",
+                "calculated_value": 1.0,
+                "params": {"equipment_type": equipment_type, "is_empty": is_empty}
+            })
+
         else:
             raise ValueError(f"Неизвестный тип подвижного состава для Таблицы 5: {equipment_type}")
 
         return {
-                "base_rate": base_rate,
-                "raw_base_rate": base_rate,
-                "applied_rules": applied_rules
-            }
+            "base_rate": base_rate,
+            "raw_base_rate": base_rate,
+            "applied_rules": applied_rules
+        }
 
     @classmethod
     def get_base_rate(
