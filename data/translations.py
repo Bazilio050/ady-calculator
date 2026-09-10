@@ -241,4 +241,18 @@ RULE_MESSAGES = {
         "ru": "ANV — груженый или порожний автомобиль, автопоезд и прицепы, находящиеся в движении до и после железнодорожного транспорта.",
         "en": "ANV — loaded or empty trucks, road trains and trailers in motion before and after rail transport."
     },
+
+    # ------------------------------------------------------------------------------
+    # БЛОК: Локализация п. 3.4.3.1 (Специализированные контейнеры / Танк-контейнеры / Рефконтейнеры)
+    # ------------------------------------------------------------------------------
+    "SPECIAL_CONTAINER_TANK_REF_RULE_3_4_3_1": {
+        "az": "Xüsusi təyinatlı konteynerlər (tank və refkonteynerlər / şərab və meyvə şirələri) üçün cədvəl 10/8 tarifləri tətbiq olunub (bənd 3.4.3.1).",
+        "ru": "Применены тарифы для специализированных контейнеров (танк-контейнеры, рефконтейнеры, вино/соки) по п. 3.4.3.1.",
+        "en": "Tariffs for specialized containers (tank containers, reefer containers, wine/juices) applied under clause 3.4.3.1."
+    },
+    "TANK_CONTAINER_COEFF_1_40_RULE_3_4_3_1": {
+        "az": "Yüklü və özəl boş tank-konteynerlərin daşınmasına 1.40 əmsalı tətbiq olunub (bənd 3.4.3.1).",
+        "ru": "Применен коэффициент 1.40 для гружёных и приватных порожних танк-контейнеров (п. 3.4.3.1).",
+        "en": "Multiplier 1.40 applied for loaded and private empty tank containers (clause 3.4.3.1)."
+    },
 }
