@@ -8,6 +8,8 @@ from core.tables.table_4 import Table4Calculator
 from core.tables.table_5 import Table5Calculator
 from core.tables.table_6 import Table6Calculator
 from core.tables.table_7 import Table7Calculator
+from core.tables.table_8 import Table8Calculator
+from core.tables.table_10 import Table10Calculator
 from core.main_rules import apply_main_rules
 from data.currency_rates import get_exchange_rate
 
