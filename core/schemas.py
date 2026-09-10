@@ -36,7 +36,7 @@ class ShipmentQuery(BaseModel):
     # 3. Поля тип вагона
     wagon_type: Optional[str] = Field(
         default=None, 
-        description="Тип вагона (крытый, полувагон, цистерна, платформа, рефрижератор, дизель-генератор, двухъярусная платформа, автопоезд, полуприцеп, road_train, semi_trailer, road_train_platform, inv, anv, inv_anv, auto_body, detachable_body, кузов)"
+        description="Тип вагона (крытый, полувагон, цистерна, платформа, рефрижератор, дизель-генератор, двухъярусная платформа, автопоезд, полуприцеп, road_train, semi_trailer, road_train_platform, inv, anv, inv_anv, auto_body, detachable_body, кузов, tank_container, reefer_container, wine_juice_container)"
     )
     wagon_ownership: Optional[str] = Field(
         default=None, 
