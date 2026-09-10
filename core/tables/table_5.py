@@ -224,14 +224,29 @@ class Table5Calculator:
                 })
             base_rate = matched_rates["col_8"] if is_empty else matched_rates["col_7"]
 
-        # 5. Пункт 3.2.6: Автопоезда, полуприцепы, автомобильные кузова на спецплатформах
-        elif eq_lower in ("road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп"):
+        # 5. Пункты 3.2.6 и 3.3.2: Автопоезда, полуприцепы и съемные кузова на спецплатформах
+        elif eq_lower in ("road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп", "auto_body", "detachable_body", "кузов"):
             base_rate = matched_rates["col_8"] if is_empty else matched_rates["col_7"]
-            applied_rules.append({
-                "rule_code": "ROAD_TRAIN_SPECIAL_PLATFORM_RULE_3_2_6",
-                "calculated_value": 1.0,
-                "params": {"equipment_type": equipment_type, "is_empty": is_empty}
-            })
+            
+            if is_empty:
+                if eq_lower in ("auto_body", "detachable_body", "кузов"):
+                    applied_rules.append({
+                        "rule_code": "EMPTY_AUTO_BODY_WEIGHT_5T_RULE_3_3_2",
+                        "calculated_value": 5.0,
+                        "params": {"equipment_type": equipment_type}
+                    })
+                else:
+                    applied_rules.append({
+                        "rule_code": "EMPTY_ROAD_TRAIN_WEIGHT_7T_RULE_3_3_2",
+                        "calculated_value": 7.0,
+                        "params": {"equipment_type": equipment_type}
+                    })
+            else:
+                applied_rules.append({
+                    "rule_code": "ROAD_TRAIN_SPECIAL_PLATFORM_RULE_3_2_6",
+                    "calculated_value": 1.0,
+                    "params": {"equipment_type": equipment_type, "is_empty": is_empty}
+                })
 
         else:
             raise ValueError(f"Неизвестный тип подвижного состава для Таблицы 5: {equipment_type}")
