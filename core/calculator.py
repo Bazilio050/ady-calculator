@@ -74,7 +74,8 @@ class TariffCalculator:
             "diesel_generator", "diesel_gen", "дизель_генератор",
             "inv", "anv", "inv_anv",
             "road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп",
-            "auto_body", "detachable_body", "кузов"
+            "auto_body", "detachable_body", "кузов",
+            "tank_container", "reefer_container", "wine_juice_container"
         ]
         tank_wagon_types = ["cistern", "tank", "цистерна", "бункер", "bunker"]
 
@@ -222,6 +223,47 @@ class TariffCalculator:
                     "params": r.get("params", {})
                 })
 
+        is_special_container = wagon_type_lower in ("tank_container", "reefer_container", "wine_juice_container")
+
+        if is_special_container:
+            table_name = "Таблица 10"
+            # Определяем категорию для Таблицы 10
+            if wagon_type_lower == "reefer_container":
+                c_type = "ref"
+            elif wagon_type_lower == "wine_juice_container":
+                c_type = "wine"
+            else:
+                c_type = "tank"
+
+            # Определяем размерность (20 или 40 футов)
+            feet_size = 40 if container_category_tons and container_category_tons > 20 else 20
+
+            t10_res = Table10Calculator.get_base_rate(
+                distance_km=distance_km,
+                container_type=c_type,
+                feet_size=feet_size,
+                is_empty=is_empty_wagon
+            )
+            base_rate_chf = t10_res["base_rate"]
+
+            for r in t10_res.get("applied_rules", []):
+                notifications.append({
+                    "rule_code": r["rule_code"],
+                    "params": r.get("params", {})
+                })
+
+            # Абзац 2 п. 3.4.3.1: Для гружёных и приватных порожних танк-контейнеров применяется коэффициент 1.40
+            if c_type == "tank" and (not is_empty_wagon or is_private_wagon):
+                coeff_rule = {
+                    "rule_code": "TANK_CONTAINER_COEFF_1_40_RULE_3_4_3_1",
+                    "calculated_value": 1.40
+                }
+                applied_rules_list.append(coeff_rule)
+                notifications.append({
+                    "rule_code": "TANK_CONTAINER_COEFF_1_40_RULE_3_4_3_1",
+                    "params": {}
+                })
+        
         elif is_ref_wagon:
             table_name = "Таблица 5"
             # Для п. 3.3.1 (гружёные İNV / ANV): минимум 10т
