@@ -204,4 +204,13 @@ RULE_MESSAGES = {
         "ru": "Расчет провозной платы за перевозку собственных/арендованных порожних вагонов выполнен по ставке 0.10 CHF/ось-км (п. 3.2.2).",
         "en": "Transportation fee for private/leased empty wagons calculated at 0.10 CHF per axle-km (clause 3.2.2)."
     },
+
+    # ------------------------------------------------------------------------------
+    # БЛОК: Локализация п. 3.3.1 (Груженые İNV / ANV на спецплатформах, мин. 10т)
+    # ------------------------------------------------------------------------------
+    "INV_ANV_MIN_WEIGHT_10T_RULE_3_3_1": {
+        "az": "Xüsusi təyinatlı platformalarda yüklü İNV və ANV daşınması üçün minimum 10 ton hesablama çəkisi tətbiq olunub (bənd 3.3.1, faktiki: {actual_weight} t).",
+        "ru": "Применена минимальная расчетная масса 10 тонн для груженых İNV/ANV на спецплатформах (п. 3.3.1, фактическая: {actual_weight} т).",
+        "en": "Minimum billable weight of 10 tons applied for loaded İNV/ANV on special platforms (clause 3.3.1, actual: {actual_weight} t)."
+    },
 }
