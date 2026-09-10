@@ -66,13 +66,12 @@ class TariffCalculator:
         if clean_gng.startswith(EMPTY_WAGON_GNG_PREFIXES) or act_w == 0:
             is_empty_wagon = True
             
-        # Определение типа вагона (Спецвагон / Цистерна / Универсальный)
-        # Определение типа вагона (Спецвагон / Цистерна / Универсальный)
+    
         # Определение типа вагона (Спецвагон / Цистерна / Специализированный контейнер)
-        ref_wagon_types = [
+       ref_wagon_types = [
             "refrigerator", "arv", "ref_section", "thermos", "ice_wagon",
             "car_carrier", "two_tier_platform", "двухъярусная_платформа",
-            "diesel_generator", "diesel_gen", "дизель_генератор",
+            "diesel_generator", "diesel_gen", "дизель_генератор", "diesel_generator_wagon",
             "inv", "anv", "inv_anv",
             "road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп",
             "auto_body", "detachable_body", "кузов"
@@ -179,7 +178,20 @@ class TariffCalculator:
         # ------------------------------------------------------------------------------
         # БЛОК: Выбор таблицы расчета тарифной ставки
         # ------------------------------------------------------------------------------
-        if is_empty_wagon and is_private_wagon and not is_transporter and not is_ref_wagon and not is_special_container:
+        if wagon_type_lower == "diesel_generator_wagon":
+            table_name = "Пункт 3.4.3.2"
+            base_rate_chf = round(distance_km * axle_count * 0.12, 2)
+            applied_rules_list.append({
+                "rule_code": "DIESEL_GENERATOR_WAGON_RULE_3_4_3_2",
+                "calculated_value": base_rate_chf,
+                "params": {"axle_count": axle_count, "rate": 0.12}
+            })
+            notifications.append({
+                "rule_code": "DIESEL_GENERATOR_WAGON_RULE_3_4_3_2",
+                "params": {}
+            })
+
+        elif is_empty_wagon and is_private_wagon and not is_transporter and not is_ref_wagon and not is_special_container:
             table_name = "Пункт 3.2.2"
             base_rate_chf = distance_km * axle_count * 0.10
             notifications.append({
