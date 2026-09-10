@@ -69,7 +69,8 @@ class TariffCalculator:
             "refrigerator", "arv", "ref_section", "thermos", "ice_wagon",
             "car_carrier", "two_tier_platform", "двухъярусная_платформа",
             "diesel_generator", "diesel_gen", "дизель_генератор",
-            "inv", "anv", "inv_anv"
+            "inv", "anv", "inv_anv",
+            "road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп"
         ]
         tank_wagon_types = ["cistern", "tank", "цистерна", "бункер", "bunker"]
 
