@@ -36,11 +36,20 @@ class Table6Calculator:
         "2105", "2201", "2202", "2203", "2204", "2205", "2206"
     ]
     COL_8_PREFIXES = [
-        "27071", "27072", "27073", "2707", "290211", "29022", "29023",
+        "27071", "27072", "27073", "290211", "29022", "29023",
         "290241", "290242", "290243", "290244", "29026", "29027", "29029"
     ]
 
     _rates_cache: Optional[Dict[Tuple[int, int], Dict[str, float]]] = None
+
+    @classmethod
+    def is_rule_3_2_5(cls, gng_code: str) -> bool:
+        """
+        Проверяет, относится ли код ГНГ к категории химических грузов
+        в цистернах по пункту 3.2.5 (колонке 8 Таблицы 6).
+        """
+        clean_gng = str(gng_code).strip()
+        return any(clean_gng.startswith(prefix) for prefix in cls.COL_8_PREFIXES)
 
     @classmethod
     def _parse_distance_range(cls, raw_dist: str) -> Tuple[int, int]:
@@ -94,8 +103,8 @@ class Table6Calculator:
         """Динамически определяет колонку (col_2 ... col_8) по коду ГНГ."""
         clean_gng = str(gng_code).strip()
 
-        # 1. Проверка колонки 8 (Приватные цистерны)
-        if is_private_wagon and any(clean_gng.startswith(p) for p in cls.COL_8_PREFIXES):
+        # 1. Проверка колонки 8 (Приватные цистерны по п. 3.2.5)
+        if is_private_wagon and cls.is_rule_3_2_5(clean_gng):
             return "col_8"
 
         # 2. Проверка колонок со 2 по 6
@@ -141,8 +150,6 @@ class Table6Calculator:
 
         column_name = cls.determine_column(gng_code=gng_code, is_private_wagon=is_private_wagon)
         base_rate = matched_rates[column_name]
-
-        is_private_discount_included = (column_name == "col_8")
 
         return {
             "base_rate": base_rate,
