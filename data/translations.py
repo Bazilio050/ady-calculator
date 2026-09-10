@@ -267,5 +267,3 @@ RULE_MESSAGES = {
             "en": "No fare charged for the service crew (clause 3.4.3.2)."
         }
     }
-   
-}
