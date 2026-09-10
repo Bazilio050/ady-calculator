@@ -56,4 +56,8 @@ jobs:
         run: |
           python -m pytest tests/test_rule_3_3_2.py -v -s
 
+      - name: Запуск тестов Правила порожних Танк контейнеров
+        run: |
+          python -m pytest tests/test_rule_3_4_3_1.py.py -v -s
+
           
