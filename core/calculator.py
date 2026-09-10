@@ -68,14 +68,14 @@ class TariffCalculator:
             
         # Определение типа вагона (Спецвагон / Цистерна / Универсальный)
         # Определение типа вагона (Спецвагон / Цистерна / Универсальный)
+        # Определение типа вагона (Спецвагон / Цистерна / Специализированный контейнер)
         ref_wagon_types = [
             "refrigerator", "arv", "ref_section", "thermos", "ice_wagon",
             "car_carrier", "two_tier_platform", "двухъярусная_платформа",
             "diesel_generator", "diesel_gen", "дизель_генератор",
             "inv", "anv", "inv_anv",
             "road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп",
-            "auto_body", "detachable_body", "кузов",
-            "tank_container", "reefer_container", "wine_juice_container"
+            "auto_body", "detachable_body", "кузов"
         ]
         tank_wagon_types = ["cistern", "tank", "цистерна", "бункер", "bunker"]
 
@@ -182,7 +182,7 @@ class TariffCalculator:
         # Определение спецподвижного состава автотехники (п. 3.2.6)
         is_road_train = wagon_type_lower in ("road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп")
 
-        if is_empty_wagon and is_private_wagon and not is_transporter and not is_ref_wagon:
+        if is_empty_wagon and is_private_wagon and not is_transporter and not is_ref_wagon and not is_special_container:
             table_name = "Пункт 3.2.2"
             base_rate_chf = distance_km * axle_count * 0.10
             notifications.append({
