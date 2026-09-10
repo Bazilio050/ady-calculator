@@ -248,18 +248,7 @@ class TariffCalculator:
                     "params": r.get("params", {})
                 })
 
-            # Абзац 2 п. 3.4.3.1: Для гружёных и приватных порожних танк-контейнеров применяется коэффициент 1.40
-            if c_type == "tank" and (not is_empty_wagon or is_private_wagon):
-                coeff_rule = {
-                    "rule_code": "TANK_CONTAINER_COEFF_1_40_RULE_3_4_3_1",
-                    "calculated_value": 1.40
-                }
-                applied_rules_list.append(coeff_rule)
-                notifications.append({
-                    "rule_code": "TANK_CONTAINER_COEFF_1_40_RULE_3_4_3_1",
-                    "params": {}
-                })
-
+            
         elif is_ref_wagon:
             table_name = "Таблица 5"
             # Для п. 3.3.1 (гружёные İNV / ANV): минимум 10т
