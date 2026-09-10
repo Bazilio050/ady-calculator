@@ -50,6 +50,10 @@ class TariffCalculator:
         coupling_distance_over_19m: bool = False,            # Расстояние между осями сцепа > 19 м
         is_oversized_cargo: bool = False,                    # Флаг габаритного груза (əndazəli)
         is_empty_wagon: bool = False                         # Флаг порожнего вагона (boş вагон)
+        is_oversized_cargo: bool = False,                    # Флаг габаритного груза (əndazəli)
+        is_empty_wagon: bool = False,                         # Флаг порожнего вагона (boş вагон)
+        attendants_count: int = 0,                           # Количество проводников (п. 3.4.3.2)
+        is_service_crew: bool = False                        # Флаг сервисной бригады (бесплатно по п. 3.4.3.2)
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -352,6 +356,29 @@ class TariffCalculator:
 
         final_rate_per_ton_usd = round(running_rate, 2)
 
+        # ------------------------------------------------------------------------------
+        # БЛОК: Расчет платы за проводников в дизель-генераторе (п. 3.4.3.2)
+        # ------------------------------------------------------------------------------
+        if is_service_crew:
+            notifications.append({
+                "rule_code": "SERVICE_CREW_FREE_RULE_3_4_3_2",
+                "params": {}
+            })
+        elif attendants_count > 0:
+            # 12 CHF за каждые начатые 100 км на 1 человек
+            hundreds_km = math.ceil(distance_km / 100.0)
+            attendants_fee_chf = round(hundreds_km * 12.0 * attendants_count, 2)
+
+            applied_rules_list.append({
+                "rule_code": "ATTENDANTS_FEE_RULE_3_4_3_2",
+                "calculated_value": attendants_fee_chf,
+                "params": {"count": attendants_count, "hundreds_km": hundreds_km}
+            })
+            notifications.append({
+                "rule_code": "ATTENDANTS_FEE_RULE_3_4_3_2",
+                "params": {"count": attendants_count}
+            })
+            
         return {
             "actual_weight": act_w,
             "billable_weight": billable_weight,
