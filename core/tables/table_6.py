@@ -147,6 +147,6 @@ class Table6Calculator:
         return {
             "base_rate": base_rate,
             "column_name": column_name,
-            "is_private_discount_included": is_private_discount_included,
+            "is_private_discount_included": False,
             "applied_rules": []
         }
