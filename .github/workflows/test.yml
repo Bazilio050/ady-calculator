@@ -46,4 +46,10 @@ jobs:
 
       - name: Запуск тестов Правила 3.2.6 (Груженый автопоезд, Перевозка автопоезда, Порожний полуприцеп)
         run: |
-          python -m pytest tests/test_rule_3_2_6.py -v -s         
+          python -m pytest tests/test_rule_3_2_6.py -v -s
+
+      - name: Запуск тестов Правила 3.2.6 (Гружёный и порожний İNV)
+        run: |
+          python -m pytest tests/tests/test_rule_3_3_1.py -v -s
+
+          
