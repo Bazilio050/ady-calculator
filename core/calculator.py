@@ -50,8 +50,6 @@ class TariffCalculator:
         coupling_distance_over_19m: bool = False,            # Расстояние между осями сцепа > 19 м
         is_oversized_cargo: bool = False,                    # Флаг габаритного груза (əndazəli)
         is_empty_wagon: bool = False,                        # Флаг порожнего вагона (boş вагон)
-        is_oversized_cargo: bool = False,                    # Флаг габаритного груза (əndazəli)
-        is_empty_wagon: bool = False,                         # Флаг порожнего вагона (boş вагон)
         attendants_count: int = 0,                           # Количество проводников (п. 3.4.3.2)
         is_service_crew: bool = False                        # Флаг сервисной бригады (бесплатно по п. 3.4.3.2)
     ) -> Dict[str, Any]:
