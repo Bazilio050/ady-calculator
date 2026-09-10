@@ -48,8 +48,12 @@ jobs:
         run: |
           python -m pytest tests/test_rule_3_2_6.py -v -s
 
-      - name: Запуск тестов Правила 3.2.6 (Гружёный и порожний İNV)
+      - name: Запуск тестов Правила 3.2.6 (Гружёный İNV)
         run: |
           python -m pytest tests/test_rule_3_3_1.py -v -s
+
+      - name: Запуск тестов Правила 3.2.6 (Порожний İNV)
+        run: |
+          python -m pytest tests/test_rule_3_3_2.py -v -s
 
           
