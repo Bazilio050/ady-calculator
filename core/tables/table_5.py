@@ -214,8 +214,14 @@ class Table5Calculator:
                 "applied_rules": applied_rules
             }
             
-        # 4. ИНВ / АНВ
+        # 4. ИНВ / АНВ (п. 3.3.1: минимальная расчетная масса 10 тонн для груженых)
         elif eq_lower in ("inv", "anv", "inv_anv"):
+            if not is_empty and weight_tons < 10.0:
+                applied_rules.append({
+                    "rule_code": "INV_ANV_MIN_WEIGHT_10T_RULE_3_3_1",
+                    "calculated_value": 10.0,
+                    "params": {"actual_weight": weight_tons}
+                })
             base_rate = matched_rates["col_8"] if is_empty else matched_rates["col_7"]
 
         # 5. Пункт 3.2.6: Автопоезда, полуприцепы, автомобильные кузова на спецплатформах
