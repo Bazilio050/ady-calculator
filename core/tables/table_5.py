@@ -228,6 +228,14 @@ class Table5Calculator:
         elif eq_lower in ("road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп", "auto_body", "detachable_body", "кузов"):
             base_rate = matched_rates["col_8"] if is_empty else matched_rates["col_7"]
             
+            # Общее правило 3.2.6 действует как для груженого, так и для порожнего состояния
+            applied_rules.append({
+                "rule_code": "ROAD_TRAIN_SPECIAL_PLATFORM_RULE_3_2_6",
+                "calculated_value": 1.0,
+                "params": {"equipment_type": equipment_type, "is_empty": is_empty}
+            })
+
+            # Для порожнего состояния дополнительно фиксируется расчетная масса по п. 3.3.2
             if is_empty:
                 if eq_lower in ("auto_body", "detachable_body", "кузов"):
                     applied_rules.append({
