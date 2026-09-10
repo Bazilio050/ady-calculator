@@ -1,6 +1,6 @@
 # core/calculator.py
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from core.tables.table_1_weight import Table1Calculator
 from core.tables.table_min_load import TableMinLoadCalculator
 from core.tables.table_3 import Table3Calculator
@@ -8,7 +8,6 @@ from core.tables.table_4 import Table4Calculator
 from core.tables.table_5 import Table5Calculator
 from core.tables.table_6 import Table6Calculator
 from core.tables.table_7 import Table7Calculator
-from typing import Dict, Any, List, Optional
 from core.main_rules import apply_main_rules
 from data.currency_rates import get_exchange_rate
 
@@ -77,8 +76,7 @@ class TariffCalculator:
         is_ref_wagon = wagon_type_lower in ref_wagon_types
         is_tank_wagon = wagon_type_lower in tank_wagon_types
 
-        # 1.1. Минимальная норма загрузки (для цистерн — 25т, для транспортеров — п. 3.1.2.6)
-       # ------------------------------------------------------------------------------
+        # ------------------------------------------------------------------------------
         # БЛОК 1.1: Определение минимальной нормы загрузки (Цистерны / Транспортеры / ГНГ)
         # ------------------------------------------------------------------------------
         if is_tank_wagon:
@@ -124,9 +122,8 @@ class TariffCalculator:
         is_table_3_applicable = ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
         is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"]
 
-       # 3. Определение таблицы и флагов груза до применения главных правил
+        # 3. Определение таблицы и флагов груза до применения главных правил
         column_name = None
-        is_private_discount_included = False
 
         if is_tank_wagon:
             table_name = "Таблица 6"
@@ -165,9 +162,6 @@ class TariffCalculator:
         base_rate_chf = 0.0
         table_name = "Таблица 3"
 
-        # Объявляем флаг Таблицы 7 до начала ветвления if/elif
-        is_table_7 = (calc_type_table_7 is not None) or is_passenger_wagon or (gng_code == "99910000")
-
         is_transporter = wagon_type_lower in ("transporter", "транспортер")
 
         # ------------------------------------------------------------------------------
@@ -183,14 +177,12 @@ class TariffCalculator:
 
         elif is_tank_wagon:
             table_name = "Таблица 6"
-            ...
             t6_res = Table6Calculator.calculate(
                 distance_km=distance_km,
                 gng_code=gng_code,
                 is_private_wagon=is_private_wagon
             )
             base_rate_chf = t6_res["base_rate"]
-            is_private_discount_included = t6_res.get("is_private_discount_included", False)
 
         elif is_table_7:
             table_name = "Таблица 7"
@@ -208,7 +200,6 @@ class TariffCalculator:
             )
             base_rate_chf = t7_res["base_rate"]
 
-            # Фиксируем актуальный расчетный вес из Таблицы 7 (например, 66т для почты)
             if "billable_weight" in t7_res:
                 billable_weight = t7_res["billable_weight"]
 
@@ -217,7 +208,6 @@ class TariffCalculator:
                     "rule_code": r["rule_code"],
                     "params": r.get("params", {})
                 })
-            
 
         elif is_ref_wagon:
             table_name = "Таблица 5"
@@ -234,7 +224,6 @@ class TariffCalculator:
             )
             base_rate_chf = t5_res["base_rate"]
 
-            # Переносим правила Таблицы 5 в общий список без дублирования
             t5_rules = t5_res.get("applied_rules", [])
             for r in t5_rules:
                 if r not in applied_rules_list:
@@ -260,10 +249,6 @@ class TariffCalculator:
         exchange_rate = get_exchange_rate(shipment_date)
         base_rate_usd = (base_rate_chf / exchange_rate) if exchange_rate > 0 else base_rate_chf
 
-        # Если для Таблицы 6 выбрана колонка 8, исключаем скидку 0.85 из правил И из уведомлений
-            applied_rules_list = [r for r in applied_rules_list if r["rule_code"] != "MAIN_COEFF_0_85_PRIVATE_WAGON"]
-            notifications = [n for n in notifications if n.get("rule_code") != "MAIN_COEFF_0_85_PRIVATE_WAGON"]
-
         # ------------------------------------------------------------------------------
         # БЛОК: Правило 3.1.2.7 (Спецплатформа > 19м с габаритным грузом, МПС)
         # ------------------------------------------------------------------------------
@@ -283,9 +268,12 @@ class TariffCalculator:
                 "params": {}
             })
 
-        specific_rules = [r for r in applied_rules_list if r["rule_code"] not in ["MAIN_COEFF_1_015_INTERNATIONAL_LOADED", "MAIN_COEFF_0_85_PRIVATE_WAGON"]]
+        # Упорядочивание правил (специфические правила -> 1.015 -> коэффициент приватного вагона 0.85/0.70)
+        private_rule_codes = ["MAIN_COEFF_0_85_PRIVATE_WAGON", "MAIN_COEFF_0_70_SPECIAL_CHEMICALS_TANK"]
+        
+        specific_rules = [r for r in applied_rules_list if r["rule_code"] not in ["MAIN_COEFF_1_015_INTERNATIONAL_LOADED"] + private_rule_codes]
         loaded_rule = [r for r in applied_rules_list if r["rule_code"] == "MAIN_COEFF_1_015_INTERNATIONAL_LOADED"]
-        private_rule = [r for r in applied_rules_list if r["rule_code"] == "MAIN_COEFF_0_85_PRIVATE_WAGON"]
+        private_rule = [r for r in applied_rules_list if r["rule_code"] in private_rule_codes]
 
         ordered_rules = specific_rules + loaded_rule + private_rule
 
