@@ -129,9 +129,9 @@ class TariffCalculator:
                     "params": weight_res.get("params", {})
                 })
 
-        # 2. Проверка применимости Таблиц 3 и 4
-        is_table_3_applicable = ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
-        is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"]
+        # 2. Проверка применимости Таблиц 3 и 4 (с исключением спецтаблиц 5, 6, 7, 10)
+        is_table_3_applicable = ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"] and not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container)
+        is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"] and not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container)
 
         # 3. Определение таблицы и флагов груза до применения главных правил
         column_name = None
