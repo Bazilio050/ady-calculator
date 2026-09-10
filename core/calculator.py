@@ -177,7 +177,7 @@ class TariffCalculator:
         is_transporter = wagon_type_lower in ("transporter", "транспортер")
 
         # ------------------------------------------------------------------------------
-        # БЛОК: Правило 3.2.2 (Порожний приватный вагон — 0.10 CHF / ось-км)
+        # БЛОК: Выбор таблицы расчета тарифной ставки
         # ------------------------------------------------------------------------------
         if is_empty_wagon and is_private_wagon and not is_transporter and not is_ref_wagon and not is_special_container:
             table_name = "Пункт 3.2.2"
@@ -221,8 +221,7 @@ class TariffCalculator:
                     "params": r.get("params", {})
                 })
 
-        
-        if is_special_container:
+        elif is_special_container:
             table_name = "Таблица 10"
             # Определяем категорию для Таблицы 10
             if wagon_type_lower == "reefer_container":
@@ -261,7 +260,6 @@ class TariffCalculator:
                     "params": {}
                 })
 
-                
         elif is_ref_wagon:
             table_name = "Таблица 5"
             # Для п. 3.3.1 (гружёные İNV / ANV): минимум 10т
@@ -300,12 +298,14 @@ class TariffCalculator:
                         "rule_code": r["rule_code"],
                         "params": r.get("params", {})
                     })
+
         elif is_table_3_applicable:
             table_name = "Таблица 3"
             base_rate_chf = Table3Calculator.get_base_rate(
                 distance_km=distance_km,
                 weight_tons=billable_weight
             )
+
         elif is_table_4_applicable:
             table_name = "Таблица 4"
             base_rate_chf = Table4Calculator.get_base_rate(
