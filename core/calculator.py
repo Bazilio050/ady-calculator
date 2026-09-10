@@ -216,13 +216,20 @@ class TariffCalculator:
 
         elif is_ref_wagon:
             table_name = "Таблица 5"
-            # Для п. 3.3.1 (гружёные İNV / ANV): если вес меньше 10т, устанавливаем минимум 10т и регистрируем правило
+            # Для п. 3.3.1 (гружёные İNV / ANV): минимум 10т
             if wagon_type_lower in ("inv", "anv", "inv_anv") and not is_empty_wagon and billable_weight < 10.0:
                 notifications.append({
                     "rule_code": "INV_ANV_MIN_WEIGHT_10T_RULE_3_3_1",
                     "params": {"actual_weight": billable_weight}
                 })
                 billable_weight = 10.0
+
+            # Для п. 3.3.2 (порожние автопоезда/полуприцепы -> 7т, съемные кузова -> 5т)
+            elif is_empty_wagon:
+                if wagon_type_lower in ("auto_body", "detachable_body", "кузов"):
+                    billable_weight = 5.0
+                elif wagon_type_lower in ("road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп"):
+                    billable_weight = 7.0
 
             t5_res = Table5Calculator.calculate(
                 distance_km=distance_km,
