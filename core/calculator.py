@@ -59,11 +59,11 @@ class TariffCalculator:
         ship_type_lower = shipment_type.lower()
         wagon_type_lower = wagon_type.lower()
 
-        # Автоматическое определение порожнего состояния по префиксу ГНГ (9921 / 9922)
+        # Автоматическое определение порожнего состояния по префиксу ГНГ (9921 / 9922) или весу = 0
         clean_gng = str(gng_code).strip() if gng_code else ""
-        if clean_gng.startswith(EMPTY_WAGON_GNG_PREFIXES):
+        if clean_gng.startswith(EMPTY_WAGON_GNG_PREFIXES) or act_w == 0:
             is_empty_wagon = True
-
+            
         # Определение типа вагона (Спецвагон / Цистерна / Универсальный)
         ref_wagon_types = [
             "refrigerator", "arv", "ref_section", "thermos", "ice_wagon",
