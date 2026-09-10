@@ -1,6 +1,7 @@
 # core/main_rules.py
 
 from typing import List, Dict, Any
+from core.tables.table_6 import Table6Calculator
 
 
 def check_gng_match(gng_code: str, target: str) -> bool:
@@ -189,7 +190,7 @@ def apply_main_rules(
     if is_private_wagon and not is_empty:
         is_tank = wagon_type in ["tank", "cistern", "цистерна", "бункер", "bunker"]
         
-        if is_tank and check_rule_3_2_5_gng(gng_code):
+        if is_tank and Table6Calculator.is_rule_3_2_5(gng):
             coeff_val = 0.70
             rule_code_str = "MAIN_COEFF_0_70_SPECIAL_CHEMICALS_TANK"
         else:
@@ -200,5 +201,10 @@ def apply_main_rules(
         applied_rules.append({
             "calculated_value": coeff_val,
             "rule_code": rule_code_str,
-            "params": {"is_private_wagon": is_private_wagon, "gng_code": gng_code}
+            "params": {"is_private_wagon": is_private_wagon, "gng_code": gng}
         })
+
+    return {
+        "calculated_value": final_coeff,
+        "rules": applied_rules
+    }
