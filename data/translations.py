@@ -250,5 +250,11 @@ RULE_MESSAGES = {
         "ru": "Применены тарифы для специализированных контейнеров (танк-контейнеры, рефконтейнеры, вино/соки) по п. 3.4.3.1.",
         "en": "Tariffs for specialized containers (tank containers, reefer containers, wine/juices) applied under clause 3.4.3.1."
     },
+
+    "DIESEL_GENERATOR_WAGON_RULE_3_4_3_2": {
+        "az": "Xüsusi (daşıyıcıya məxsus olmayan) dizel-generator vaqonunun daşınma haqqı hər 1 ox-km üçün 0.12 İsveçrə frankı ilə hesablanmışdır (bənd 3.4.3.2).",
+        "ru": "Провозная плата за приватный вагон-дизель-генератор рассчитана по ставке 0.12 CHF за 1 ось-км (п. 3.4.3.2).",
+        "en": "Freight charge for private diesel-generator wagon calculated at 0.12 CHF per axle-km (clause 3.4.3.2)."
+    },
    
 }
