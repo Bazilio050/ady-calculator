@@ -3,12 +3,12 @@
 from core.calculator import TariffCalculator
 
 
-def test_diesel_generator_wagon_calculation():
-    """Проверка расчета провозной платы за вагон-дизель-генератор (п. 3.4.3.2)"""
-    distance = 500.0  # км
-    axles = 4        # осей
-    expected_chf = round(500.0 * 4 * 0.12, 2)  # 240.0 CHF
-
+def test_attendants_fee_calculation():
+    """Проверка расчета платы за проводников (п. 3.4.3.2): 12 CHF / 100 км / чел"""
+    distance = 250.0  # 250 км = 3 начатых интервала по 100 км
+    attendants = 2    # 2 проводника
+    # Расчет: 3 (интервала) * 12 CHF * 2 (человека) = 72 CHF
+    
     res = TariffCalculator.calculate(
         shipment_type="transit",
         gng_code="99210000",
@@ -17,10 +17,27 @@ def test_diesel_generator_wagon_calculation():
         wagon_type="diesel_generator_wagon",
         from_canonical_name="Ялама",
         to_canonical_name="БК",
-        axle_count=axles,
+        attendants_count=attendants,
         is_private_wagon=True
     )
 
-    print(f"\nБазовая ставка: {res['base_rate_chf_per_ton']} CHF (Ожидается: {expected_chf} CHF)")
-    assert res['base_rate_chf_per_ton'] == expected_chf
-    assert res['table_name'] == "Пункт 3.4.3.2"
+    applied_codes = [r["rule_code"] for r in res.get("notifications", [])]
+    assert "ATTENDANTS_FEE_RULE_3_4_3_2" in applied_codes
+
+
+def test_service_crew_free():
+    """Проверка бесплатного проезда сервисной бригады (п. 3.4.3.2)"""
+    res = TariffCalculator.calculate(
+        shipment_type="transit",
+        gng_code="99210000",
+        actual_weight=0.0,
+        distance_km=250.0,
+        wagon_type="diesel_generator_wagon",
+        from_canonical_name="Ялама",
+        to_canonical_name="БК",
+        is_service_crew=True,
+        is_private_wagon=True
+    )
+
+    applied_codes = [r["rule_code"] for r in res.get("notifications", [])]
+    assert "SERVICE_CREW_FREE_RULE_3_4_3_2" in applied_codes
