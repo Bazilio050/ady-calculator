@@ -225,10 +225,10 @@ class TariffCalculator:
                 billable_weight = 10.0
 
             # Для п. 3.3.2 (порожние автопоезда/полуприцепы -> 7т, съемные кузова -> 5т)
-            elif is_empty_wagon:
+            elif is_empty_wagon and wagon_type_lower in ("auto_body", "detachable_body", "кузов", "road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп"):
                 if wagon_type_lower in ("auto_body", "detachable_body", "кузов"):
                     billable_weight = 5.0
-                elif wagon_type_lower in ("road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп"):
+                else:
                     billable_weight = 7.0
 
             t5_res = Table5Calculator.calculate(
