@@ -227,4 +227,18 @@ RULE_MESSAGES = {
         "ru": "Применена фиксированная расчетная масса 5 тонн для съемных порожних автокузовов на спецплатформах (п. 3.3.2).",
         "en": "Fixed billable weight of 5 tons applied for empty detachable truck bodies on special platforms (clause 3.3.2)."
     },
+
+    # ------------------------------------------------------------------------------
+    # БЛОК: Справочные определения İNV и ANV
+    # ------------------------------------------------------------------------------
+    "INV_DEFINITION": {
+        "az": "İNV — nəqliyyat növü dəyişdirilən zaman yükün özü boşalmadan iki və daha artıq nəqliyyat vasitəsində daşınan konteyner, çıxarılan avtomobil kuzovları və yarımqoşqular.",
+        "ru": "İNV — контейнер, съемные автомобильные кузова и полуприцепы, перевозимые на двух и более транспортных средствах без выгрузки самого груза при смене вида транспорта.",
+        "en": "İNV — containers, detachable truck bodies and semi-trailers transported on two or more means of transport without unloading the cargo itself when changing modes of transport."
+    },
+    "ANV_DEFINITION": {
+        "az": "ANV — dəmir yolu nəqliyyatından əvvəl və sonra hərəkətdə olan yüklü və ya boş halda avtomobil, avtoqatar və qoşqular.",
+        "ru": "ANV — груженый или порожний автомобиль, автопоезд и прицепы, находящиеся в движении до и после железнодорожного транспорта.",
+        "en": "ANV — loaded or empty trucks, road trains and trailers in motion before and after rail transport."
+    },
 }
