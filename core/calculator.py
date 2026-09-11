@@ -2,7 +2,7 @@
 
 import math
 from typing import Dict, Any, List, Optional
-from core.tables.table_1_weight import Table1Calculator
+from core.tables.table_1_weight import Tableа1Calculator
 from core.tables.table_min_load import TableMinLoadCalculator
 from core.tables.table_3 import Table3Calculator
 from core.tables.table_4 import Table4Calculator
@@ -61,6 +61,7 @@ class TariffCalculator:
         cover_wagons_count: int = 0,                         # Количество вагонов прикрытия (п. 3.5.3)
         is_cover_wagon_private: bool = True,                 # Флаг приватного вагона прикрытия
         is_dangerous_cargo: bool = False                     # Флаг опасного груза (п. 3.6.1)
+        un_code: Optional[str] = None,                       # Код ООН (BMT №) по Таблице 13
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -71,6 +72,10 @@ class TariffCalculator:
         notifications = []
         ship_type_lower = shipment_type.lower()
         wagon_type_lower = wagon_type.lower()
+        # Автоматическая проверка по Таблице 13, если передан un_code
+        if un_code and not is_dangerous_cargo:
+            if Table13Checker.check_dangerous_status(un_code=un_code, wagon_type=wagon_type):
+                is_dangerous_cargo = True
 
         # ------------------------------------------------------------------------------
         # Списки типов вагонов и контейнеров (ДОЛЖНЫ БЫТЬ В САМОМ НАЧАЛЕ)
