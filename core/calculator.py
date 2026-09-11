@@ -155,8 +155,7 @@ class TariffCalculator:
                     "params": weight_res.get("params", {})
                 })
 
-       # 2. Проверка применимости Таблиц 3 и 4 (исключаем спецтаблицы, контейнеры и порожние вагоны)
-        is_table_3_applicable = (
+       is_table_3_applicable = (
             ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"]
             and not (
                 is_ref_wagon
@@ -166,6 +165,7 @@ class TariffCalculator:
                 or is_generator_container
                 or is_universal_container
                 or is_container_platform
+                or is_open_top_container
                 or is_empty_wagon
             )
         )
@@ -179,10 +179,10 @@ class TariffCalculator:
                 or is_generator_container
                 or is_universal_container
                 or is_container_platform
+                or is_open_top_container
                 or is_empty_wagon
             )
         )
-
         # 3. Определение таблицы и флагов груза до применения главных правил
         column_name = None
 
@@ -352,6 +352,23 @@ class TariffCalculator:
                 is_empty=is_empty_wagon,
                 is_private=is_private_wagon,
                 is_container_platform=True
+            )
+            base_rate_chf = t8_res["base_rate"]
+
+            for r in t8_res.get("applied_rules", []):
+                notifications.append({
+                    "rule_code": r["rule_code"],
+                    "params": r.get("params", {})
+                })
+
+        elif is_open_top_container:
+            table_name = "Таблица 8"
+            t8_res = Table8Calculator.get_base_rate(
+                distance_km=distance_km,
+                feet_size=container_category_tons or 20,
+                is_empty=is_empty_wagon,
+                is_private=is_private_wagon,
+                is_open_top_container=True
             )
             base_rate_chf = t8_res["base_rate"]
 
