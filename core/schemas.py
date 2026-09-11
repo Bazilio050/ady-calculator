@@ -87,6 +87,27 @@ class ShipmentQuery(BaseModel):
         description="True, если перевозимый груз является габаритным/очерченным (əndazəli)"
     )
 
+    # --------------------------------------------------------------------------
+    # БЛОК: Параметры для раздела 3.5 (Негабарит, Транспортеры, Вагоны прикрытия)
+    # --------------------------------------------------------------------------
+    oversized_degree: Optional[str] = Field(
+        default=None,
+        description="Степень негабаритности: 'small', '3_top', '3-5_bottom_side', '6_degree' и др."
+    )
+    is_transporter: bool = Field(
+        default=False,
+        description="Признак перевозки на транспортере"
+    )
+    cover_wagons_count: int = Field(
+        default=0,
+        ge=0,
+        description="Количество порожних вагонов прикрытия или защитных рамок"
+    )
+    is_cover_wagon_private: bool = Field(
+        default=True,
+        description="Признак приватного вагона прикрытия (True = 0.30 CHF/ось-км, False = 0.35 CHF/ось-км)"
+    )
+
     @field_validator("gng_code")
     @classmethod
     def validate_gng_code(cls, value: Optional[str]) -> Optional[str]:
