@@ -71,3 +71,8 @@ jobs:
       - name: Запуск тестов Таблицы 11 и Негабаритных грузов (п. 3.5)
         run: |
           pytest tests/test_table_11_oversized.py -v -s
+
+      - name: Запуск тестов Таблицы 12 опасные грузы
+        run: |
+          pytest tests/test_table_12_dangerous.py -v -s
+
