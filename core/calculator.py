@@ -12,6 +12,7 @@ from core.tables.table_7 import Table7Calculator
 from core.tables.table_8 import Table8Calculator
 from core.tables.table_10 import Table10Calculator
 from core.tables.table_11 import calculate_table_11_tariff
+from core.tables.table_12 import Table12Calculator
 from core.main_rules import apply_main_rules
 from data.currency_rates import get_exchange_rate
 
@@ -58,6 +59,7 @@ class TariffCalculator:
         is_transporter: bool = False,                        # Флаг транспортера (п. 3.5.1.3)
         cover_wagons_count: int = 0,                         # Количество вагонов прикрытия (п. 3.5.3)
         is_cover_wagon_private: bool = True                  # Флаг приватного вагона прикрытия
+        is_dangerous_cargo: bool = False                     # Флаг опасного груза (п. 3.6.1)
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -248,6 +250,25 @@ class TariffCalculator:
                 "params": {"axle_count": axle_count, "distance_km": distance_km}
             })
 
+        # ------------------------------------------------------------------------------
+        # БЛОК: Выбор таблицы расчета тарифной ставки
+        # ------------------------------------------------------------------------------
+        if is_dangerous_cargo and not is_tank_wagon and not is_special_container:
+            table_name = "Таблица 12"
+            t12_res = Table12Calculator.calculate(
+                distance_km=distance_km,
+                weight_tons=billable_weight
+            )
+            base_rate_chf = t12_res["base_rate"]
+            
+            for r in t12_res.get("applied_rules", []):
+                notifications.append({
+                    "rule_code": r["rule_code"],
+                    "params": r.get("params", {})
+                })
+
+        elif wagon_type_lower == "diesel_generator_wagon":
+
         elif is_tank_wagon:
             table_name = "Таблица 6"
             t6_res = Table6Calculator.calculate(
@@ -256,6 +277,13 @@ class TariffCalculator:
                 is_private_wagon=is_private_wagon
             )
             base_rate_chf = t6_res["base_rate"]
+            
+            if is_dangerous_cargo:
+                base_rate_chf *= 2.00
+                notifications.append({
+                    "rule_code": "DANGEROUS_CARGO_COEFF_2_00_RULE_3_6_1",
+                    "params": {"distance_km": int(distance_km), "weight": billable_weight}
+                })
 
         elif is_table_7:
             table_name = "Таблица 7"
@@ -302,6 +330,13 @@ class TariffCalculator:
                 is_empty=is_empty_wagon
             )
             base_rate_chf = t10_res["base_rate"]
+            
+            if is_dangerous_cargo:
+                base_rate_chf *= 2.00
+                notifications.append({
+                    "rule_code": "DANGEROUS_CARGO_COEFF_2_00_RULE_3_6_1",
+                    "params": {"distance_km": int(distance_km), "weight": billable_weight}
+                })
 
             for r in t10_res.get("applied_rules", []):
                 notifications.append({
