@@ -1,4 +1,4 @@
-# tests/test_table_6.py
+# tests/test_diesel_generator.py
 
 import pytest
 from core.router import RailwayRouter
@@ -16,7 +16,7 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
     print(f"Маршрут: {route_res.from_station.canonical_name} ({route_res.from_station.code}) - {route_res.to_station.canonical_name} ({route_res.to_station.code}) [{route_res.shipment_type.value}] - {display_dist} км")
     print(f"ГНГ код: {gng_code}")
     print(f"Тип вагона: {wagon_type} [{'СПС (приватный)' if is_private else 'СПС (инвентарный)'}]")
-    print(f"Вес (факт): {weight} т -> Расчетный (Табл.6/Правило 2): {calc_res['billable_weight']} т")
+    print(f"Вес (факт): {weight} т -> Расчетный: {calc_res['billable_weight']} т")
     
     base_chf = round(calc_res['base_rate_chf_per_ton'], 2)
     applied_tbl = calc_res.get('applied_table', calc_res.get('table_name'))
@@ -24,13 +24,11 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
     print(f"Курс конвертации (CHF -> USD): {calc_res['exchange_rate']}")
     print(f"Базовая ставка в USD: {calc_res['base_rate_usd_per_ton']} USD/т\n")
 
-    # Собираем уведомления от Роутера (минимальное расстояние) и от Калькулятора
     all_notifications = []
     if route_res.rule_code:
         all_notifications.append({"rule_code": route_res.rule_code, "params": route_res.params})
     all_notifications.extend(calc_res.get("notifications", []))
 
-    # Вывод RU версий
     for notif in all_notifications:
         code = notif.get("rule_code")
         params = notif.get("params", {})
@@ -40,7 +38,6 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
 
     print(f"\nИтог за 1 т: {calc_res['final_rate_usd_per_ton']} USD/т\n")
 
-    # Вывод AZ и EN версий
     if all_notifications:
         print("Уведомления:")
         for notif in all_notifications:
@@ -54,153 +51,100 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
 
 
 # ------------------------------------------------------------------------------
-# ТЕСТЫ ДЛЯ ТАБЛИЦЫ 6 (НАЛИВНЫЕ ГРУЗЫ В ЦИСТЕРНАХ)
+# ТЕСТЫ ДЛЯ ДИЗЕЛЬ-ГЕНЕРАТОРОВ (П. 3.4.3.2 И П. 3.4.5)
 # ------------------------------------------------------------------------------
 
-def test_table_6_col_2_oil_transit_kuryk():
-    """Тест 1: Наливные грузы — Колонка 2 (Нефть и нефтепродукты | Ялама -> Курык)"""
+def test_diesel_generator_wagon_basic():
+    """Тест 1: Вагон-дизель-генератор (п. 3.4.3.2) - Базовый расчет по осевой ставке 0.12 CHF/км"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Ялама", "Курык")
+    route_res = router.calculate_route("Ялама", "БК")
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
-        gng_code="27101921",
-        actual_weight=60.0,
-        distance_km=route_res.calculated_distance_km,
-        wagon_type="cistern",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        is_private_wagon=False
-    )
-
-    _print_calculation_result("1. Наливные грузы — Колонка 2 (Ялама -> Курык)", route_res, calc_res, "27101921", 60.0, "cistern", False)
-    assert calc_res["billable_weight"] == 25.0
-    assert calc_res["base_rate_chf_per_ton"] > 0
-
-
-def test_table_6_col_3_energy_gases_export_trk():
-    """Тест 2: Наливные грузы — Колонка 3 (Энергетические газы | Апшерон -> ТРК)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Апшерон", "ТРК")
-
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="27111211",
-        actual_weight=45.0,
-        distance_km=route_res.calculated_distance_km,
-        wagon_type="cistern",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        is_private_wagon=False
-    )
-
-    _print_calculation_result("2. Наливные грузы — Колонка 3 (Апшерон -> Алят-эксп. / ТРК)", route_res, calc_res, "27111211", 45.0, "cistern", False)
-    assert calc_res["billable_weight"] == 25.0
-    assert calc_res["base_rate_chf_per_ton"] > 0
-
-
-def test_table_6_col_4_gases_hydrocarbons_import_alat():
-    """Тест 3: Наливные грузы — Колонка 4 (Газы и химические углеводороды | Алят-эксп. -> Гаджигабул)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Алят-эксп", "Гаджигабул")
-
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="28141000",
-        actual_weight=50.0,
-        distance_km=route_res.calculated_distance_km,
-        wagon_type="cistern",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        is_private_wagon=False
-    )
-
-    _print_calculation_result("3. Наливные грузы — Колонка 4 (Алят-эксп. -> Гаджигабул)", route_res, calc_res, "28141000", 50.0, "cistern", False)
-    assert calc_res["billable_weight"] == 25.0
-    assert calc_res["base_rate_chf_per_ton"] > 0
-
-
-def test_table_6_col_5_alcohols_phenols_transit_alat():
-    """Тест 4: Наливные грузы — Колонка 5 (Спирты и фенолы | Ялама -> Алят-эксп.)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Ялама", "Алят-эксп")
-
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="29051100",
-        actual_weight=55.0,
-        distance_km=route_res.calculated_distance_km,
-        wagon_type="cistern",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        is_private_wagon=False
-    )
-
-    _print_calculation_result("4. Наливные грузы — Колонка 5 (Ялама -> Алят-эксп.)", route_res, calc_res, "29051100", 55.0, "cistern", False)
-    assert calc_res["billable_weight"] == 25.0
-    assert calc_res["base_rate_chf_per_ton"] > 0
-
-
-def test_table_6_col_6_perishable_liquids_export_alat():
-    """Тест 5: Наливные грузы — Колонка 6 (Скоропортящиеся наливные | Гянджа -> Курык)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Гянджа", "Курык")
-
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="04011000",
+        gng_code="99310000",
         actual_weight=40.0,
         distance_km=route_res.calculated_distance_km,
-        wagon_type="cistern",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        is_private_wagon=False
-    )
-
-    _print_calculation_result("5. Наливные грузы — Колонка 6 (Гянджа -> Алят-эксп.)", route_res, calc_res, "04011000", 40.0, "cistern", False)
-    assert calc_res["billable_weight"] == 25.0
-    assert calc_res["base_rate_chf_per_ton"] > 0
-
-
-def test_table_6_col_7_other_liquids_import_alat():
-    """Тест 6: Наливные грузы — Колонка 7 (Прочие наливные грузы | Алят-эксп. -> Сумгаит)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Алят-эксп.", "Сумгаит")
-
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="99999999",
-        actual_weight=50.0,
-        distance_km=route_res.calculated_distance_km,
-        wagon_type="cistern",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        is_private_wagon=False
-    )
-
-    _print_calculation_result("6. Наливные грузы — Колонка 7 (Алят-эксп. -> Сумгаит)", route_res, calc_res, "99999999", 50.0, "cistern", False)
-    assert calc_res["billable_weight"] == 25.0
-    assert calc_res["base_rate_chf_per_ton"] > 0
-
-
-def test_table_6_col_8_private_tank_transit_alat():
-    """Тест 7: Наливные грузы — Колонка 8 (Приватные цистерны | Беюк Кясик -> Алят-эксп.)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("БК", "Алят-эксп.")
-
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="27071000",
-        actual_weight=50.0,
-        distance_km=route_res.calculated_distance_km,
-        wagon_type="cistern",
+        wagon_type="diesel_generator_wagon",
+        axle_count=4,
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
         is_private_wagon=True
     )
 
-    _print_calculation_result("7. Наливные грузы — Колонка 8 (Приватные цистерны — без двойной скидки 0.85)", route_res, calc_res, "27071000", 50.0, "cistern", True)
-    assert calc_res["billable_weight"] == 25.0
+    _print_calculation_result("1. Вагон-дизель-генератор (п. 3.4.3.2)", route_res, calc_res, "99310000", 40.0, "diesel_generator_wagon", True)
+    
+    # Осевой расчет: distance * 4 axles * 0.12
+    expected_chf = round(route_res.calculated_distance_km * 4 * 0.12, 2)
+    assert calc_res["base_rate_chf_per_ton"] == expected_chf
+    assert calc_res["table_name"] == "Пункт 3.4.3.2"
+
+
+def test_diesel_generator_wagon_with_attendants():
+    """Тест 2: Вагон-дизель-генератор с проводниками (п. 3.4.3.2) - 12 CHF / 100 км за человека"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "БК")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="99310000",
+        actual_weight=40.0,
+        distance_km=route_res.calculated_distance_km,
+        wagon_type="diesel_generator_wagon",
+        axle_count=4,
+        attendants_count=2,
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True
+    )
+
+    _print_calculation_result("2. Вагон-дизель-генератор с 2 проводниками", route_res, calc_res, "99310000", 40.0, "diesel_generator_wagon", True)
+    
+    applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
+    assert "ATTENDANTS_FEE_RULE_3_4_3_2" in applied_codes
+
+
+def test_diesel_generator_wagon_service_crew():
+    """Тест 3: Вагон-дизель-генератор с сервисной бригадой (п. 3.4.3.2) - Бесплатно"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "БК")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="99310000",
+        actual_weight=40.0,
+        distance_km=route_res.calculated_distance_km,
+        wagon_type="diesel_generator_wagon",
+        axle_count=4,
+        is_service_crew=True,
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True
+    )
+
+    _print_calculation_result("3. Вагон-дизель-генератор с сервисной бригадой", route_res, calc_res, "99310000", 40.0, "diesel_generator_wagon", True)
+    
+    applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
+    assert "SERVICE_CREW_FREE_RULE_3_4_3_2" in applied_codes
+
+
+def test_diesel_generator_container_coeff_1_35():
+    """Тест 4: Дизель-генераторный контейнер по Таблице 8 с коэффициентом 1.35 (п. 3.4.5)"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "БК")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="99310000",
+        actual_weight=20.0,
+        distance_km=route_res.calculated_distance_km,
+        wagon_type="diesel_generator_container",
+        container_category_tons=20,
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True
+    )
+
+    _print_calculation_result("4. Дизель-генераторный контейнер (Таблица 8 x 1.35)", route_res, calc_res, "99310000", 20.0, "diesel_generator_container", True)
 
     applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
-    assert "MAIN_COEFF_0_85_PRIVATE_WAGON" not in applied_codes
+    assert "DIESEL_GENERATOR_CONTAINER_COEFF_1_35" in applied_codes
