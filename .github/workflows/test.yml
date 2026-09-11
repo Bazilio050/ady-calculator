@@ -69,5 +69,5 @@ jobs:
           python -m pytest tests/test_containers_next.py -v -s
 
       - name: Запуск тестов Таблицы 11 и Негабаритных грузов (п. 3.5)
-      run: |
-        pytest tests/test_table_11_oversized.py -v -s
+        run: |
+          pytest tests/test_table_11_oversized.py -v -s
