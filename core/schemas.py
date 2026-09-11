@@ -108,6 +108,14 @@ class ShipmentQuery(BaseModel):
         description="Признак приватного вагона прикрытия (True = 0.30 CHF/ось-км, False = 0.35 CHF/ось-км)"
     )
 
+    # --------------------------------------------------------------------------
+    # БЛОК: Параметры для раздела 3.6 (Опасные грузы)
+    # --------------------------------------------------------------------------
+    is_dangerous_cargo: bool = Field(
+        default=False,
+        description="Признак опасного груза (п. 3.6.1: коэффициент 2.00 к Таблицам 6, 7, 9, 10, 12)"
+    )
+
     @field_validator("gng_code")
     @classmethod
     def validate_gng_code(cls, value: Optional[str]) -> Optional[str]:
