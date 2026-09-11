@@ -336,5 +336,34 @@ RULE_MESSAGES = {
         "az": "Təhlükəli yük üçün qoruyucu boş vaqonun daşınması (p. 3.6.3): ox-km üzrə hesablandı ({rate} CHF/ox-km).",
         "ru": "Перевозка порожнего вагона прикрытия для опасного груза (п. 3.6.3): расчёт по {rate} CHF/ось-км.",
         "en": "Empty cover wagon for dangerous cargo (clause 3.6.3): calculated at {rate} CHF/axle-km.",
+    },
+
+    # --------------------------------------------------------------------------
+    # БЛОК: Раздел 3.7 — Перевозка подвижного состава на своих осях
+    # --------------------------------------------------------------------------
+    "ROLLING_STOCK_AXLES_COEFF_0_50_RULE_3_7_1": {
+        "az": "Öz oxları üzərində hərəkət tərkibinin daşınması (p. 3.7.1): Universal vaqon tarifinə 0.50 əmsalı tətbiq edildi.",
+        "ru": "Перевозка подвижного состава на своих осях (п. 3.7.1): применен коэффициент 0.50 к тарифу универсального вагона.",
+        "en": "Rolling stock on own axles shipment (clause 3.7.1): 0.50 coefficient applied to universal wagon tariff.",
+    },
+    "EMPTY_WAGON_REPAIR_0_10_AXLE_KM_RULE_3_7_2": {
+        "az": "Təmirə gedən/qayıdan inventar vaqonun daşınması (p. 3.7.2): 0.10 CHF/ox-km ilə hesablandı.",
+        "ru": "Перевозка инвентарного вагона в/из ремонта (п. 3.7.2): расчёт по 0.10 CHF/ось-км.",
+        "en": "Empty wagon transport to/from repair (clause 3.7.2): calculated at 0.10 CHF/axle-km.",
+    },
+    "ROLLING_STOCK_PASSENGER_TRAIN_COEFF_2_00_RULE_3_7_3": {
+        "az": "Sərnişin qatarının tərkibində daşınma (p. 3.7.3): 2.00 artırma əmsalı tətbiq edildi.",
+        "ru": "Перевозка в составе пассажирского поезда (п. 3.7.3): применен повышающий коэффициент 2.00.",
+        "en": "Transport within passenger train (clause 3.7.3): 2.00 multiplier applied.",
+    },
+    "TRANSPORTER_AXLE_KM_RATES_RULE_3_7_8": {
+        "az": "Boş transportyorun daşınması (p. 3.7.8): {axles}-oxlu üçün {rate} CHF/ox-km dərəcəsi tətbiq edildi.",
+        "ru": "Перевозка порожнего транспортера (п. 3.7.8): применительно для {axles}-осного по ставке {rate} CHF/ось-км.",
+        "en": "Empty transporter movement (clause 3.7.8): {rate} CHF/axle-km rate applied for {axles}-axle transporter.",
+    },
+    "TRANSPORTER_RETURN_MIN_WEIGHT_10T_RULE_3_7_9": {
+        "az": "Geri qaytarılan daşıma vasitəsinin minimal hesablama çəkisi (p. 3.7.9): 10 ton götürüldü.",
+        "ru": "Минимальный расчетный вес возвращаемого средства транспортировки (п. 3.7.9): принят 10 тонн.",
+        "en": "Minimum billable weight for returned transport device (clause 3.7.9): 10 tons applied.",
     }
 }
