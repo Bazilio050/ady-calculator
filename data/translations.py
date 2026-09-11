@@ -265,5 +265,10 @@ RULE_MESSAGES = {
             "az": "Xidməti briqada üçün gediş haqqı tutulmur (bənd 3.4.3.2).",
             "ru": "Плата за проезд сервисной бригады не взимается (п. 3.4.3.2).",
             "en": "No fare charged for the service crew (clause 3.4.3.2)."
+        },
+        "DIESEL_GENERATOR_CONTAINER_COEFF_1_35": {
+        "az": "Dizel-generator konteynerləri üçün Cədvəl 8-in qiymətlərinə 1.35 əmsalı tətbiq edilmişdir (bənd 3.4.5).",
+        "ru": "Применен коэффициент 1.35 к ставкам Таблицы 8 для контейнеров-дизель-генераторов (п. 3.4.5).",
+        "en": "Coefficient 1.35 applied to Table 8 rates for diesel-generator containers (clause 3.4.5)."
         }
     }
