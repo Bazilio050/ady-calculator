@@ -11,6 +11,7 @@ from core.tables.table_6 import Table6Calculator
 from core.tables.table_7 import Table7Calculator
 from core.tables.table_8 import Table8Calculator
 from core.tables.table_10 import Table10Calculator
+from core.tables.table_11 import calculate_table_11_tariff
 from core.main_rules import apply_main_rules
 from data.currency_rates import get_exchange_rate
 
@@ -53,6 +54,13 @@ class TariffCalculator:
         is_empty_wagon: bool = False,                        # Флаг порожнего вагона (boş вагон)
         attendants_count: int = 0,                           # Количество проводников (п. 3.4.3.2)
         is_service_crew: bool = False                        # Флаг сервисной бригады (бесплатно по п. 3.4.3.2)
+        is_empty_wagon: bool = False,                        # Флаг порожнего вагона (boş вагон)
+        attendants_count: int = 0,                           # Количество проводников (п. 3.4.3.2)
+        is_service_crew: bool = False,                       # Флаг сервисной бригады (бесплатно по п. 3.4.3.2)
+        oversized_degree: Optional[str] = None,              # Степень негабаритности (п. 3.5.1)
+        is_transporter: bool = False,                        # Флаг транспортера (п. 3.5.1.3)
+        cover_wagons_count: int = 0,                         # Количество вагонов прикрытия (п. 3.5.3)
+        is_cover_wagon_private: bool = True                  # Флаг приватного вагона прикрытия
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -346,6 +354,28 @@ class TariffCalculator:
                     "rule_code": r["rule_code"],
                     "params": r.get("params", {})
                 })
+
+        elif oversized_degree in ["3_top", "3-5_bottom", "4-5_side", "3-5_bottom_side"]:
+            table_name = "Таблица 11"
+            t11_res = calculate_table_11_tariff(
+                distance_km=int(distance_km),
+                actual_weight=float(act_w),
+                oversized_degree=oversized_degree
+            )
+            base_rate_chf = t11_res["base_rate_chf"]
+            billable_weight = t11_res["billable_weight"]
+
+            # Применяем повышающий коэффициент Таблицы 11 (1.50 или 2.00) к итоговой ставке
+            applied_rules_list.append({
+                "rule_code": t11_res["applied_rules"][0]["rule_code"],
+                "calculated_value": t11_res["coeff"],
+                "params": t11_res["applied_rules"][0]["params"]
+            })
+            for r in t11_res["applied_rules"]:
+                notifications.append({
+                    "rule_code": r["rule_code"],
+                    "params": r.get("params", {})
+                })
                     
         elif is_ref_wagon:
             table_name = "Таблица 5"
@@ -462,6 +492,26 @@ class TariffCalculator:
             })
 
         # ------------------------------------------------------------------------------
+        # БЛОК: Расчет платы за вагоны прикрытия / защитные рамки (п. 3.5.3)
+        # ------------------------------------------------------------------------------
+        cover_wagons_fee_usd = 0.0
+        if cover_wagons_count > 0:
+            cover_rate_chf = 0.30 if is_cover_wagon_private else 0.35
+            # Расчёт: Расстояние * (Количество вагонов * 4 оси) * Ставка CHF
+            cover_fee_chf = round(distance_km * (cover_wagons_count * 4) * cover_rate_chf, 2)
+            cover_wagons_fee_usd = round(cover_fee_chf / exchange_rate, 2) if exchange_rate > 0 else cover_fee_chf
+
+            applied_rules_list.append({
+                "rule_code": "EMPTY_COVER_WAGON_AXLE_KM_RULE_3_5_3",
+                "calculated_value": cover_wagons_fee_usd,
+                "params": {"count": cover_wagons_count, "rate": cover_rate_chf}
+            })
+            notifications.append({
+                "rule_code": "EMPTY_COVER_WAGON_AXLE_KM_RULE_3_5_3",
+                "params": {"count": cover_wagons_count, "rate": cover_rate_chf}
+            })
+
+        # ------------------------------------------------------------------------------
         # БЛОК: Финальный расчет полной стоимости за вагон / отправку
         # ------------------------------------------------------------------------------
         attendants_fee_usd = 0.0
@@ -473,9 +523,9 @@ class TariffCalculator:
         wagon_rate_usd = final_rate_per_ton_usd
 
         if wagon_type_lower == "diesel_generator_wagon":
-            final_rate_total_usd = round(wagon_rate_usd + attendants_fee_usd, 2)
+            final_rate_total_usd = round(wagon_rate_usd + attendants_fee_usd + cover_wagons_fee_usd, 2)
         else:
-            final_rate_total_usd = round(wagon_rate_usd * billable_weight + attendants_fee_usd, 2)
+            final_rate_total_usd = round(wagon_rate_usd * billable_weight + attendants_fee_usd + cover_wagons_fee_usd, 2)
 
         return {
             "actual_weight": act_w,
