@@ -62,7 +62,10 @@ class TariffCalculator:
         cover_wagons_count: int = 0,                         # Количество вагонов прикрытия (п. 3.5.3)
         is_cover_wagon_private: bool = True,                 # Флаг приватного вагона прикрытия
         is_dangerous_cargo: bool = False,                    # Флаг опасного груза (п. 3.6.1)
-        un_code: Optional[str] = None                        # Код ООН (BMT №) по Таблице 13
+        un_code: Optional[str] = None,                       # Код ООН (BMT №) по Таблице 13
+        is_rolling_stock_on_own_axles: bool = False,         # Флаг подвижного состава на своих осях (п. 3.7.1)
+        is_empty_wagon_repair: bool = False,                 # Флаг отправки в/из ремонта (п. 3.7.2)
+        is_passenger_train_composition: bool = False         # Флаг следования в пассажирском поезде (п. 3.7.3)
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -73,6 +76,7 @@ class TariffCalculator:
         notifications = []
         ship_type_lower = shipment_type.lower()
         wagon_type_lower = wagon_type.lower()
+
         # Автоматическая проверка по Таблице 13, если передан un_code
         if un_code and not is_dangerous_cargo:
             if Table13Checker.check_dangerous_status(un_code=un_code, wagon_type=wagon_type):
@@ -134,7 +138,7 @@ class TariffCalculator:
         # ------------------------------------------------------------------------------
         if is_tank_wagon:
             weight_after_min_norm = 25.0
-        elif wagon_type_lower in ("transporter", "транспортер"):
+        elif wagon_type_lower in ("transporter", "транспортер") or is_transporter:
             weight_after_min_norm, transp_rule = Table7Calculator.check_transporter_min_weight(
                 actual_weight=actual_weight,
                 axle_count=axle_count
@@ -161,10 +165,8 @@ class TariffCalculator:
         if is_tank_wagon:
             billable_weight = 25.0
         elif is_auto_special and is_empty_wagon:
-            # Для п. 3.3.2 в порожнем состоянии фиксируем вес: 5т для кузовов, 7т для автопоездов
             billable_weight = 5.0 if wagon_type_lower in ("auto_body", "detachable_body", "кузов") else 7.0
         elif is_table_7 or is_inv_anv:
-            # Для Таблицы 7 и İNV/ANV берем фактический вес пользователя без округления по Таблице 1
             billable_weight = float(actual_weight)
         else:
             weight_res = Table1Calculator.calculate_billable_weight(weight_after_min_norm)
@@ -184,7 +186,7 @@ class TariffCalculator:
                 "params": {"actual_weight": actual_weight, "applied_weight": 25.0}
             })
 
-        # 2. Проверка применимости Таблиц 3 и 4 (исключаем спецтаблицы, контейнеры и порожние вагоны)
+        # 2. Проверка применимости Таблиц 3 и 4
         is_table_3_applicable = ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"] and not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container or is_generator_container or is_universal_container or (active_1_40_rule is not None) or is_empty_wagon or is_dangerous_cargo)
         is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"] and not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container or is_generator_container or is_universal_container or (active_1_40_rule is not None) or is_empty_wagon or is_dangerous_cargo)
 
@@ -198,11 +200,7 @@ class TariffCalculator:
                 is_private_wagon=is_private_wagon
             )
 
-        # Флаг для Таблицы 6 (Столбец 2 - нефть и нефтепродукты)
         is_oil_product = (is_tank_wagon and column_name == "col_2")
-
-        # Убираем флаг приватноcти для главных правил, если это вагон-дизель-генератор, 
-        # так как ставка 0.12 CHF/ось-км уже установлена для приватных вагонов по п. 3.4.3.2
         is_private_for_rules = is_private_wagon if wagon_type_lower != "diesel_generator_wagon" else False
 
         rules_res = apply_main_rules(
@@ -231,12 +229,31 @@ class TariffCalculator:
         base_rate_chf = 0.0
         table_name = "Таблица 3"
 
-        is_transporter = wagon_type_lower in ("transporter", "транспортер")
+        # ------------------------------------------------------------------------------
+        # БЛОК: Выбор таблицы расчета тарифной ставки (С РАЗДЕЛОМ 3.7)
+        # ------------------------------------------------------------------------------
+        if (is_transporter or wagon_type_lower == "transporter") and is_empty_wagon:
+            table_name = "Пункт 3.7.8"
+            transp_res = EmptyTransporterCalculator.calculate(
+                distance_km=distance_km,
+                axle_count=axle_count
+            )
+            base_rate_chf = transp_res["base_rate_chf"]
+            for r in transp_res.get("applied_rules", []):
+                notifications.append({
+                    "rule_code": r["rule_code"],
+                    "params": r.get("params", {})
+                })
 
-        # ------------------------------------------------------------------------------
-        # БЛОК: Выбор таблицы расчета тарифной ставки
-        # ------------------------------------------------------------------------------
-        if is_dangerous_cargo and not is_tank_wagon and not is_special_container:
+        elif is_empty_wagon_repair:
+            table_name = "Пункт 3.7.2"
+            base_rate_chf = round(distance_km * axle_count * 0.10, 2)
+            notifications.append({
+                "rule_code": "EMPTY_WAGON_REPAIR_0_10_AXLE_KM_RULE_3_7_2",
+                "params": {"axle_count": axle_count, "distance_km": distance_km}
+            })
+
+        elif is_dangerous_cargo and not is_tank_wagon and not is_special_container:
             table_name = "Таблица 12"
             t12_res = Table12Calculator.calculate(
                 distance_km=distance_km,
@@ -467,12 +484,37 @@ class TariffCalculator:
                 weight_tons=billable_weight
             )
 
-        # 5. Получение курса валюты и перевод базовой ставки в USD (база / курс)
+        # 5. Получение курса валюты и перевод базовой ставки в USD
         exchange_rate = get_exchange_rate(shipment_date)
         base_rate_usd = (base_rate_chf / exchange_rate) if exchange_rate > 0 else base_rate_chf
 
         # ------------------------------------------------------------------------------
-        # БЛОК: Правило 3.1.2.7 (Спецплатформа > 19м с габаритным грузом, МПС)
+        # БЛОК: Дополнительные коэффициенты Раздела 3.7
+        # ------------------------------------------------------------------------------
+        if is_rolling_stock_on_own_axles:
+            applied_rules_list.append({
+                "rule_code": "ROLLING_STOCK_AXLES_COEFF_0_50_RULE_3_7_1",
+                "calculated_value": 0.50,
+                "params": {}
+            })
+            notifications.append({
+                "rule_code": "ROLLING_STOCK_AXLES_COEFF_0_50_RULE_3_7_1",
+                "params": {}
+            })
+
+        if is_passenger_train_composition:
+            applied_rules_list.append({
+                "rule_code": "ROLLING_STOCK_PASSENGER_TRAIN_COEFF_2_00_RULE_3_7_3",
+                "calculated_value": 2.00,
+                "params": {}
+            })
+            notifications.append({
+                "rule_code": "ROLLING_STOCK_PASSENGER_TRAIN_COEFF_2_00_RULE_3_7_3",
+                "params": {}
+            })
+
+        # ------------------------------------------------------------------------------
+        # БЛОК: Правило 3.1.2.7
         # ------------------------------------------------------------------------------
         if (
             is_specialized_platform
@@ -490,7 +532,7 @@ class TariffCalculator:
                 "params": {}
             })
 
-        # Упорядочивание правил (специфические правила -> 1.015 -> коэффициент приватного вагона 0.85/0.70)
+        # Упорядочивание правил
         private_rule_codes = ["MAIN_COEFF_0_85_PRIVATE_WAGON", "MAIN_COEFF_0_70_SPECIAL_CHEMICALS_TANK"]
         
         specific_rules = [r for r in applied_rules_list if r["rule_code"] not in ["MAIN_COEFF_1_015_INTERNATIONAL_LOADED"] + private_rule_codes]
@@ -506,7 +548,7 @@ class TariffCalculator:
         final_rate_per_ton_usd = round(running_rate, 2)
 
         # ------------------------------------------------------------------------------
-        # БЛОК: Расчет платы за проводников в дизель-генераторе (п. 3.4.3.2)
+        # БЛОК: Расчет платы за проводников
         # ------------------------------------------------------------------------------
         if is_service_crew:
             notifications.append({
@@ -528,7 +570,7 @@ class TariffCalculator:
             })
 
         # ------------------------------------------------------------------------------
-        # БЛОК: Расчет платы за вагоны прикрытия / защитные рамки (п. 3.5.3)
+        # БЛОК: Расчет платы за вагоны прикрытия
         # ------------------------------------------------------------------------------
         cover_wagons_fee_usd = 0.0
         if cover_wagons_count > 0:
@@ -547,7 +589,7 @@ class TariffCalculator:
             })
 
         # ------------------------------------------------------------------------------
-        # БЛОК: Финальный расчет полной стоимости за вагон / отправку
+        # БЛОК: Финальный расчет полной стоимости
         # ------------------------------------------------------------------------------
         attendants_fee_usd = 0.0
         for rule in applied_rules_list:
