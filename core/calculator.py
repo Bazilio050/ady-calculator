@@ -88,6 +88,12 @@ class TariffCalculator:
             "контейнер_платформа",
             "платформа_контейнер"
         ]
+        open_top_container_types = [
+            "open_top_container",
+            "open_top",
+            "открытый_контейнер",
+            "контейнер_open_top"
+        ]
 
         is_ref_wagon = wagon_type_lower in ref_wagon_types
         is_tank_wagon = wagon_type_lower in tank_wagon_types
@@ -95,6 +101,7 @@ class TariffCalculator:
         is_generator_container = wagon_type_lower in generator_container_types
         is_universal_container = wagon_type_lower in ("container", "universal_container", "контейнер")
         is_container_platform = wagon_type_lower in platform_container_types
+        is_open_top_container = wagon_type_lower in open_top_container_types
 
         # Автоматическое определение порожнего состояния по префиксу ГНГ (9921 / 9922) или весу = 0
         clean_gng = str(gng_code).strip() if gng_code else ""
