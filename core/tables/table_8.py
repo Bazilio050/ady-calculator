@@ -60,7 +60,8 @@ class Table8Calculator:
         is_empty: bool = False,
         is_private: bool = True,
         is_generator_container: bool = False,
-        is_container_platform: bool = False
+        is_container_platform: bool = False,
+        is_open_top_container: bool = False
     ) -> Dict[str, Any]:
         """Возвращает базовую ставку в CHF по Таблице 8."""
         cls._load_data_if_needed()
@@ -98,6 +99,14 @@ class Table8Calculator:
             base_rate = round(base_rate * 1.40, 2)
             applied_rules.append({
                 "rule_code": "CONTAINER_PLATFORM_COEFF_1_40",
+                "calculated_value": 1.40,
+                "params": {}
+            })
+        # П. 3.4.7: Коэффициент 1.40 за открытые контейнеры (Open Top)
+        elif is_open_top_container:
+            base_rate = round(base_rate * 1.40, 2)
+            applied_rules.append({
+                "rule_code": "OPEN_TOP_CONTAINER_COEFF_1_40",
                 "calculated_value": 1.40,
                 "params": {}
             })
