@@ -71,8 +71,8 @@ def test_oversized_small_degree_rule_3_5_1_1():
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
-        gng_code="2701",
-        actual_weight=18.0,  # Фактический вес ниже 25т
+        gng_code="8401",  # Заменили 2701 на 8401, чтобы проверить округление веса 18т -> 25т
+        actual_weight=18.0,
         distance_km=route_res.distance_km,
         wagon_type="platform",
         from_canonical_name=route_res.from_station.canonical_name,
@@ -81,7 +81,7 @@ def test_oversized_small_degree_rule_3_5_1_1():
         oversized_degree="small"
     )
 
-    _print_calculation_result("1. Малая степень негабаритности (Ялама -> Беюк Кясик)", route_res, calc_res, "2701", 18.0, "platform", True)
+    _print_calculation_result("1. Малая степень негабаритности (Ялама -> Беюк Кясик)", route_res, calc_res, "8401", 18.0, "platform", True)
     
     assert calc_res["billable_weight"] == 25.0
     assert calc_res["applied_table"] == "Таблица 4"
