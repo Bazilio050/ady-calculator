@@ -77,31 +77,39 @@ class TariffCalculator:
         ]
         tank_wagon_types = ["cistern", "tank", "цистерна", "бункер", "bunker"]
         generator_container_types = [
+           generator_container_types = [
             "diesel_generator_container", 
             "generator_container", 
             "дизель_генераторный_контейнер"
         ]
-        platform_container_types = [
-            "container_platform",
-            "flatrack_container",
-            "flatrack",
-            "контейнер_платформа",
-            "платформа_контейнер"
-        ]
-        open_top_container_types = [
-            "open_top_container",
-            "open_top",
-            "открытый_контейнер",
-            "контейнер_open_top"
-        ]
+
+        # Карта правил с коэффициентом 1.40 к Таблице 8 (пп. 3.4.6, 3.4.7, 3.4.8)
+        coeff_1_40_map = {
+            "CONTAINER_PLATFORM_COEFF_1_40": [
+                "container_platform", "flatrack_container", "flatrack", 
+                "контейнер_платформа", "платформа_контейнер"
+            ],
+            "OPEN_TOP_CONTAINER_COEFF_1_40": [
+                "open_top_container", "open_top", 
+                "открытый_контейнер", "контейнер_open_top"
+            ],
+            "SPECIAL_PURPOSE_CONTAINER_COEFF_1_40": [
+                "special_purpose_container", "special_container", 
+                "спец_контейнер", "специальный_контейнер"
+            ]
+        }
+
+        active_1_40_rule = None
+        for rule_code, types_list in coeff_1_40_map.items():
+            if wagon_type_lower in types_list:
+                active_1_40_rule = rule_code
+                break
 
         is_ref_wagon = wagon_type_lower in ref_wagon_types
         is_tank_wagon = wagon_type_lower in tank_wagon_types
         is_special_container = wagon_type_lower in ("tank_container", "reefer_container", "wine_juice_container")
         is_generator_container = wagon_type_lower in generator_container_types
         is_universal_container = wagon_type_lower in ("container", "universal_container", "контейнер")
-        is_container_platform = wagon_type_lower in platform_container_types
-        is_open_top_container = wagon_type_lower in open_top_container_types
 
         # Автоматическое определение порожнего состояния по префиксу ГНГ (9921 / 9922) или весу = 0
         clean_gng = str(gng_code).strip() if gng_code else ""
@@ -156,8 +164,8 @@ class TariffCalculator:
                 })
 
         # 2. Проверка применимости Таблиц 3 и 4 (исключаем спецтаблицы, контейнеры и порожние вагоны)
-        is_table_3_applicable = ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"] and not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container or is_generator_container or is_universal_container or is_container_platform or is_open_top_container or is_empty_wagon)
-        is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"] and not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container or is_generator_container or is_universal_container or is_container_platform or is_open_top_container or is_empty_wagon)
+        is_table_3_applicable = ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"] and not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container or is_generator_container or is_universal_container or (active_1_40_rule is not None) or is_empty_wagon)
+        is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"] and not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container or is_generator_container or is_universal_container or (active_1_40_rule is not None) or is_empty_wagon)
 
         # 3. Определение таблицы и флагов груза до применения главных правил
         column_name = None
@@ -320,31 +328,14 @@ class TariffCalculator:
                     "params": r.get("params", {})
                 })
 
-        elif is_container_platform:
+        elif active_1_40_rule:
             table_name = "Таблица 8"
             t8_res = Table8Calculator.get_base_rate(
                 distance_km=distance_km,
                 feet_size=container_category_tons or 20,
                 is_empty=is_empty_wagon,
                 is_private=is_private_wagon,
-                is_container_platform=True
-            )
-            base_rate_chf = t8_res["base_rate"]
-
-            for r in t8_res.get("applied_rules", []):
-                notifications.append({
-                    "rule_code": r["rule_code"],
-                    "params": r.get("params", {})
-                })
-
-        elif is_open_top_container:
-            table_name = "Таблица 8"
-            t8_res = Table8Calculator.get_base_rate(
-                distance_km=distance_km,
-                feet_size=container_category_tons or 20,
-                is_empty=is_empty_wagon,
-                is_private=is_private_wagon,
-                is_open_top_container=True
+                coeff_1_40_rule_code=active_1_40_rule
             )
             base_rate_chf = t8_res["base_rate"]
 
