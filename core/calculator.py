@@ -1,5 +1,6 @@
 # core/calculator.py
 
+import math
 from typing import Dict, Any, List, Optional
 from core.tables.table_1_weight import Table1Calculator
 from core.tables.table_min_load import TableMinLoadCalculator
