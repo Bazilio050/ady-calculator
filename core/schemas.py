@@ -124,6 +124,22 @@ class ShipmentQuery(BaseModel):
         description="4-значный код ООН (BMT №) для автоматической проверки опасных грузов по Таблице 13"
     )
 
+    # --------------------------------------------------------------------------
+    # БЛОК: Параметры для раздела 3.7 (Подвижной состав на своих осях)
+    # --------------------------------------------------------------------------
+    is_rolling_stock_on_own_axles: bool = Field(
+        default=False,
+        description="Признак перевозки подвижного состава на своих осях (п. 3.7.1: коэффициент 0.50 к универсальному вагону)"
+    )
+    is_empty_wagon_repair: bool = Field(
+        default=False,
+        description="Признак отправки инвентарного вагона в/из ремонта (п. 3.7.2: ставка 0.10 CHF/ось-км)"
+    )
+    is_passenger_train_composition: bool = Field(
+        default=False,
+        description="Признак перевозки подвижного состава в составе пассажирского поезда (п. 3.7.3: коэффициент 2.00)"
+    )
+
     @field_validator("gng_code")
     @classmethod
     def validate_gng_code(cls, value: Optional[str]) -> Optional[str]:
