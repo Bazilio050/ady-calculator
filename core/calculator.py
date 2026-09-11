@@ -2,7 +2,7 @@
 
 import math
 from typing import Dict, Any, List, Optional
-from core.tables.table_1_weight import Tableа1Calculator
+from core.tables.table_1_weight import Table1Calculator
 from core.tables.table_min_load import TableMinLoadCalculator
 from core.tables.table_3 import Table3Calculator
 from core.tables.table_4 import Table4Calculator
