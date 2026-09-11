@@ -311,6 +311,23 @@ class TariffCalculator:
                     "rule_code": r["rule_code"],
                     "params": r.get("params", {})
                 })
+
+        elif is_container_platform:
+            table_name = "Таблица 8"
+            t8_res = Table8Calculator.get_base_rate(
+                distance_km=distance_km,
+                feet_size=container_category_tons or 20,
+                is_empty=is_empty_wagon,
+                is_private=is_private_wagon,
+                is_container_platform=True
+            )
+            base_rate_chf = t8_res["base_rate"]
+
+            for r in t8_res.get("applied_rules", []):
+                notifications.append({
+                    "rule_code": r["rule_code"],
+                    "params": r.get("params", {})
+                })
                     
         elif is_ref_wagon:
             table_name = "Таблица 5"
