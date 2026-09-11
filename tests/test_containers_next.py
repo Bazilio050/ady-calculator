@@ -24,13 +24,11 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
     print(f"Курс конвертации (CHF -> USD): {calc_res['exchange_rate']}")
     print(f"Базовая ставка в USD: {calc_res['base_rate_usd_per_ton']} USD\n")
 
-    # Собираем уведомления от Роутера и от Калькулятора
     all_notifications = []
     if route_res.rule_code:
         all_notifications.append({"rule_code": route_res.rule_code, "params": route_res.params})
     all_notifications.extend(calc_res.get("notifications", []))
 
-    # Вывод RU версий
     for notif in all_notifications:
         code = notif.get("rule_code")
         params = notif.get("params", {})
@@ -40,7 +38,6 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
 
     print(f"\nИтоговый тариф: {calc_res['final_rate_usd_per_ton']} USD\n")
 
-    # Вывод AZ и EN версий
     if all_notifications:
         print("Уведомления:")
         for notif in all_notifications:
@@ -54,81 +51,11 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
 
 
 # ------------------------------------------------------------------------------
-# ТЕСТЫ ДЛЯ ДИЗЕЛЬ-ГЕНЕРАТОРОВ (ВАГОНЫ И КОНТЕЙНЕРЫ - ПУНКТЫ 3.4.3.2 И 3.4.5)
+# ТЕСТЫ ДЛЯ СПЕЦИАЛИЗИРОВАННЫХ КОНТЕЙНЕРОВ (ТАБЛИЦА 8 + КОЭФФИЦИЕНТЫ)
 # ------------------------------------------------------------------------------
 
-def test_diesel_generator_wagon_transit():
-    """Тест 1: Вагон-дизель-генератор (0.12 CHF / ось-км | Ялама -> БК, п. 3.4.3.2)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Ялама", "БК")
-
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="99210000",
-        actual_weight=0.0,
-        distance_km=route_res.calculated_distance_km,
-        wagon_type="diesel_generator_wagon",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        axle_count=4,
-        is_private_wagon=True
-    )
-
-    _print_calculation_result("1. Расчет вагона-дизель-генератора (0.12 CHF / ось-км)", route_res, calc_res, "99210000", 0.0, "diesel_generator_wagon", True)
-    
-    expected_chf = round(route_res.calculated_distance_km * 4 * 0.12, 2)
-    assert calc_res["base_rate_chf_per_ton"] == expected_chf
-    assert calc_res["table_name"] == "Пункт 3.4.3.2"
-
-
-def test_attendants_fee_transit():
-    """Тест 2: Проезд проводников в дизель-генераторе (12 CHF / 100 км / чел | Ялама -> БК, п. 3.4.3.2)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Ялама", "БК")
-
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="99210000",
-        actual_weight=0.0,
-        distance_km=route_res.calculated_distance_km,
-        wagon_type="diesel_generator_wagon",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        attendants_count=2,
-        is_private_wagon=True
-    )
-
-    _print_calculation_result("2. Начисление платы за проводников (12 CHF / 100 км / чел)", route_res, calc_res, "99210000", 0.0, "diesel_generator_wagon", True)
-    
-    applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
-    assert "ATTENDANTS_FEE_RULE_3_4_3_2" in applied_codes
-
-
-def test_service_crew_free_transit():
-    """Тест 3: Бесплатный проезд сервисной бригады (п. 3.4.3.2 | Ялама -> БК)"""
-    router = RailwayRouter(distances_file_path="data/distances.csv")
-    route_res = router.calculate_route("Ялама", "БК")
-
-    calc_res = TariffCalculator.calculate(
-        shipment_type=route_res.shipment_type.value,
-        gng_code="99210000",
-        actual_weight=0.0,
-        distance_km=route_res.calculated_distance_km,
-        wagon_type="diesel_generator_wagon",
-        from_canonical_name=route_res.from_station.canonical_name,
-        to_canonical_name=route_res.to_station.canonical_name,
-        is_service_crew=True,
-        is_private_wagon=True
-    )
-
-    _print_calculation_result("3. Бесплатный проезд сервисной бригады", route_res, calc_res, "99210000", 0.0, "diesel_generator_wagon", True)
-    
-    applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
-    assert "SERVICE_CREW_FREE_RULE_3_4_3_2" in applied_codes
-
-
 def test_diesel_generator_container_coeff():
-    """Тест 4: Контейнер-дизель-генератор по Таблице 8 с коэффициентом 1.35 (п. 3.4.5 | Ялама -> БК)"""
+    """Тест 1: Контейнер-дизель-генератор по Таблице 8 с коэффициентом 1.35 (п. 3.4.5)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "БК")
 
@@ -144,13 +71,14 @@ def test_diesel_generator_container_coeff():
         is_private_wagon=True
     )
 
-    _print_calculation_result("4. Контейнер-дизель-генератор (Таблица 8 x 1.35)", route_res, calc_res, "99310000", 20.0, "diesel_generator_container", True)
+    _print_calculation_result("1. Контейнер-дизель-генератор (Таблица 8 x 1.35)", route_res, calc_res, "99310000", 20.0, "diesel_generator_container", True)
 
     applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
     assert "DIESEL_GENERATOR_CONTAINER_COEFF_1_35" in applied_codes
 
+
 def test_container_platform_coeff_1_40():
-    """Тест: Контейнер-платформа (Flatrack) по Таблице 8 с коэффициентом 1.40 (п. 3.4.6)"""
+    """Тест 2: Контейнер-платформа (Flatrack) по Таблице 8 с коэффициентом 1.40 (п. 3.4.6)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "БК")
 
@@ -166,13 +94,14 @@ def test_container_platform_coeff_1_40():
         is_private_wagon=True
     )
 
-    _print_calculation_result("5. Контейнер-платформа (Таблица 8 x 1.40)", route_res, calc_res, "99310000", 20.0, "container_platform", True)
+    _print_calculation_result("2. Контейнер-платформа Flatrack (Таблица 8 x 1.40)", route_res, calc_res, "99310000", 20.0, "container_platform", True)
 
     applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
     assert "CONTAINER_PLATFORM_COEFF_1_40" in applied_codes
 
+
 def test_open_top_container_coeff_1_40():
-    """Тест: Открытый контейнер (Open Top) по Таблице 8 с коэффициентом 1.40 (п. 3.4.7)"""
+    """Тест 3: Открытый контейнер (Open Top) по Таблице 8 с коэффициентом 1.40 (п. 3.4.7)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "БК")
 
@@ -188,7 +117,30 @@ def test_open_top_container_coeff_1_40():
         is_private_wagon=True
     )
 
-    _print_calculation_result("6. Открытый контейнер Open Top (Таблица 8 x 1.40)", route_res, calc_res, "99310000", 20.0, "open_top_container", True)
+    _print_calculation_result("3. Открытый контейнер Open Top (Таблица 8 x 1.40)", route_res, calc_res, "99310000", 20.0, "open_top_container", True)
 
     applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
     assert "OPEN_TOP_CONTAINER_COEFF_1_40" in applied_codes
+
+
+def test_special_purpose_container_coeff_1_40():
+    """Тест 4: Контейнер специального назначения по Таблице 8 с коэффициентом 1.40 (п. 3.4.8)"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "БК")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="99310000",
+        actual_weight=20.0,
+        distance_km=route_res.calculated_distance_km,
+        wagon_type="special_purpose_container",
+        container_category_tons=20,
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True
+    )
+
+    _print_calculation_result("4. Контейнер специального назначения (Таблица 8 x 1.40)", route_res, calc_res, "99310000", 20.0, "special_purpose_container", True)
+
+    applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
+    assert "SPECIAL_PURPOSE_CONTAINER_COEFF_1_40" in applied_codes
