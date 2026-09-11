@@ -73,12 +73,16 @@ class TariffCalculator:
             "inv", "anv", "inv_anv",
             "road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп",
             "auto_body", "detachable_body", "кузов"
+            "diesel_generator_container", 
+            "generator_container", 
+            "дизель_генераторный_контейнер"
         ]
         tank_wagon_types = ["cistern", "tank", "цистерна", "бункер", "bunker"]
 
         is_ref_wagon = wagon_type_lower in ref_wagon_types
         is_tank_wagon = wagon_type_lower in tank_wagon_types
         is_special_container = wagon_type_lower in ("tank_container", "reefer_container", "wine_juice_container")
+        is_generator_container = wagon_type_lower in generator_container_types
 
         # Автоматическое определение порожнего состояния по префиксу ГНГ (9921 / 9922) или весу = 0
         clean_gng = str(gng_code).strip() if gng_code else ""
@@ -263,7 +267,23 @@ class TariffCalculator:
                     "params": r.get("params", {})
                 })
 
-            
+        elif is_generator_container:
+            table_name = "Таблица 8"
+            t8_res = Table8Calculator.get_base_rate(
+                distance_km=distance_km,
+                feet_size=container_category_tons or 20,
+                is_empty=is_empty_wagon,
+                is_private=is_private_wagon,
+                is_generator_container=True
+            )
+            base_rate_chf = t8_res["base_rate"]
+
+            for r in t8_res.get("applied_rules", []):
+                notifications.append({
+                    "rule_code": r["rule_code"],
+                    "params": r.get("params", {})
+                })
+                    
         elif is_ref_wagon:
             table_name = "Таблица 5"
             # Для п. 3.3.1 (гружёные İNV / ANV): минимум 10т
