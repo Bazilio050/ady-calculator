@@ -58,12 +58,16 @@ jobs:
 
       - name: Запуск тестов Правила Танк контейнеров груженных и порожних
         run: |
-          python -m pytest tests/test_rule_3_4_3_1.py -v  -s
+          python -m pytest tests/test_rule_3_4_3_1.py -v -s
 
       - name: Запуск тестов дизель-генератора
         run: |
-          python -m pytest tests/test_diesel_generator.py -v  -s
+          python -m pytest tests/test_diesel_generator.py -v -s
 
       - name: Запуск тестов дизель-генератора контейнер
         run: |
-          python -m pytest tests/test_containers_next.py -v  -s
+          python -m pytest tests/test_containers_next.py -v -s
+
+      - name: Запуск тестов Таблицы 11 и Негабаритных грузов (п. 3.5)
+      run: |
+        pytest tests/test_table_11_oversized.py -v -s
