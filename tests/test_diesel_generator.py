@@ -20,9 +20,9 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
     
     base_chf = round(calc_res['base_rate_chf_per_ton'], 2)
     applied_tbl = calc_res.get('applied_table', calc_res.get('table_name'))
-    print(f"Базовая ставка: {base_chf} CHF/т ({applied_tbl})")
+    print(f"Базовая ставка: {base_chf} CHF ({applied_tbl})")
     print(f"Курс конвертации (CHF -> USD): {calc_res['exchange_rate']}")
-    print(f"Базовая ставка в USD: {calc_res['base_rate_usd_per_ton']} USD/т\n")
+    print(f"Базовая ставка в USD: {calc_res['base_rate_usd_per_ton']} USD\n")
 
     all_notifications = []
     if route_res.rule_code:
@@ -36,8 +36,9 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
             ru_msg = RULE_MESSAGES[code]["ru"].format(**params) if params else RULE_MESSAGES[code]["ru"]
             print(f"{ru_msg}")
 
+    final_total = calc_res.get("final_rate_total_usd", calc_res.get("final_rate_usd_per_ton"))
     unit_str = "USD" if wagon_type == "diesel_generator_wagon" else "USD/т"
-    print(f"\nИтог: {calc_res['final_rate_total_usd']} {unit_str}\n")
+    print(f"\nИтог: {final_total} {unit_str}\n")
 
     if all_notifications:
         print("Уведомления:")
