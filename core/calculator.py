@@ -211,17 +211,14 @@ class TariffCalculator:
         # ------------------------------------------------------------------------------
         # БЛОК: Выбор таблицы расчета тарифной ставки
         # ------------------------------------------------------------------------------
-        if wagon_type_lower == "diesel_generator_wagon":
+        elif wagon_type_lower == "diesel_generator_wagon":
             table_name = "Пункт 3.4.3.2"
             base_rate_chf = round(distance_km * axle_count * 0.12, 2)
-            applied_rules_list.append({
-                "rule_code": "DIESEL_GENERATOR_WAGON_RULE_3_4_3_2",
-                "calculated_value": base_rate_chf,
-                "params": {"axle_count": axle_count, "rate": 0.12}
-            })
+            
+            # Убираем повторное начисление скидки 0.85 и фиксируем правило
             notifications.append({
                 "rule_code": "DIESEL_GENERATOR_WAGON_RULE_3_4_3_2",
-                "params": {}
+                "params": {"axle_count": axle_count, "distance_km": distance_km}
             })
 
         elif is_empty_wagon and is_private_wagon and not is_transporter and not is_ref_wagon and not is_special_container:
@@ -457,7 +454,17 @@ class TariffCalculator:
                 "rule_code": "ATTENDANTS_FEE_RULE_3_4_3_2",
                 "params": {"count": attendants_count}
             })
-            
+
+        # ------------------------------------------------------------------------------
+        # БЛОК: Финальный расчет полной стоимости за вагон / отправку
+        # ------------------------------------------------------------------------------
+        # Для повагонных фиксированных ставок (дизель-генератор вагон, порожний вагон по п. 3.2.2)
+        # ставка уже рассчитана за весь вагон целиком
+        if wagon_type_lower == "diesel_generator_wagon":
+            final_rate_total_usd = final_rate_per_ton_usd
+        else:
+            final_rate_total_usd = round(final_rate_per_ton_usd * billable_weight, 2)
+        
         return {
             "actual_weight": act_w,
             "billable_weight": billable_weight,
