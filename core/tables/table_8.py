@@ -1,5 +1,6 @@
 import os
 from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional
 
 
 class Table8Calculator:
