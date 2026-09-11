@@ -36,9 +36,15 @@ def _print_calculation_result(title: str, route_res, calc_res, gng_code: str, we
             ru_msg = RULE_MESSAGES[code]["ru"].format(**params) if params else RULE_MESSAGES[code]["ru"]
             print(f"{ru_msg}")
 
+    attendants_fee_usd = calc_res.get("attendants_fee_usd", 0.0)
     final_total = calc_res.get("final_rate_total_usd", calc_res.get("final_rate_usd_per_ton"))
-    unit_str = "USD" if wagon_type == "diesel_generator_wagon" else "USD/т"
-    print(f"\nИтог: {final_total} {unit_str}\n")
+
+    print("\nДетализация расчёта:")
+    print(f"  • Провозная плата за вагон: {calc_res['final_rate_usd_per_ton']} USD")
+    if attendants_fee_usd > 0:
+        print(f"  • Плата за проезд проводников: {attendants_fee_usd} USD")
+    
+    print(f"\nИтого: {final_total} USD\n")
 
     if all_notifications:
         print("Уведомления:")
