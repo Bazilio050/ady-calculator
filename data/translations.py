@@ -276,5 +276,11 @@ RULE_MESSAGES = {
         "az": "Özəl konteyner-platformalar üçün Cədvəl 8-in qiymətlərinə 1.40 əmsalı tətbiq edilmişdir (bənd 3.4.6).",
         "ru": "Применен коэффициент 1.40 к ставкам Таблицы 8 для приватных контейнеров-платформ (п. 3.4.6).",
         "en": "Coefficient 1.40 applied to Table 8 rates for private platform containers (clause 3.4.6)."
+        },
+
+        "OPEN_TOP_CONTAINER_COEFF_1_40": {
+        "az": "Özəl üstüaçıq konteynerlər üçün Cədvəl 8-in qiymətlərinə 1.40 əmsalı tətbiq edilmişdir (bənd 3.4.7).",
+        "ru": "Применен коэффициент 1.40 к ставкам Таблицы 8 для открытых контейнеров Open Top (п. 3.4.7).",
+        "en": "Coefficient 1.40 applied to Table 8 rates for Open Top containers (clause 3.4.7)."
         }
     }
