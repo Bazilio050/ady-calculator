@@ -76,3 +76,11 @@ jobs:
         run: |
           pytest tests/test_table_12_dangerous.py -v -s
 
+      - name: Запуск тестов Таблицы 13 опасные грузы
+        run: |
+          pytest tests/test_table_13_dangerous.py -v -s
+
+
+
+          
+
