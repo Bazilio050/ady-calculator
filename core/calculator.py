@@ -60,8 +60,8 @@ class TariffCalculator:
         is_transporter: bool = False,                        # Флаг транспортера (п. 3.5.1.3)
         cover_wagons_count: int = 0,                         # Количество вагонов прикрытия (п. 3.5.3)
         is_cover_wagon_private: bool = True,                 # Флаг приватного вагона прикрытия
-        is_dangerous_cargo: bool = False                     # Флаг опасного груза (п. 3.6.1)
-        un_code: Optional[str] = None,                       # Код ООН (BMT №) по Таблице 13
+        is_dangerous_cargo: bool = False,                    # Флаг опасного груза (п. 3.6.1)
+        un_code: Optional[str] = None                        # Код ООН (BMT №) по Таблице 13
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
