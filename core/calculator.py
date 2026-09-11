@@ -179,7 +179,10 @@ class TariffCalculator:
         # Флаг для Таблицы 6 (Столбец 2 - нефть и нефтепродукты)
         is_oil_product = (is_tank_wagon and column_name == "col_2")
 
-        # Вызов главных правил
+        # Убираем флаг приватноcти для главных правил, если это вагон-дизель-генератор, 
+        # так как ставка 0.12 CHF/ось-км уже установлена для приватных вагонов по п. 3.4.3.2
+        is_private_for_rules = is_private_wagon if wagon_type_lower != "diesel_generator_wagon" else False
+
         rules_res = apply_main_rules(
             shipment_type=shipment_type,
             gng_code=gng_code,
@@ -189,7 +192,7 @@ class TariffCalculator:
             is_table_3=is_table_3_applicable and not (is_ref_wagon or is_tank_wagon or is_empty_wagon),
             is_oil_product=is_oil_product,
             is_empty=is_empty_wagon,
-            is_private_wagon=is_private_wagon
+            is_private_wagon=is_private_for_rules
         )
 
         if rules_res is None:
