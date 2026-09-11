@@ -77,7 +77,6 @@ class TariffCalculator:
         ]
         tank_wagon_types = ["cistern", "tank", "цистерна", "бункер", "bunker"]
         generator_container_types = [
-           generator_container_types = [
             "diesel_generator_container", 
             "generator_container", 
             "дизель_генераторный_контейнер"
