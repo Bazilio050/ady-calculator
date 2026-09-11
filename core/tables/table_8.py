@@ -59,7 +59,8 @@ class Table8Calculator:
         feet_size: int = 20,
         is_empty: bool = False,
         is_private: bool = True,
-        is_generator_container: bool = False
+        is_generator_container: bool = False,
+        is_container_platform: bool = False
     ) -> Dict[str, Any]:
         """Возвращает базовую ставку в CHF по Таблице 8."""
         cls._load_data_if_needed()
@@ -90,6 +91,14 @@ class Table8Calculator:
             applied_rules.append({
                 "rule_code": "DIESEL_GENERATOR_CONTAINER_COEFF_1_35",
                 "calculated_value": 1.35,
+                "params": {}
+            })
+        # П. 3.4.6: Коэффициент 1.40 за контейнеры-платформы (Flatrack)
+        elif is_container_platform:
+            base_rate = round(base_rate * 1.40, 2)
+            applied_rules.append({
+                "rule_code": "CONTAINER_PLATFORM_COEFF_1_40",
+                "calculated_value": 1.40,
                 "params": {}
             })
 
