@@ -1,5 +1,11 @@
 # tests/test_table_11_oversized.py
 
+import sys
+import os
+
+# Добавление корневой директории проекта в sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import pytest
 from core.router import RailwayRouter
 from core.calculator import TariffCalculator
