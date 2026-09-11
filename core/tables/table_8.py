@@ -1,5 +1,3 @@
-# core/tables/table_8.py
-
 import os
 from typing import Dict, Any, Tuple
 
@@ -60,11 +58,13 @@ class Table8Calculator:
         distance_km: float,
         feet_size: int = 20,
         is_empty: bool = False,
-        is_private: bool = True
+        is_private: bool = True,
+        is_generator_container: bool = False
     ) -> Dict[str, Any]:
         """Возвращает базовую ставку в CHF по Таблице 8."""
         cls._load_data_if_needed()
         dist = int(distance_km)
+        applied_rules = []
 
         matched_rates = None
         for (min_km, max_km), rates in cls._data_cache.items():
@@ -84,7 +84,17 @@ class Table8Calculator:
 
         base_rate = matched_rates.get(col_key, 0.0) if matched_rates else 0.0
 
+        # П. 3.4.5: Коэффициент 1.35 за контейнер-дизель-генератор
+        if is_generator_container:
+            base_rate = round(base_rate * 1.35, 2)
+            applied_rules.append({
+                "rule_code": "DIESEL_GENERATOR_CONTAINER_COEFF_1_35",
+                "calculated_value": 1.35,
+                "params": {}
+            })
+
         return {
             "base_rate": base_rate,
-            "column_key": col_key
+            "column_key": col_key,
+            "applied_rules": applied_rules
         }
