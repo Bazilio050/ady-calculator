@@ -284,5 +284,38 @@ RULE_MESSAGES = {
         "az": "Xüsusi təyinatlı konteynerlər üçün Cədvəl 8-in qiymətlərinə 1.40 əmsalı tətbiq edilmişdir (bənd 3.4.8).",
         "ru": "Применен коэффициент 1.40 к ставкам Таблицы 8 для контейнеров специального назначения (п. 3.4.8).",
         "en": "Coefficient 1.40 applied to Table 8 rates for special purpose containers (clause 3.4.8)."
+    },
+    # --------------------------------------------------------------------------
+    # БЛОК: Раздел 3.5 — Негабаритные грузы, транспортеры и сцепы
+    # --------------------------------------------------------------------------
+    "OVERSIZED_SMALL_DEGREE_RULE_3_5_1_1": {
+        "az": "Kiçik dərəcəli əndazəsiz yük (p. 3.5.1.1): Cədvəl 3/4 üzrə hesablanır, minimum çəki 25 ton götürülür.",
+        "ru": "Малая степень негабаритности (п. 3.5.1.1): расчёт по Таблицам 3/4, минимальный расчётный вес 25 тонн.",
+        "en": "Low-degree oversized cargo (clause 3.5.1.1): calculated via Tables 3/4, minimum billable weight is 25 tons.",
+    },
+    "OVERSIZED_TABLE_11_TOP_3_RULE_3_5_1_2": {
+        "az": "3-cü yuxarı dərəcəli əndazəsiz yük (p. 3.5.1.2): Cədvəl 11 (2-6 sütunlar) istifadə olunur, BTT Cədvəl 7 tarifinə 1.50 əmsalı tətbiq edilir.",
+        "ru": "3-я верхняя степень негабаритности (п. 3.5.1.2): расчёт по Таблице 11 (колонки 2-6), коэффициент 1.50 к Таблице 7.",
+        "en": "3rd top degree oversized cargo (clause 3.5.1.2): calculated via Table 11 (cols 2-6), 1.50 coefficient applied to Table 7.",
+    },
+    "OVERSIZED_TABLE_11_HIGH_DEGREE_RULE_3_5_1_2": {
+        "az": "3-5 aşağı, 4-5 yan dərəcəli əndazəsiz yük (p. 3.5.1.2): Cədvəl 11 (7-11 sütunlar) istifadə olunur, BTT Cədvəl 7 tarifinə 2.00 əmsalı tətbiq edilir.",
+        "ru": "3-5 нижняя, 4-5 боковая степень негабаритности (п. 3.5.1.2): расчёт по Таблице 11 (колонки 7-11), коэффициент 2.00 к Таблице 7.",
+        "en": "3-5 bottom, 4-5 side degree oversized cargo (clause 3.5.1.2): calculated via Table 11 (cols 7-11), 2.00 coefficient applied to Table 7.",
+    },
+    "TRANSPORTER_AXLE_WEIGHT_RULE_3_5_1_3": {
+        "az": "Nəqliyyatda (transporter) daşıma (p. 3.5.1.3): Minimum ox çəkisi (4-oxlu=20t, 6-oxlu=30t, 8-oxlu=40t) və əndazəsizlik əmsalı tətbiq edildi.",
+        "ru": "Перевозка на транспортере (п. 3.5.1.3): применен минимальный вес на ось (4-осный=20т, 6-осный=30т, 8-осный=40т) и коэффициент негабаритности.",
+        "en": "Transporter shipment (clause 3.5.1.3): minimum axle weight applied (4-axle=20t, 6-axle=30t, 8-axle=40t) with oversized coefficient.",
+    },
+    "TRANSPORTER_SPECIAL_DEGREE_6_OR_12_AXLE_RULE_3_5_1_5": {
+        "az": "6-cı dərəcəli və ya 12+ oxlu nəqliyyatda daşıma (p. 3.5.1.5): 3.00 artırma əmsalı tətbiq edildi.",
+        "ru": "Перевозка 6-й степени или на транспортере 12+ осей (п. 3.5.1.5): применен повышающий коэффициент 3.00.",
+        "en": "6th degree or 12+ axle transporter shipment (clause 3.5.1.5): 3.00 multiplier applied.",
+    },
+    "EMPTY_COVER_WAGON_AXLE_KM_RULE_3_5_3": {
+        "az": "Qoruyucu/çərçivə boş vaqonun daşınması (p. 3.5.3): ox-km üzrə hesablandı ({rate} CHF/ox-km).",
+        "ru": "Перевозка порожнего контрольного/прикрытия вагона (п. 3.5.3): расчёт по ставкам {rate} CHF/ось-км.",
+        "en": "Empty cover/frame wagon transport (clause 3.5.3): calculated at {rate} CHF/axle-km.",
     }
 }
