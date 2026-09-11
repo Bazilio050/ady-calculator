@@ -317,5 +317,24 @@ RULE_MESSAGES = {
         "az": "Qoruyucu/çərçivə boş vaqonun daşınması (p. 3.5.3): ox-km üzrə hesablandı ({rate} CHF/ox-km).",
         "ru": "Перевозка порожнего контрольного/прикрытия вагона (п. 3.5.3): расчёт по ставкам {rate} CHF/ось-км.",
         "en": "Empty cover/frame wagon transport (clause 3.5.3): calculated at {rate} CHF/axle-km.",
+    },
+
+    # --------------------------------------------------------------------------
+    # БЛОК: Раздел 3.6 — Перевозка опасных грузов
+    # --------------------------------------------------------------------------
+    "DANGEROUS_CARGO_COEFF_2_00_RULE_3_6_1": {
+        "az": "Təhlükəli yük daşınması (p. 3.6.1): Baza tarifinə 2.00 artırma əmsalı tətbiq edildi.",
+        "ru": "Перевозка опасного груза (п. 3.6.1): применен повышающий коэффициент 2.00 к базовому тарифу.",
+        "en": "Dangerous cargo shipment (clause 3.6.1): 2.00 multiplier applied to base tariff.",
+    },
+    "DANGEROUS_CARGO_PRIVATE_WAGON_0_85_RULE_3_6_1": {
+        "az": "Xüsusi/icarəyə götürülmüş vaqonda təhlükəli yük daşınması (p. 3.6.1): 0.85 əmsalı tətbiq edildi.",
+        "ru": "Перевозка опасного груза в собственном/арендованном вагоне (п. 3.6.1): применен коэффициент 0.85.",
+        "en": "Dangerous cargo shipment in private/rented wagon (clause 3.6.1): 0.85 coefficient applied.",
+    },
+    "DANGEROUS_CARGO_COVER_WAGON_RULE_3_6_3": {
+        "az": "Təhlükəli yük üçün qoruyucu boş vaqonun daşınması (p. 3.6.3): ox-km üzrə hesablandı ({rate} CHF/ox-km).",
+        "ru": "Перевозка порожнего вагона прикрытия для опасного груза (п. 3.6.3): расчёт по {rate} CHF/ось-км.",
+        "en": "Empty cover wagon for dangerous cargo (clause 3.6.3): calculated at {rate} CHF/axle-km.",
     }
 }
