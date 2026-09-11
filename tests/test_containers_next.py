@@ -148,3 +148,25 @@ def test_diesel_generator_container_coeff():
 
     applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
     assert "DIESEL_GENERATOR_CONTAINER_COEFF_1_35" in applied_codes
+
+def test_container_platform_coeff_1_40():
+    """Тест: Контейнер-платформа (Flatrack) по Таблице 8 с коэффициентом 1.40 (п. 3.4.6)"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "БК")
+
+    calc_res = TariffCalculator.calculate(
+        shipment_type=route_res.shipment_type.value,
+        gng_code="99310000",
+        actual_weight=20.0,
+        distance_km=route_res.calculated_distance_km,
+        wagon_type="container_platform",
+        container_category_tons=20,
+        from_canonical_name=route_res.from_station.canonical_name,
+        to_canonical_name=route_res.to_station.canonical_name,
+        is_private_wagon=True
+    )
+
+    _print_calculation_result("5. Контейнер-платформа (Таблица 8 x 1.40)", route_res, calc_res, "99310000", 20.0, "container_platform", True)
+
+    applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
+    assert "CONTAINER_PLATFORM_COEFF_1_40" in applied_codes
