@@ -464,13 +464,11 @@ class TariffCalculator:
         # ------------------------------------------------------------------------------
         # БЛОК: Финальный расчет полной стоимости за вагон / отправку
         # ------------------------------------------------------------------------------
-        # Для повагонных фиксированных ставок (дизель-генератор вагон, порожний вагон по п. 3.2.2)
-        # ставка уже рассчитана за весь вагон целиком
         if wagon_type_lower == "diesel_generator_wagon":
             final_rate_total_usd = final_rate_per_ton_usd
         else:
             final_rate_total_usd = round(final_rate_per_ton_usd * billable_weight, 2)
-        
+
         return {
             "actual_weight": act_w,
             "billable_weight": billable_weight,
@@ -483,6 +481,7 @@ class TariffCalculator:
             "applied_table": table_name,
             "final_coeff": rules_res.get("calculated_value", 1.0),
             "final_rate_usd_per_ton": final_rate_per_ton_usd,
+            "final_rate_total_usd": final_rate_total_usd,
             "is_private_wagon": is_private_wagon,
             "notifications": notifications
         }
