@@ -64,7 +64,7 @@ class TariffCalculator:
         wagon_type_lower = wagon_type.lower()
 
         # ------------------------------------------------------------------------------
-        # Списки типов вагонов (ДОЛЖНЫ БЫТЬ В САМОМ НАЧАЛЕ)
+        # Списки типов вагонов и контейнеров (ДОЛЖНЫ БЫТЬ В САМОМ НАЧАЛЕ)
         # ------------------------------------------------------------------------------
         ref_wagon_types = [
             "refrigerator", "arv", "ref_section", "thermos", "ice_wagon",
@@ -73,11 +73,13 @@ class TariffCalculator:
             "inv", "anv", "inv_anv",
             "road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп",
             "auto_body", "detachable_body", "кузов"
+        ]
+        tank_wagon_types = ["cistern", "tank", "цистерна", "бункер", "bunker"]
+        generator_container_types = [
             "diesel_generator_container", 
             "generator_container", 
             "дизель_генераторный_контейнер"
         ]
-        tank_wagon_types = ["cistern", "tank", "цистерна", "бункер", "bunker"]
 
         is_ref_wagon = wagon_type_lower in ref_wagon_types
         is_tank_wagon = wagon_type_lower in tank_wagon_types
