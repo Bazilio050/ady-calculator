@@ -464,17 +464,18 @@ class TariffCalculator:
         # ------------------------------------------------------------------------------
         # БЛОК: Финальный расчет полной стоимости за вагон / отправку
         # ------------------------------------------------------------------------------
-        # Учитываем сбор за проводников по п. 3.4.3.2 (если начислен в CHF)
         attendants_fee_usd = 0.0
         for rule in applied_rules_list:
             if rule.get("rule_code") == "ATTENDANTS_FEE_RULE_3_4_3_2":
                 attendants_fee_chf = rule.get("calculated_value", 0.0)
                 attendants_fee_usd = round(attendants_fee_chf / exchange_rate, 2) if exchange_rate > 0 else attendants_fee_chf
 
+        wagon_rate_usd = final_rate_per_ton_usd
+
         if wagon_type_lower == "diesel_generator_wagon":
-            final_rate_total_usd = round(final_rate_per_ton_usd + attendants_fee_usd, 2)
+            final_rate_total_usd = round(wagon_rate_usd + attendants_fee_usd, 2)
         else:
-            final_rate_total_usd = round(final_rate_per_ton_usd * billable_weight + attendants_fee_usd, 2)
+            final_rate_total_usd = round(wagon_rate_usd * billable_weight + attendants_fee_usd, 2)
 
         return {
             "actual_weight": act_w,
@@ -488,6 +489,7 @@ class TariffCalculator:
             "applied_table": table_name,
             "final_coeff": rules_res.get("calculated_value", 1.0),
             "final_rate_usd_per_ton": final_rate_per_ton_usd,
+            "attendants_fee_usd": attendants_fee_usd,
             "final_rate_total_usd": final_rate_total_usd,
             "is_private_wagon": is_private_wagon,
             "notifications": notifications
