@@ -64,4 +64,6 @@ jobs:
         run: |
           python -m pytest tests/test_diesel_generator.py -v  -s
 
-          
+      - name: Запуск тестов дизель-генератора контейнер
+        run: |
+          python -m pytest tests/test_containers_next.py -v  -s
