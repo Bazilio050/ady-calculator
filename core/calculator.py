@@ -13,6 +13,7 @@ from core.tables.table_8 import Table8Calculator
 from core.tables.table_10 import Table10Calculator
 from core.tables.table_11 import calculate_table_11_tariff
 from core.tables.table_12 import Table12Calculator
+from core.tables.table_13 import Table13Checker
 from core.main_rules import apply_main_rules
 from data.currency_rates import get_exchange_rate
 
