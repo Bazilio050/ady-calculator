@@ -22,23 +22,29 @@ def _load_table_12_data() -> Dict[Tuple[int, int], Dict[str, float]]:
     with open(file_path, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if not line or line.startswith("Məsafə") or line.startswith("#") or line.startswith("| Məsafə"):
+            # Пропускаем пустые строки, заголовки и Markdown-разделители (| :--- | ...)
+            if not line or "Məsafə" in line or ":" in line or line.startswith("#"):
                 continue
             parts = [p.strip() for p in line.split("|")]
+            # Фильтруем пустые элементы
+            parts = [p for p in parts if p]
             if len(parts) < 6:
                 continue
             
             # Удаляем форматирование Markdown (**1-10 km**)
-            raw_dist = parts[1].replace("*", "").replace("km", "").strip()
+            raw_dist = parts[0].replace("*", "").replace("km", "").strip()
             dist_range = raw_dist.split("-")
+            if len(dist_range) < 2:
+                continue
+                
             min_km, max_km = int(dist_range[0]), int(dist_range[1])
             
             rates = {
-                "5t": float(parts[2]),
-                "10t": float(parts[3]),
-                "15t": float(parts[4]),
-                "20t": float(parts[5]),
-                "20_60t": float(parts[6]),
+                "5t": float(parts[1]),
+                "10t": float(parts[2]),
+                "15t": float(parts[3]),
+                "20t": float(parts[4]),
+                "20_60t": float(parts[5]),
             }
             table_data[(min_km, max_km)] = rates
             
