@@ -88,7 +88,6 @@ class Table8Calculator:
 
         # П. 3.4.5: Коэффициент 1.35 за контейнер-дизель-генератор
         if is_generator_container:
-            base_rate = round(base_rate * 1.35, 2)
             applied_rules.append({
                 "rule_code": "DIESEL_GENERATOR_CONTAINER_COEFF_1_35",
                 "calculated_value": 1.35,
@@ -96,7 +95,6 @@ class Table8Calculator:
             })
         # Пункты 3.4.6, 3.4.7, 3.4.8: Коэффициент 1.40
         elif coeff_1_40_rule_code:
-            base_rate = round(base_rate * 1.40, 2)
             applied_rules.append({
                 "rule_code": coeff_1_40_rule_code,
                 "calculated_value": 1.40,
@@ -104,7 +102,7 @@ class Table8Calculator:
             })
 
         return {
-            "base_rate": base_rate,
+            "base_rate": base_rate,  # Чистые 585.00 CHF из файла
             "column_key": col_key,
             "applied_rules": applied_rules
         }
