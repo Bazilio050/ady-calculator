@@ -250,43 +250,39 @@ RULE_MESSAGES = {
         "ru": "Применены тарифы для специализированных контейнеров (танк-контейнеры, рефконтейнеры, вино/соки) по п. 3.4.3.1.",
         "en": "Tariffs for specialized containers (tank containers, reefer containers, wine/juices) applied under clause 3.4.3.1."
     },
-
     "DIESEL_GENERATOR_WAGON_RULE_3_4_3_2": {
-            "az": "Xüsusi (daşıyıcıya məxsus olmayan) dizel-generator vaqonunun daşınma haqqı hər 1 ox-km üçün 0.12 İsveçrə frankı ilə hesablanmışdır (bənd 3.4.3.2).",
-            "ru": "Провозная плата за приватный вагон-дизель-генератор рассчитана по ставке 0.12 CHF за 1 ось-км (п. 3.4.3.2).",
-            "en": "Freight charge for private diesel-generator wagon calculated at 0.12 CHF per axle-km (clause 3.4.3.2)."
-        },
-        "ATTENDANTS_FEE_RULE_3_4_3_2": {
-            "az": "Dizel-generator vaqonunda gedən {count} nəfər bələdçinin gediş haqqı hesablanmışdır (bənd 3.4.3.2).",
-            "ru": "Начислена плата за проезд {count} проводников в вагоне-дизель-генераторе (п. 3.4.3.2).",
-            "en": "Fare applied for {count} attendants in the diesel-generator wagon (clause 3.4.3.2)."
-        },
-        "SERVICE_CREW_FREE_RULE_3_4_3_2": {
-            "az": "Xidməti briqada üçün gediş haqqı tutulmur (bənd 3.4.3.2).",
-            "ru": "Плата за проезд сервисной бригады не взимается (п. 3.4.3.2).",
-            "en": "No fare charged for the service crew (clause 3.4.3.2)."
-        },
-        "DIESEL_GENERATOR_CONTAINER_COEFF_1_35": {
+        "az": "Xüsusi (daşıyıcıya məxsus olmayan) dizel-generator vaqonunun daşınma haqqı hər 1 ox-km üçün 0.12 İsveçrə frankı ilə hesablanmışdır (bənd 3.4.3.2).",
+        "ru": "Провозная плата за приватный вагон-дизель-генератор рассчитана по ставке 0.12 CHF за 1 ось-км (п. 3.4.3.2).",
+        "en": "Freight charge for private diesel-generator wagon calculated at 0.12 CHF per axle-km (clause 3.4.3.2)."
+    },
+    "ATTENDANTS_FEE_RULE_3_4_3_2": {
+        "az": "Dizel-generator vaqonunda gedən {count} nəfər bələdçinin gediş haqqı hesablanmışdır (bənd 3.4.3.2).",
+        "ru": "Начислена плата за проезд {count} проводников в вагоне-дизель-генераторе (п. 3.4.3.2).",
+        "en": "Fare applied for {count} attendants in the diesel-generator wagon (clause 3.4.3.2)."
+    },
+    "SERVICE_CREW_FREE_RULE_3_4_3_2": {
+        "az": "Xidməti briqada üçün gediş haqqı tutulmur (bənd 3.4.3.2).",
+        "ru": "Плата за проезд сервисной бригады не взимается (п. 3.4.3.2).",
+        "en": "No fare charged for the service crew (clause 3.4.3.2)."
+    },
+    "DIESEL_GENERATOR_CONTAINER_COEFF_1_35": {
         "az": "Dizel-generator konteynerləri üçün Cədvəl 8-in qiymətlərinə 1.35 əmsalı tətbiq edilmişdir (bənd 3.4.5).",
         "ru": "Применен коэффициент 1.35 к ставкам Таблицы 8 для контейнеров-дизель-генераторов (п. 3.4.5).",
         "en": "Coefficient 1.35 applied to Table 8 rates for diesel-generator containers (clause 3.4.5)."
-        },
-
-        "CONTAINER_PLATFORM_COEFF_1_40": {
+    },
+    "CONTAINER_PLATFORM_COEFF_1_40": {
         "az": "Özəl konteyner-platformalar üçün Cədvəl 8-in qiymətlərinə 1.40 əmsalı tətbiq edilmişdir (bənd 3.4.6).",
         "ru": "Применен коэффициент 1.40 к ставкам Таблицы 8 для приватных контейнеров-платформ (п. 3.4.6).",
         "en": "Coefficient 1.40 applied to Table 8 rates for private platform containers (clause 3.4.6)."
-        },
-
-        "OPEN_TOP_CONTAINER_COEFF_1_40": {
+    },
+    "OPEN_TOP_CONTAINER_COEFF_1_40": {
         "az": "Özəl üstüaçıq konteynerlər üçün Cədvəl 8-in qiymətlərinə 1.40 əmsalı tətbiq edilmişdir (bənd 3.4.7).",
         "ru": "Применен коэффициент 1.40 к ставкам Таблицы 8 для открытых контейнеров Open Top (п. 3.4.7).",
         "en": "Coefficient 1.40 applied to Table 8 rates for Open Top containers (clause 3.4.7)."
-        },
-
-        "SPECIAL_PURPOSE_CONTAINER_COEFF_1_40": {
+    },
+    "SPECIAL_PURPOSE_CONTAINER_COEFF_1_40": {
         "az": "Xüsusi təyinatlı konteynerlər üçün Cədvəl 8-in qiymətlərinə 1.40 əmsalı tətbiq edilmişdir (bənd 3.4.8).",
         "ru": "Применен коэффициент 1.40 к ставкам Таблицы 8 для контейнеров специального назначения (п. 3.4.8).",
         "en": "Coefficient 1.40 applied to Table 8 rates for special purpose containers (clause 3.4.8)."
-        }
     }
+}
