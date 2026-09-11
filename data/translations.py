@@ -270,5 +270,11 @@ RULE_MESSAGES = {
         "az": "Dizel-generator konteynerləri üçün Cədvəl 8-in qiymətlərinə 1.35 əmsalı tətbiq edilmişdir (bənd 3.4.5).",
         "ru": "Применен коэффициент 1.35 к ставкам Таблицы 8 для контейнеров-дизель-генераторов (п. 3.4.5).",
         "en": "Coefficient 1.35 applied to Table 8 rates for diesel-generator containers (clause 3.4.5)."
+        },
+
+        "CONTAINER_PLATFORM_COEFF_1_40": {
+        "az": "Özəl konteyner-platformalar üçün Cədvəl 8-in qiymətlərinə 1.40 əmsalı tətbiq edilmişdir (bənd 3.4.6).",
+        "ru": "Применен коэффициент 1.40 к ставкам Таблицы 8 для приватных контейнеров-платформ (п. 3.4.6).",
+        "en": "Coefficient 1.40 applied to Table 8 rates for private platform containers (clause 3.4.6)."
         }
     }
