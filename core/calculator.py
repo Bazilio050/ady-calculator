@@ -211,14 +211,17 @@ class TariffCalculator:
         # ------------------------------------------------------------------------------
         # БЛОК: Выбор таблицы расчета тарифной ставки
         # ------------------------------------------------------------------------------
-        elif wagon_type_lower == "diesel_generator_wagon":
+        if wagon_type_lower == "diesel_generator_wagon":
             table_name = "Пункт 3.4.3.2"
             base_rate_chf = round(distance_km * axle_count * 0.12, 2)
-            
-            # Убираем повторное начисление скидки 0.85 и фиксируем правило
+            applied_rules_list.append({
+                "rule_code": "DIESEL_GENERATOR_WAGON_RULE_3_4_3_2",
+                "calculated_value": 1.0,
+                "params": {"axle_count": axle_count, "rate": 0.12}
+            })
             notifications.append({
                 "rule_code": "DIESEL_GENERATOR_WAGON_RULE_3_4_3_2",
-                "params": {"axle_count": axle_count, "distance_km": distance_km}
+                "params": {}
             })
 
         elif is_empty_wagon and is_private_wagon and not is_transporter and not is_ref_wagon and not is_special_container:
