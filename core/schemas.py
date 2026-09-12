@@ -183,6 +183,23 @@ class ShipmentQuery(BaseModel):
     is_non_removable_equipment: bool = Field(
         default=False,
         description="Флаг порожнего вагона с несъёмным оборудованием (п. 3.10.4)"
+    ),
+    is_coffin_transport: bool = Field(
+        default=False,
+        description="Признак перевозки гробов с телами усопших (п. 3.11)"
+    ),
+    is_separate_locomotive: bool = Field(
+        default=False,
+        description="Признак перевозки с отдельным локомотивом (п. 3.12)"
+    ),
+    separate_locomotive_coeff: float = Field(
+        default=5.00,
+        ge=5.00,
+        description="Коэффициент при отдельном локомотиве (не менее 5.00 по п. 3.12)"
+    ),
+    expedited_delivery_train_type: Optional[str] = Field(
+        default=None,
+        description="Тип поезда при сокращенном сроке доставки: 'freight' (1.50), 'passenger' (2.00), 'container' (1.00) (п. 3.13)"
     )
 
     @field_validator("gng_code")
