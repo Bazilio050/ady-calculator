@@ -267,10 +267,23 @@ class TariffCalculator:
         base_rate_chf = 0.0
         table_name = "Таблица 3"
 
+       # ------------------------------------------------------------------------------
+        # БЛОК: Выбор таблицы расчета тарифной ставки (С РАЗДЕЛОМ 3.7, 3.9 И 3.10)
         # ------------------------------------------------------------------------------
-        # БЛОК: Выбор таблицы расчета тарифной ставки (С РАЗДЕЛОМ 3.7 И 3.9)
-        # ------------------------------------------------------------------------------
-        if is_separate_attendant_wagon:
+        if is_non_removable_equipment and is_empty_wagon:
+            table_name = "Пункт 3.10.4"
+            base_rate_chf = round(distance_km * axle_count * 0.12, 2)
+            notifications.append({
+                "rule_code": "NON_REMOVABLE_EQUIPMENT_WAGON_RULE_3_10_4",
+                "params": {
+                    "distance_km": int(distance_km),
+                    "axle_count": int(axle_count),
+                    "rate_chf": 0.12,
+                    "total_chf": base_rate_chf
+                }
+            })
+
+        elif is_separate_attendant_wagon:
             table_name = "Пункт 3.9"
             if is_passenger_wagon_type:
                 rate_axle_km = 0.30 if is_private_wagon else 0.35
@@ -287,7 +300,6 @@ class TariffCalculator:
                     "total_chf": base_rate_chf
                 }
             })
-
         elif is_carrier_transporter_free_return:
             table_name = "Пункт 3.7.7"
             base_rate_chf = 0.0
