@@ -82,7 +82,8 @@ class TariffCalculator:
         is_coffin_transport: bool = False,                   # Перевозка гробов с телами усопших (п. 3.11)
         is_separate_locomotive: bool = False,                # Перевозка с отдельным локомотивом (п. 3.12)
         separate_locomotive_coeff: float = 5.00,             # Коэффициент отдельного локомотива (п. 3.12, >= 5.00)
-        expedited_delivery_train_type: Optional[str] = None  # Сокращенный срок доставки (п. 3.13): freight/passenger/container
+        expedited_delivery_train_type: Optional[str] = None, # Сокращенный срок доставки (п. 3.13): freight/passenger/container
+        is_reloaded_part_shipment: bool = False              # Перегрузка из 1 вагона в несколько (п. 5.1.2 / 5.2.1)
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
@@ -658,6 +659,21 @@ class TariffCalculator:
                     "rule_code": exp_rule,
                     "params": {}
                 })
+
+        # --- Раздел 4: Перевозка домашней утвари (ГНГ 9901) ---
+        clean_gng_sec4 = str(gng_code).strip().zfill(8)
+        if clean_gng_sec4.startswith("9901"):
+            notifications.append({
+                "rule_code": "HOUSEHOLD_GOODS_RULE_4",
+                "params": {}
+            })
+
+        # --- Раздел 5: Перегрузка из 1 вагона в несколько (п. 5.1.2 / 5.2.1) ---
+        if is_reloaded_part_shipment:
+            notifications.append({
+                "rule_code": "CARGO_RELOADED_SPLIT_WAGONS_RULE_5_1_2",
+                "params": {}
+            })
 
         # --- Раздел 3.11: Перевозка гробов с телами усопших ---
         if is_coffin_transport:
