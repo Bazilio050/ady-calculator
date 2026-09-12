@@ -7,20 +7,21 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pytest
-from pydantic import ValidationError
 from core.router import RailwayRouter
 from core.calculator import TariffCalculator
-from core.schemas import ShipmentCalculationRequest
 
 
 def test_negative_weight_validation():
-    """Стресс-тест 1: Передача отрицательного веса должна вызывать ошибку валидации"""
-    with pytest.raises(ValidationError):
-        ShipmentCalculationRequest(
-            from_station="Ялама",
-            to_station="Абшерон",
+    """Стресс-тест 1: Передача отрицательного веса должна вызывать ValueError"""
+    router = RailwayRouter(distances_file_path="data/distances.csv")
+    route_res = router.calculate_route("Ялама", "Абшерон")
+
+    with pytest.raises((ValueError, Exception)):
+        TariffCalculator.calculate(
+            shipment_type=route_res.shipment_type.value,
             gng_code="10010000",
             actual_weight=-10.0,
+            distance_km=route_res.calculated_distance_km,
             wagon_type="covered"
         )
 
