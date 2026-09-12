@@ -626,7 +626,7 @@ class TariffCalculator:
                 "params": {}
             })
         elif attendants_count > 0:
-            hundreds_km = math.ceil(distance_km / 100.0)
+            hundreds_km = int(math.ceil(distance_km / 100.0))
             attendants_fee_chf = round(hundreds_km * 12.0 * attendants_count, 2)
 
             rule_code_att = "ATTENDANTS_FEE_RULE_3_4_3_2" if wagon_type_lower == "diesel_generator_wagon" else "ATTENDANTS_FEE_RULE_3_9"
@@ -634,11 +634,11 @@ class TariffCalculator:
             applied_rules_list.append({
                 "rule_code": rule_code_att,
                 "calculated_value": attendants_fee_chf,
-                "params": {"count": attendants_count, "hundreds_km": hundreds_km}
+                "params": {"count": attendants_count, "hundreds_km": hundreds_km, "blocks_100km": hundreds_km, "total_chf": attendants_fee_chf}
             })
             notifications.append({
                 "rule_code": rule_code_att,
-                "params": {"count": attendants_count, "hundreds_km": hundreds_km, "total_chf": attendants_fee_chf}
+                "params": {"count": attendants_count, "hundreds_km": hundreds_km, "blocks_100km": hundreds_km, "total_chf": attendants_fee_chf}
             })
 
         # ------------------------------------------------------------------------------
