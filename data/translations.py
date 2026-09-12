@@ -365,5 +365,49 @@ RULE_MESSAGES = {
         "az": "Geri qaytarılan daşıma vasitəsinin minimal hesablama çəkisi (p. 3.7.9): 10 ton götürüldü.",
         "ru": "Минимальный расчетный вес возвращаемого средства транспортировки (п. 3.7.9): принят 10 тонн.",
         "en": "Minimum billable weight for returned transport device (clause 3.7.9): 10 tons applied.",
+    },
+
+    # --------------------------------------------------------------------------
+    # БЛОК: Раздел 3.7 — Перевозка подвижного состава на своих осях (пп. 3.7.1–3.7.8)
+    # --------------------------------------------------------------------------
+    "ROLLING_STOCK_AXLES_COEFF_0_50_RULE_3_7_1": {
+        "az": "Öz oxları üzərində hərəkət tərkibinin daşınması (p. 3.7.1): Universal vaqon tarifinə (Cədvəl 3/4) 0.50 əmsalı tətbiq edildi.",
+        "ru": "Перевозка подвижного состава на своих осях (п. 3.7.1): применен коэффициент 0.50 к тарифу универсального вагона (Таблица 3/4).",
+        "en": "Rolling stock movement on own axles (clause 3.7.1): 0.50 multiplier applied to universal wagon tariff (Table 3/4).",
+    },
+    "EMPTY_WAGON_REPAIR_0_10_AXLE_KM_RULE_3_7_2": {
+        "az": "Təmirə gedən/qayıdan inventar vaqonun daşınması (p. 3.7.2): 0.10 CHF/ox-km dərəcəsi ilə hesablandı.",
+        "ru": "Перевозка инвентарного вагона в/из ремонта (п. 3.7.2): расчет по 0.10 CHF/ось-км.",
+        "en": "Transport of empty wagon to/from repair (clause 3.7.2): calculated at 0.10 CHF/axle-km.",
+    },
+    "ROLLING_STOCK_PASSENGER_TRAIN_COEFF_2_00_RULE_3_7_3": {
+        "az": "Sərnişin qatarının tərkibində daşınma (p. 3.7.3): 2.00 artırma əmsalı tətbiq edildi.",
+        "ru": "Перевозка в составе пассажирского поезда (п. 3.7.3): применен повышающий коэффициент 2.00.",
+        "en": "Transport within a passenger train (clause 3.7.3): 2.00 multiplier applied.",
+    },
+    "PASSENGER_WAGON_REPAIR_ATTENDANT_RULE_3_7_4": {
+        "az": "Yük qatarında təmirə gedən sərnişin vaqonu (p. 3.7.4): p. 3.7.1 üzrə vaqon tərifi + p. 3.9 üzrə bələdçi haqqı hesablanır.",
+        "ru": "Пассажирский вагон в/из ремонта в грузовом поезде (п. 3.7.4): тариф по п. 3.7.1 + плата за проводника по п. 3.9.",
+        "en": "Passenger wagon to/from repair in freight train (clause 3.7.4): tariff per 3.7.1 + attendant fee per 3.9.",
+    },
+    "ATTACHED_PARTS_WEIGHT_ADDED_RULE_3_7_5": {
+        "az": "Hərəkət tərkibinə yüklənmiş ehtiyat hissələrinin çəkisi (p. 3.7.5): Öz çəkisinə əlavə edildi.",
+        "ru": "Масса погруженных запчастей/тележек (п. 3.7.5): включена в общую расчетную массу подвижного состава.",
+        "en": "Weight of loaded spare parts/bogies (clause 3.7.5): added to total billable mass of rolling stock.",
+    },
+    "SEPARATE_CARGO_CALCULATION_RULE_3_7_6": {
+        "az": "Hərəkət tərkibindəki digər yükün daşınması (p. 3.7.6): Yük üçün tarif ayrı hesablanır.",
+        "ru": "Перевозка стороннего груза в/на подвижном составе (п. 3.7.6): провозная плата за груз рассчитывается отдельно.",
+        "en": "Transport of third-party cargo inside/on rolling stock (clause 3.7.6): freight charge for cargo calculated separately.",
+    },
+    "EMPTY_CARRIER_TRANSPORTER_FREE_RULE_3_7_7": {
+        "az": "Daşıyıcıya məxsus boş transportyorun qaytarılması (p. 3.7.7): Yük altına gedərkən və ya boşaldıqdan sonra haqq tutulmur.",
+        "ru": "Возврат порожнего транспортера перевозчика (п. 3.7.7): провозная плата под погрузку/после выгрузки не взимается.",
+        "en": "Return of carrier-owned empty transporter (clause 3.7.7): free of charge under loading/after unloading.",
+    },
+    "TRANSPORTER_AXLE_KM_RATES_RULE_3_7_8": {
+        "az": "Boş transportyorun daşınması (p. 3.7.8): {axles}-oxlu üçün {rate} CHF/ox-km dərəcəsi tətbiq edildi.",
+        "ru": "Перевозка порожнего транспортера (п. 3.7.8): применительно для {axles}-осного по ставке {rate} CHF/ось-км.",
+        "en": "Empty transporter movement (clause 3.7.8): {rate} CHF/axle-km applied for {axles}-axle transporter.",
     }
 }
