@@ -325,7 +325,7 @@ class TariffCalculator:
                 "params": {}
             })
 
-        elif is_empty_wagon and is_private_wagon and not is_transporter and not is_ref_wagon and not is_special_container:
+        elif is_empty_wagon and is_private_wagon and not is_transporter and not is_ref_wagon and not is_special_container and not is_rolling_stock_on_own_axles:
             table_name = "Пункт 3.2.2"
             base_rate_chf = distance_km * axle_count * 0.10
             notifications.append({
