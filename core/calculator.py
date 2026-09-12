@@ -618,7 +618,7 @@ class TariffCalculator:
         final_rate_per_ton_usd = round(running_rate, 2)
 
         # ------------------------------------------------------------------------------
-        # БЛОК: Расчет платы за проводников
+        # БЛОК: Расчет платы за проводников (п. 3.4.3.2 и п. 3.9)
         # ------------------------------------------------------------------------------
         if is_service_crew:
             notifications.append({
@@ -629,14 +629,16 @@ class TariffCalculator:
             hundreds_km = math.ceil(distance_km / 100.0)
             attendants_fee_chf = round(hundreds_km * 12.0 * attendants_count, 2)
 
+            rule_code_att = "ATTENDANTS_FEE_RULE_3_4_3_2" if wagon_type_lower == "diesel_generator_wagon" else "ATTENDANTS_FEE_RULE_3_9"
+
             applied_rules_list.append({
-                "rule_code": "ATTENDANTS_FEE_RULE_3_4_3_2",
+                "rule_code": rule_code_att,
                 "calculated_value": attendants_fee_chf,
                 "params": {"count": attendants_count, "hundreds_km": hundreds_km}
             })
             notifications.append({
-                "rule_code": "ATTENDANTS_FEE_RULE_3_4_3_2",
-                "params": {"count": attendants_count}
+                "rule_code": rule_code_att,
+                "params": {"count": attendants_count, "hundreds_km": hundreds_km, "total_chf": attendants_fee_chf}
             })
 
         # ------------------------------------------------------------------------------
