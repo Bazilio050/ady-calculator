@@ -174,6 +174,15 @@ class ShipmentQuery(BaseModel):
     is_passenger_wagon_type: bool = Field(
         default=False,
         description="Признак пассажирского типа вагона для теплушки (п. 3.9)"
+    ),
+    equipment_weight: float = Field(
+        default=0.0,
+        ge=0.0,
+        description="Масса съёмного/несъёмного оборудования или средств крепления (п. 3.10.1)"
+    ),
+    is_non_removable_equipment: bool = Field(
+        default=False,
+        description="Флаг порожнего вагона с несъёмным оборудованием (п. 3.10.4)"
     )
 
     @field_validator("gng_code")
