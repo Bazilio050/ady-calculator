@@ -59,9 +59,9 @@ def test_complex_multi_rule_combination():
         wagon_type="covered",
         is_dangerous_cargo=True,
         is_passenger_train_composition=True,
-        is_coupled_wagons=True,
-        coupled_wagons_count=2,
-        from_canonical_name=route_res.from_station.canonical_name,
+            is_attached_wagons_group=True,
+            attached_wagons_count=2,
+            from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
         is_private_wagon=True
     )
