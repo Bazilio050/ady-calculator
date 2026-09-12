@@ -98,4 +98,8 @@ jobs:
 
       - name: проводник 3,9
         run: |
-          pytest tests/test_sections_3_11_3_13.py -v -s  
+          pytest tests/test_sections_3_11_3_13.py -v -s
+
+      - name: проводник 3,9
+        run: |
+          pytest tests/test_sections_4_and_5.py -v -s
