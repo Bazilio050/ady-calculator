@@ -273,8 +273,8 @@ class TariffCalculator:
             notifications.append({
                 "rule_code": "SEPARATE_ATTENDANT_WAGON_RULE_3_9",
                 "params": {
-                    "distance_km": distance_km,
-                    "axle_count": axle_count,
+                    "distance_km": int(distance_km),
+                    "axle_count": int(axle_count),
                     "rate_chf": rate_axle_km,
                     "total_chf": base_rate_chf
                 }
