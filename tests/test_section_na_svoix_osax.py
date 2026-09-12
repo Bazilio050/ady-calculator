@@ -77,23 +77,22 @@ def _print_calculation_result(
 # ------------------------------------------------------------------------------
 
 def test_rolling_stock_on_own_axles_rule_3_7_1():
-    """Запуск тестов Правила 3.7.1 (Подвижной состав на своих осях, Таблица 3/4 x 0.50)"""
+    """Запуск тестов Правила 3.7.1 (Подвижной состав на своих осях по ГНГ 99222000, Таблица 3/4 x 0.50)"""
     router = RailwayRouter(distances_file_path="data/distances.csv")
     route_res = router.calculate_route("Ялама", "Беюк Кясик")
 
     calc_res = TariffCalculator.calculate(
         shipment_type=route_res.shipment_type.value,
-        gng_code="86010000",
+        gng_code="99222000",
         actual_weight=40.0,
         distance_km=route_res.calculated_distance_km,
-        wagon_type="locomotive",
+        wagon_type="covered",
         from_canonical_name=route_res.from_station.canonical_name,
         to_canonical_name=route_res.to_station.canonical_name,
-        is_private_wagon=False,
-        is_rolling_stock_on_own_axles=True
+        is_private_wagon=True
     )
 
-    _print_calculation_result("Запуск тестов Правила 3.7.1 (Подвижной состав на своих осях)", route_res, calc_res, "86010000", 40.0, "locomotive", False)
+    _print_calculation_result("Запуск тестов Правила 3.7.1 (Подвижной состав по ГНГ 99222000)", route_res, calc_res, "99222000", 40.0, "covered", True)
 
     applied_codes = [n.get("rule_code") for n in calc_res.get("notifications", []) if isinstance(n, dict)]
     assert "ROLLING_STOCK_AXLES_COEFF_0_50_RULE_3_7_1" in applied_codes
