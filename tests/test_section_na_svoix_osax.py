@@ -52,9 +52,11 @@ def _print_calculation_result(
 
     attendants_fee_usd = calc_res.get("attendants_fee_usd", 0.0)
     final_total = calc_res.get("final_rate_total_usd", calc_res.get("final_rate_usd_per_ton"))
+    wagon_freight_usd = round(calc_res['final_rate_usd_per_ton'] * calc_res['billable_weight'], 2)
 
     print("\nДетализация расчёта:")
-    print(f"  • Провозная плата за вагон: {calc_res['final_rate_usd_per_ton']} USD")
+    print(f"  • Итоговая ставка за тонну: {calc_res['final_rate_usd_per_ton']} USD/т")
+    print(f"  • Провозная плата за вагон ({calc_res['billable_weight']} т): {wagon_freight_usd} USD")
     if attendants_fee_usd > 0:
         print(f"  • Плата за проезд проводников: {attendants_fee_usd} USD")
     
