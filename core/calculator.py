@@ -76,7 +76,9 @@ class TariffCalculator:
         attached_parts_weight: float = 0.0,                  # Масса тележек/запчастей на своих осях (п. 3.7.5)
         is_carrier_transporter_free_return: bool = False,    # Признак бесплатного возврата транспортера ADY (п. 3.7.7)
         is_separate_attendant_wagon: bool = False,           # Флаг отдельного вагона для проводников / теплушки (п. 3.9)
-        is_passenger_wagon_type: bool = False                # Признак пассажирского вагона для теплушки (п. 3.9)
+        is_passenger_wagon_type: bool = False,               # Признак пассажирского вагона для теплушки (п. 3.9)
+        equipment_weight: float = 0.0,                       # Масса оборудования / средств крепления (п. 3.10.1)
+        is_non_removable_equipment: bool = False             # Флаг вагона с несъёмным оборудованием (п. 3.10.4)
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
