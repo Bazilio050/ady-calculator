@@ -381,6 +381,31 @@ RULE_MESSAGES = {
         "az": "Çıxarılmayan avadanlıqla təchiz olunmuş boş vaqon (bənd 3.10.4): 0.12 İSV/ox-km tarifi ilə hesablanıb.",
         "en": "Empty wagon with non-removable equipment (sec. 3.10.4): calculated at 0.12 CHF/axle-km rate."
     },
+    "COFFIN_TRANSPORT_COEFF_0_10_RULE_3_11": {
+        "ru": "Перевозка гробов с телами усопших (п. 3.11): применен коэффициент 0.10.",
+        "az": "Meyitlərin tabutlarda daşınması (bənd 3.11): 0.10 əmsalı tətbiq olunub.",
+        "en": "Coffin transport (sec. 3.11): coefficient 0.10 applied."
+    },
+    "SEPARATE_LOCOMOTIVE_COEFF_5_00_RULE_3_12": {
+        "ru": "Перевозка с отдельным локомотивом (п. 3.12): применен коэффициент {coeff}.",
+        "az": "Ayrı lokomotivlə daşınma (bənd 3.12): {coeff} əmsalı tətbiq olunub.",
+        "en": "Separate locomotive transport (sec. 3.12): coefficient {coeff} applied."
+    },
+    "EXPEDITED_DELIVERY_FREIGHT_TRAIN_COEFF_1_50_RULE_3_13": {
+        "ru": "Сокращенный срок доставки в составе грузового поезда (п. 3.13): применен коэффициент 1.50.",
+        "az": "Yük qatarının tərkibində azaldılmış çatdırılma müddəti (bənd 3.13): 1.50 əmsalı tətbiq olunub.",
+        "en": "Reduced delivery time in freight train (sec. 3.13): coefficient 1.50 applied."
+    },
+    "EXPEDITED_DELIVERY_PASSENGER_TRAIN_COEFF_2_00_RULE_3_13": {
+        "ru": "Сокращенный срок доставки в составе пассажирского поезда (п. 3.13): применен коэффициент 2.00.",
+        "az": "Sərnişin qatarının tərkibində azaldılmış çatdırılma müddəti (bənd 3.13): 2.00 əmsalı tətbiq olunub.",
+        "en": "Reduced delivery time in passenger train (sec. 3.13): coefficient 2.00 applied."
+    },
+    "EXPEDITED_DELIVERY_CONTAINER_TRAIN_COEFF_1_00_RULE_3_13": {
+        "ru": "Сокращенный срок доставки в составе контейнерного поезда (п. 3.13): применен коэффициент 1.00.",
+        "az": "Konteyner qatarının tərkibində azaldılmış çatdırılma müddəti (bənd 3.13): 1.00 əmsalı tətbiq olunub.",
+        "en": "Reduced delivery time in container train (sec. 3.13): coefficient 1.00 applied."
+    },
     "TRANSPORTER_RETURN_MIN_WEIGHT_10T_RULE_3_7_9": {
         "az": "Geri qaytarılan daşıma vasitəsinin minimal hesablama çəkisi (p. 3.7.9): 10 ton götürüldü.",
         "ru": "Минимальный расчетный вес возвращаемого средства транспортировки (п. 3.7.9): принят 10 тонн.",
