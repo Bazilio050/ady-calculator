@@ -90,4 +90,8 @@ jobs:
 
       - name: Запуск тестов на своих осях
         run: |
-          pytest tests/test_section_3_9_attendants.py -v -s     
+          pytest tests/test_section_3_9_attendants.py -v -s
+
+      - name: проводник 3,9
+        run: |
+          pytest tests/test_section_3_10_equipment.py -v -s         
