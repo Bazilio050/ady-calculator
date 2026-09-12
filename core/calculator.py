@@ -149,7 +149,7 @@ class TariffCalculator:
         if clean_gng.startswith(EMPTY_WAGON_GNG_PREFIXES) or act_w == 0:
             is_empty_wagon = True
 
-       # Авто-определение подвижного состава на осях (п. 3.7.1), если это не ремонт и не транспортер
+       # Авто-определение подвижного состава на осях (п. 3.7.1) строго при отсутствии ремонта и транспортеров
         if not is_empty_wagon_repair and not is_transporter and wagon_type_lower != "transporter" and not is_carrier_transporter_free_return:
             if clean_gng.startswith(("8601", "8602", "8603", "8604", "8605", "8606")) or clean_gng in ("99211000", "99212000", "99214000", "99221000", "99222000", "99224000"):
                 is_rolling_stock_on_own_axles = True
