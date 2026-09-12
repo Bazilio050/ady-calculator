@@ -200,6 +200,10 @@ class ShipmentQuery(BaseModel):
     expedited_delivery_train_type: Optional[str] = Field(
         default=None,
         description="Тип поезда при сокращенном сроке доставки: 'freight' (1.50), 'passenger' (2.00), 'container' (1.00) (п. 3.13)"
+    ),
+    is_reloaded_part_shipment: bool = Field(
+        default=False,
+        description="Признак отправки, образованной при перегрузке из 1 вагона в несколько на пограничной/перегрузочной станции (п. 5.1.2 / 5.2.1)"
     )
 
     @field_validator("gng_code")
