@@ -84,5 +84,6 @@ jobs:
         run: |
           pytest tests/test_section_3_7_rolling_stock.py -v -s
 
-          
-
+      - name: Запуск тестов на своих осях
+        run: |
+          pytest tests/test_section_na_svoix_osax.py -v -s
