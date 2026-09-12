@@ -87,3 +87,7 @@ jobs:
       - name: Запуск тестов на своих осях
         run: |
           pytest tests/test_section_na_svoix_osax.py -v -s
+
+      - name: Запуск тестов на своих осях
+        run: |
+          pytest tests/test_section_3_9_attendants.py -v -s     
