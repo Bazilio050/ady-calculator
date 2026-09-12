@@ -18,8 +18,15 @@ from core.tables.table_transporter import EmptyTransporterCalculator
 from core.main_rules import apply_main_rules
 from data.currency_rates import get_exchange_rate
 
-# Константа префиксов ГНГ для порожних вагонов
+# Константы префиксов и кодов ГНГ
 EMPTY_WAGON_GNG_PREFIXES = ("9921", "9922")
+
+# ГНГ коды подвижного состава на своих осях (п. 3.7.1)
+ROLLING_STOCK_AXLES_GNG_CODES = (
+    "8601", "8602", "8603", "8604", "8605", "8606",
+    "99211000", "99212000", "99214000", 
+    "99221000", "99222000", "99224000"
+)
 
 
 class TariffCalculator:
