@@ -607,6 +607,58 @@ class TariffCalculator:
                 "params": {}
             })
 
+        # --- Раздел 3.11: Перевозка гробов с телами усопших ---
+        if is_coffin_transport:
+            applied_rules_list.append({
+                "rule_code": "COFFIN_TRANSPORT_COEFF_0_10_RULE_3_11",
+                "calculated_value": 0.10,
+                "params": {}
+            })
+            notifications.append({
+                "rule_code": "COFFIN_TRANSPORT_COEFF_0_10_RULE_3_11",
+                "params": {}
+            })
+
+        # --- Раздел 3.12: Перевозка с отдельным локомотивом ---
+        if is_separate_locomotive:
+            loco_coeff = max(5.00, float(separate_locomotive_coeff))
+            applied_rules_list.append({
+                "rule_code": "SEPARATE_LOCOMOTIVE_COEFF_5_00_RULE_3_12",
+                "calculated_value": loco_coeff,
+                "params": {"coeff": loco_coeff}
+            })
+            notifications.append({
+                "rule_code": "SEPARATE_LOCOMOTIVE_COEFF_5_00_RULE_3_12",
+                "params": {"coeff": loco_coeff}
+            })
+
+        # --- Раздел 3.13: Сокращенный срок доставки ---
+        if expedited_delivery_train_type:
+            exp_type = str(expedited_delivery_train_type).lower()
+            if exp_type in ("freight", "грузовой"):
+                exp_coeff = 1.50
+                exp_rule = "EXPEDITED_DELIVERY_FREIGHT_TRAIN_COEFF_1_50_RULE_3_13"
+            elif exp_type in ("passenger", "пассажирский"):
+                exp_coeff = 2.00
+                exp_rule = "EXPEDITED_DELIVERY_PASSENGER_TRAIN_COEFF_2_00_RULE_3_13"
+            elif exp_type in ("container", "контейнерный"):
+                exp_coeff = 1.00
+                exp_rule = "EXPEDITED_DELIVERY_CONTAINER_TRAIN_COEFF_1_00_RULE_3_13"
+            else:
+                exp_coeff = 1.00
+                exp_rule = None
+
+            if exp_rule:
+                applied_rules_list.append({
+                    "rule_code": exp_rule,
+                    "calculated_value": exp_coeff,
+                    "params": {}
+                })
+                notifications.append({
+                    "rule_code": exp_rule,
+                    "params": {}
+                })
+
         # ------------------------------------------------------------------------------
         # БЛОК: Правило 3.1.2.7
         # ------------------------------------------------------------------------------
