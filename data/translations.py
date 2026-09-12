@@ -371,6 +371,16 @@ RULE_MESSAGES = {
         "az": "Bələdçilər üçün ayrı vaqonun daşınması (tepluşka, bənd 3.9): {distance_km} km × {axle_count} ox × {rate_chf} İSV/ox-km = {total_chf} İSV.",
         "en": "Separate attendant wagon transport (sec. 3.9): {distance_km} km × {axle_count} axles × {rate_chf} CHF/axle-km = {total_chf} CHF."
     },
+    "EQUIPMENT_WEIGHT_ADDED_RULE_3_10_1": {
+        "ru": "Добавлена масса оборудования/средств крепления (п. 3.10.1): +{added_weight} т к массе груза.",
+        "az": "Avadanlıq/bərkitmə vasitələrinin kütləsi əlavə edilib (bənd 3.10.1): yük kütləsinə +{added_weight} t.",
+        "en": "Equipment/fastening weight added (sec. 3.10.1): +{added_weight} t to cargo weight."
+    },
+    "NON_REMOVABLE_EQUIPMENT_WAGON_RULE_3_10_4": {
+        "ru": "Порожний вагон с несъёмным оборудованием (п. 3.10.4): расчет по осевой ставке 0.12 CHF/ось-км.",
+        "az": "Çıxarılmayan avadanlıqla təchiz olunmuş boş vaqon (bənd 3.10.4): 0.12 İSV/ox-km tarifi ilə hesablanıb.",
+        "en": "Empty wagon with non-removable equipment (sec. 3.10.4): calculated at 0.12 CHF/axle-km rate."
+    },
     "TRANSPORTER_RETURN_MIN_WEIGHT_10T_RULE_3_7_9": {
         "az": "Geri qaytarılan daşıma vasitəsinin minimal hesablama çəkisi (p. 3.7.9): 10 ton götürüldü.",
         "ru": "Минимальный расчетный вес возвращаемого средства транспортировки (п. 3.7.9): принят 10 тонн.",
