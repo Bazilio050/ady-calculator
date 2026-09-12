@@ -140,6 +140,34 @@ class ShipmentQuery(BaseModel):
         description="Признак перевозки подвижного состава в составе пассажирского поезда (п. 3.7.3: коэффициент 2.00)"
     )
 
+    # --------------------------------------------------------------------------
+    # БЛОК: Раздел 3.7 — Подвижной состав на своих осях (пп. 3.7.1–3.7.8)
+    # --------------------------------------------------------------------------
+    is_rolling_stock_on_own_axles: bool = Field(
+        default=False,
+        description="Признак перевозки подвижного состава на своих осях (п. 3.7.1: Таблица 3/4 + коэф. 0.50)"
+    )
+    is_empty_wagon_repair: bool = Field(
+        default=False,
+        description="Признак отправки инвентарного вагона в/из ремонта (п. 3.7.2: ставка 0.10 CHF/ось-км)"
+    )
+    is_passenger_train_composition: bool = Field(
+        default=False,
+        description="Признак перевозки в составе пассажирского поезда (п. 3.7.3: коэф. 2.00)"
+    )
+    is_passenger_wagon_repair: bool = Field(
+        default=False,
+        description="Признак отправки пассажирского вагона в/из ремонта в грузовом поезде (п. 3.7.4)"
+    )
+    attached_parts_weight: float = Field(
+        default=0.0,
+        description="Масса тележек, колесных пар и запчастей (п. 3.7.5), загруженных в/на подвижной состав (добавляется к весу)"
+    )
+    is_carrier_transporter_free_return: bool = Field(
+        default=False,
+        description="Признак бесплатного возврата порожнего транспортера ADY под погрузку / после выгрузки (п. 3.7.7)"
+    )
+
     @field_validator("gng_code")
     @classmethod
     def validate_gng_code(cls, value: Optional[str]) -> Optional[str]:
