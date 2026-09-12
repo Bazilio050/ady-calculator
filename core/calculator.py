@@ -72,7 +72,7 @@ class TariffCalculator:
         un_code: Optional[str] = None,                       # Код ООН (BMT №) по Таблице 13
         is_rolling_stock_on_own_axles: bool = False,         # Флаг подвижного состава на своих осях (п. 3.7.1)
         is_empty_wagon_repair: bool = False,                 # Флаг отправки в/из ремонта (п. 3.7.2)
-        is_passenger_train_composition: bool = False         # Флаг следования в пассажирском поезде (п. 3.7.3)
+        is_passenger_train_composition: bool = False,        # <-- ДОБАВЛЕНА ЗАПЯТАЯ В КОНЦЕ СТРОКИ
         attached_parts_weight: float = 0.0,                  # Масса тележек/запчастей на своих осях (п. 3.7.5)
         is_carrier_transporter_free_return: bool = False     # Признак бесплатного возврата транспортера ADY (п. 3.7.7)
     ) -> Dict[str, Any]:
