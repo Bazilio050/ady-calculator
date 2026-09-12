@@ -78,7 +78,11 @@ class TariffCalculator:
         is_separate_attendant_wagon: bool = False,           # Флаг отдельного вагона для проводников / теплушки (п. 3.9)
         is_passenger_wagon_type: bool = False,               # Признак пассажирского вагона для теплушки (п. 3.9)
         equipment_weight: float = 0.0,                       # Масса оборудования / средств крепления (п. 3.10.1)
-        is_non_removable_equipment: bool = False             # Флаг вагона с несъёмным оборудованием (п. 3.10.4)
+        is_non_removable_equipment: bool = False,            # Флаг вагона с несъёмным оборудованием (п. 3.10.4)
+        is_coffin_transport: bool = False,                   # Перевозка гробов с телами усопших (п. 3.11)
+        is_separate_locomotive: bool = False,                # Перевозка с отдельным локомотивом (п. 3.12)
+        separate_locomotive_coeff: float = 5.00,             # Коэффициент отдельного локомотива (п. 3.12, >= 5.00)
+        expedited_delivery_train_type: Optional[str] = None  # Сокращенный срок доставки (п. 3.13): freight/passenger/container
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
