@@ -74,7 +74,9 @@ class TariffCalculator:
         is_empty_wagon_repair: bool = False,                 # Флаг отправки в/из ремонта (п. 3.7.2)
         is_passenger_train_composition: bool = False,        # <-- ДОБАВЛЕНА ЗАПЯТАЯ В КОНЦЕ СТРОКИ
         attached_parts_weight: float = 0.0,                  # Масса тележек/запчастей на своих осях (п. 3.7.5)
-        is_carrier_transporter_free_return: bool = False     # Признак бесплатного возврата транспортера ADY (п. 3.7.7)
+        is_carrier_transporter_free_return: bool = False,    # Признак бесплатного возврата транспортера ADY (п. 3.7.7)
+        is_separate_attendant_wagon: bool = False,           # Флаг отдельного вагона для проводников / теплушки (п. 3.9)
+        is_passenger_wagon_type: bool = False                # Признак пассажирского вагона для теплушки (п. 3.9)
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
