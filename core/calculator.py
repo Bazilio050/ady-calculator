@@ -66,14 +66,23 @@ class TariffCalculator:
         is_rolling_stock_on_own_axles: bool = False,         # Флаг подвижного состава на своих осях (п. 3.7.1)
         is_empty_wagon_repair: bool = False,                 # Флаг отправки в/из ремонта (п. 3.7.2)
         is_passenger_train_composition: bool = False         # Флаг следования в пассажирском поезде (п. 3.7.3)
+        attached_parts_weight: float = 0.0,                  # Масса тележек/запчастей на своих осях (п. 3.7.5)
+        is_carrier_transporter_free_return: bool = False     # Признак бесплатного возврата транспортера ADY (п. 3.7.7)
     ) -> Dict[str, Any]:
         """
         ЧЕЛОВЕЧЕСКОЕ ОПИСАНИЕ:
         Выполняет полный цикл расчета тарифа с учетом спецвагонов, правил и валютной конвертации.
         """
         
-        act_w = int(actual_weight)
+        actual_total_weight = actual_weight + attached_parts_weight
+        act_w = int(actual_total_weight)
         notifications = []
+
+        if attached_parts_weight > 0.0:
+            notifications.append({
+                "rule_code": "ATTACHED_PARTS_WEIGHT_ADDED_RULE_3_7_5",
+                "params": {"added_weight": attached_parts_weight}
+            })
         ship_type_lower = shipment_type.lower()
         wagon_type_lower = wagon_type.lower()
 
@@ -186,9 +195,13 @@ class TariffCalculator:
                 "params": {"actual_weight": actual_weight, "applied_weight": 25.0}
             })
 
-        # 2. Проверка применимости Таблиц 3 и 4
-        is_table_3_applicable = ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"] and not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container or is_generator_container or is_universal_container or (active_1_40_rule is not None) or is_empty_wagon or is_dangerous_cargo)
-        is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"] and not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container or is_generator_container or is_universal_container or (active_1_40_rule is not None) or is_empty_wagon or is_dangerous_cargo)
+        # 2. Проверка применимости Таблиц 3 и 4 (с учетом п. 3.7.1)
+        is_table_3_applicable = ship_type_lower in ["import", "export", "импорт", "экспорт", "idxal", "ixrac"] and (
+            is_rolling_stock_on_own_axles or not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container or is_generator_container or is_universal_container or (active_1_40_rule is not None) or is_empty_wagon or is_dangerous_cargo)
+        )
+        is_table_4_applicable = ship_type_lower in ["transit", "транзит", "tranzit"] and (
+            is_rolling_stock_on_own_axles or not (is_ref_wagon or is_tank_wagon or is_table_7 or is_special_container or is_generator_container or is_universal_container or (active_1_40_rule is not None) or is_empty_wagon or is_dangerous_cargo)
+        )
 
         # 3. Определение таблицы и флагов груза до применения главных правил
         column_name = None
@@ -232,7 +245,29 @@ class TariffCalculator:
         # ------------------------------------------------------------------------------
         # БЛОК: Выбор таблицы расчета тарифной ставки (С РАЗДЕЛОМ 3.7)
         # ------------------------------------------------------------------------------
-        if (is_transporter or wagon_type_lower == "transporter") and is_empty_wagon:
+        if is_rolling_stock_on_own_axles:
+            if is_table_4_applicable:
+                table_name = "Таблица 4 (п. 3.7.1)"
+                base_rate_chf = Table4Calculator.get_base_rate(
+                    distance_km=distance_km,
+                    weight_tons=billable_weight
+                )
+            else:
+                table_name = "Таблица 3 (п. 3.7.1)"
+                base_rate_chf = Table3Calculator.get_base_rate(
+                    distance_km=distance_km,
+                    weight_tons=billable_weight
+                )
+
+        elif is_carrier_transporter_free_return:
+            table_name = "Пункт 3.7.7"
+            base_rate_chf = 0.0
+            notifications.append({
+                "rule_code": "EMPTY_CARRIER_TRANSPORTER_FREE_RULE_3_7_7",
+                "params": {}
+            })
+
+        elif (is_transporter or wagon_type_lower == "transporter") and is_empty_wagon:
             table_name = "Пункт 3.7.8"
             transp_res = EmptyTransporterCalculator.calculate(
                 distance_km=distance_km,
