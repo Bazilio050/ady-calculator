@@ -406,6 +406,16 @@ RULE_MESSAGES = {
         "az": "Konteyner qatarının tərkibində azaldılmış çatdırılma müddəti (bənd 3.13): 1.00 əmsalı tətbiq olunub.",
         "en": "Reduced delivery time in container train (sec. 3.13): coefficient 1.00 applied."
     },
+    "HOUSEHOLD_GOODS_RULE_4": {
+        "ru": "Перевозка домашней утвари (ГНГ 9901, Раздел 4): расчет выполнен по общим правилам Раздела 3.",
+        "az": "Ev əşyalarının daşınması (YHN 9901, Bənd 4): hesablama 3-cü bəndin ümumi qaydalarına əsasən aparılıb.",
+        "en": "Household goods transport (GNG 9901, Sec. 4): calculated under general Sec. 3 rules."
+    },
+    "CARGO_RELOADED_SPLIT_WAGONS_RULE_5_1_2": {
+        "ru": "Перегрузка из 1 вагона в несколько (п. 5.1.2 / 5.2.1): расчет выполнен как для отдельной вагонной отправки.",
+        "az": "Yükün bir vaqondan bir neçə vaqona yenidən yüklənməsi (bənd 5.1.2 / 5.2.1): müstəqil vaqon göndərməsi kimi hesablanıb.",
+        "en": "Cargo reloaded from 1 wagon into multiple (sec. 5.1.2 / 5.2.1): calculated as independent wagon shipment."
+    },
     "TRANSPORTER_RETURN_MIN_WEIGHT_10T_RULE_3_7_9": {
         "az": "Geri qaytarılan daşıma vasitəsinin minimal hesablama çəkisi (p. 3.7.9): 10 ton götürüldü.",
         "ru": "Минимальный расчетный вес возвращаемого средства транспортировки (п. 3.7.9): принят 10 тонн.",
