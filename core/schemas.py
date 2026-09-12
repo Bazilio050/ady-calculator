@@ -165,7 +165,15 @@ class ShipmentQuery(BaseModel):
     )
     is_carrier_transporter_free_return: bool = Field(
         default=False,
-        description="Признак бесплатного возврата порожнего транспортера ADY под погрузку / после выгрузки (п. 3.7.7)"
+        description="Признак бесплатного возврата транспортера ADY (п. 3.7.7)"
+    ),
+    is_separate_attendant_wagon: bool = Field(
+        default=False,
+        description="Флаг проезда проводников в отдельном вагоне без груза / теплушке (п. 3.9)"
+    ),
+    is_passenger_wagon_type: bool = Field(
+        default=False,
+        description="Признак пассажирского типа вагона для теплушки (п. 3.9)"
     )
 
     @field_validator("gng_code")
