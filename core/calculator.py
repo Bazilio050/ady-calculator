@@ -85,7 +85,7 @@ class TariffCalculator:
         Выполняет полный цикл расчета тарифа с учетом спецвагонов, правил и валютной конвертации.
         """
         
-        actual_total_weight = actual_weight + attached_parts_weight
+        actual_total_weight = actual_weight + attached_parts_weight + equipment_weight
         act_w = int(actual_total_weight)
         notifications = []
 
@@ -93,6 +93,12 @@ class TariffCalculator:
             notifications.append({
                 "rule_code": "ATTACHED_PARTS_WEIGHT_ADDED_RULE_3_7_5",
                 "params": {"added_weight": attached_parts_weight}
+            })
+
+        if equipment_weight > 0.0:
+            notifications.append({
+                "rule_code": "EQUIPMENT_WEIGHT_ADDED_RULE_3_10_1",
+                "params": {"added_weight": equipment_weight}
             })
         ship_type_lower = shipment_type.lower()
         wagon_type_lower = wagon_type.lower()
