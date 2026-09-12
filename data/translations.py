@@ -357,9 +357,19 @@ RULE_MESSAGES = {
         "en": "Transport within passenger train (clause 3.7.3): 2.00 multiplier applied.",
     },
     "TRANSPORTER_AXLE_KM_RATES_RULE_3_7_8": {
-        "az": "Boş transportyorun daşınması (p. 3.7.8): {axles}-oxlu üçün {rate} CHF/ox-km dərəcəsi tətbiq edildi.",
-        "ru": "Перевозка порожнего транспортера (п. 3.7.8): применительно для {axles}-осного по ставке {rate} CHF/ось-км.",
-        "en": "Empty transporter movement (clause 3.7.8): {rate} CHF/axle-km rate applied for {axles}-axle transporter.",
+        "ru": "Порожний транспортер (п. 3.7.8): расчет по осевой ставке {rate_chf} CHF/ось-км.",
+        "az": "Boş vaqon-transporter (bənd 3.7.8): ox-km tarifi {rate_chf} İSV/ox-km ilə hesablanıb.",
+        "en": "Empty transporter (sec. 3.7.8): calculated at axle-km rate {rate_chf} CHF/axle-km."
+    },
+    "ATTENDANTS_FEE_RULE_3_9": {
+        "ru": "Проезд проводников/водителей (п. 3.9): {count} чел. × {blocks_100km} блоков по 100 км × 12.00 CHF = {total_chf} CHF.",
+        "az": "Bələdçilərin/sürücülərin gediş haqqı (bənd 3.9): {count} nəfər × {blocks_100km} ədəd 100 km-lik blok × 12.00 İSV = {total_chf} İSV.",
+        "en": "Attendants/drivers fee (sec. 3.9): {count} persons × {blocks_100km} 100-km blocks × 12.00 CHF = {total_chf} CHF."
+    },
+    "SEPARATE_ATTENDANT_WAGON_RULE_3_9": {
+        "ru": "Перевозка отдельного вагона для проводников (теплушки, п. 3.9): {distance_km} км × {axle_count} осей × {rate_chf} CHF/ось-км = {total_chf} CHF.",
+        "az": "Bələdçilər üçün ayrı vaqonun daşınması (tepluşka, bənd 3.9): {distance_km} km × {axle_count} ox × {rate_chf} İSV/ox-km = {total_chf} İSV.",
+        "en": "Separate attendant wagon transport (sec. 3.9): {distance_km} km × {axle_count} axles × {rate_chf} CHF/axle-km = {total_chf} CHF."
     },
     "TRANSPORTER_RETURN_MIN_WEIGHT_10T_RULE_3_7_9": {
         "az": "Geri qaytarılan daşıma vasitəsinin minimal hesablama çəkisi (p. 3.7.9): 10 ton götürüldü.",
