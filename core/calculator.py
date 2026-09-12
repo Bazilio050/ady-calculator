@@ -260,21 +260,7 @@ class TariffCalculator:
         # ------------------------------------------------------------------------------
         # БЛОК: Выбор таблицы расчета тарифной ставки (С РАЗДЕЛОМ 3.7)
         # ------------------------------------------------------------------------------
-        if is_rolling_stock_on_own_axles:
-            if is_table_4_applicable:
-                table_name = "Таблица 4 (п. 3.7.1)"
-                base_rate_chf = Table4Calculator.get_base_rate(
-                    distance_km=distance_km,
-                    weight_tons=billable_weight
-                )
-            else:
-                table_name = "Таблица 3 (п. 3.7.1)"
-                base_rate_chf = Table3Calculator.get_base_rate(
-                    distance_km=distance_km,
-                    weight_tons=billable_weight
-                )
-
-        elif is_carrier_transporter_free_return:
+        if is_carrier_transporter_free_return:
             table_name = "Пункт 3.7.7"
             base_rate_chf = 0.0
             notifications.append({
@@ -302,6 +288,20 @@ class TariffCalculator:
                 "rule_code": "EMPTY_WAGON_REPAIR_0_10_AXLE_KM_RULE_3_7_2",
                 "params": {"axle_count": axle_count, "distance_km": distance_km}
             })
+
+        elif is_rolling_stock_on_own_axles:
+            if is_table_4_applicable:
+                table_name = "Таблица 4 (п. 3.7.1)"
+                base_rate_chf = Table4Calculator.get_base_rate(
+                    distance_km=distance_km,
+                    weight_tons=billable_weight
+                )
+            else:
+                table_name = "Таблица 3 (п. 3.7.1)"
+                base_rate_chf = Table3Calculator.get_base_rate(
+                    distance_km=distance_km,
+                    weight_tons=billable_weight
+                )
 
         elif is_dangerous_cargo and not is_tank_wagon and not is_special_container:
             table_name = "Таблица 12"
