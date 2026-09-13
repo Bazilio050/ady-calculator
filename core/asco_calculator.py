@@ -82,10 +82,10 @@ class AscoFerryCalculator:
         from_st = str(route_from).strip().lower()
         to_st = str(route_to).strip().lower()
 
-        # Определение порта назначения
-        if "трк" in from_st or "трк" in to_st or "туркменбаши" in from_st or "туркменбаши" in to_st:
+        # Определение порта назначения (поддержка кириллицы и латиницы)
+        if any(p in from_st or p in to_st for p in ["трк", "туркменбаши", "turkmenbashi", "tmb"]):
             port_key = "turkmenbashi"
-        elif "курык" in from_st or "курык" in to_st or "актау" in from_st or "актау" in to_st:
+        elif any(p in from_st or p in to_st for p in ["курык", "актау", "kuryk", "aktau"]):
             port_key = "kuryk"
         else:
             return {
