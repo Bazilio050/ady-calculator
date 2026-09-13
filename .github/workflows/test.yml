@@ -26,7 +26,10 @@ jobs:
       - name: 📍 ПРОВЕРКА РАССТОЯНИЙ (KM TEST)
         run: python -m pytest -s tests/test_distances_routes.py
 
-      - name: Запуск тестов Таблиц 3 и 4 (Универсальные вагоны)
+      - name: 📍 паромная переправа
+        run: python -m pytest -s tests/test_asco_calculator.py
+
+       - name: Запуск тестов Таблиц 3 и 4 (Универсальные вагоны)
         run: |
           python -m pytest tests/test_full_calculation.py -v -s
 
