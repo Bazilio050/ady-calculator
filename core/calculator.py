@@ -852,6 +852,28 @@ class TariffCalculator:
             })
 
         # ------------------------------------------------------------------------------
+        # БЛОК: Расчет платы за обязательную охрану ВОХР (При транзите)
+        # ------------------------------------------------------------------------------
+        from core.security_calculator import SecurityCalculator
+
+        sec_res = SecurityCalculator.calculate(
+            shipment_type=shipment_type,
+            gng_code=gng_code,
+            distance_km=distance_km
+        )
+
+        security_fee_usd = sec_res.get("security_fee_usd", 0.0)
+
+        if security_fee_usd > 0:
+            notifications.append({
+                "rule_code": "SECURITY_CARGO_FEE_RULE",
+                "params": {
+                    "amount_usd": security_fee_usd,
+                    "distance_km": int(distance_km)
+                }
+            })
+
+        # ------------------------------------------------------------------------------
         # БЛОК: Финальный расчет полной стоимости
         # ------------------------------------------------------------------------------
         attendants_fee_usd = 0.0
