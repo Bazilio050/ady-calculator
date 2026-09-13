@@ -70,6 +70,8 @@ class TariffCalculator:
         is_cover_wagon_private: bool = True,                 # Флаг приватного вагона прикрытия
         is_dangerous_cargo: bool = False,                    # Флаг опасного груза (п. 3.6.1)
         un_code: Optional[str] = None,                       # Код ООН (BMT №) по Таблице 13
+        is_attached_wagons_group: bool = False,              # Флаг сцепа из нескольких вагонов (п. 3.7.1)
+        attached_wagons_count: int = 1,                      # Количество вагонов в сцепе (п. 3.7.1)
         is_rolling_stock_on_own_axles: bool = False,         # Флаг подвижного состава на своих осях (п. 3.7.1)
         is_empty_wagon_repair: bool = False,                 # Флаг отправки в/из ремонта (п. 3.7.2)
         is_passenger_train_composition: bool = False,        # <-- ДОБАВЛЕНА ЗАПЯТАЯ В КОНЦЕ СТРОКИ
@@ -201,7 +203,18 @@ class TariffCalculator:
         is_inv_anv = wagon_type_lower in ("inv", "anv", "inv_anv")
         is_auto_special = wagon_type_lower in ("auto_body", "detachable_body", "кузов", "road_train", "semi_trailer", "road_train_platform", "автопоезд", "полуприцеп")
 
-        if is_tank_wagon:
+        if is_attached_wagons_group and attached_wagons_count > 1:
+            min_attached_weight = float(attached_wagons_count * 20)
+            if actual_total_weight < min_attached_weight:
+                billable_weight = min_attached_weight
+                notifications.append({
+                    "rule_code": "ATTACHED_WAGONS_MIN_WEIGHT_RULE_3_7_1",
+                    "params": {"count": attached_wagons_count, "min_weight": min_attached_weight}
+                })
+            else:
+                weight_res = Table1Calculator.calculate_billable_weight(weight_after_min_norm)
+                billable_weight = weight_res["calculated_weight"]
+        elif is_tank_wagon:
             billable_weight = 25.0
         elif is_auto_special and is_empty_wagon:
             billable_weight = 5.0 if wagon_type_lower in ("auto_body", "detachable_body", "кузов") else 7.0
@@ -210,7 +223,6 @@ class TariffCalculator:
         else:
             weight_res = Table1Calculator.calculate_billable_weight(weight_after_min_norm)
             billable_weight = weight_res["calculated_weight"]
-
             if weight_res.get("rule_code"):
                 notifications.append({
                     "rule_code": weight_res["rule_code"],
@@ -674,58 +686,6 @@ class TariffCalculator:
                 "rule_code": "CARGO_RELOADED_SPLIT_WAGONS_RULE_5_1_2",
                 "params": {}
             })
-
-        # --- Раздел 3.11: Перевозка гробов с телами усопших ---
-        if is_coffin_transport:
-            applied_rules_list.append({
-                "rule_code": "COFFIN_TRANSPORT_COEFF_0_10_RULE_3_11",
-                "calculated_value": 0.10,
-                "params": {}
-            })
-            notifications.append({
-                "rule_code": "COFFIN_TRANSPORT_COEFF_0_10_RULE_3_11",
-                "params": {}
-            })
-
-        # --- Раздел 3.12: Перевозка с отдельным локомотивом ---
-        if is_separate_locomotive:
-            loco_coeff = max(5.00, float(separate_locomotive_coeff))
-            applied_rules_list.append({
-                "rule_code": "SEPARATE_LOCOMOTIVE_COEFF_5_00_RULE_3_12",
-                "calculated_value": loco_coeff,
-                "params": {"coeff": loco_coeff}
-            })
-            notifications.append({
-                "rule_code": "SEPARATE_LOCOMOTIVE_COEFF_5_00_RULE_3_12",
-                "params": {"coeff": loco_coeff}
-            })
-
-        # --- Раздел 3.13: Сокращенный срок доставки ---
-        if expedited_delivery_train_type:
-            exp_type = str(expedited_delivery_train_type).lower()
-            if exp_type in ("freight", "грузовой"):
-                exp_coeff = 1.50
-                exp_rule = "EXPEDITED_DELIVERY_FREIGHT_TRAIN_COEFF_1_50_RULE_3_13"
-            elif exp_type in ("passenger", "пассажирский"):
-                exp_coeff = 2.00
-                exp_rule = "EXPEDITED_DELIVERY_PASSENGER_TRAIN_COEFF_2_00_RULE_3_13"
-            elif exp_type in ("container", "контейнерный"):
-                exp_coeff = 1.00
-                exp_rule = "EXPEDITED_DELIVERY_CONTAINER_TRAIN_COEFF_1_00_RULE_3_13"
-            else:
-                exp_coeff = 1.00
-                exp_rule = None
-
-            if exp_rule:
-                applied_rules_list.append({
-                    "rule_code": exp_rule,
-                    "calculated_value": exp_coeff,
-                    "params": {}
-                })
-                notifications.append({
-                    "rule_code": exp_rule,
-                    "params": {}
-                })
 
         # ------------------------------------------------------------------------------
         # БЛОК: Правило 3.1.2.7
