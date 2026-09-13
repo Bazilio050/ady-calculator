@@ -104,6 +104,6 @@ jobs:
         run: |
           pytest tests/test_sections_4_and_5.py -v -s
 
-      - name: проводник 3,9
+      - name: тест стресс
         run: |
           pytest tests/test_stress_edge_cases.py -v -s
