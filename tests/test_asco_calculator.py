@@ -34,12 +34,10 @@ def test_asco_calculator_routes():
         wagon_type="covered",
         wagon_length_m=14.0
     )
-    print(f"\nМаршрут: Alyat -> Turkmenbashi")
+    print(f"\nМаршрут: Alyat -> Turkmenbashi (Крытый 14м)")
     print(f"  - Порт: {res1['port']}")
     print(f"  - Категория: {res1['cargo_category']}")
-    print(f"  - Ставка: ${res1['rate_per_meter']} / м")
-    print(f"  - Длина: {res1['length_meters']} м")
-    print(f"  - Всего: ${res1['total_asco_usd']} USD")
+    print(f"  - Формула: {res1['length_meters']}м х ${res1['rate_per_meter']}/м х коэф. {res1['coeff']} = ${res1['total_asco_usd']} USD")
     print("--------------------------------------------------")
 
     assert res1["status"] == "SUCCESS"
@@ -57,8 +55,7 @@ def test_asco_calculator_routes():
     print(f"\nМаршрут: Alyat -> Kuryk (Нефть)")
     print(f"  - Порт: {res2['port']}")
     print(f"  - Категория: {res2['cargo_category']}")
-    print(f"  - Расчетная длина: {res2['length_meters']} м")
-    print(f"  - Всего: ${res2['total_asco_usd']} USD")
+    print(f"  - Формула: {res2['length_meters']}м (фикс) х ${res2['rate_per_meter']}/м х коэф. {res2['coeff']} = ${res2['total_asco_usd']} USD")
     print("--------------------------------------------------")
 
     assert res2["status"] == "SUCCESS"
@@ -79,7 +76,7 @@ def test_asco_calculator_dangerous_goods():
     )
     print(f"\nМаршрут: Alyat -> Turkmenbashi (Опасный груз класс 8)")
     print(f"  - Категория: {res['cargo_category']}")
-    print(f"  - Всего: ${res['total_asco_usd']} USD")
+    print(f"  - Формула: {res['length_meters']}м х ${res['rate_per_meter']}/м х коэф. {res['coeff']} = ${res['total_asco_usd']} USD")
     print("--------------------------------------------------")
 
     assert res["status"] == "SUCCESS"
@@ -98,8 +95,8 @@ def test_asco_calculator_oversized():
         wagon_width_m=4.1
     )
     print(f"\nМаршрут: Alyat -> Kuryk (Негабарит по ширине и длине)")
-    print(f"  - Коэффициент: {res['coeff']}")
-    print(f"  - Всего: ${res['total_asco_usd']} USD")
+    print(f"  - Категория: {res['cargo_category']}")
+    print(f"  - Формула: {res['length_meters']}м х ${res['rate_per_meter']}/м х коэф. {res['coeff']} = ${res['total_asco_usd']} USD")
     print("==================================================")
 
     assert res["status"] == "SUCCESS"
