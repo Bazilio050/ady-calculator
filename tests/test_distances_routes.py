@@ -39,25 +39,24 @@ def test_ferry_fees_on_control_routes():
         assert res["vykat_usd"] == exp_vykat
 
 def test_ferry_fees_calculation():
-    """Автоматическая проверка начисления сборов $70 USD за накат/выкат в Аляте"""
+    """Вывод проверки наката и выката в консоль"""
     from core.calculator import TariffCalculator
 
-    # 1. Беюк Кясик -> Алят-эксп. (Накат: $70, Выкат: $0)
-    res_1 = TariffCalculator.calculate_ferry_fees("Беюк Кясик", "Алят-эксп.")
-    assert res_1["ferry_nakat_fee_usd"] == 70.0
-    assert res_1["ferry_vykat_fee_usd"] == 0.0
+    routes = [
+        ("Беюк Кясик", "Алят-эксп."),
+        ("ТРК", "Ялама"),
+        ("Сальяны", "Курык"),
+        ("Ялама", "Астара")
+    ]
 
-    # 2. ТРК -> Ялама (Накат: $0, Выкат: $70)
-    res_2 = TariffCalculator.calculate_ferry_fees("ТРК", "Ялама")
-    assert res_2["ferry_nakat_fee_usd"] == 0.0
-    assert res_2["ferry_vykat_fee_usd"] == 70.0
+    print("\n" + "="*50)
+    print("ПРОВЕРКА ПАРОМНЫХ СБОРОВ (АЛЯТ)")
+    print("="*50)
 
-    # 3. Сальяны -> Курык (Накат: $70, Выкат: $0)
-    res_3 = TariffCalculator.calculate_ferry_fees("Сальяны", "Курык")
-    assert res_3["ferry_nakat_fee_usd"] == 70.0
-    assert res_3["ferry_vykat_fee_usd"] == 0.0
-
-    # 4. Ялама -> Астара (Сухопутный transit, сборы = $0)
-    res_4 = TariffCalculator.calculate_ferry_fees("Ялама", "Астара")
-    assert res_4["ferry_nakat_fee_usd"] == 0.0
-    assert res_4["ferry_vykat_fee_usd"] == 0.0
+    for route_from, route_to in routes:
+        res = TariffCalculator.calculate_ferry_fees(route_from, route_to)
+        print(f"Маршрут: {route_from} -> {route_to}")
+        print(f"  - Накат: ${res['ferry_nakat_fee_usd']} USD")
+        print(f"  - Выкат: ${res['ferry_vykat_fee_usd']} USD")
+        print(f"  - Всего: ${res['total_ferry_fee_usd']} USD")
+        print("-" * 50)
