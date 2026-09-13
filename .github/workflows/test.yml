@@ -29,14 +29,14 @@ jobs:
       - name: 📍 паромная переправа
         run: python -m pytest -s tests/test_asco_calculator.py
 
-       - name: Запуск тестов Таблиц 3 и 4 (Универсальные вагоны)
+      - name: Запуск тестов Таблиц 3 и 4 (Универсальные вагоны)
         run: |
           python -m pytest tests/test_full_calculation.py -v -s
 
       - name: Запуск тестов Таблицы 5 (Специализированный подвижной состав)
         run: |
           python -m pytest tests/test_table_5_full.py -v -s
-      
+
       - name: Запуск тестов Таблицы 6 (Наливные грузы в цистернах)
         run: |
           python -m pytest tests/test_table_6.py -v -s
