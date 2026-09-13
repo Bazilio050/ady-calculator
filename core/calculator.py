@@ -822,7 +822,7 @@ class TariffCalculator:
                 "params": {"amount_usd": ferry_fees["ferry_vykat_fee_usd"]}
             })
 
-        # ------------------------------------------------------------------------------
+       # ------------------------------------------------------------------------------
         # БЛОК: Расчет морского фрахта ASCO (Каспийское море)
         # ------------------------------------------------------------------------------
         from core.asco_calculator import AscoFerryCalculator
@@ -830,13 +830,13 @@ class TariffCalculator:
         asco_res = AscoFerryCalculator.calculate(
             route_from=from_canonical_name,
             route_to=to_canonical_name,
-            gng_code=cargo_gng_code,
+            gng_code=gng_code,
             wagon_type=wagon_type_lower,
             shipment_type=shipment_type,
             wagon_length_m=wagon_length_m if 'wagon_length_m' in locals() else 14.0,
-            is_empty=is_empty_wagon if 'is_empty_wagon' in locals() else False,
-            is_dangerous=is_dangerous if 'is_dangerous' in locals() else False,
-            dangerous_class=dangerous_class if 'dangerous_class' in locals() else None
+            is_empty=is_empty_wagon,
+            is_dangerous=locals().get('is_dangerous', False),
+            dangerous_class=locals().get('dangerous_class', None)
         )
 
         total_asco_usd = asco_res.get("total_asco_usd", 0.0)
