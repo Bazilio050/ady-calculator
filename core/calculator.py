@@ -28,6 +28,8 @@ ROLLING_STOCK_AXLES_GNG_CODES = (
     "99221000", "99222000", "99224000"
 )
 
+# Фиксированная ставка за паромные операции на ст. Алят (USD / вагон)
+FERRY_HANDLING_FEE_USD = 70.0
 
 class TariffCalculator:
     """
@@ -36,6 +38,40 @@ class TariffCalculator:
     Выполняет выбор базовой таблицы (Таблица 3, 4, 6, 7, 8, 10, 11 или 12),
     конвертацию ставки в USD и последовательно применяет правила.
     """
+
+    @classmethod
+    def calculate_ferry_fees(
+        cls, 
+        route_from: str, 
+        route_to: str, 
+        num_wagons: int = 1
+    ) -> Dict[str, Any]:
+        """
+        Расчет сборов за накат и выкат с парома строго по станции Алят-эксперт.
+        """
+        from_st = str(route_from).strip().lower()
+        to_st = str(route_to).strip().lower()
+
+        sea_terminals = ["курык", "актау", "трк", "туркменбаши"]
+        
+        nakat_fee = 0.0
+        vykat_fee = 0.0
+
+        # Движение СУША -> МОРЕ (Накат в Аляте)
+        if to_st in sea_terminals or to_st == "алят-эксп.":
+            if from_st not in sea_terminals and from_st != "алят-эксп.":
+                nakat_fee = FERRY_HANDLING_FEE_USD * num_wagons
+
+        # Движение МОРЕ -> СУША (Выкат в Аляте)
+        if from_st in sea_terminals:
+            if to_st not in sea_terminals:
+                vykat_fee = FERRY_HANDLING_FEE_USD * num_wagons
+
+        return {
+            "ferry_nakat_fee_usd": nakat_fee,
+            "ferry_vykat_fee_usd": vykat_fee,
+            "total_ferry_fee_usd": nakat_fee + vykat_fee
+        }
 
     @classmethod
     def calculate(
@@ -745,6 +781,7 @@ class TariffCalculator:
                 "params": {"count": attendants_count, "hundreds_km": hundreds_km, "blocks_100km": hundreds_km, "total_chf": attendants_fee_chf}
             })
 
+        
         # ------------------------------------------------------------------------------
         # БЛОК: Расчет платы за вагоны прикрытия
         # ------------------------------------------------------------------------------
@@ -765,6 +802,27 @@ class TariffCalculator:
             })
 
         # ------------------------------------------------------------------------------
+        # БЛОК: Расчет паромных сборов (Накат / Выкат в Аляте)
+        # ------------------------------------------------------------------------------
+        ferry_fees = cls.calculate_ferry_fees(
+            route_from=from_canonical_name, 
+            route_to=to_canonical_name, 
+            num_wagons=1
+        )
+
+        if ferry_fees["ferry_nakat_fee_usd"] > 0:
+            notifications.append({
+                "rule_code": "FERRY_NAKAT_FEE_ALAT_RULE",
+                "params": {"amount_usd": ferry_fees["ferry_nakat_fee_usd"]}
+            })
+
+        if ferry_fees["ferry_vykat_fee_usd"] > 0:
+            notifications.append({
+                "rule_code": "FERRY_VYKAT_FEE_ALAT_RULE",
+                "params": {"amount_usd": ferry_fees["ferry_vykat_fee_usd"]}
+            })
+
+        # ------------------------------------------------------------------------------
         # БЛОК: Финальный расчет полной стоимости
         # ------------------------------------------------------------------------------
         attendants_fee_usd = 0.0
@@ -776,9 +834,11 @@ class TariffCalculator:
         wagon_rate_usd = final_rate_per_ton_usd
 
         if wagon_type_lower == "diesel_generator_wagon":
-            final_rate_total_usd = round(wagon_rate_usd + attendants_fee_usd + cover_wagons_fee_usd, 2)
+            base_total_usd = round(wagon_rate_usd + attendants_fee_usd + cover_wagons_fee_usd, 2)
         else:
-            final_rate_total_usd = round(wagon_rate_usd * billable_weight + attendants_fee_usd + cover_wagons_fee_usd, 2)
+            base_total_usd = round(wagon_rate_usd * billable_weight + attendants_fee_usd + cover_wagons_fee_usd, 2)
+
+        final_rate_total_usd = round(base_total_usd + ferry_fees["total_ferry_fee_usd"], 2)
 
         return {
             "actual_weight": act_w,
@@ -793,6 +853,9 @@ class TariffCalculator:
             "final_coeff": rules_res.get("calculated_value", 1.0),
             "final_rate_usd_per_ton": final_rate_per_ton_usd,
             "attendants_fee_usd": attendants_fee_usd,
+            "ferry_nakat_fee_usd": ferry_fees["ferry_nakat_fee_usd"],
+            "ferry_vykat_fee_usd": ferry_fees["ferry_vykat_fee_usd"],
+            "total_ferry_fee_usd": ferry_fees["total_ferry_fee_usd"],
             "final_rate_total_usd": final_rate_total_usd,
             "is_private_wagon": is_private_wagon,
             "notifications": notifications
