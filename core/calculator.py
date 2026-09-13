@@ -823,6 +823,35 @@ class TariffCalculator:
             })
 
         # ------------------------------------------------------------------------------
+        # БЛОК: Расчет морского фрахта ASCO (Каспийское море)
+        # ------------------------------------------------------------------------------
+        from core.asco_calculator import AscoFerryCalculator
+
+        asco_res = AscoFerryCalculator.calculate(
+            route_from=from_canonical_name,
+            route_to=to_canonical_name,
+            gng_code=cargo_gng_code,
+            wagon_type=wagon_type_lower,
+            shipment_type=shipment_type,
+            wagon_length_m=wagon_length_m if 'wagon_length_m' in locals() else 14.0,
+            is_empty=is_empty_wagon if 'is_empty_wagon' in locals() else False,
+            is_dangerous=is_dangerous if 'is_dangerous' in locals() else False,
+            dangerous_class=dangerous_class if 'dangerous_class' in locals() else None
+        )
+
+        total_asco_usd = asco_res.get("total_asco_usd", 0.0)
+
+        if total_asco_usd > 0:
+            notifications.append({
+                "rule_code": "ASCO_FERRY_FREIGHT_RULE",
+                "params": {
+                    "amount_usd": total_asco_usd,
+                    "port": asco_res.get("port"),
+                    "category": asco_res.get("cargo_category")
+                }
+            })
+
+        # ------------------------------------------------------------------------------
         # БЛОК: Финальный расчет полной стоимости
         # ------------------------------------------------------------------------------
         attendants_fee_usd = 0.0
@@ -838,7 +867,7 @@ class TariffCalculator:
         else:
             base_total_usd = round(wagon_rate_usd * billable_weight + attendants_fee_usd + cover_wagons_fee_usd, 2)
 
-        final_rate_total_usd = round(base_total_usd + ferry_fees["total_ferry_fee_usd"], 2)
+        final_rate_total_usd = round(base_total_usd + ferry_fees["total_ferry_fee_usd"] + total_asco_usd, 2)
 
         return {
             "actual_weight": act_w,
@@ -856,6 +885,7 @@ class TariffCalculator:
             "ferry_nakat_fee_usd": ferry_fees["ferry_nakat_fee_usd"],
             "ferry_vykat_fee_usd": ferry_fees["ferry_vykat_fee_usd"],
             "total_ferry_fee_usd": ferry_fees["total_ferry_fee_usd"],
+            "total_asco_freight_usd": total_asco_usd,
             "final_rate_total_usd": final_rate_total_usd,
             "is_private_wagon": is_private_wagon,
             "notifications": notifications
