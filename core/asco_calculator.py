@@ -57,3 +57,91 @@ def determine_asco_cargo_category(
         return "export_az"
 
     return "base"
+
+
+class AscoFerryCalculator:
+    """
+    Центральный модуль расчета морского фрахта ASCO (Каспийское море).
+    """
+
+    @classmethod
+    def calculate(
+        cls,
+        route_from: str,
+        route_to: str,
+        gng_code: str,
+        wagon_type: str,
+        shipment_type: str = "transit",
+        wagon_length_m: float = 14.0,
+        is_empty: bool = False,
+        dangerous_class: Optional[int] = None,
+        wagon_width_m: Optional[float] = None,
+        is_locomotive: bool = False
+    ) -> Dict[str, Any]:
+        from_st = str(route_from).strip().lower()
+        to_st = str(route_to).strip().lower()
+
+        # Определение порта назначения
+        if "трк" in from_st or "трк" in to_st or "туркменбаши" in from_st or "туркменбаши" in to_st:
+            port_key = "turkmenbashi"
+        elif "курык" in from_st or "курык" in to_st or "актау" in from_st or "актау" in to_st:
+            port_key = "kuryk"
+        else:
+            return {
+                "status": "NOT_APPLICABLE",
+                "message": "Маршрут не содержит каспийских морских портов ASCO",
+                "total_asco_usd": 0.0
+            }
+
+        # Определение категории груза по ГНГ и типу вагона
+        cargo_category = determine_asco_cargo_category(gng_code, wagon_type, shipment_type)
+
+        # Проверка опасных грузов (Классы 1, 2, 3, 7 требуют согласования)
+        if dangerous_class in [1, 2, 3, 7] and cargo_category not in ["oil_cistern", "oil_covered", "alcohol", "lpg"]:
+            return {
+                "status": "REQUIRES_AGREEMENT",
+                "message": f"Опасный груз {dangerous_class} класса требует индивидуального согласования тарифной ставки",
+                "total_asco_usd": 0.0
+            }
+
+        # Классы опасности 4, 5, 6, 8, 9 при базовой категории переключаются на "dangerous"
+        if dangerous_class in [4, 5, 6, 8, 9] and cargo_category == "base":
+            cargo_category = "dangerous"
+
+        rates_data = ASCO_RATES[port_key].get(cargo_category, ASCO_RATES[port_key]["base"])
+
+        # Фиксированная длина для нефтяных грузов или ручной ввод
+        calc_length = rates_data.get("fixed_length", wagon_length_m)
+        state_key = "empty" if is_empty else "loaded"
+        rate_per_meter = rates_data[state_key]
+
+        # Расчет коэффициентов
+        coeff = 1.0
+        applied_coeffs = []
+
+        # Вагоны длиной более 15 метров
+        if calc_length > 15.0:
+            coeff *= 1.3
+            applied_coeffs.append({"code": "ASCO_LENGTH_OVER_15M", "coeff": 1.3})
+
+        # Негабарит по ширине или локомотив
+        if wagon_width_m and wagon_width_m >= 4.0:
+            coeff *= 2.0
+            applied_coeffs.append({"code": "ASCO_WIDTH_OVER_4M", "coeff": 2.0})
+        elif (wagon_width_m and 3.25 <= wagon_width_m < 4.0) or is_locomotive:
+            coeff *= 1.4
+            applied_coeffs.append({"code": "ASCO_OVERSIZED_WIDTH_OR_LOCO", "coeff": 1.4})
+
+        # Итоговый расчет фрахта: Длина * Ставка/метр * Коэффициент
+        total_freight_usd = round(calc_length * rate_per_meter * coeff, 2)
+
+        return {
+            "status": "SUCCESS",
+            "port": port_key,
+            "cargo_category": cargo_category,
+            "length_meters": calc_length,
+            "rate_per_meter": rate_per_meter,
+            "coeff": round(coeff, 4),
+            "applied_coeffs": applied_coeffs,
+            "total_asco_usd": total_freight_usd
+        }
