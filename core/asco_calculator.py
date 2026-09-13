@@ -44,8 +44,8 @@ def determine_asco_cargo_category(
         elif w_type in ("covered", "крытый"):
             return "oil_covered"
 
-    # Спирт и спиртные напитки (ГНГ 2207, 2208)
-    if clean_gng.startswith(("2207", "2208")):
+    # Спирт, вина и алкогольная продукция (вся 22 группа ГНГ, кроме воды 2201 и напитков 2202)
+    if clean_gng.startswith("22") and not clean_gng.startswith(("2201", "2202")):
         return "alcohol"
 
     # Сжиженный газ (ГНГ 2711)
@@ -74,6 +74,7 @@ class AscoFerryCalculator:
         shipment_type: str = "transit",
         wagon_length_m: float = 14.0,
         is_empty: bool = False,
+        is_dangerous: bool = False,
         dangerous_class: Optional[int] = None,
         wagon_width_m: Optional[float] = None,
         is_locomotive: bool = False
@@ -96,17 +97,21 @@ class AscoFerryCalculator:
         # Определение категории груза по ГНГ и типу вагона
         cargo_category = determine_asco_cargo_category(gng_code, wagon_type, shipment_type)
 
-        # Проверка опасных грузов (Классы 1, 2, 3, 7 требуют согласования)
-        if dangerous_class in [1, 2, 3, 7] and cargo_category not in ["oil_cistern", "oil_covered", "alcohol", "lpg"]:
-            return {
-                "status": "REQUIRES_AGREEMENT",
-                "message": f"Опасный груз {dangerous_class} класса требует индивидуального согласования тарифной ставки",
-                "total_asco_usd": 0.0
-            }
-
-        # Классы опасности 4, 5, 6, 8, 9 при базовой категории переключаются на "dangerous"
-        if dangerous_class in [4, 5, 6, 8, 9] and cargo_category == "base":
-            cargo_category = "dangerous"
+        # ----------------------------------------------------------------------
+        # Проверка опасных грузов: ТОЛЬКО ЕСЛИ ЯВНО УКАЗАНО В ЗАПРОСЕ
+        # ----------------------------------------------------------------------
+        if is_dangerous or dangerous_class is not None:
+            # Классы 1, 2, 3, 7 требуют индивидуального согласования
+            if dangerous_class in [1, 2, 3, 7] and cargo_category not in ["oil_cistern", "oil_covered", "alcohol", "lpg"]:
+                return {
+                    "status": "REQUIRES_AGREEMENT",
+                    "message": f"Опасный груз (класс {dangerous_class}) требует индивидуального согласования тарифной ставки ASCO",
+                    "total_asco_usd": 0.0
+                }
+            
+            # Для остальных классов опасности (4, 5, 6, 8, 9) или если указан флаг is_dangerous=True
+            if cargo_category == "base":
+                cargo_category = "dangerous"
 
         rates_data = ASCO_RATES[port_key].get(cargo_category, ASCO_RATES[port_key]["base"])
 
