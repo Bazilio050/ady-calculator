@@ -37,7 +37,7 @@ class SecurityCalculator:
         cls._load_security_codes()
         clean_gng = str(gng_code).strip()
 
-        # Проверка по прямому совпадению или префиксам (4, 6, 8 знаков)
+        # Проверка по совпадению или префиксам
         for code in cls._security_gng_codes:
             if clean_gng.startswith(code) or code.startswith(clean_gng):
                 return True
