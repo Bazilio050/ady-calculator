@@ -37,3 +37,27 @@ def test_ferry_fees_on_control_routes():
         res = calculate_ferry_fees(from_st, to_st, num_wagons=1)
         assert res["nakat_usd"] == exp_nakat
         assert res["vykat_usd"] == exp_vykat
+
+def test_ferry_fees_calculation():
+    """Автоматическая проверка начисления сборов $70 USD за накат/выкат в Аляте"""
+    from core.calculator import TariffCalculator
+
+    # 1. Беюк Кясик -> Алят-эксп. (Накат: $70, Выкат: $0)
+    res_1 = TariffCalculator.calculate_ferry_fees("Беюк Кясик", "Алят-эксп.")
+    assert res_1["ferry_nakat_fee_usd"] == 70.0
+    assert res_1["ferry_vykat_fee_usd"] == 0.0
+
+    # 2. ТРК -> Ялама (Накат: $0, Выкат: $70)
+    res_2 = TariffCalculator.calculate_ferry_fees("ТРК", "Ялама")
+    assert res_2["ferry_nakat_fee_usd"] == 0.0
+    assert res_2["ferry_vykat_fee_usd"] == 70.0
+
+    # 3. Сальяны -> Курык (Накат: $70, Выкат: $0)
+    res_3 = TariffCalculator.calculate_ferry_fees("Сальяны", "Курык")
+    assert res_3["ferry_nakat_fee_usd"] == 70.0
+    assert res_3["ferry_vykat_fee_usd"] == 0.0
+
+    # 4. Ялама -> Астара (Сухопутный transit, сборы = $0)
+    res_4 = TariffCalculator.calculate_ferry_fees("Ялама", "Астара")
+    assert res_4["ferry_nakat_fee_usd"] == 0.0
+    assert res_4["ferry_vykat_fee_usd"] == 0.0
