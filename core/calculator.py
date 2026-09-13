@@ -889,7 +889,7 @@ class TariffCalculator:
         else:
             base_total_usd = round(wagon_rate_usd * billable_weight + attendants_fee_usd + cover_wagons_fee_usd, 2)
 
-        final_rate_total_usd = round(base_total_usd + ferry_fees["total_ferry_fee_usd"] + total_asco_usd, 2)
+        final_rate_total_usd = round(base_total_usd + ferry_fees["total_ferry_fee_usd"] + total_asco_usd + security_fee_usd, 2)
 
         return {
             "actual_weight": act_w,
@@ -904,6 +904,7 @@ class TariffCalculator:
             "final_coeff": rules_res.get("calculated_value", 1.0),
             "final_rate_usd_per_ton": final_rate_per_ton_usd,
             "attendants_fee_usd": attendants_fee_usd,
+            "security_fee_usd": security_fee_usd,
             "ferry_nakat_fee_usd": ferry_fees["ferry_nakat_fee_usd"],
             "ferry_vykat_fee_usd": ferry_fees["ferry_vykat_fee_usd"],
             "total_ferry_fee_usd": ferry_fees["total_ferry_fee_usd"],
